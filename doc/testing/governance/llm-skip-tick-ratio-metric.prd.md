@@ -57,8 +57,8 @@
 ## 4. Technical Specifications
 - Architecture Overview: 在 `world_llm_agent_demo` 运行期采样 trace，统一写入 `TraceCounts`，由 stress 脚本从 report/log 读取并输出到场景级与聚合级报表。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_llm_agent_demo.rs`
-  - `crates/agent_world/src/bin/world_llm_agent_demo/tests.rs`
+  - `crates/oasis7/src/bin/world_llm_agent_demo.rs`
+  - `crates/oasis7/src/bin/world_llm_agent_demo/tests.rs`
   - `scripts/llm-longrun-stress.sh`
 - Edge Cases & Error Handling:
   - `active_ticks = 0`：占比计算回退为 0，避免除零。

@@ -149,13 +149,13 @@
     - `bash -n scripts/ci-tests.sh`
     - `python -c "import pathlib, yaml; yaml.safe_load(pathlib.Path('.github/workflows/release-packages.yml').read_text())"`
     - `rg -n "full-core|full-support|release-gate-runtime-core|release-gate-runtime-support|release-gate-runtime-sync" scripts/ci-tests.sh .github/workflows/release-packages.yml doc/testing/prd.md`
-- [x] TASK-TESTING-056 (PRD-TESTING-002/003) [test_tier_required]: 基于 `runtime-core` 热点复盘重平衡 shard，把 `agent_world --features wasmtime --lib --bins` 从 `full-core` 挪到 `full-support`，降低最长 runtime shard。
+- [x] TASK-TESTING-056 (PRD-TESTING-002/003) [test_tier_required]: 基于 `runtime-core` 热点复盘重平衡 shard，把 `oasis7 --features wasmtime --lib --bins` 从 `full-core` 挪到 `full-support`，降低最长 runtime shard。
   - 产物文件:
     - `scripts/ci-tests.sh`
     - `doc/testing/prd.md`
   - 验收命令 (`test_tier_required`):
     - `bash -n scripts/ci-tests.sh`
-    - `rg -n "full-core|full-support|agent_world --features wasmtime --lib --bins" scripts/ci-tests.sh doc/testing/prd.md doc/testing/project.md`
+    - `rg -n "full-core|full-support|oasis7 --features wasmtime --lib --bins" scripts/ci-tests.sh doc/testing/prd.md doc/testing/project.md`
 - [x] TASK-TESTING-057 (PRD-TESTING-WEB-001/002/003) [test_tier_required]: 为 `renderMode=software_safe` 补专用 prompt/chat 回归方案与 `viewer-software-safe-chat-regression.sh`，覆盖 apply/rollback/chat ack、消息流采样以及 `agent_spoke` 缺失签名。
   - 产物文件:
     - `scripts/viewer-software-safe-chat-regression.sh`
@@ -168,13 +168,13 @@
     - `./scripts/viewer-software-safe-chat-regression.sh --viewer-static-dir /tmp/aw-viewer-dist-promptchat3 --viewer-port 4373 --live-bind 127.0.0.1:5323 --web-bind 127.0.0.1:5311`
 - [x] TASK-TESTING-058 (PRD-TESTING-WEB-001/002/003) [test_tier_required]: 为 software-safe 消息流回归补 `agent_chat -> AgentSpoke` 的 env-gated runtime echo 验证路径，并修正 runtime 事件形状兼容解析。
   - 产物文件:
-    - `crates/agent_world/src/viewer/runtime_live/control_plane.rs`
-    - `crates/agent_world/src/viewer/runtime_live/tests.rs`
-    - `crates/agent_world_viewer/software_safe.js`
+    - `crates/oasis7/src/viewer/runtime_live/control_plane.rs`
+    - `crates/oasis7/src/viewer/runtime_live/tests.rs`
+    - `crates/oasis7_viewer/software_safe.js`
     - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
   - 验收命令 (`test_tier_required`):
-    - `env -u RUSTC_WRAPPER cargo test -p agent_world runtime_agent_chat_echo_env_enqueues_agent_spoke_virtual_event -- --nocapture`
-    - `node --check crates/agent_world_viewer/software_safe.js`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime_agent_chat_echo_env_enqueues_agent_spoke_virtual_event -- --nocapture`
+    - `node --check crates/oasis7_viewer/software_safe.js`
     - `agent-browser` 手工链路：`open software_safe -> sendAgentChat -> runSteps -> getState().chatHistory` 观察 `source=event` 的 `AgentSpoke` 记录
 - [x] TASK-TESTING-059 (PRD-TESTING-004) [test_tier_required]: 对 `doc/testing/**` 的仍可读历史专题执行 title-only cleanup，将首行 `Agent World*` 公开标题统一切到 `oasis7*`，保留正文历史证据原文不动。
 - [x] TASK-TESTING-060 (PRD-TESTING-004) [test_tier_required]: 清理 `doc/testing/launcher/**` 活跃专题里仍作为当前真值出现的旧品牌 crate/path/env/command，引文统一到 `oasis7*` / `OASIS7_*`。
@@ -192,6 +192,7 @@
     - `rg -n "^# Agent World|^# Agent World Runtime|^# Agent World Simulator|^# Agent World Viewer" doc/testing --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-TESTING-061 (PRD-TESTING-004) [test_tier_required]: 清理 `doc/testing/{longrun,governance,performance,ci,manual}` 活跃专题里已完成改名但文档仍残留的旧品牌 crate/path/env 当前真值。
 
 - 当前阻断摘要：`doc/testing/openclaw-dual-mode-t4-blocker-2026-03-16.md`
 
@@ -208,11 +209,12 @@
 - 更新日期: 2026-03-16
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-TESTING-061`（已清理 `doc/testing/{longrun,governance,performance,ci,manual}` 活跃专题中的旧品牌 crate/path/env 当前真值，统一到 `oasis7*` / `OASIS7_*`）。
 - 最新完成: `TASK-TESTING-060`（已清理 `doc/testing/launcher/**` 活跃专题中的旧品牌 crate/path/env/command 当前真值，统一到 `oasis7*` / `OASIS7_*`）。
 - 最新完成: `TASK-TESTING-059`（已完成 `doc/testing/**` 历史专题首行标题的 title-only cleanup，旧 `Agent World*` 公开标题已统一切到 `oasis7*`）。
 - 最新完成: `TASK-TESTING-058`（为 software-safe 消息流回归补 env-gated runtime echo 与 runtime 事件兼容解析，手工链路已能稳定观测 `AgentSpoke` 进入 `chatHistory`）。
 - 最新完成: `TASK-TESTING-057`（为 `renderMode=software_safe` 补专用 prompt/chat 回归方案与执行脚本，沉淀 `agent_spoke` 缺失签名与证据包）。
-- 最新完成: `TASK-TESTING-056`（基于 `runtime-core` 热点复盘重平衡 shard，把 `agent_world --lib --bins` 从 `full-core` 挪到 `full-support`，降低最长 runtime shard）。
+- 最新完成: `TASK-TESTING-056`（基于 `runtime-core` 热点复盘重平衡 shard，把 `oasis7 --lib --bins` 从 `full-core` 挪到 `full-support`，降低最长 runtime shard）。
 - 最新完成: `TASK-TESTING-055`（拆分 `release-gate-runtime` 为 core/support/sync 三个并行 job，并给 `ci-tests.sh` 增加 `full-core` / `full-support` shard 入口）。
 - 最新完成: `TASK-TESTING-054`（继续优化 release 关键路径，让 `release-gate-web`/`build-web-dist` 共享 Web wasm cache，并把 bundle 原生二进制构建收敛到单次 cargo 调用）。
 - 最新完成: `TASK-TESTING-053`（优化 release packaging Web 资产复用链路，避免 package-native 每平台重复 trunk 安装与构建）。

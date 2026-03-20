@@ -70,13 +70,13 @@
   - `scripts/ci-verify-m1-wasm-summaries.py`
   - `scripts/wasm-release-evidence-report.sh`
   - `scripts/ci-ensure-required-checks.py`
-  - `crates/agent_world_distfs/src/bin/sync_builtin_wasm_identity.rs`
+  - `crates/oasis7_distfs/src/bin/sync_builtin_wasm_identity.rs`
   - `.github/workflows/wasm-determinism-gate.yml`
-  - `crates/agent_world/src/runtime/world/artifacts/m4_builtin_modules.sha256`
-  - `crates/agent_world/src/runtime/world/artifacts/m5_builtin_modules.sha256`
+  - `crates/oasis7/src/runtime/world/artifacts/m4_builtin_modules.sha256`
+  - `crates/oasis7/src/runtime/world/artifacts/m5_builtin_modules.sha256`
 - Edge Cases & Error Handling:
   - GitHub-hosted macOS 无 Docker daemon：默认 gate 只跑 Linux canonical runner；full-tier 通过外部 summary 导入补证。
-  - 当前平台不在 canonical 列表：`--check` 直接失败并提示 `AGENT_WORLD_WASM_CANONICAL_PLATFORMS`。
+  - 当前平台不在 canonical 列表：`--check` 直接失败并提示 `OASIS7_WASM_CANONICAL_PLATFORMS`。
   - manifest 含重复平台 token：严格失败并报告 `module_id + platform`。
   - runner 缺摘要或摘要重复：汇总脚本失败并列出缺失 / 重复 runner。
   - required check 注入时分支未保护：脚本应创建最小保护策略后继续注入。

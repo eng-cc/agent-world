@@ -57,9 +57,9 @@
 ## 4. Technical Specifications
 - Architecture Overview: 在既有 runtime perf 基础上新增 `llm_api` 序列，并在 runner 采样阶段将总 decision 时长拆分为本地执行与 API 延迟两部分；健康结论继续由本地四阶段决定，`llm_api` 仅作为旁路诊断信号。
 - Integration Points:
-  - `crates/agent_world/src/simulator/runtime_perf.rs`
-  - `crates/agent_world/src/simulator/runner.rs`
-  - `crates/agent_world/src/simulator/tests/runner.rs`
+  - `crates/oasis7/src/simulator/runtime_perf.rs`
+  - `crates/oasis7/src/simulator/runner.rs`
+  - `crates/oasis7/src/simulator/tests/runner.rs`
   - `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md`
   - `testing-manual.md`
   - `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.project.md`

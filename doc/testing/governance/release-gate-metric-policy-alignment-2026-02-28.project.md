@@ -15,8 +15,8 @@
 ## 依赖
 - doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.prd.md
 - Runtime:
-  - `crates/agent_world/src/bin/world_chain_runtime.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/reward_runtime_worker.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/reward_runtime_worker.rs`
 - 长跑脚本：
   - `scripts/p2p-longrun-soak.sh`
   - `scripts/s10-five-node-game-soak.sh`

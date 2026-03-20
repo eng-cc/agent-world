@@ -15,7 +15,7 @@
 ## 依赖
 - doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.prd.md
 - `scripts/viewer-owr4-stress.sh`
-- `crates/agent_world_viewer/src/perf_probe.rs`
+- `crates/oasis7_viewer/src/perf_probe.rs`
 - `testing-manual.md`
 - `doc/devlog/2026-02-25.md`
 - `doc/testing/prd.md`

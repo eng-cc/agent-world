@@ -56,8 +56,8 @@
 ## 4. Technical Specifications
 - Architecture Overview: 通过在 `world_chain_runtime` 启动阶段注入默认 replication network handle，修复 `feedback_p2p` 对 network 依赖未满足导致的启动失败，并保持外部接口稳定。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_chain_runtime.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/world_chain_runtime_tests.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/world_chain_runtime_tests.rs`
   - `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md`
   - `doc/devlog/2026-03-02.md`
 - Edge Cases & Error Handling:

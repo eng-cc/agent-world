@@ -17,7 +17,7 @@
 - doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.prd.md
 - `scripts/s10-five-node-game-soak.sh`
 - `scripts/p2p-longrun-soak.sh`
-- `crates/agent_world/src/bin/world_chain_runtime.rs`
+- `crates/oasis7/src/bin/world_chain_runtime.rs`
 - `testing-manual.md`
 - `doc/testing/prd.md`
 - `doc/testing/project.md`

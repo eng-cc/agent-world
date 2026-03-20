@@ -14,9 +14,9 @@
 
 ## 依赖
 - doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.prd.md
-- `crates/agent_world_viewer/src/render_perf_summary.rs`
-- `crates/agent_world_viewer/src/perf_probe.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/src/render_perf_summary.rs`
+- `crates/oasis7_viewer/src/perf_probe.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
 - `scripts/viewer-owr4-stress.sh`
 - `testing-manual.md`
 - `doc/devlog/2026-02-25.md`

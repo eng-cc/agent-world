@@ -24,7 +24,7 @@
 - `scripts/ci-verify-m1-wasm-summaries.py`
 - `scripts/wasm-release-evidence-report.sh`
 - `scripts/ci-ensure-required-checks.py`
-- `crates/agent_world_distfs/src/bin/sync_builtin_wasm_identity.rs`
+- `crates/oasis7_distfs/src/bin/sync_builtin_wasm_identity.rs`
 - `.github/workflows/wasm-determinism-gate.yml`
 - `testing-manual.md`
 - `doc/testing/prd.md`

@@ -63,8 +63,8 @@
   - `testing-manual.md`（S9）
   - `scripts/ci-tests.sh`
   - `scripts/viewer-owr4-stress.sh`
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
-  - `crates/agent_world_node/src/types.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7_node/src/types.rs`
   - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.project.md`
 - Edge Cases & Error Handling:
   - 报表频率不一致：采用时间窗口容错，先确保关键字段可用。

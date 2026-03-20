@@ -57,9 +57,9 @@
 ## 4. Technical Specifications
 - Architecture Overview: 在 viewer 端汇总路径新增 runtime 诊断与容量命中字段，由 `RenderPerfSummary` 提供统一结构；`PerfHotspot` 通过固定优先级映射为可操作分类，再由 `perf_probe` 与 stress 脚本传递到产物层。
 - Integration Points:
-  - `crates/agent_world_viewer/src/render_perf_summary.rs`
-  - `crates/agent_world_viewer/src/perf_probe.rs`
-  - `crates/agent_world_viewer/src/egui_right_panel.rs`
+  - `crates/oasis7_viewer/src/render_perf_summary.rs`
+  - `crates/oasis7_viewer/src/perf_probe.rs`
+  - `crates/oasis7_viewer/src/egui_right_panel.rs`
   - `scripts/viewer-owr4-stress.sh`
   - `testing-manual.md`
   - `doc/testing/performance/viewer-perf-bottleneck-observability-2026-02-25.project.md`

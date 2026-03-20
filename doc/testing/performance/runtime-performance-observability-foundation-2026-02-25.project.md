@@ -17,9 +17,9 @@
 
 ## 依赖
 - doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md
-- `crates/agent_world/src/simulator/runner.rs`
-- `crates/agent_world/src/bin/world_llm_agent_demo/*`
-- `crates/agent_world/src/viewer/live_*`
+- `crates/oasis7/src/simulator/runner.rs`
+- `crates/oasis7/src/bin/world_llm_agent_demo/*`
+- `crates/oasis7/src/viewer/live_*`
 - `scripts/llm-longrun-stress.sh`
 - `testing-manual.md`
 - `doc/testing/prd.md`

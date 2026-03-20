@@ -23,8 +23,8 @@
 - `scripts/ci-m1-wasm-summary.sh`
 - `scripts/ci-verify-m1-wasm-summaries.py`
 - `scripts/wasm-release-evidence-report.sh`
-- `crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256`
-- `crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.identity.json`
+- `crates/oasis7/src/runtime/world/artifacts/m1_builtin_modules.sha256`
+- `crates/oasis7/src/runtime/world/artifacts/m1_builtin_modules.identity.json`
 - `testing-manual.md`
 - `doc/testing/prd.md`
 - `doc/testing/project.md`

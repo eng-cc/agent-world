@@ -14,8 +14,8 @@
 
 ## 依赖
 - doc/testing/governance/llm-skip-tick-ratio-metric.prd.md
-- `crates/agent_world/src/bin/world_llm_agent_demo.rs`
-- `crates/agent_world/src/bin/world_llm_agent_demo/tests.rs`
+- `crates/oasis7/src/bin/world_llm_agent_demo.rs`
+- `crates/oasis7/src/bin/world_llm_agent_demo/tests.rs`
 - `scripts/llm-longrun-stress.sh`
 - `doc/testing/prd.md`
 - `doc/testing/project.md`

@@ -60,7 +60,7 @@
 - Architecture Overview: 通过 `viewer-owr4-stress.sh` 将 viewer 性能采样、阈值判定、baseline 回归比较整合为单入口流程；`perf_probe` 提供原始指标，脚本负责派生、判定与产物格式化。
 - Integration Points:
   - `scripts/viewer-owr4-stress.sh`
-  - `crates/agent_world_viewer/src/perf_probe.rs`
+  - `crates/oasis7_viewer/src/perf_probe.rs`
   - `testing-manual.md`
   - `doc/testing/performance/viewer-performance-methodology-closure-2026-02-25.project.md`
 - Edge Cases & Error Handling:

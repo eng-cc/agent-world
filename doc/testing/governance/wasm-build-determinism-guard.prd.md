@@ -40,7 +40,7 @@
 | workspace 编译期拦截 | package 名称、target kind、来源类型 | 遇到本地 `build.rs` 或 `proc-macro` 即失败 | `metadata-loaded -> validated/blocked` | 仅对 workspace 本地包生效，third-party 不一刀切 | 平台维护者拥有放行策略定义权限 |
 | 可复现环境固定 | `CARGO_INCREMENTAL=0`、`SOURCE_DATE_EPOCH`、`TZ/LANG/LC_ALL` | 构建前统一注入/覆盖复现参数 | `unset -> normalized` | 先标准化环境再进入构建 | 脚本维护者可更新固定策略 |
 - Acceptance Criteria:
-  - AC-1: 脚本层默认启用 `AGENT_WORLD_WASM_DETERMINISTIC_GUARD=1` 并支持显式关闭。
+  - AC-1: 脚本层默认启用 `OASIS7_WASM_DETERMINISTIC_GUARD=1` 并支持显式关闭。
   - AC-2: 构建工具层 `cargo metadata` 与 `cargo build` 默认带 `--locked`。
   - AC-3: workspace 本地包若含 `custom-build(build.rs)` 或 `proc-macro` 目标，构建被阻断且错误可定位。
   - AC-4: 现有 m1/m4 hash manifest 与 DistFS 加载链路行为不变。

@@ -58,9 +58,9 @@
 ## 4. Technical Specifications
 - Architecture Overview: 在 simulator runner 增加轻量 wall-time 采集器，分阶段写入窗口统计与累计计数，派生 `RuntimePerfSnapshot` 后通过 `RunnerMetrics` 对外传播，并被 demo/viewer/longrun 脚本统一消费。
 - Integration Points:
-  - `crates/agent_world/src/simulator/runner.rs`
-  - `crates/agent_world/src/bin/world_llm_agent_demo/*`
-  - `crates/agent_world/src/viewer/live_*`
+  - `crates/oasis7/src/simulator/runner.rs`
+  - `crates/oasis7/src/bin/world_llm_agent_demo/*`
+  - `crates/oasis7/src/viewer/live_*`
   - `scripts/llm-longrun-stress.sh`
   - `testing-manual.md`
   - `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.project.md`

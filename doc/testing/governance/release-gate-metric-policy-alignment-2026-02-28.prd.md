@@ -57,8 +57,8 @@
 ## 4. Technical Specifications
 - Architecture Overview: 以 `world_chain_runtime` 的 reward runtime worker 为单一事实来源，脚本直接消费 status 快照并在 S9/S10 执行后生成兼容汇总产物。
 - Integration Points:
-  - `crates/agent_world/src/bin/world_chain_runtime.rs`
-  - `crates/agent_world/src/bin/world_chain_runtime/reward_runtime_worker.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime.rs`
+  - `crates/oasis7/src/bin/world_chain_runtime/reward_runtime_worker.rs`
   - `scripts/p2p-longrun-soak.sh`
   - `scripts/s10-five-node-game-soak.sh`
   - `testing-manual.md`
@@ -67,7 +67,7 @@
 - Edge Cases & Error Handling:
   - `distfs_total_checks` 在短窗口为 0：标记为 `insufficient_data`，与比例超阈值分离处理。
   - chaos 注入导致 `running_false/http_failure`：不直接判为 invariant 违规。
-  - runtime 新参数未编译进二进制：启动即失败并提示先执行 `cargo build -p agent_world --bin world_chain_runtime`。
+  - runtime 新参数未编译进二进制：启动即失败并提示先执行 `cargo build -p oasis7 --bin world_chain_runtime`。
   - 部分节点指标缺失：聚合时按可用节点最大累计值计算并保留告警。
   - 状态接口不可达：脚本输出 HTTP 失败分类并终止门禁判定。
 - Non-Functional Requirements:

@@ -14,9 +14,9 @@
 
 ## 依赖
 - doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.prd.md
-- `crates/agent_world/src/simulator/runtime_perf.rs`
-- `crates/agent_world/src/simulator/runner.rs`
-- `crates/agent_world/src/simulator/tests/runner.rs`
+- `crates/oasis7/src/simulator/runtime_perf.rs`
+- `crates/oasis7/src/simulator/runner.rs`
+- `crates/oasis7/src/simulator/tests/runner.rs`
 - `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md`
 - `testing-manual.md`
 - `doc/testing/prd.md`

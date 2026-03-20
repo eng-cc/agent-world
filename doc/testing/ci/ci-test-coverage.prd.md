@@ -62,7 +62,7 @@
   - `.github/workflows/rust.yml`
   - `world_viewer_demo`（`snapshot.json` / `journal.json`）
   - `viewer_offline_integration`
-  - `agent_world_viewer` `egui_kittest` snapshot
+  - `oasis7_viewer` `egui_kittest` snapshot
 - Edge Cases & Error Handling:
   - wasmtime 依赖体积增长：执行耗时上升，需要保留分级策略平衡成本。
   - socket 端口竞争：联测必须使用随机端口与超时保护。

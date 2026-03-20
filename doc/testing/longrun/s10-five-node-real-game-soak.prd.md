@@ -60,7 +60,7 @@
 - Architecture Overview: 基于 `world_viewer_live --topology single` 多进程编排 5 节点，脚本统一构建 validator/peer 配置、采集每节点状态报告，并在 S10 门禁中联合判定共识推进、网络追平、存储挑战、结算应用与资产一致性。
 - Integration Points:
   - `scripts/s10-five-node-game-soak.sh`
-  - `crates/agent_world/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/world_viewer_live.rs`
   - `testing-manual.md`
   - `doc/testing/longrun/s10-five-node-real-game-soak.project.md`
 - Edge Cases & Error Handling:
