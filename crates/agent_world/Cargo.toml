@@ -23,7 +23,7 @@ agent_world_distfs = { path = "../agent_world_distfs" }
 agent_world_launcher_ui = { path = "../agent_world_launcher_ui" }
 agent_world_node = { path = "../agent_world_node" }
 agent_world_wasm_executor = { path = "../agent_world_wasm_executor", default-features = false }
-agent_world_wasm_router = { path = "../agent_world_wasm_router" }
+oasis7_wasm_router = { path = "../oasis7_wasm_router" }
 agent_world_wasm_store = { path = "../agent_world_wasm_store" }
 async-openai = { version = "0.32.4", default-features = false, features = ["responses", "rustls"] }
 ctrlc = { version = "3.4", features = ["termination"] }

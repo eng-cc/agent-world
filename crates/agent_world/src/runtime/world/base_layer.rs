@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use agent_world_wasm_router::{validate_subscription_filters, validate_subscription_stage};
+use oasis7_wasm_router::{validate_subscription_filters, validate_subscription_stage};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
 use super::super::{

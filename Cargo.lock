@@ -144,7 +144,6 @@ dependencies = [
  "agent_world_node",
  "agent_world_proto",
  "agent_world_wasm_executor",
- "agent_world_wasm_router",
  "agent_world_wasm_store",
  "async-openai",
  "blake3",
@@ -154,6 +153,7 @@ dependencies = [
  "hex",
  "hmac",
  "oasis7_wasm_abi",
+ "oasis7_wasm_router",
  "rand_core 0.6.4",
  "reqwest",
  "serde",
@@ -291,16 +291,6 @@ dependencies = [
  "serde_cbor",
  "wasmtime",
  "wat",
-]
-
-[[package]]
-name = "agent_world_wasm_router"
-version = "0.1.0"
-dependencies = [
- "oasis7_wasm_abi",
- "regex",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -5823,6 +5813,16 @@ dependencies = [
 name = "oasis7_wasm_abi"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "oasis7_wasm_router"
+version = "0.1.0"
+dependencies = [
+ "oasis7_wasm_abi",
+ "regex",
  "serde",
  "serde_json",
 ]

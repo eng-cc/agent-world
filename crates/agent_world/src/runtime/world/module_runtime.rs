@@ -4,7 +4,7 @@ use oasis7_wasm_abi::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallInput, ModuleCallOrigin, ModuleCallRequest,
     ModuleContext, ModuleEmitEvent, ModuleOutput, ModuleSandbox, ModuleStateUpdate,
 };
-use agent_world_wasm_router::{module_subscribes_to_action, module_subscribes_to_event};
+use oasis7_wasm_router::{module_subscribes_to_action, module_subscribes_to_event};
 
 use super::super::util::to_canonical_cbor;
 use super::super::{
