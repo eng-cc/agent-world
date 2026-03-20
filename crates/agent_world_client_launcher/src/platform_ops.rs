@@ -201,7 +201,7 @@ mod tests {
     }
 
     #[test]
-    fn viewer_dev_dist_candidates_prefer_oasis7_name_before_legacy_name() {
+    fn viewer_dev_dist_candidates_prefer_oasis7_name_before_compat_old_brand_name() {
         let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
         let candidates = viewer_dev_dist_candidates();
 
