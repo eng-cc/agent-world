@@ -37,7 +37,7 @@
   - SC-5: 移动端轻客户端路径可在不运行本地权威模拟器前提下稳定接入。
   - SC-6: PoS slot/epoch 在多节点间由统一时间公式驱动，允许漏槽但不出现时间语义倒退。
   - SC-7: PoS 支持槽内 logical tick 相位门控与动态节拍调度，实现可配置 `tick/slot` 语义。
-  - SC-8: `world_chain_runtime/world_game_launcher/world_web_launcher/agent_world_client_launcher/scripts` 控制面参数与状态口径与 PoS 时间锚定语义一致，不再将 `node_tick_ms` 误解为出块时间。
+  - SC-8: `world_chain_runtime/world_game_launcher/world_web_launcher/oasis7_client_launcher/scripts` 控制面参数与状态口径与 PoS 时间锚定语义一致，不再将 `node_tick_ms` 误解为出块时间。
   - SC-9: 清理残留时序语义偏差（`tick_count` 观测命名、`world_viewer_live` 旧控制面假设、`world-rule` 时间模型描述），保证规范/实现/运维口径一致。
   - SC-10: runtime/game/web/client launcher 默认 PoS 时间参数与文档一致，默认启动即满足“slot 时钟锚定 + 轮询语义解耦”口径。
   - SC-11: runtime/game/web/client launcher 与 longrun 脚本默认参数统一为 `slot_duration_ms=12000`、`ticks_per_slot=10`、`proposal_tick_phase=9`，满足“12s 出块、每块 10 tick”基线。
@@ -98,9 +98,9 @@
 - 三线联合验收清单（TASK-P2P-002）:
 | 线别 | 必跑命令（基线） | 联合验收门禁 | 阻断条件（任一命中即 fail） | 证据产物 |
 | --- | --- | --- | --- | --- |
-| 网络线（net） | `env -u RUSTC_WRAPPER cargo test -p agent_world_net --lib`；`env -u RUSTC_WRAPPER cargo test -p agent_world_net --features libp2p --lib` | `./scripts/release-gate.sh --dry-run` + S9 发布档位命令（见 `testing-manual.md`） | `agent_world_net` 单测失败；S9 `metric_gate.status != pass`；`consensus_hash_consistent != true` | `release-gate-summary.md`、S9 `summary.json/timeline.csv` |
-| 共识线（consensus） | `env -u RUSTC_WRAPPER cargo test -p agent_world_consensus --lib`；`env -u RUSTC_WRAPPER cargo test -p agent_world_node --lib` | S9 + S10 发布档位命令（见 `testing-manual.md`） | 共识/节点单测失败；S9 或 S10 `overall_status/run.status != ok`；`consensus_hash_mismatch_count > 0` | S9/S10 `summary.json`、`failures.md`（若失败） |
-| 存储线（DistFS） | `env -u RUSTC_WRAPPER cargo test -p agent_world_distfs --lib` | S9 发布档位命令（含 `--max-distfs-failure-ratio 0.1`） | DistFS 单测失败；`distfs_failure_ratio` 超阈值；反馈/复制不一致无法闭环 | S9 `summary.json`、`feedback_events.log`、`chaos_events.log` |
+| 网络线（net） | `env -u RUSTC_WRAPPER cargo test -p oasis7_net --lib`；`env -u RUSTC_WRAPPER cargo test -p oasis7_net --features libp2p --lib` | `./scripts/release-gate.sh --dry-run` + S9 发布档位命令（见 `testing-manual.md`） | `oasis7_net` 单测失败；S9 `metric_gate.status != pass`；`consensus_hash_consistent != true` | `release-gate-summary.md`、S9 `summary.json/timeline.csv` |
+| 共识线（consensus） | `env -u RUSTC_WRAPPER cargo test -p oasis7_consensus --lib`；`env -u RUSTC_WRAPPER cargo test -p oasis7_node --lib` | S9 + S10 发布档位命令（见 `testing-manual.md`） | 共识/节点单测失败；S9 或 S10 `overall_status/run.status != ok`；`consensus_hash_mismatch_count > 0` | S9/S10 `summary.json`、`failures.md`（若失败） |
+| 存储线（DistFS） | `env -u RUSTC_WRAPPER cargo test -p oasis7_distfs --lib` | S9 发布档位命令（含 `--max-distfs-failure-ratio 0.1`） | DistFS 单测失败；`distfs_failure_ratio` 超阈值；反馈/复制不一致无法闭环 | S9 `summary.json`、`feedback_events.log`、`chaos_events.log` |
 - Acceptance Criteria:
   - AC-1: p2p PRD 覆盖网络、共识、存储、激励四条主线。
   - AC-2: p2p project 文档任务项明确映射 PRD-P2P-ID。
@@ -114,8 +114,8 @@
   - AC-10: 发行门禁分布式质量指标（S9/S10）具备“阈值 + 数据源 + 阻断策略 + 责任归属”映射，并与 `release-gate` 脚本参数一致。
   - AC-11: `node-pos-time-anchor-control-plane-alignment-2026-03-07` 专题文档落盘并映射任务链 `TASK-P2P-010`，覆盖 runtime/game/web/client launcher/scripts 与状态接口口径对齐。
   - AC-12: 残留语义项完成收敛：`world-rule` 时间模型、launcher `chain_node_tick_ms` 校验文案、`/v1/chain/status` 轮询字段命名、viewer/manual/site 与 `world_viewer_live` 实际 CLI 能力保持一致。
-  - AC-13: `world_chain_runtime/world_game_launcher/world_web_launcher/agent_world_client_launcher` 默认 `slot_duration_ms` 与文档基线一致；`world_web_launcher` 校验文案明确 `chain_node_tick_ms` 为 poll interval 语义。
-  - AC-14: `world_chain_runtime/world_game_launcher/world_web_launcher/agent_world_client_launcher/world_viewer_live/p2p-longrun/s10` 默认 `slot_duration_ms/ticks_per_slot/proposal_tick_phase` 与“12s/10/9”基线一致，相关默认值断言与手册同步更新。
+  - AC-13: `world_chain_runtime/world_game_launcher/world_web_launcher/oasis7_client_launcher` 默认 `slot_duration_ms` 与文档基线一致；`world_web_launcher` 校验文案明确 `chain_node_tick_ms` 为 poll interval 语义。
+  - AC-14: `world_chain_runtime/world_game_launcher/world_web_launcher/oasis7_client_launcher/world_viewer_live/p2p-longrun/s10` 默认 `slot_duration_ms/ticks_per_slot/proposal_tick_phase` 与“12s/10/9”基线一致，相关默认值断言与手册同步更新。
   - AC-15: `world_viewer_live` 解析层移除 `--release-config` 与 `--node-*` 参数能力；定向测试覆盖“误传 legacy 参数 -> 启动失败 + 替代提示”路径。
   - AC-16: `world_viewer_live` 进一步移除 `--runtime-world` 兼容别名与旧 split CLI 路径，定向测试覆盖 `--release-config/--runtime-world/--node-*` 拒绝行为。
   - AC-17: 历史文档中 `world_viewer_live` 子目录旧路径完成迁移（对齐 `world_viewer_live.rs` 与 `world_chain_runtime/*` 现行布局），文档门禁通过。
@@ -129,7 +129,7 @@
 - Evaluation Strategy: 以在线稳定时长、分叉恢复成功率、反馈链路可用性、错误收敛时间评估。
 
 ## 4. Technical Specifications
-- Architecture Overview: p2p 模块负责 `agent_world_net`/`agent_world_consensus`/`agent_world_distfs` 与 node 侧分布式运行协同，强调一致性与故障恢复。
+- Architecture Overview: p2p 模块负责 `oasis7_net`/`oasis7_consensus`/`oasis7_distfs` 与 node 侧分布式运行协同，强调一致性与故障恢复。
 - Integration Points:
   - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
   - `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`
