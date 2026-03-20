@@ -571,7 +571,7 @@ impl Default for WorldState {
 }
 
 impl WorldState {
-    pub fn migrate_legacy_material_ledgers(&mut self) {
+    pub fn migrate_compat_material_ledgers(&mut self) {
         self.material_ledgers
             .entry(MaterialLedgerId::world())
             .or_default();
@@ -586,7 +586,7 @@ impl WorldState {
                 .insert(MaterialLedgerId::world(), self.materials.clone());
         }
 
-        sync_legacy_world_materials(&self.material_ledgers, &mut self.materials);
+        sync_compat_world_materials(&self.material_ledgers, &mut self.materials);
     }
 
     pub fn has_data_access_permission(
@@ -856,7 +856,7 @@ impl WorldState {
         event: &DomainEvent,
         now: WorldTime,
     ) -> Result<(), WorldError> {
-        self.migrate_legacy_material_ledgers();
+        self.migrate_compat_material_ledgers();
         match event {
             DomainEvent::AgentRegistered { .. }
             | DomainEvent::AgentMoved { .. }
@@ -938,7 +938,7 @@ impl WorldState {
                 self.apply_domain_event_governance_meta(event, now)?
             }
         }
-        sync_legacy_world_materials(&self.material_ledgers, &mut self.materials);
+        sync_compat_world_materials(&self.material_ledgers, &mut self.materials);
         Ok(())
     }
 
@@ -1472,15 +1472,15 @@ fn remove_material_balance_for_ledger(
     remove_material_balance(balances, kind, amount)
 }
 
-fn sync_legacy_world_materials(
+fn sync_compat_world_materials(
     ledgers: &BTreeMap<MaterialLedgerId, BTreeMap<String, i64>>,
-    legacy_world_materials: &mut BTreeMap<String, i64>,
+    compat_world_materials_cache: &mut BTreeMap<String, i64>,
 ) {
     let world_materials = ledgers
         .get(&MaterialLedgerId::world())
         .cloned()
         .unwrap_or_default();
-    *legacy_world_materials = world_materials;
+    *compat_world_materials_cache = world_materials;
 }
 
 fn apply_war_participant_outcomes(

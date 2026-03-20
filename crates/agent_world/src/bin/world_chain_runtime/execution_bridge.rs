@@ -695,17 +695,17 @@ fn sync_execution_bridge_pin_set(
     Ok(pin_set)
 }
 
-fn list_execution_bridge_legacy_heights(execution_records_dir: &Path) -> Result<Vec<u64>, String> {
-    let mut legacy_heights = Vec::new();
+fn list_execution_bridge_pre_v2_heights(execution_records_dir: &Path) -> Result<Vec<u64>, String> {
+    let mut pre_v2_heights = Vec::new();
     for height in list_execution_bridge_record_heights(execution_records_dir)? {
         let record = load_execution_bridge_record(
             execution_bridge_record_path(execution_records_dir, height).as_path(),
         )?;
         if record.schema_version < EXECUTION_BRIDGE_RECORD_SCHEMA_V2 {
-            legacy_heights.push(height);
+            pre_v2_heights.push(height);
         }
     }
-    Ok(legacy_heights)
+    Ok(pre_v2_heights)
 }
 
 fn update_execution_bridge_record_checkpoint_ref(
@@ -837,8 +837,8 @@ fn run_execution_bridge_retention_maintenance(
     execution_store: &LocalCasStore,
     hot_window_heights: u64,
 ) -> Result<u64, String> {
-    let legacy_heights = list_execution_bridge_legacy_heights(execution_records_dir)?;
-    if !legacy_heights.is_empty() {
+    let pre_v2_heights = list_execution_bridge_pre_v2_heights(execution_records_dir)?;
+    if !pre_v2_heights.is_empty() {
         sync_execution_bridge_pin_set(execution_records_dir, execution_store, hot_window_heights)?;
         return Ok(0);
     }
@@ -1012,9 +1012,10 @@ fn collect_execution_module_resolution_anchors(
         });
     }
 
-    let mut legacy_module_ids: Vec<String> = module_registry.active.keys().cloned().collect();
-    legacy_module_ids.sort();
-    for module_id in legacy_module_ids {
+    let mut module_ids_without_instances: Vec<String> =
+        module_registry.active.keys().cloned().collect();
+    module_ids_without_instances.sort();
+    for module_id in module_ids_without_instances {
         if module_ids_with_instances.contains(&module_id) {
             continue;
         }

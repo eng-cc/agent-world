@@ -950,7 +950,7 @@ impl World {
         } else {
             ledger.insert(material_kind, amount);
         }
-        self.sync_legacy_world_materials_cache();
+        self.sync_compat_world_materials_cache();
         Ok(())
     }
 
@@ -994,7 +994,7 @@ impl World {
         } else {
             ledger.insert(material_kind, next);
         }
-        self.sync_legacy_world_materials_cache();
+        self.sync_compat_world_materials_cache();
         Ok(next)
     }
 
@@ -1111,7 +1111,7 @@ impl World {
         Ok(cell.state.resources.get(kind))
     }
 
-    fn sync_legacy_world_materials_cache(&mut self) {
+    fn sync_compat_world_materials_cache(&mut self) {
         self.state.materials = self
             .state
             .material_ledgers

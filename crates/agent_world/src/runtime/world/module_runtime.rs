@@ -190,10 +190,10 @@ impl World {
             });
         }
 
-        let mut legacy_module_ids: Vec<String> =
+        let mut module_ids_without_instances: Vec<String> =
             self.module_registry.active.keys().cloned().collect();
-        legacy_module_ids.sort();
-        for module_id in legacy_module_ids {
+        module_ids_without_instances.sort();
+        for module_id in module_ids_without_instances {
             if module_ids_with_instances.contains(&module_id) {
                 continue;
             }

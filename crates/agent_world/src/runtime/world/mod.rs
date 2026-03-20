@@ -294,7 +294,7 @@ impl World {
     }
 
     pub fn new_with_state(mut state: WorldState) -> Self {
-        state.migrate_legacy_material_ledgers();
+        state.migrate_compat_material_ledgers();
         state
             .node_identity_bindings
             .entry(BUILTIN_MODULE_SIGNER_NODE_ID.to_string())
