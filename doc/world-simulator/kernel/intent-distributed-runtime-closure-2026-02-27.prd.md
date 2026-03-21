@@ -29,7 +29,7 @@
 ## 4. Technical Specifications
 - `WorldKernel::step_intents_batch(...)`：接收同 tick intents，按冲突键做稳定裁决，统一提交并返回批次报告。
 - `IntentBatchReport`：包含 `tick`, `batch_hash`, `accepted`, `rejected`、冲突解释。
-- `agent_world_proto::distributed::ActionEnvelope`：新增 `idempotency_key`、`intent_batch_hash`、`zone_id`（默认空）。
+- `oasis7_proto::distributed::ActionEnvelope`：新增 `idempotency_key`、`intent_batch_hash`、`zone_id`（默认空）。
 - `ActionMempool`：新增 `(actor_id,idempotency_key)` 去重索引，批次哈希纳入 intent 维度字段。
 - Runtime 观测接口：
   - `World::logistics_sla_metrics()`：履约率、违约率、平均延迟。

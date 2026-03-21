@@ -6,7 +6,7 @@
 审计轮次: 1
 
 ## 1. Executive Summary
-- Problem Statement: `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required` 当前被 10 个 runtime 基线失败用例阻塞，导致仓库 pre-commit required 测试链路无法通过。
+- Problem Statement: `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required` 当前被 10 个 runtime 基线失败用例阻塞，导致仓库 pre-commit required 测试链路无法通过。
 - Proposed Solution: 对这 10 个已知失败测试进行“临时下线”（`#[ignore]`）并显式标注失败原因与恢复门槛，确保 required 套件可执行且不丢失故障上下文。
 - Success Criteria:
   - SC-1: required 测试链路不再因这 10 个既有失败项阻塞提交。
@@ -48,7 +48,7 @@
     - `runtime::tests::power_bootstrap::radiation_module_emits_harvest_event`
     - `runtime::tests::power_bootstrap::storage_module_blocks_continuous_move_when_power_runs_out`
   - AC-2: 每个下线测试必须在代码中写明临时下线原因（`builtin identity manifest hash token` 缺失）与恢复意图。
-  - AC-3: `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required` 执行结果不得再包含上述 10 项失败。
+  - AC-3: `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required` 执行结果不得再包含上述 10 项失败。
   - AC-4: 除下线项外，其余 required 测试继续执行（不是整体 `cfg` 跳过）。
 - Non-Goals:
   - 不在本任务内修复 `m1_builtin_modules.identity.json` 缺失 hash token 的根因。
@@ -64,8 +64,8 @@
   - 变更集中在 runtime 测试层，生产代码零改动。
   - 通过测试函数级 `#[ignore]` 实现最小化隔离，不引入模块级测试屏蔽。
 - Integration Points:
-  - `crates/agent_world/src/runtime/tests/agent_default_modules.rs`
-  - `crates/agent_world/src/runtime/tests/power_bootstrap.rs`
+  - `crates/oasis7/src/runtime/tests/agent_default_modules.rs`
+  - `crates/oasis7/src/runtime/tests/power_bootstrap.rs`
   - `doc/world-simulator/prd.md`
   - `doc/world-simulator/project.md`
 - Edge Cases & Error Handling:
@@ -93,10 +93,10 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-032 | TASK-WORLD_SIMULATOR-093/094 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required`，验证 10 项下线后 required 链路可执行且失败列表不再命中该白名单 | runtime required 测试执行稳定性、pre-commit 可用性、测试资产可追溯性 |
+| PRD-WORLD_SIMULATOR-032 | TASK-WORLD_SIMULATOR-093/094 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required`，验证 10 项下线后 required 链路可执行且失败列表不再命中该白名单 | runtime required 测试执行稳定性、pre-commit 可用性、测试资产可追溯性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
 | DEC-RT-001 | 使用测试函数级 `#[ignore]` 临时下线 10 项已知失败用例 | 删除失败测试代码 | 删除会丢失验证资产与恢复锚点，无法支持后续回收。 |
-| DEC-RT-002 | 精确白名单下线，不做模块级屏蔽 | `cfg` 关闭整个 `agent_default_modules` / `power_bootstrap` 文件 | 模块级屏蔽会误伤正常测试覆盖，风险不可控。 |
+| DEC-RT-002 | 精确白名单下线，不做模块级屏蔽 | `cfg` 关闭整个 `oasis7` runtime tests 的 `agent_default_modules` / `power_bootstrap` 文件 | 模块级屏蔽会误伤正常测试覆盖，风险不可控。 |
 | DEC-RT-003 | 先恢复 required 链路可执行，再追根因修复并解除 ignore | 先阻塞所有提交直到根因修完 | 当前目标是先解除提交流水线阻塞，同时保留问题可追踪性。 |

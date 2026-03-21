@@ -12,9 +12,9 @@
 - [x] KWR-3 回归验证、文档与 devlog 回写。
 
 ## 依赖
-- `crates/agent_world/src/simulator/kernel/mod.rs`
-- `crates/agent_world/src/simulator/kernel/step.rs`
-- `crates/agent_world/src/simulator/tests/`
+- `crates/oasis7/src/simulator/kernel/mod.rs`
+- `crates/oasis7/src/simulator/kernel/step.rs`
+- `crates/oasis7/src/simulator/tests/`
 - `doc/world-simulator/kernel/kernel-rule-wasm-readiness.prd.md`
 
 ## 状态

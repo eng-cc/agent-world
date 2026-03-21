@@ -16,7 +16,7 @@
 - `ResourceKind`
 - 资源 kind 解析与匹配逻辑
 - viewer 资源展示统计代码
-- `crates/agent_world/src/simulator/llm_agent/*`
+- `crates/oasis7/src/simulator/llm_agent/*`
 - `README.md` / 模块文档资源模型说明
 
 ## 4. 约束与边界

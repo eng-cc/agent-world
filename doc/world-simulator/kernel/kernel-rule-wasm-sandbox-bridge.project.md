@@ -12,11 +12,11 @@
 
 ## 依赖
 - `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.design.md`
-- `crates/agent_world/src/simulator/kernel/mod.rs`
-- `crates/agent_world/src/simulator/kernel/step.rs`
-- `crates/agent_world/src/simulator/kernel/types.rs`
-- `crates/agent_world/src/simulator/tests/`
-- `crates/agent_world_wasm_executor/src/lib.rs`
+- `crates/oasis7/src/simulator/kernel/mod.rs`
+- `crates/oasis7/src/simulator/kernel/step.rs`
+- `crates/oasis7/src/simulator/kernel/types.rs`
+- `crates/oasis7/src/simulator/tests/`
+- `crates/oasis7_wasm_executor/src/lib.rs`
 - `doc/world-simulator/kernel/kernel-rule-wasm-sandbox-bridge.prd.md`
 
 ## 状态

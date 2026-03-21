@@ -12,7 +12,7 @@
 
 ## 2. User Experience & Functionality
 - In Scope：
-  - 基于 `crates/agent_world/src/simulator/kernel/actions.rs` 增补动作行为回归测试，覆盖核心动作成功/拒绝路径。
+  - 基于 `crates/oasis7/src/simulator/kernel/actions.rs` 增补动作行为回归测试，覆盖核心动作成功/拒绝路径。
   - 在 `WorldKernel::step` 增加 `pre_action` / `post_action` Hook 调用点。
   - 定义与 runtime 对齐的最小规则决策结构（`action_id/verdict/override_action/notes`，预留 `cost`）。
   - 保证默认未注册 Hook 时行为与现状一致。

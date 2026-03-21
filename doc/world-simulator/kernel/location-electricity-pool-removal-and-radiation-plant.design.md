@@ -16,10 +16,10 @@
 ## 3. 关键接口 / 入口
 - `Action::BuildFactory`
 - `process_power_generation_tick`
-- `crates/agent_world/src/simulator/kernel/actions.rs`
-- `crates/agent_world/src/simulator/kernel/power.rs`
-- `crates/agent_world/src/simulator/init.rs`
-- `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
+- `crates/oasis7/src/simulator/kernel/actions.rs`
+- `crates/oasis7/src/simulator/kernel/power.rs`
+- `crates/oasis7/src/simulator/init.rs`
+- `crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
 
 ## 4. 约束与边界
 - 初始化阶段必须清洗历史 Location 电力库存，避免旧状态混入新模型。

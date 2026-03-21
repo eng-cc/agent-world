@@ -31,12 +31,12 @@
 - [x] 提交 git commit
 
 ## 依赖
-- `crates/agent_world/src/simulator/kernel/actions.rs`
-- `crates/agent_world/src/simulator/kernel/power.rs`
-- `crates/agent_world/src/simulator/kernel/replay.rs`
-- `crates/agent_world/src/simulator/init.rs`
-- `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
-- `crates/agent_world/src/simulator/tests/*`
+- `crates/oasis7/src/simulator/kernel/actions.rs`
+- `crates/oasis7/src/simulator/kernel/power.rs`
+- `crates/oasis7/src/simulator/kernel/replay.rs`
+- `crates/oasis7/src/simulator/init.rs`
+- `crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
+- `crates/oasis7/src/simulator/tests/*`
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

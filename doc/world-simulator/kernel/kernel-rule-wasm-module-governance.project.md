@@ -12,9 +12,9 @@
 
 ## 依赖
 - `doc/world-simulator/kernel/kernel-rule-wasm-module-governance.design.md`
-- `crates/agent_world/src/simulator/kernel/mod.rs`
-- `crates/agent_world/src/simulator/kernel/step.rs`
-- `crates/agent_world/src/simulator/tests/`
+- `crates/oasis7/src/simulator/kernel/mod.rs`
+- `crates/oasis7/src/simulator/kernel/step.rs`
+- `crates/oasis7/src/simulator/tests/`
 - `doc/world-simulator/kernel/kernel-rule-wasm-module-governance.prd.md`
 
 ## 状态

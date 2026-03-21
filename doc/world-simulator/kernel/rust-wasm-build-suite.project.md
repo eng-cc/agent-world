@@ -14,7 +14,7 @@
 ## 依赖
 - `tools/`
 - `scripts/`
-- `crates/agent_world_wasm_executor/src/lib.rs`
+- `crates/oasis7_wasm_executor/src/lib.rs`
 - `doc/world-simulator/kernel/rust-wasm-build-suite.prd.md`
 
 ## 状态

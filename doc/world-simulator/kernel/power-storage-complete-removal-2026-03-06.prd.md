@@ -14,7 +14,7 @@
   - SC-2: simulator 不再暴露 `RegisterPowerStorage` / `StorePower` / `DrawPower` 动作与 `PowerStorage*` 事件。
   - SC-3: viewer 不再存在 `SelectionKind::PowerStorage` 及其 3D 资产/实体/UI 详情链路。
   - SC-4: 主题包校验、贴图巡检、视觉评审模板不再要求 `power_storage` 资源与截图项。
-  - SC-5: `env -u RUSTC_WRAPPER cargo check`（`agent_world`、`agent_world_viewer`）与 targeted tests 可通过或给出可追踪的已知阻塞说明。
+  - SC-5: `env -u RUSTC_WRAPPER cargo check`（`oasis7`、`oasis7_viewer`）与 targeted tests 可通过或给出可追踪的已知阻塞说明。
 
 ## 2. User Experience & Functionality
 ### User Personas
@@ -46,8 +46,8 @@
 | 脚本与评审模板 | 删除 `power_storage` inspect 项 | 参数校验拒绝 `power_storage` | `script_start -> artifacts_ready` | 截图集合固定为有效实体集合 | 本地脚本执行 |
 
 ### Acceptance Criteria
-- AC-1: `rg "power_storages"` 在 `crates/agent_world/src/simulator` 中不再命中运行时代码（历史注释/日志除外）。
-- AC-2: `rg "SelectionKind::PowerStorage|power_storage_entities"` 在 `crates/agent_world_viewer/src` 中不再命中。
+- AC-1: `rg "power_storages"` 在 `crates/oasis7/src/simulator` 中不再命中运行时代码（历史注释/日志除外）。
+- AC-2: `rg "SelectionKind::PowerStorage|power_storage_entities"` 在 `crates/oasis7_viewer/src` 中不再命中。
 - AC-3: `power_bootstrap.json` 不包含 `power_storages` 字段并可被场景解析。
 - AC-4: `scripts/validate-viewer-theme-pack.py`、`scripts/viewer-texture-inspector*.sh` 不再声明 `power_storage` inspect 维度。
 - AC-5: 视觉评审模板与首张评审卡删除 storage 三张截图项，保持总项与实体集合一致。
@@ -74,8 +74,8 @@
   - 更新视觉评审模板与 UI 评审卡示例。
 
 ### Integration Points
-- `crates/agent_world/src/simulator/*`
-- `crates/agent_world_viewer/src/*`
+- `crates/oasis7/src/simulator/*`
+- `crates/oasis7_viewer/src/*`
 - `scripts/validate-viewer-theme-pack.py`
 - `scripts/viewer-texture-inspector*.sh`
 - `doc/world-simulator/prd/acceptance/visual-review-score-card.md`
@@ -87,7 +87,7 @@
 - 自动化脚本收到 `--inspect power_storage` 时返回明确错误并给出支持列表。
 
 ### Non-Functional Requirements
-- NFR-1: 删除后 `cargo check -p agent_world` 与 `cargo check -p agent_world_viewer` 不得新增 unrelated 警告爆炸。
+- NFR-1: 删除后 `cargo check -p oasis7` 与 `cargo check -p oasis7_viewer` 不得新增 unrelated 警告爆炸。
 - NFR-2: viewer 自动化与 texture inspector 必须保持 `test_tier_required` 可运行路径。
 - NFR-3: 文档树中所有活跃 PRD/手册不再声明 storage 为必检实体。
 
@@ -109,8 +109,8 @@
 ## 6. Validation & Decision Record
 ### Test Plan & Traceability
 - PSR-001（M1）-> 文档建档/索引接入 -> 文档审查（`test_tier_required`）。
-- PSR-002（M2）-> simulator 删除与回归 -> `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required`（允许记录既有 unrelated 失败）。
-- PSR-003（M3）-> viewer 删除与回归 -> `env -u RUSTC_WRAPPER cargo test -p agent_world_viewer --features test_tier_required`。
+- PSR-002（M2）-> simulator 删除与回归 -> `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required`（允许记录既有 unrelated 失败）。
+- PSR-003（M3）-> viewer 删除与回归 -> `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer --features test_tier_required`。
 - PSR-004（M4）-> 脚本/视觉模板更新 -> `python3 scripts/validate-viewer-theme-pack.py ...` + `./scripts/viewer-texture-inspector.sh ...` smoke。
 
 ### Decision Log

@@ -16,7 +16,7 @@
 ## 3. 关键接口 / 入口
 - `WorldKernel::step_intents_batch(...)`
 - `IntentBatchReport { tick, batch_hash, accepted, rejected, ... }`
-- `agent_world_proto::distributed::ActionEnvelope`
+- `oasis7_proto::distributed::ActionEnvelope`
 - `ActionMempool` 幂等去重索引
 - `World::logistics_sla_metrics()`
 - `World::threat_heatmap()`

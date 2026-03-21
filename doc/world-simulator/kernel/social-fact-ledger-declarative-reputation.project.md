@@ -15,12 +15,12 @@
 - [x] T5：执行回归、更新总项目文档与 devlog 收口
 
 ## 依赖
-- `crates/agent_world/src/simulator/types.rs`
-- `crates/agent_world/src/simulator/kernel/actions.rs`
-- `crates/agent_world/src/simulator/kernel/replay.rs`
-- `crates/agent_world/src/simulator/world_model.rs`
-- `crates/agent_world/src/simulator/tests/kernel.rs`
-- `crates/agent_world/src/simulator/tests/persist.rs`
+- `crates/oasis7/src/simulator/types.rs`
+- `crates/oasis7/src/simulator/kernel/actions.rs`
+- `crates/oasis7/src/simulator/kernel/replay.rs`
+- `crates/oasis7/src/simulator/world_model.rs`
+- `crates/oasis7/src/simulator/tests/kernel.rs`
+- `crates/oasis7/src/simulator/tests/persist.rs`
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

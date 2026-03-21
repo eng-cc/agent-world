@@ -13,8 +13,8 @@
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
-- `crates/agent_world/src/runtime/tests/agent_default_modules.rs`
-- `crates/agent_world/src/runtime/tests/power_bootstrap.rs`
+- `crates/oasis7/src/runtime/tests/agent_default_modules.rs`
+- `crates/oasis7/src/runtime/tests/power_bootstrap.rs`
 
 ## 状态
 - 最近更新：2026-03-09

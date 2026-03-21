@@ -14,8 +14,8 @@
 
 ## 依赖
 - `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.prd.md`
-- `crates/agent_world/src/simulator/*`
-- `crates/agent_world_viewer/src/*`
+- `crates/oasis7/src/simulator/*`
+- `crates/oasis7_viewer/src/*`
 - `scripts/validate-viewer-theme-pack.py`
 - `scripts/viewer-texture-inspector.sh`
 - `scripts/viewer-texture-inspector-lib.sh`

@@ -13,9 +13,9 @@
 - 恢复治理层：当 `builtin identity manifest hash token` 根因修复后，逐项移除 ignore。
 
 ## 3. 关键接口 / 入口
-- `crates/agent_world/src/runtime/tests/agent_default_modules.rs`
-- `crates/agent_world/src/runtime/tests/power_bootstrap.rs`
-- `env -u RUSTC_WRAPPER cargo test -p agent_world --tests --features test_tier_required`
+- `crates/oasis7/src/runtime/tests/agent_default_modules.rs`
+- `crates/oasis7/src/runtime/tests/power_bootstrap.rs`
+- `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required`
 
 ## 4. 约束与边界
 - ignore 数量必须精确等于 10，不能新增隐藏白名单。
