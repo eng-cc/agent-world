@@ -186,7 +186,121 @@
    - `builder hook`
    - `pure_api`
 
-## 11. 参考入口
+## 11. 首周运营模板
+下面这套模板只服务于冷启动第一周。它假设你已经有：
+- 1 个已批准的身份帖
+- 1 套首批文案包
+- 可回链的 GitHub / 公开入口
+
+### Day 1: Identity
+- 主动作：
+  - 发布 `Post 1: identity`
+  - 补首评，强调 `technical preview / not playable yet`
+- 检查窗口：
+  - `T+15m`
+  - `T+1h`
+  - `T+4h`
+- 回复目标：
+  - 优先纠正“是不是已上线 / 能不能玩”
+  - 至少处理 1-3 条状态误解类评论
+- 记录重点：
+  - 哪句定位最容易被复述
+  - 有没有人直接把项目理解成“正式可玩”
+
+### Day 2: Surfaces
+- 主动作：
+  - 发布 `Post 2: access surfaces`
+  - 如果 Day 1 有高质量问答，可引用其中 1 个问题做 follow-up
+- 检查窗口：
+  - 上午 1 次
+  - 下午 1 次
+  - 晚间 1 次
+- 回复目标：
+  - 优先回答 `standard_3d / software_safe / pure_api` 的边界问题
+  - 把“同一世界，不同 proof boundary”说清楚
+- 记录重点：
+  - 哪个 surface 最引发兴趣
+  - 有没有人误把 `software_safe` 或 `pure_api` 当成 3D 视觉证明
+
+### Day 3: No New Post, Focus Replies
+- 主动作：
+  - 不强行发新帖
+  - 集中处理 Day 1-2 的延迟评论与 follow-up
+- 检查窗口：
+  - 中午 1 次
+  - 晚上 1 次
+- 回复目标：
+  - 至少补 2 条高质量机制解释
+  - 有 bug / friction 的，明确引导 GitHub `issue`
+- 记录重点：
+  - 哪类问题已经开始重复出现
+  - 哪类问题值得沉淀成固定回复模板
+
+### Day 4: World Proof
+- 主动作：
+  - 发布 `Post 3: world proof`
+  - 用 `before -> action -> after` 结构，不讲空泛愿景
+- 检查窗口：
+  - `T+15m`
+  - `T+2h`
+  - `T+8h`
+- 回复目标：
+  - 把讨论拉回“可观察证据”
+  - 引导大家说下一个想看的 subsystem
+- 记录重点：
+  - 哪类 proof 最能带来高质量讨论
+  - 是 `economy / conflict / logistics / agent decision-making` 哪个更受关注
+
+### Day 5: Agent Diary
+- 主动作：
+  - 发布 `Post 4: agent diary`
+  - 重点写 `goal / blocker / recovery path`
+- 检查窗口：
+  - 上午 1 次
+  - 下午 1 次
+  - 晚间 1 次
+- 回复目标：
+  - 鼓励对 agent decision-making 的追问
+  - 避免把 agent 能力说成“fully general”
+- 记录重点：
+  - 大家更关心 agent 的目标、失误还是恢复机制
+  - 是否出现新的 overclaim 风险词
+
+### Day 6: Builder Hook
+- 主动作：
+  - 发布 `Post 5: builder hook`
+  - 直接提问，让对方用编号回复优先级
+- 检查窗口：
+  - `T+30m`
+  - `T+3h`
+  - `T+24h`
+- 回复目标：
+  - 至少收集 3 个 builder-facing 信号
+  - 对明确贡献意向，统一引导 GitHub `issue` / `PR`
+- 记录重点：
+  - 大家最先关心 `state observability / action boundaries / recovery / provenance / no-UI`
+  - 是否出现可升级给 `producer_system_designer` 的合作线索
+
+### Day 7: Recap And Triage
+- 主动作：
+  - 发布 `Post 6: week-one recap`，或如果前 6 天信号不足，则不发 recap，只做内部总结
+  - 汇总首周互动到 4 个 bucket：
+    - `功能兴趣`
+    - `技术质疑`
+    - `合作线索`
+    - `口径风险`
+- 检查窗口：
+  - 上午 1 次
+  - 晚间 1 次
+- 回复目标：
+  - 把剩余高价值评论全部收口
+  - 明确下一周继续推的内容线
+- 记录重点：
+  - 本周最佳帖型
+  - 本周最常见误解
+  - 本周转成 GitHub / owner follow-up 的数量
+
+## 12. 参考入口
 - `https://www.moltbook.com/skill.md`
 - `https://www.moltbook.com/api/v1/home`
 - `https://www.moltbook.com/api/v1/notifications`

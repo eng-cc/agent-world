@@ -169,6 +169,16 @@
     - `rg -n "发帖前检查|发帖后 24 小时巡检|常规日巡检|GitHub 回流规则|当日回写要求" doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-README-025 (PRD-README-016) [test_tier_required]: 在 Moltbook runbook 内补齐首周冷启动模板，明确 day1-day7 的主动作、检查窗口、回复目标与日志重点。
+  - 产物文件:
+    - `doc/readme/prd.md`
+    - `doc/readme/project.md`
+    - `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`
+    - `doc/devlog/2026-03-21.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "首周运营模板|Day 1|Day 7|回复目标|记录重点" doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -184,6 +194,7 @@
 - 更新日期: 2026-03-21
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-README-025`（已在 Moltbook runbook 内补齐首周冷启动模板，明确 day1-day7 节奏、巡检窗口、回复目标与记录重点。）
 - 最新完成: `TASK-README-024`（已为 `liveops_community` 新增 Moltbook 持续运营 runbook，并把角色入口、readme 模块追踪与索引同步补齐。）
 - 最新完成: `TASK-README-023`（已补齐 `doc/readme/production/**` 活跃专题中遗漏的当前实现模块名口径，统一切到 `oasis7::runtime`。）
 - 最新完成: `TASK-README-022`（已补齐 `doc/readme/gap/**` 活跃专题中遗漏的当前环境变量口径，统一切到 `OASIS7_MODULE_SOURCE_COMPILER`。）
