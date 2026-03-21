@@ -1519,7 +1519,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_profile_accepts_oasis7_and_rejects_removed_old_brand_alias() {
+    fn validate_profile_accepts_oasis7_and_rejects_removed_old_brand_profile() {
         assert_eq!(validate_profile(Some(DEFAULT_OPENCLAW_AGENT_PROFILE)), None);
         assert_eq!(
             validate_profile(Some("agent_world_p0_low_freq_npc")),

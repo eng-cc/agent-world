@@ -106,7 +106,7 @@
     - `openclaw_auto_discover`
     - `openclaw_connect_timeout_ms`
     - `openclaw_agent_profile`
-  - profile 约定：首期 `P0` / parity / experimental 试点默认使用 `oasis7_p0_low_freq_npc`；兼容旧别名 `agent_world_p0_low_freq_npc`。若 provider 不识别当前默认 profile，必须返回结构化 `unsupported_agent_profile`，禁止静默改用通用玩法。
+  - profile 约定：首期 `P0` / parity / experimental 试点默认使用 `oasis7_p0_low_freq_npc`；旧别名 `agent_world_p0_low_freq_npc` 已移除。若 provider 不识别当前默认 profile，必须返回结构化 `unsupported_agent_profile`，禁止静默改用通用玩法。
   - 发现逻辑：优先读取显式配置；若未配置且开启 auto-discover，则探测默认地址。
   - 产品主链路：`oasis7_client_launcher -> world_game_launcher -> world_viewer_live` 现已透传 `agent_provider_mode/openclaw_*` 参数，并通过子进程环境把 OpenClaw 设置送入 runtime live sidecar。
 - DecisionRequest Shape:
@@ -116,7 +116,7 @@
   - `action_catalog`: 动作白名单、参数 schema、枚举值范围、cooldown / cost hint。
   - `player_context`: `player_id`、是否允许外部 provider 接管、绑定关系版本。
   - `trace_context`: 是否要求 provider 返回 transcript/tool summary/diagnostics。
-  - `agent_profile`: provider-side 玩法 profile / skill 标识；首期 required 路径至少支持 `oasis7_p0_low_freq_npc`，并兼容旧别名 `agent_world_p0_low_freq_npc`。
+  - `agent_profile`: provider-side 玩法 profile / skill 标识；首期 required 路径至少支持 `oasis7_p0_low_freq_npc`，旧别名 `agent_world_p0_low_freq_npc` 必须返回 `unsupported_agent_profile`。
 - DecisionResponse Shape:
   - `ok`
   - `decision`: `wait` / `wait_ticks` / `act`

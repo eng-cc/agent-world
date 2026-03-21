@@ -7,11 +7,8 @@ openclaw_env_or_default() {
   local suffix="$1"
   local default_value="${2-}"
   local key="OPENCLAW_OASIS7_${suffix}"
-  local compat_old_brand_key="OPENCLAW_AGENT_WORLD_${suffix}"
   if [[ -n "${!key+x}" ]]; then
     printf '%s\n' "${!key}"
-  elif [[ -n "${!compat_old_brand_key+x}" ]]; then
-    printf '%s\n' "${!compat_old_brand_key}"
   else
     printf '%s\n' "$default_value"
   fi

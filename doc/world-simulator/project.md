@@ -428,7 +428,7 @@
   - 验收命令 (`test_tier_required`):
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 parse_options_defaults -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 openclaw_settings_from_env_parses_profile_and_timeout -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 validate_profile_accepts_oasis7_and_legacy_alias -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 validate_profile_accepts_oasis7_and_rejects_removed_old_brand_profile -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher build_launcher_args_includes_openclaw_profile_flags -- --nocapture`
     - `bash -n scripts/openclaw-parity-p0.sh`
     - `./scripts/doc-governance-check.sh`
@@ -626,7 +626,7 @@
   - 验收命令 (`test_tier_required`):
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer load_visibility_supports_compat_old_brand_default_path -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_openclaw_local_bridge validate_profile_accepts_oasis7_and_compat_alias -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_openclaw_local_bridge validate_profile_accepts_oasis7_and_rejects_removed_old_brand_profile -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-196 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_viewer` 的 auth/bootstrap、viewer env alias、automation 与 perf probe 兼容常量命名切到 `compat` 语义，收口 Viewer 源码级模块名/变量名里残留的 `LEGACY_*AGENT_WORLD_VIEWER*` 口径。
@@ -850,6 +850,7 @@
 - [x] TASK-WORLD_SIMULATOR-275 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `doc/world-simulator/llm/{llm-async-openai-responses,llm-agent-behavior,llm-prompt-system,llm-config-toml-style-unification-2026-03-02,llm-factory-strategy-optimization,llm-industrial-mining-debug-tools,llm-lmso29-stability,llm-prompt-multi-step-orchestration,llm-chat-user-message-tool-visualization,llm-prompt-effect-receipt,llm-decision-provider-standard-openclaw-feasibility-2026-03-12,llm-openclaw-agent-experience-parity-2026-03-12}.{prd,project,design}` 中仍把旧 `agent_world*` / `agent_world_proto` crate/path/package/env/command 写成当前真值的活跃 LLM/provider 专题口径，统一到 `oasis7*` / `oasis7_proto` / `OASIS7_LLM_*` 与当前 `cargo -p oasis7*`。
 - [x] TASK-WORLD_SIMULATOR-276 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `doc/world-simulator/m4/{m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27,m4-resource-product-system-p1-maintenance-scarcity-pressure-2026-02-27,m4-builtin-wasm-maintainability-2026-02-26,material-multi-ledger-logistics,m4-resource-product-system-p2-stage-guidance-market-governance-linkage-2026-02-27,m4-industrial-economy-wasm,m4-resource-product-system-playability-2026-02-27,m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27,m4-industrial-benchmark-current-state-2026-02-27,m4-resource-product-system-playability-priority-hardening-2026-02-28,m4-market-hardware-data-governance-closure-2026-02-26}.{prd,project}` 中仍把旧 `agent_world*` / `agent_world_wasm_abi` / `agent_world_builtin_wasm_modules` crate/path/ABI 名称写成当前真值的活跃 M4/runtime 专题口径，统一到 `oasis7*` / `oasis7_wasm_abi` / `oasis7_builtin_wasm_modules`。
 - [x] TASK-WORLD_SIMULATOR-277 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `doc/world-simulator/llm/{llm-async-openai-responses,llm-lmso29-stability,llm-prompt-multi-step-orchestration}.prd.md` 中遗漏的当前 `cargo run/test/check -p` 命令口径，统一到 `cargo -p oasis7`。
+- [x] TASK-WORLD_SIMULATOR-278 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 移除 OpenClaw setup/bridge 源码中的 `OPENCLAW_AGENT_WORLD_*` env fallback 与 `agent_world_p0_low_freq_npc` profile alias，并同步回写 skill/world-simulator 现行文档为“旧 alias 已失效”。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -936,7 +937,6 @@
 - `doc/world-simulator/launcher/game-client-launcher-transfer-product-grade-parity-2026-03-06.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-panel-2026-03-07.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p0-2026-03-07.prd.md`
-- `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p0-2026-03-07.project.md`
 - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.project.md`
 - `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.prd.md`
@@ -994,7 +994,7 @@
 - `testing-manual.md`
 ## 状态
 - 更新日期 / 当前状态 / 下一任务: 2026-03-21 / active / 无
-- 最新完成: `TASK-WORLD_SIMULATOR-277`（已收口 `doc/world-simulator/llm/{llm-async-openai-responses,llm-lmso29-stability,llm-prompt-multi-step-orchestration}.prd.md` 中遗漏的当前 `cargo run/test/check -p` 命令口径，统一到 `cargo -p oasis7`。）
+- 最新完成: `TASK-WORLD_SIMULATOR-278`（已移除 `scripts/setup-openclaw-oasis7-runtime.sh` 的 `OPENCLAW_AGENT_WORLD_*` fallback 与 `world_openclaw_local_bridge` 的旧 `agent_world_p0_low_freq_npc` profile alias，并同步回写 OpenClaw skill/world-simulator 现行文档为“旧 alias 已失效”。）
 - 当前优先任务: `fix3` 已恢复 builtin/OpenClaw 的行为等价基线；继续压缩 OpenClaw absolute wait latency，争取把 `latency_class` 从 `B (experimental-only)` 收敛到 `A (default-candidate)` 后再讨论默认启用。
 - 当前阻断说明: `PRD-WORLD_SIMULATOR-040` 已完成 T4 对照采证并解除阻断；`PRD-WORLD_SIMULATOR-038` 在 `openclaw_builtin_parity_20260317_fix3` 中已恢复 `completion_rate=100%`、`timeout_rate=0%` 与 `move_agent=4`，且 `relative_wait_gap` 满足行为等价硬门禁，但 OpenClaw `median_extra_wait_ms=13957`、`p95_extra_wait_ms=14062` 仅达到 `latency_class B`，因此当前允许保持 `experimental` / 受限试点，仍不得默认启用。
 - 并行待办: 真实 `OpenClaw(Local HTTP)` 单 NPC 闭环试点（T5 / `experimental`） + 继续优化 OpenClaw absolute wait latency，并在达到 `latency_class A` 后重签 `PRD-WORLD_SIMULATOR-038` 的默认启用结论

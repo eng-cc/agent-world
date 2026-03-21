@@ -55,7 +55,7 @@ Meaning:
 
 Check:
 
-- use `oasis7_p0_low_freq_npc` (legacy alias `agent_world_p0_low_freq_npc` is still accepted)
+- use `oasis7_p0_low_freq_npc`; old alias `agent_world_p0_low_freq_npc` is rejected
 
 ## `wait-only` sample with `goal_completed=false`
 
