@@ -153,6 +153,22 @@
     - `rg -n "oasis7::runtime" doc/readme/production/readme-p0-p1-closure.prd.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-README-024 (PRD-README-015) [test_tier_required]: 为 `liveops_community` 补齐 Moltbook 持续运营 runbook，明确发帖前复核、发帖后巡检、评论分级、GitHub 回流、升级条件与 `devlog` 回写方式。
+  - 产物文件:
+    - `.agents/roles/liveops_community.md`
+    - `doc/readme/prd.md`
+    - `doc/readme/project.md`
+    - `doc/readme/README.md`
+    - `doc/readme/prd.index.md`
+    - `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.prd.md`
+    - `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.design.md`
+    - `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.project.md`
+    - `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`
+    - `doc/devlog/2026-03-21.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "发帖前检查|发帖后 24 小时巡检|常规日巡检|GitHub 回流规则|当日回写要求" doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -168,6 +184,7 @@
 - 更新日期: 2026-03-21
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-README-024`（已为 `liveops_community` 新增 Moltbook 持续运营 runbook，并把角色入口、readme 模块追踪与索引同步补齐。）
 - 最新完成: `TASK-README-023`（已补齐 `doc/readme/production/**` 活跃专题中遗漏的当前实现模块名口径，统一切到 `oasis7::runtime`。）
 - 最新完成: `TASK-README-022`（已补齐 `doc/readme/gap/**` 活跃专题中遗漏的当前环境变量口径，统一切到 `OASIS7_MODULE_SOURCE_COMPILER`。）
 - 最新完成: `TASK-README-021`（已完成 `doc/readme/gap/**` 与 `doc/readme/production/**` 活跃专题中旧 `oasis7*` crate/path 当前真值口径与已迁移源码路径的 `oasis7*` 收口。）
