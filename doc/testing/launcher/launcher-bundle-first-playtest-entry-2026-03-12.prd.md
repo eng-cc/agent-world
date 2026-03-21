@@ -9,7 +9,7 @@
 ## 范围
 - 覆盖 `scripts/run-game-test.sh --bundle-dir`、`scripts/run-producer-playtest.sh`、`scripts/run-game-test-ab.sh` 在启动器 bundle-first 场景中的职责划分。
 - 覆盖 `testing-manual.md`、启动器人工测试清单、`doc/testing/project.md`、`doc/testing/prd.index.md` 与本专题项目文档的回写要求。
-- 不覆盖 `world_game_launcher` / `world_web_launcher` 的业务功能扩展，也不新增独立第四条自动化链路。
+- 不覆盖 `oasis7_game_launcher` / `oasis7_web_launcher` 的业务功能扩展，也不新增独立第四条自动化链路。
 
 ## 接口 / 数据
 - PRD 主入口: `doc/testing/launcher/launcher-bundle-first-playtest-entry-2026-03-12.prd.md`
@@ -31,7 +31,7 @@
 - 若 freshness / renderer 阻断规则未同步到手册与自动化，容易重复出现环境阻断与真实玩法回归混淆。
 
 ## 1. Executive Summary
-- Problem Statement: 当前 `testing-manual.md` 与 `scripts/run-game-test.sh` 都把 `world_game_launcher` 说成默认 Web 闭环入口，但没有明确区分“源码直接运行”与“打包后 bundle 产物运行”。这会让制作人试玩、发布前人工验收和开发回归混用同一口径，导致操作者更容易直接走 `cargo run`，偏离真实交付物体验，也放大静态资源、执行目录与本地状态混杂带来的误判。
+- Problem Statement: 当前 `testing-manual.md` 与 `scripts/run-game-test.sh` 都把 `oasis7_game_launcher` 说成默认 Web 闭环入口，但没有明确区分“源码直接运行”与“打包后 bundle 产物运行”。这会让制作人试玩、发布前人工验收和开发回归混用同一口径，导致操作者更容易直接走 `cargo run`，偏离真实交付物体验，也放大静态资源、执行目录与本地状态混杂带来的误判。
 - Proposed Solution: 将启动器试玩入口明确收敛为“双模”策略：`bundle-first` 作为制作人试玩、发布前人工验收和对外交付样张的默认入口；`scripts/run-game-test.sh` 保留，但降级为开发回归 bootstrap，并新增 `--bundle-dir` 以直接消费打包产物。进一步提供 `scripts/run-producer-playtest.sh` 作为制作人一键入口，自动准备 bundle 后再进入 bundle 模式启动。
 - Success Criteria:
   - SC-1: 手册、启动器人工测试清单和脚本帮助文本都明确区分 `bundle` 验收入口与源码回归入口。
@@ -68,7 +68,7 @@
   - `doc/testing/project.md`、`doc/testing/prd.index.md`、`doc/testing/README.md`、`doc/devlog/2026-03-12.md` 回写追溯。
 - Out of Scope:
   - 不移除 `run-game-test.sh` 源码模式。
-  - 不改造 `world_game_launcher` / `world_web_launcher` 参数协议。
+  - 不改造 `oasis7_game_launcher` / `oasis7_web_launcher` 参数协议。
   - 不新建独立的第三套 bundle 专用自动化脚本。
 - Acceptance Criteria:
   - AC-1: `./scripts/run-game-test.sh --help` 明确 `--bundle-dir` 的定位与 bundle-first 推荐口径。
@@ -79,7 +79,7 @@
   - AC-6: bundle 构建脚本会写 freshness manifest；复用旧 bundle 时，`run-game-test.sh` 默认阻断 stale bundle，`run-producer-playtest.sh` 默认自动重建 stale bundle。
 
 ## 4. Technical Specifications
-- Architecture Overview: 维持现有 `run-game-test.sh -> URL/日志/端口就绪 -> agent-browser` 的外部契约不变，仅把启动执行器从单一 `cargo run world_game_launcher` 扩展为 `bundle mode` 与 `source mode` 两条分支，其中 `bundle mode` 优先供人工验收和自动化哨兵使用。
+- Architecture Overview: 维持现有 `run-game-test.sh -> URL/日志/端口就绪 -> agent-browser` 的外部契约不变，仅把启动执行器从单一 `cargo run oasis7_game_launcher` 扩展为 `bundle mode` 与 `source mode` 两条分支，其中 `bundle mode` 优先供人工验收和自动化哨兵使用。
 - Integration Points:
   - `scripts/run-game-test.sh`
   - `scripts/run-game-test-ab.sh`

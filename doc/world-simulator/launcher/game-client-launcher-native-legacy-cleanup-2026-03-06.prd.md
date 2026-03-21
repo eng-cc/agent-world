@@ -29,7 +29,7 @@
   2. Flow-LAUNCHER-NATIVE-LEGACY-002（安全清理）:
      `删除遗留字段/旧测试文件 -> 保持启动器按钮行为与接口行为不变`
   3. Flow-LAUNCHER-NATIVE-LEGACY-003（回归验证）:
-     `执行 launcher native + world_web_launcher + wasm check -> 结果全绿 -> 回写文档状态`
+     `执行 launcher native + oasis7_web_launcher + wasm check -> 结果全绿 -> 回写文档状态`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -53,7 +53,7 @@
 ## 4. Technical Specifications
 - Architecture Overview:
   - 清理范围限定在 `oasis7_client_launcher` native 遗留资产。
-  - 不触碰 `world_web_launcher` 与 `world_chain_runtime` 业务协议。
+  - 不触碰 `oasis7_web_launcher` 与 `world_chain_runtime` 业务协议。
   - 通过现有测试矩阵证明“代码清理 != 行为变更”。
 - Integration Points:
   - `crates/oasis7_client_launcher/src/main.rs`
@@ -89,7 +89,7 @@
   - PRD-WORLD_SIMULATOR-022 -> TASK-WORLD_SIMULATOR-050/051 -> `test_tier_required`。
   - 计划验证：
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:
   - DEC-LAUNCHER-NATIVE-LEGACY-001: 先清理“无读写路径 + 无入口引用”的确定性遗留，再做更大重构。理由：风险最低且可快速去噪。

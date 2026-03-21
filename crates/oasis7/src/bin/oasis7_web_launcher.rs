@@ -13,19 +13,19 @@ use oasis7_launcher_ui::launcher_ui_fields_for_web;
 use oasis7_proto::storage_profile::StorageProfile;
 use serde::{Deserialize, Serialize};
 
-#[path = "world_web_launcher/control_plane.rs"]
+#[path = "oasis7_web_launcher/control_plane.rs"]
 mod control_plane;
-#[path = "world_web_launcher/gui_agent_api.rs"]
+#[path = "oasis7_web_launcher/gui_agent_api.rs"]
 mod gui_agent_api;
-#[path = "world_web_launcher/http_codec.rs"]
+#[path = "oasis7_web_launcher/http_codec.rs"]
 mod http_codec;
-#[path = "world_web_launcher/parse_utils.rs"]
+#[path = "oasis7_web_launcher/parse_utils.rs"]
 mod parse_utils;
-#[path = "world_web_launcher/runtime_paths.rs"]
+#[path = "oasis7_web_launcher/runtime_paths.rs"]
 mod runtime_paths;
-#[path = "world_web_launcher/static_files.rs"]
+#[path = "oasis7_web_launcher/static_files.rs"]
 mod static_files;
-#[path = "world_web_launcher/transfer_query_proxy.rs"]
+#[path = "oasis7_web_launcher/transfer_query_proxy.rs"]
 mod transfer_query_proxy;
 
 use control_plane::*;
@@ -37,7 +37,7 @@ use parse_utils::{
 };
 use runtime_paths::{
     normalize_bind_host_for_local_access, now_unix_ms, resolve_console_static_dir_path,
-    resolve_static_dir_path, resolve_world_game_launcher_binary,
+    resolve_static_dir_path, resolve_oasis7_game_launcher_binary,
 };
 use static_files::{load_console_static_asset, StaticAsset};
 use transfer_query_proxy::query_chain_transfer_json;
@@ -150,7 +150,7 @@ impl Default for CliOptions {
     fn default() -> Self {
         Self {
             listen_bind: DEFAULT_LISTEN_BIND.to_string(),
-            launcher_bin: resolve_world_game_launcher_binary()
+            launcher_bin: resolve_oasis7_game_launcher_binary()
                 .to_string_lossy()
                 .to_string(),
             chain_runtime_bin: runtime_paths::resolve_world_chain_runtime_binary()
@@ -435,22 +435,22 @@ fn main() {
     };
 
     if let Err(err) = run_server(options) {
-        eprintln!("world_web_launcher failed: {err}");
+        eprintln!("oasis7_web_launcher failed: {err}");
         process::exit(1);
     }
 }
 
 fn print_help() {
     println!(
-        "Usage: world_web_launcher [options]\n\n\
+        "Usage: oasis7_web_launcher [options]\n\n\
 Options:\n\
   --listen-bind <host:port>       web console listen bind (default: {DEFAULT_LISTEN_BIND})\n\
-  --launcher-bin <path>           world_game_launcher binary path\n\
+  --launcher-bin <path>           oasis7_game_launcher binary path\n\
   --chain-runtime-bin <path>      world_chain_runtime binary path\n\
   --console-static-dir <path>     launcher web static directory (default: ../web-launcher)\n\
   --scenario <name>               default scenario for web form\n\
-  --live-bind <host:port>         default --live-bind for world_game_launcher\n\
-  --web-bind <host:port>          default --web-bind for world_game_launcher\n\
+  --live-bind <host:port>         default --live-bind for oasis7_game_launcher\n\
+  --web-bind <host:port>          default --web-bind for oasis7_game_launcher\n\
   --viewer-host <host>            default viewer host bind\n\
   --viewer-port <port>            default viewer port\n\
   --viewer-static-dir <path>      default viewer static directory\n\
@@ -482,7 +482,7 @@ fn run_server(options: CliOptions) -> Result<(), String> {
         parse_host_port(options.listen_bind.as_str(), "--listen-bind")?;
     let listener = TcpListener::bind((listen_host.as_str(), listen_port)).map_err(|err| {
         format!(
-            "failed to bind world_web_launcher at {}:{}: {}",
+            "failed to bind oasis7_web_launcher at {}:{}: {}",
             listen_host, listen_port, err
         )
     })?;
@@ -497,7 +497,7 @@ fn run_server(options: CliOptions) -> Result<(), String> {
         options.initial_config,
     )));
 
-    println!("world_web_launcher started");
+    println!("oasis7_web_launcher started");
     println!(
         "- console: http://{}:{}",
         normalize_bind_host_for_local_access(listen_host.as_str()),
@@ -520,7 +520,7 @@ fn run_server(options: CliOptions) -> Result<(), String> {
                 let shared = Arc::clone(&state);
                 thread::spawn(move || {
                     if let Err(err) = handle_connection(stream, shared) {
-                        eprintln!("warning: world_web_launcher request failed: {err}");
+                        eprintln!("warning: oasis7_web_launcher request failed: {err}");
                     }
                 });
             }
@@ -1185,5 +1185,5 @@ where
 }
 
 #[cfg(test)]
-#[path = "world_web_launcher/world_web_launcher_tests.rs"]
-mod world_web_launcher_tests;
+#[path = "oasis7_web_launcher/oasis7_web_launcher_tests.rs"]
+mod oasis7_web_launcher_tests;

@@ -51,7 +51,7 @@
   - AC-4: 每项测试都说明证据要求（截图/录屏/日志/配置快照）；`Explorer / Transfer` 子能力项要求 API 返回与 Web 页面双证据。
   - AC-5: 文档与主测试手册、启动器专项审查文档互链。
 - Non-Goals:
-  - 不替代 `world_game_launcher` / `world_web_launcher` / `oasis7_client_launcher` 的自动化测试。
+  - 不替代 `oasis7_game_launcher` / `oasis7_web_launcher` / `oasis7_client_launcher` 的自动化测试。
   - 不在本专题中扩展性能压测与长稳 soak 细则。
   - 不把本清单视为 UI 设计规范文档。
 
@@ -60,11 +60,11 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 清单以 `world_game_launcher` 与 `oasis7_client_launcher` 为主要被测对象，辅以 `world_web_launcher` 控制面、`testing-manual.md` 分层口径和现有 Playwright/Web 审查结论，形成“人工体验验收 + 自动化补充”的双轨门禁；其中 Web 闭环默认优先使用 GUI Agent 驱动产品动作，再由浏览器校验状态与展示结果。
+- Architecture Overview: 清单以 `oasis7_game_launcher` 与 `oasis7_client_launcher` 为主要被测对象，辅以 `oasis7_web_launcher` 控制面、`testing-manual.md` 分层口径和现有 Playwright/Web 审查结论，形成“人工体验验收 + 自动化补充”的双轨门禁；其中 Web 闭环默认优先使用 GUI Agent 驱动产品动作，再由浏览器校验状态与展示结果。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_game_launcher.rs`
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
-  - `crates/oasis7/src/bin/world_web_launcher/gui_agent_api.rs`
+  - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/gui_agent_api.rs`
   - `crates/oasis7_client_launcher/src/main.rs`
   - `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.md`
   - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`

@@ -6,7 +6,7 @@
 审计轮次: 5
 > 状态更新（2026-03-08）:
 > - `world_viewer_live` 已移除 `--release-config` 与 `--node-*` 控制面参数。
-> - 链路控制面统一由 `world_chain_runtime`（通常经 `world_game_launcher/world_web_launcher/oasis7_client_launcher`）承载。
+> - 链路控制面统一由 `world_chain_runtime`（通常经 `oasis7_game_launcher/oasis7_web_launcher/oasis7_client_launcher`）承载。
 > - 本文仅保留历史归档，不再作为当前实现验收门禁。
 
 ## 1. Executive Summary

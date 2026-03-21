@@ -13,7 +13,7 @@
 
 ### T0A CI 阻塞修复（先行）
 - [x] 修复 `cargo fmt --all -- --check` 基线（提交仓库内遗留格式化差异）
-- [x] 修复 `world_game_launcher_tests` 被误识别为独立 bin 导致的 `cargo test` 失败
+- [x] 修复 `oasis7_game_launcher_tests` 被误识别为独立 bin 导致的 `cargo test` 失败
 - [x] 修复 `oasis7_viewer --target wasm32-unknown-unknown` 的 `ctrlc` 目标兼容问题
 - [x] 回归 `./scripts/ci-tests.sh required` 并确认通过
 
@@ -119,9 +119,9 @@
 - [ ] 推送修复并打新 tag，继续观察并行 gate 是否能全部进入 aggregate `release_gate`。
 
 ### T3O Release gate web sibling binary 预热回补（2026-03-14）
-- [x] 复盘 `Release Packages` run `23080255868`，确认 `release-gate-web` 已越过 `trunk` 安装，但 `web_strict` 在 `world_game_launcher` 启动阶段因独立 job 缺少 `target/debug/world_viewer_live` 而失败；失败签名为 `failed to locate \`world_viewer_live\` binary; build it first or set OASIS7_WORLD_VIEWER_LIVE_BIN`。
-- [x] 调整 `scripts/viewer-release-qa-loop.sh`：在启动 `world_game_launcher` 前显式执行 `env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live --bin world_chain_runtime`，把原先依赖其他步骤隐式生成 sibling binaries 的前置条件收回到脚本内部。
-- [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，并确认预热命令已位于 `cargo run -p oasis7 --bin world_game_launcher` 之前。
+- [x] 复盘 `Release Packages` run `23080255868`，确认 `release-gate-web` 已越过 `trunk` 安装，但 `web_strict` 在 `oasis7_game_launcher` 启动阶段因独立 job 缺少 `target/debug/world_viewer_live` 而失败；失败签名为 `failed to locate \`world_viewer_live\` binary; build it first or set OASIS7_WORLD_VIEWER_LIVE_BIN`。
+- [x] 调整 `scripts/viewer-release-qa-loop.sh`：在启动 `oasis7_game_launcher` 前显式执行 `env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live --bin world_chain_runtime`，把原先依赖其他步骤隐式生成 sibling binaries 的前置条件收回到脚本内部。
+- [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，并确认预热命令已位于 `cargo run -p oasis7 --bin oasis7_game_launcher` 之前。
 - [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否越过 launcher 启动阶段，并进一步验证 aggregate `release_gate` 与后续打包链路。
 
 ### T3P Release gate web test API 冷启动窗口放宽（2026-03-14）

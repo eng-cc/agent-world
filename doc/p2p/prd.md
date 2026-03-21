@@ -37,7 +37,7 @@
   - SC-5: 移动端轻客户端路径可在不运行本地权威模拟器前提下稳定接入。
   - SC-6: PoS slot/epoch 在多节点间由统一时间公式驱动，允许漏槽但不出现时间语义倒退。
   - SC-7: PoS 支持槽内 logical tick 相位门控与动态节拍调度，实现可配置 `tick/slot` 语义。
-  - SC-8: `world_chain_runtime/world_game_launcher/world_web_launcher/oasis7_client_launcher/scripts` 控制面参数与状态口径与 PoS 时间锚定语义一致，不再将 `node_tick_ms` 误解为出块时间。
+  - SC-8: `world_chain_runtime/oasis7_game_launcher/oasis7_web_launcher/oasis7_client_launcher/scripts` 控制面参数与状态口径与 PoS 时间锚定语义一致，不再将 `node_tick_ms` 误解为出块时间。
   - SC-9: 清理残留时序语义偏差（`tick_count` 观测命名、`world_viewer_live` 旧控制面假设、`world-rule` 时间模型描述），保证规范/实现/运维口径一致。
   - SC-10: runtime/game/web/client launcher 默认 PoS 时间参数与文档一致，默认启动即满足“slot 时钟锚定 + 轮询语义解耦”口径。
   - SC-11: runtime/game/web/client launcher 与 longrun 脚本默认参数统一为 `slot_duration_ms=12000`、`ticks_per_slot=10`、`proposal_tick_phase=9`，满足“12s 出块、每块 10 tick”基线。
@@ -114,8 +114,8 @@
   - AC-10: 发行门禁分布式质量指标（S9/S10）具备“阈值 + 数据源 + 阻断策略 + 责任归属”映射，并与 `release-gate` 脚本参数一致。
   - AC-11: `node-pos-time-anchor-control-plane-alignment-2026-03-07` 专题文档落盘并映射任务链 `TASK-P2P-010`，覆盖 runtime/game/web/client launcher/scripts 与状态接口口径对齐。
   - AC-12: 残留语义项完成收敛：`world-rule` 时间模型、launcher `chain_node_tick_ms` 校验文案、`/v1/chain/status` 轮询字段命名、viewer/manual/site 与 `world_viewer_live` 实际 CLI 能力保持一致。
-  - AC-13: `world_chain_runtime/world_game_launcher/world_web_launcher/oasis7_client_launcher` 默认 `slot_duration_ms` 与文档基线一致；`world_web_launcher` 校验文案明确 `chain_node_tick_ms` 为 poll interval 语义。
-  - AC-14: `world_chain_runtime/world_game_launcher/world_web_launcher/oasis7_client_launcher/world_viewer_live/p2p-longrun/s10` 默认 `slot_duration_ms/ticks_per_slot/proposal_tick_phase` 与“12s/10/9”基线一致，相关默认值断言与手册同步更新。
+  - AC-13: `world_chain_runtime/oasis7_game_launcher/oasis7_web_launcher/oasis7_client_launcher` 默认 `slot_duration_ms` 与文档基线一致；`oasis7_web_launcher` 校验文案明确 `chain_node_tick_ms` 为 poll interval 语义。
+  - AC-14: `world_chain_runtime/oasis7_game_launcher/oasis7_web_launcher/oasis7_client_launcher/world_viewer_live/p2p-longrun/s10` 默认 `slot_duration_ms/ticks_per_slot/proposal_tick_phase` 与“12s/10/9”基线一致，相关默认值断言与手册同步更新。
   - AC-15: `world_viewer_live` 解析层移除 `--release-config` 与 `--node-*` 参数能力；定向测试覆盖“误传 legacy 参数 -> 启动失败 + 替代提示”路径。
   - AC-16: `world_viewer_live` 进一步移除 `--runtime-world` 兼容别名与旧 split CLI 路径，定向测试覆盖 `--release-config/--runtime-world/--node-*` 拒绝行为。
   - AC-17: 历史文档中 `world_viewer_live` 子目录旧路径完成迁移（对齐 `world_viewer_live.rs` 与 `world_chain_runtime/*` 现行布局），文档门禁通过。

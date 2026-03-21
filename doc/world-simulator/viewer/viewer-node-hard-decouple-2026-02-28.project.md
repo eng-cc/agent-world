@@ -12,7 +12,7 @@
 ## 依赖
 - doc/world-simulator/viewer/viewer-node-hard-decouple-2026-02-28.prd.md
 - `oasis7::viewer::{ViewerLiveServer, ViewerWebBridge}`
-- `world_game_launcher`（当前已默认编排 `world_chain_runtime`）
+- `oasis7_game_launcher`（当前已默认编排 `world_chain_runtime`）
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

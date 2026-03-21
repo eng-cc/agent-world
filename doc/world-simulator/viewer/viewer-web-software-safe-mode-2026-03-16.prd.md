@@ -30,7 +30,7 @@
 
 ### In Scope
 - 文件范围（目标态）：
-  - `crates/oasis7/src/bin/world_game_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
   - `crates/oasis7_viewer/**` 或新增轻量 Web viewer frontend 目录
   - `scripts/run-game-test-ab.sh`
   - `.agents/skills/oasis7/scripts/oasis7-run.sh`
@@ -46,7 +46,7 @@
   - 基础交互能力：选中 1 个 Agent/地点、`play/pause/step`、查看控制反馈
   - `__AW_TEST__` /脚本采证能力：agent-browser 可以在无硬件 GPU 的浏览器环境下完成最小闭环
 - `oasis7`、`run-game-test-ab.sh`、制作人/QA 手册必须能显式声明或自动落到 `software_safe`，避免再次把环境图形故障误判为玩法故障。
-- source-tree 入口（如 `oasis7-run.sh play`、开发态 `world_game_launcher` Web 闭环）不得悄悄消费过期 Viewer Web dist；若 `index.html` / `software_safe.*` / wasm 输入已比 `dist/` 新，必须重建或阻断并给出明确指引。
+- source-tree 入口（如 `oasis7-run.sh play`、开发态 `oasis7_game_launcher` Web 闭环）不得悄悄消费过期 Viewer Web dist；若 `index.html` / `software_safe.*` / wasm 输入已比 `dist/` 新，必须重建或阻断并给出明确指引。
 
 ### Out of Scope
 - 不要求 `software_safe` 模式保留 3D 视觉效果、PBR、后处理、粒子或完整美术表现。
@@ -102,7 +102,7 @@
   - `softwareSafeReason`
 
 ### 4.5 Bootstrap / Product Contract
-- `world_game_launcher` 的 Web 静态入口先加载一个轻量 bootstrap shell：
+- `oasis7_game_launcher` 的 Web 静态入口先加载一个轻量 bootstrap shell：
   - 探测浏览器 WebGL / renderer 环境
   - 决定加载标准 Viewer 还是 `software_safe` bundle
   - 在页面中显式显示当前模式与切换原因

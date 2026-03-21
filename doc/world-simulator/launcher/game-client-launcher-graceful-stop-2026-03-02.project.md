@@ -14,7 +14,7 @@
 ## 依赖
 - doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.prd.md
 - `crates/oasis7_client_launcher` 现有进程托管逻辑。
-- `crates/oasis7/src/bin/world_game_launcher.rs` 的 signal 退出处理。
+- `crates/oasis7/src/bin/oasis7_game_launcher.rs` 的 signal 退出处理。
 - `testing-manual.md` 测试分层规范。
 
 ## 状态

@@ -6,7 +6,7 @@
 审计轮次: 2
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 完成“Viewer Web Software-Safe Mode”PRD / Design / Project 建模，并回写模块主文档、索引与 devlog。
-- [x] T1 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `world_game_launcher` / Web 静态入口增加 bootstrap shell 与 `render_mode=standard|auto|software_safe` 选路契约。
+- [x] T1 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `oasis7_game_launcher` / Web 静态入口增加 bootstrap shell 与 `render_mode=standard|auto|software_safe` 选路契约。
 - [x] T2 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 落地 `software_safe` MVP 前端，覆盖连接状态、目标列表、对象详情、`play/pause/step` 与最近事件/反馈。
 - [x] T3 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 为 `__AW_TEST__` / 自动化脚本补齐 `renderMode`、`rendererClass`、`softwareSafeReason` 等模式可观测字段。
 - [x] T4 (PRD-WORLD_SIMULATOR-039) [test_tier_required]: 打通 `oasis7`、`run-game-test-ab.sh`、`testing-manual.md`、`viewer-manual.md` 的 software-safe 执行口径。

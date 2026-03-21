@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.project.md`
 
 ## 1. 设计定位
-定义 `world_web_launcher` 面向 GUI Agent 的单一机器接口：通过 `/api/gui-agent/*` 提供能力发现、状态别名与统一动作执行，使自动化代理无需拼接分散的人工控制面端点。
+定义 `oasis7_web_launcher` 面向 GUI Agent 的单一机器接口：通过 `/api/gui-agent/*` 提供能力发现、状态别名与统一动作执行，使自动化代理无需拼接分散的人工控制面端点。
 
 ## 2. 设计结构
 - 能力发现层：`/api/gui-agent/capabilities` 暴露可用动作全集与参数约束。

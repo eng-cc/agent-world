@@ -7,16 +7,16 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-033) [test_tier_required]: 完成“launcher execution world 输出路径收敛”PRD 建模与模块文档树回写。
-- [x] T1 (PRD-WORLD_SIMULATOR-033) [test_tier_required]: 在 `world_game_launcher` / `world_web_launcher` 显式传递 `--execution-world-dir` 到 `output/chain-runtime/<node_id>/reward-runtime-execution-world`，并补齐定向回归测试。
+- [x] T1 (PRD-WORLD_SIMULATOR-033) [test_tier_required]: 在 `oasis7_game_launcher` / `oasis7_web_launcher` 显式传递 `--execution-world-dir` 到 `output/chain-runtime/<node_id>/reward-runtime-execution-world`，并补齐定向回归测试。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
-- `crates/oasis7/src/bin/world_game_launcher.rs`
-- `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
-- `crates/oasis7/src/bin/world_web_launcher/control_plane.rs`
-- `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+- `crates/oasis7/src/bin/oasis7_game_launcher.rs`
+- `crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs`
+- `crates/oasis7/src/bin/oasis7_web_launcher/control_plane.rs`
+- `crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs`
 
 ## 状态
 - 最近更新：2026-03-09

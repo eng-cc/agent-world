@@ -66,15 +66,15 @@
 ## 4. Technical Specifications
 - Architecture Overview:
   - 前端层：`oasis7_client_launcher` 提供单一 transfer panel 组件，native/wasm 通过平台适配层复用。
-  - 控制面层：`world_web_launcher` 统一提供转账提交、状态查询、历史查询、余额查询 API。
+  - 控制面层：`oasis7_web_launcher` 统一提供转账提交、状态查询、历史查询、余额查询 API。
   - 运行时层：`world_chain_runtime` 继续作为转账业务规则唯一来源，负责 nonce/余额/账户合法性校验与状态推进。
 - Integration Points:
   - `crates/oasis7_client_launcher/src/main.rs`
   - `crates/oasis7_client_launcher/src/app_process.rs`
   - `crates/oasis7_client_launcher/src/app_process_web.rs`
   - `crates/oasis7_client_launcher/src/transfer_window.rs`
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
-  - `crates/oasis7/src/bin/world_web_launcher/transfer_query_proxy.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/transfer_query_proxy.rs`
   - `crates/oasis7/src/bin/world_chain_runtime.rs`
   - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
   - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
@@ -113,7 +113,7 @@
 - Test Plan & Traceability:
   - PRD-WORLD_SIMULATOR-023 -> TASK-WORLD_SIMULATOR-052/053 -> T1/T2/T3 -> `test_tier_required` + `test_tier_full`。
   - 已执行验证（2026-03-07）：
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture`

@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-graceful-stop-2026-03-02.project.md`
 
 ## 1. 设计定位
-定义启动器停止与窗口关闭时的统一进程收敛策略：优先请求 `world_game_launcher` 优雅退出，在限定窗口内等待，超时后再执行强杀兜底。
+定义启动器停止与窗口关闭时的统一进程收敛策略：优先请求 `oasis7_game_launcher` 优雅退出，在限定窗口内等待，超时后再执行强杀兜底。
 
 ## 2. 设计结构
 - 停止策略层：先中断、后轮询、超时强杀。

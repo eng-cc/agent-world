@@ -139,7 +139,7 @@ pub(super) fn poll_process_state(state: &mut ServiceState) {
     match running.child.try_wait() {
         Ok(Some(status)) => {
             state.process_state = ProcessState::Exited(status.to_string());
-            state.append_log(format!("world_game_launcher exited: {status}"));
+            state.append_log(format!("oasis7_game_launcher exited: {status}"));
             state.mark_updated();
         }
         Ok(None) => {
@@ -560,7 +560,7 @@ pub(super) fn start_process(
     config: LauncherConfig,
 ) -> Result<(), String> {
     if state.running.is_some() {
-        return Err("world_game_launcher is already running".to_string());
+        return Err("oasis7_game_launcher is already running".to_string());
     }
 
     let launcher_bin = resolve_launcher_bin_from_config(&config, state.launcher_bin.as_str());
@@ -607,7 +607,7 @@ pub(super) fn start_process(
             state.config = config;
             state.process_state = ProcessState::Running { pid };
             state.append_log(format!(
-                "world_game_launcher started (pid={pid}, bin={launcher_bin})"
+                "oasis7_game_launcher started (pid={pid}, bin={launcher_bin})"
             ));
             state.mark_updated();
             Ok(())
@@ -703,7 +703,7 @@ pub(super) fn stop_process(state: &mut ServiceState) -> Result<(), String> {
         if matches!(state.process_state, ProcessState::Running { .. }) {
             state.process_state = ProcessState::Stopped;
         }
-        state.append_log("world_game_launcher stop requested but process is not running");
+        state.append_log("oasis7_game_launcher stop requested but process is not running");
         state.mark_updated();
         return Ok(());
     };
@@ -711,7 +711,7 @@ pub(super) fn stop_process(state: &mut ServiceState) -> Result<(), String> {
     match stop_child_process(&mut running.child) {
         Ok(()) => {
             state.process_state = ProcessState::Stopped;
-            state.append_log("world_game_launcher stopped");
+            state.append_log("oasis7_game_launcher stopped");
             state.mark_updated();
             Ok(())
         }

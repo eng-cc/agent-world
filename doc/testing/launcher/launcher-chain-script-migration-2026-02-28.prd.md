@@ -8,11 +8,11 @@
 
 ## 1. Executive Summary
 - Problem Statement: 多个运行脚本仍依赖 `world_viewer_live` 旧节点参数链路（`--node-*`/`--topology`/`--reward-runtime-*`），在新启动架构下已失效且错误提示不清晰。
-- Proposed Solution: 将日常脚本迁移到 `world_game_launcher`，并对尚未重构完成的长跑脚本提供显式阻断与迁移指引，统一启动口径。
+- Proposed Solution: 将日常脚本迁移到 `oasis7_game_launcher`，并对尚未重构完成的长跑脚本提供显式阻断与迁移指引，统一启动口径。
 - Success Criteria:
-  - SC-1: `run-game-test.sh` 与 `viewer-release-qa-loop.sh` 迁移到 `world_game_launcher` 调用链路。
+  - SC-1: `run-game-test.sh` 与 `viewer-release-qa-loop.sh` 迁移到 `oasis7_game_launcher` 调用链路。
   - SC-2: `s10-five-node-game-soak.sh` 与 `p2p-longrun-soak.sh` 在旧参数路径下启动前明确失败并给出迁移方向。
-  - SC-3: 文档与手册口径同步到“单机优先 `world_game_launcher`、多节点建议 `world_chain_runtime`”。
+  - SC-3: 文档与手册口径同步到“单机优先 `oasis7_game_launcher`、多节点建议 `world_chain_runtime`”。
   - SC-4: 迁移后脚本失败信息可定位，不再出现隐式参数失效。
   - SC-5: Web 发行验收链路可显式固定 viewer 静态资源目录，避免协议升级后误加载陈旧资产导致解码失败。
 
@@ -26,30 +26,30 @@
   - 版本发布前验证：按手册调用标准化脚本链路。
   - 长跑链路排查：当脚本被阻断时依据提示切换到替代入口。
 - User Stories:
-  - PRD-TESTING-LAUNCHER-SCRIPT-001: As a 测试执行者, I want everyday scripts to use `world_game_launcher`, so that launch commands match the current runtime architecture.
+  - PRD-TESTING-LAUNCHER-SCRIPT-001: As a 测试执行者, I want everyday scripts to use `oasis7_game_launcher`, so that launch commands match the current runtime architecture.
   - PRD-TESTING-LAUNCHER-SCRIPT-002: As a 脚本维护者, I want legacy longrun scripts to fail fast with actionable guidance, so that broken parameter paths are not silently used.
   - PRD-TESTING-LAUNCHER-SCRIPT-003: As a 发布负责人, I want manual/docs aligned to the new launch entrypoints, so that release checks remain operable.
   - PRD-TESTING-LAUNCHER-SCRIPT-004: As a 发布负责人, I want QA 脚本与 launcher 对静态资源目录拥有一致覆盖规则, so that 协议与前端构建不会错配。
 - Critical User Flows:
-  1. Flow-LAUNCH-001: `执行 run-game-test/viewer-release-qa-loop -> world_game_launcher 启动 -> 输出兼容日志`
+  1. Flow-LAUNCH-001: `执行 run-game-test/viewer-release-qa-loop -> oasis7_game_launcher 启动 -> 输出兼容日志`
   2. Flow-LAUNCH-002: `执行长跑脚本 -> 命中旧参数链路 -> 显式阻断并输出迁移提示`
-  3. Flow-LAUNCH-003: `查阅 testing-manual -> 按新口径选择 world_game_launcher 或 world_chain_runtime`
-  4. Flow-LAUNCH-004: `执行 viewer-release-qa-loop -> 传入/继承 viewer-static-dir -> world_game_launcher 显式锁定静态目录 -> 避免陈旧 dist 触发协议解码错误`
+  3. Flow-LAUNCH-003: `查阅 testing-manual -> 按新口径选择 oasis7_game_launcher 或 world_chain_runtime`
+  4. Flow-LAUNCH-004: `执行 viewer-release-qa-loop -> 传入/继承 viewer-static-dir -> oasis7_game_launcher 显式锁定静态目录 -> 避免陈旧 dist 触发协议解码错误`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
-| 日常脚本迁移 | `--scenario`、`--live-bind`、`--web-bind`、`--viewer-*`、`--chain-*` | 调用 `world_game_launcher` 统一入口 | `legacy -> migrated -> verified` | 单机链路优先迁移 | 脚本维护者可修改，执行者可运行 |
+| 日常脚本迁移 | `--scenario`、`--live-bind`、`--web-bind`、`--viewer-*`、`--chain-*` | 调用 `oasis7_game_launcher` 统一入口 | `legacy -> migrated -> verified` | 单机链路优先迁移 | 脚本维护者可修改，执行者可运行 |
 | 长跑脚本阻断 | 阻断条件、提示文案、替代入口 | 启动前检测旧参数并失败退出 | `legacy -> blocked-with-guidance` | 先阻断错误路径，再给替代建议 | 维护者定义阻断策略 |
 | 文档口径收口 | 手册条目、脚本调用示例、状态说明 | 同步更新文档并标明可执行边界 | `draft -> aligned` | 手册与脚本口径必须一致 | 文档维护者审批 |
 | 兼容日志/产物 | 日志路径、关键产物命名 | 尽量保持命名兼容避免下游破坏 | `unchanged -> validated` | 优先保持现有产物路径 | 测试维护者核验 |
 | 静态资源目录兼容 | `--viewer-static-dir`、`OASIS7_GAME_STATIC_DIR`、默认目录回退规则 | QA 脚本透传静态目录，launcher 支持环境覆盖并校验目录可用 | `implicit-default -> explicit-or-env-override -> compatible` | 显式参数优先，其次环境覆盖，再默认目录 | 发布负责人可指定，脚本维护者定义默认 |
 - Acceptance Criteria:
-  - AC-1: 两条日常脚本完成 `world_game_launcher` 迁移并可执行。
+  - AC-1: 两条日常脚本完成 `oasis7_game_launcher` 迁移并可执行。
   - AC-2: 两条长跑脚本对旧链路显式阻断，提示包含迁移方向。
   - AC-3: 手册与专题文档反映新启动口径与暂不可执行边界。
   - AC-4: 未重构的长跑多节点闭环不在本轮硬实现范围。
   - AC-5: 文档与任务状态可在项目文档/devlog 追溯。
-  - AC-6: `viewer-release-qa-loop.sh` 支持 `--viewer-static-dir` 并传递到 `world_game_launcher`；当 `OASIS7_GAME_STATIC_DIR` 配置有效目录时可覆盖默认 `web`。
+  - AC-6: `viewer-release-qa-loop.sh` 支持 `--viewer-static-dir` 并传递到 `oasis7_game_launcher`；当 `OASIS7_GAME_STATIC_DIR` 配置有效目录时可覆盖默认 `web`。
 - Non-Goals:
   - 不在本轮重写 S10/P2P 为完整 `world_chain_runtime` 多节点闭环。
   - 不恢复 `world_viewer_live` 内嵌节点参数兼容。
@@ -60,13 +60,13 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 启动入口分层为“单机场景 `world_game_launcher` + 多节点场景 `world_chain_runtime`”，脚本按场景选择入口并对失效链路 fail-fast。
+- Architecture Overview: 启动入口分层为“单机场景 `oasis7_game_launcher` + 多节点场景 `world_chain_runtime`”，脚本按场景选择入口并对失效链路 fail-fast。
 - Integration Points:
   - `scripts/run-game-test.sh`
   - `scripts/viewer-release-qa-loop.sh`
   - `scripts/s10-five-node-game-soak.sh`
   - `scripts/p2p-longrun-soak.sh`
-  - `crates/oasis7/src/bin/world_game_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
   - `crates/oasis7/src/bin/world_chain_runtime.rs`
   - `OASIS7_GAME_STATIC_DIR`
   - `testing-manual.md`
@@ -88,7 +88,7 @@
 ## 5. Risks & Roadmap
 - Phased Rollout:
   - MVP (LAUNCHMIG-1): 完成设计与项目文档建档。
-  - v1.1 (LAUNCHMIG-2): 日常脚本迁移到 `world_game_launcher`。
+  - v1.1 (LAUNCHMIG-2): 日常脚本迁移到 `oasis7_game_launcher`。
   - v2.0 (LAUNCHMIG-3): 长跑脚本加入显式阻断与迁移提示。
   - v2.1 (LAUNCHMIG-4): 手册与状态文档收口。
   - v2.2 (LAUNCHMIG-6): 修复 viewer 静态目录兼容（脚本显式透传 + launcher 环境覆盖）并消除协议错配风险。
@@ -105,11 +105,11 @@
 | PRD-TESTING-LAUNCHER-SCRIPT-001 | LAUNCHMIG-1/2 | `test_tier_required` | 日常脚本启动参数与执行路径检查 | 本地/发布前日常脚本链路 |
 | PRD-TESTING-LAUNCHER-SCRIPT-002 | LAUNCHMIG-2/3 | `test_tier_required` | 长跑脚本阻断与提示文案校验 | 长跑任务触发安全性 |
 | PRD-TESTING-LAUNCHER-SCRIPT-003 | LAUNCHMIG-3/4 | `test_tier_required` | 手册/项目文档/devlog 一致性检查 | 运行指引可用性 |
-| PRD-TESTING-LAUNCHER-SCRIPT-004 | LAUNCHMIG-6 | `test_tier_required` | `viewer-release-qa-loop --viewer-static-dir` 参数透传检查 + `world_game_launcher` 静态目录覆盖单测 + QA 冒烟复验 | Web 发行验收稳定性 |
+| PRD-TESTING-LAUNCHER-SCRIPT-004 | LAUNCHMIG-6 | `test_tier_required` | `viewer-release-qa-loop --viewer-static-dir` 参数透传检查 + `oasis7_game_launcher` 静态目录覆盖单测 + QA 冒烟复验 | Web 发行验收稳定性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
-| DEC-LAUNCH-001 | 日常脚本统一迁移 `world_game_launcher` | 继续分散在 `world_viewer_live` 旧参数链路 | 统一入口更易维护且与当前架构一致。 |
+| DEC-LAUNCH-001 | 日常脚本统一迁移 `oasis7_game_launcher` | 继续分散在 `world_viewer_live` 旧参数链路 | 统一入口更易维护且与当前架构一致。 |
 | DEC-LAUNCH-002 | 长跑脚本先显式阻断并提示迁移 | 继续尝试兼容失效参数 | fail-fast 能避免误用和隐式错误。 |
 | DEC-LAUNCH-003 | 手册同步标注替代入口 | 仅改脚本不改文档 | 文档不更新会放大执行偏差风险。 |
 | DEC-LAUNCH-004 | 在 QA 脚本与 launcher 双侧提供静态目录显式覆盖能力 | 仅依赖默认 `web` 目录 + 人工清理缓存 | 双侧覆盖可同时满足本地开发与打包分发场景，并降低协议错配概率。 |

@@ -1458,7 +1458,7 @@ fn open_browser(url: &str) -> Result<(), String> {
 
 fn print_help() {
     println!(
-        "Usage: world_game_launcher [options]\n\n\
+        "Usage: oasis7_game_launcher [options]\n\n\
 Start player stack with one command:\n\
 - start world_chain_runtime (default)\n\
 - start world_viewer_live\n\
@@ -1514,5 +1514,5 @@ Env:\n\
 }
 
 #[cfg(test)]
-#[path = "world_game_launcher/world_game_launcher_tests.rs"]
-mod world_game_launcher_tests;
+#[path = "oasis7_game_launcher/oasis7_game_launcher_tests.rs"]
+mod oasis7_game_launcher_tests;

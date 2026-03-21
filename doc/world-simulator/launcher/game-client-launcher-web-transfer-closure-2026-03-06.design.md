@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-web-transfer-closure-2026-03-06.project.md`
 
 ## 1. 设计定位
-定义 wasm 启动器通过 `world_web_launcher` 代理链路完成链上转账提交、错误反馈与状态展示的最小闭环。
+定义 wasm 启动器通过 `oasis7_web_launcher` 代理链路完成链上转账提交、错误反馈与状态展示的最小闭环。
 
 ## 2. 设计结构
 - wasm 提交层：转账窗口收集字段并通过 web 控制面发起提交。

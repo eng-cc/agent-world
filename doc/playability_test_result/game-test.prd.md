@@ -18,7 +18,7 @@
 ```
 
 脚本会自动完成：
-- 启动 `world_game_launcher`（默认托管游戏进程、Web 静态服务与 WebSocket bridge）
+- 启动 `oasis7_game_launcher`（默认托管游戏进程、Web 静态服务与 WebSocket bridge）
 - 按当前控制面参数启动内置 Web viewer 服务（不再单独启动 `run-viewer-web.sh` 进程）
 - 端口与主页就绪检查
 - 输出可直接用于 `agent-browser` 的 URL（包含 `test_api=1`）

@@ -16,7 +16,7 @@
 - 执行者：
 - 环境：OS / Browser / Node / 是否 headed
 - 启动命令：
-  - `env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher -- ...`
+  - `env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_game_launcher -- ...`
 - 闭环命令：
   - `agent-browser --headed open "$URL"`
   - `agent-browser wait --load networkidle`

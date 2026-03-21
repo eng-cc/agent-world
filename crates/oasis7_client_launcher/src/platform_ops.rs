@@ -12,16 +12,16 @@ pub(crate) fn resolve_launcher_binary_path() -> PathBuf {
 
     if let Ok(current_exe) = env::current_exe() {
         if let Some(bin_dir) = current_exe.parent() {
-            return bin_dir.join(binary_name("world_game_launcher"));
+            return bin_dir.join(binary_name("oasis7_game_launcher"));
         }
     }
 
-    PathBuf::from(binary_name("world_game_launcher"))
+    PathBuf::from(binary_name("oasis7_game_launcher"))
 }
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn resolve_launcher_binary_path() -> PathBuf {
-    PathBuf::from(binary_name("world_game_launcher"))
+    PathBuf::from(binary_name("oasis7_game_launcher"))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -52,16 +52,16 @@ pub(crate) fn resolve_web_launcher_binary_path() -> PathBuf {
 
     if let Ok(current_exe) = env::current_exe() {
         if let Some(bin_dir) = current_exe.parent() {
-            return bin_dir.join(binary_name("world_web_launcher"));
+            return bin_dir.join(binary_name("oasis7_web_launcher"));
         }
     }
 
-    PathBuf::from(binary_name("world_web_launcher"))
+    PathBuf::from(binary_name("oasis7_web_launcher"))
 }
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn resolve_web_launcher_binary_path() -> PathBuf {
-    PathBuf::from(binary_name("world_web_launcher"))
+    PathBuf::from(binary_name("oasis7_web_launcher"))
 }
 
 #[cfg(not(target_arch = "wasm32"))]

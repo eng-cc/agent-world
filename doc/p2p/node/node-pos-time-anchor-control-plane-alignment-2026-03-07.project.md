@@ -17,8 +17,8 @@
 - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.prd.md`
 - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.md`
 - `crates/oasis7/src/bin/world_chain_runtime.rs`
-- `crates/oasis7/src/bin/world_game_launcher.rs`
-- `crates/oasis7/src/bin/world_web_launcher.rs`
+- `crates/oasis7/src/bin/oasis7_game_launcher.rs`
+- `crates/oasis7/src/bin/oasis7_web_launcher.rs`
 - `crates/oasis7/src/bin/world_viewer_live.rs`
 - `crates/oasis7_client_launcher/src/launcher_core.rs`
 - `crates/oasis7_client_launcher/src/llm_settings.rs`
@@ -34,5 +34,5 @@
 - 下一任务: 无
 - 阻塞项: 无
 - 进展: `TASK-P2P-010-T0~T4` 全部完成，已完成控制面参数透传、脚本示例对齐、required/full 定向回归与任务收口。
-- 进展（2026-03-08）: 已回写残留文档口径，明确 launcher 控制面为 `world_chain_runtime/world_game_launcher/world_web_launcher/oasis7_client_launcher`，`world_viewer_live` 仅保留能力边界说明。
+- 进展（2026-03-08）: 已回写残留文档口径，明确 launcher 控制面为 `world_chain_runtime/oasis7_game_launcher/oasis7_web_launcher/oasis7_client_launcher`，`world_viewer_live` 仅保留能力边界说明。
 - 说明: 本文档仅维护执行计划与任务状态；实施过程记录写入 `doc/devlog/2026-03-07.md`。

@@ -11,12 +11,12 @@ usage() {
 Usage: ./scripts/viewer-release-qa-loop.sh [options]
 
 Options:
-  --scenario <name>          world_game_launcher scenario (default: llm_bootstrap)
+  --scenario <name>          oasis7_game_launcher scenario (default: llm_bootstrap)
   --live-bind <host:port>    live tcp bind (default: 127.0.0.1:5023)
   --web-bind <host:port>     web bridge bind (default: 127.0.0.1:5011)
   --viewer-host <host>       web viewer host (default: 127.0.0.1)
   --viewer-port <port>       web viewer port (default: 4173)
-  --viewer-static-dir <dir>  viewer static asset dir passed to world_game_launcher (default: web)
+  --viewer-static-dir <dir>  viewer static asset dir passed to oasis7_game_launcher (default: web)
   --out-dir <path>           artifact output dir (default: output/playwright/viewer)
   --with-consensus-gate      deprecated no-op (viewer/node split removed this behavior)
   --skip-visual-baseline     skip scripts/viewer-visual-baseline.sh
@@ -336,8 +336,8 @@ live_args=(
 echo "+ env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live --bin world_chain_runtime"
 env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live --bin world_chain_runtime >>"$live_log" 2>&1
 
-echo "+ env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher -- ${live_args[*]}"
-env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher -- "${live_args[@]}" >"$live_log" 2>&1 &
+echo "+ env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_game_launcher -- ${live_args[*]}"
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_game_launcher -- "${live_args[@]}" >"$live_log" 2>&1 &
 live_pid=$!
 
 echo "+ wait for bridge $web_host:$web_port"
@@ -345,7 +345,7 @@ wait_for_port "$web_host" "$web_port" 180 || { echo "error: web bridge did not c
 
 cat <<'INFO' >"$web_log"
 run-viewer-web.sh no longer runs as a standalone process in this QA loop.
-web viewer is served by world_game_launcher built-in static server.
+web viewer is served by oasis7_game_launcher built-in static server.
 INFO
 
 echo "+ wait for viewer $viewer_url"

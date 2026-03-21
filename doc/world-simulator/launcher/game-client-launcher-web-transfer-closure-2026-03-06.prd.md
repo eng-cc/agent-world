@@ -7,10 +7,10 @@
 
 ## 1. Executive Summary
 - Problem Statement: 启动器 UI 已完成 native/web 同层复用，但 Web 端转账入口仍为禁用/占位，导致“统一控制面”在资产交互环节断裂。
-- Proposed Solution: 在 `world_web_launcher` 增加转账代理 API，并在 launcher wasm 端接入转账表单校验与提交闭环，补齐 Web 转账能力。
+- Proposed Solution: 在 `oasis7_web_launcher` 增加转账代理 API，并在 launcher wasm 端接入转账表单校验与提交闭环，补齐 Web 转账能力。
 - Success Criteria:
   - SC-1: Web 启动器可执行“填写 from/to/amount/nonce -> 提交 -> 返回结果”闭环。
-  - SC-2: `world_web_launcher` 提供 `/api/chain/transfer`，并桥接 `world_chain_runtime` 的 `/v1/chain/transfer/submit`。
+  - SC-2: `oasis7_web_launcher` 提供 `/api/chain/transfer`，并桥接 `world_chain_runtime` 的 `/v1/chain/transfer/submit`。
   - SC-3: 余额不足、nonce 重放、字段非法等错误在 Web UI 中可结构化展示。
   - SC-4: 对应 `test_tier_required` 回归通过，且不引入 native 路径回归。
 
@@ -37,7 +37,7 @@
 | 控制面转账代理 | `POST /api/chain/transfer` JSON 负载 | 透传到 chain runtime 转账接口，返回结构化结果 | `accepted/rejected/proxy_failed` | 保持 runtime 错误语义，不重写业务规则 | 仅受信网络部署的控制面可调用 |
 - Acceptance Criteria:
   - AC-1: wasm UI 显示可操作的转账窗口（字段输入 + 提交按钮 + 成功/失败状态）。
-  - AC-2: `world_web_launcher` 新增 `/api/chain/transfer`，可代理提交到 `/v1/chain/transfer/submit`。
+  - AC-2: `oasis7_web_launcher` 新增 `/api/chain/transfer`，可代理提交到 `/v1/chain/transfer/submit`。
   - AC-3: Web 提交失败时可看到 `error_code/error`，成功时可看到 `action_id`。
   - AC-4: 链未就绪或未启用时，转账提交被阻断并显示明确提示。
   - AC-5: `test_tier_required` 覆盖代理 API 与 wasm 提交流程，不破坏现有 start/stop/state 链路。
@@ -50,15 +50,15 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - wasm 启动器在提交时调用 `world_web_launcher` 的 `/api/chain/transfer`。
+  - wasm 启动器在提交时调用 `oasis7_web_launcher` 的 `/api/chain/transfer`。
   - 控制面服务将请求桥接到 `world_chain_runtime` 的 `/v1/chain/transfer/submit`。
   - 返回结构化响应给 wasm UI，渲染成功/失败状态。
 - Integration Points:
   - `crates/oasis7_client_launcher/src/main.rs`
   - `crates/oasis7_client_launcher/src/app_process_web.rs`
   - `crates/oasis7_client_launcher/src/transfer_window.rs`
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
-  - `crates/oasis7/src/bin/world_web_launcher/control_plane.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/control_plane.rs`
   - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
 - Edge Cases & Error Handling:
   - 链未启动/不可达：返回结构化失败并保留连接错误上下文。
@@ -88,9 +88,9 @@
 - Test Plan & Traceability:
   - PRD-WORLD_SIMULATOR-020 -> TASK-WORLD_SIMULATOR-046/047 -> `test_tier_required`。
   - 计划验证：
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher transfer_entry::tests:: -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:
-  - DEC-LAUNCHER-WEB-TRANSFER-001: 采用“wasm -> world_web_launcher -> world_chain_runtime”的代理链路，而不是 wasm 直连 `chain_status_bind`。理由：Web 端无法可靠复用 native TCP 直连模型，且控制面代理更符合已有架构。
+  - DEC-LAUNCHER-WEB-TRANSFER-001: 采用“wasm -> oasis7_web_launcher -> world_chain_runtime”的代理链路，而不是 wasm 直连 `chain_status_bind`。理由：Web 端无法可靠复用 native TCP 直连模型，且控制面代理更符合已有架构。
   - DEC-LAUNCHER-WEB-TRANSFER-002: 保持 runtime 作为转账业务规则唯一来源，控制面不复制账本校验逻辑。理由：避免双份规则导致语义漂移。

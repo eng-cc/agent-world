@@ -9,7 +9,7 @@
 - Problem Statement: 启动器在源码直接运行场景存在默认静态目录失效问题，且 Web 端仍有若干体验与可诊断性缺口（禁用态提示缺失、查询参数未编码、移动端布局拥挤、无效控制台噪声）；同时主界面长期展开低频配置表单，挤占高频启停与状态区域，影响日常操作效率。
 - Proposed Solution: 统一修复 launcher 控制面与客户端的可用性短板，补齐路径回退、状态语义、Web 提示、参数编码与移动端可读性；并引入“高频主面板 + 低频高级配置弹窗”的渐进披露结构，以 native/web 一致回归收口。
 - Success Criteria:
-  - SC-1: 源码直接运行 `world_web_launcher` 时，默认 `viewer_static_dir` 可落到有效目录或返回明确可操作的错误提示，不再出现无提示假启动；当配置为相对路径 `web` 时，预校验必须与 `world_game_launcher` 的 bundle 相对解析语义一致。
+  - SC-1: 源码直接运行 `oasis7_web_launcher` 时，默认 `viewer_static_dir` 可落到有效目录或返回明确可操作的错误提示，不再出现无提示假启动；当配置为相对路径 `web` 时，预校验必须与 `oasis7_game_launcher` 的 bundle 相对解析语义一致。
   - SC-2: Web 端在链未就绪/已禁用时必须展示可读原因提示，用户可明确知道反馈/转账/浏览器入口禁用原因。
   - SC-3: explorer/transfer/search 相关查询参数统一完成 URL 编码，包含 `&`、空格、`:`、`?` 的输入不再破坏请求语义。
   - SC-4: 控制面 stop 空操作不覆盖既有错误态，状态机保持“未启动/已停止/失败态”语义稳定。
@@ -24,14 +24,14 @@
   - 运维人员：需要在 Web 控制台快速判断“为什么不能操作”。
   - 启动器开发者：需要 native/web 一致、可诊断、可回归的控制面行为。
 - User Scenarios & Frequency:
-  - 源码调试场景：开发日常高频（每日多次）直接运行 `target/debug/world_web_launcher` 验证行为。
+  - 源码调试场景：开发日常高频（每日多次）直接运行 `target/debug/oasis7_web_launcher` 验证行为。
   - Web 远程运维场景：发布前和日常值守中频（每周多次）通过浏览器执行链/游戏启停与状态检查。
   - 区块链浏览器与转账查询：链就绪后按需高频使用（每次会话 3~20 次查询）。
 - User Stories:
   - PRD-WORLD_SIMULATOR-027: As a 启动器玩家/运维人员, I want launcher web control plane to provide robust defaults and explicit UX feedback, so that I can start and diagnose the stack without hidden pitfalls.
 - Critical User Flows:
   1. Flow-LAUNCHER-UX-001（源码直跑可用性）:
-     `启动 world_web_launcher -> 默认配置加载 -> viewer_static_dir 自动回退到有效目录 -> 成功启动游戏链路`
+     `启动 oasis7_web_launcher -> 默认配置加载 -> viewer_static_dir 自动回退到有效目录 -> 成功启动游戏链路`
   2. Flow-LAUNCHER-UX-002（禁用态可解释）:
      `chain_disabled 或 chain_not_ready -> 反馈/转账/浏览器按钮禁用 -> UI 显示禁用原因文案`
   3. Flow-LAUNCHER-UX-003（查询参数鲁棒性）:
@@ -58,8 +58,8 @@
 | 启动阻断配置引导 | `ConfigIssue` 与字段映射（game/chain） | 点击“启动”遇到阻断项时，弹出引导窗并直接渲染缺失字段输入框 | `start_click -> guide_open -> issue_resolved -> retry_start` | 字段按问题优先级去重排序；修复后即时参与下一次校验 | 仅本地会话可编辑 |
 | favicon 噪声抑制 | 默认 favicon 声明 | 页面加载不再触发 `favicon.ico` 404 | `page_load -> console_clean` | 统一静态入口模板 | 无权限变化 |
 - Acceptance Criteria:
-  - AC-1: `world_web_launcher` 在源码直跑场景（无 bundle `web/`）下可通过默认回退路径启动，或返回可操作错误信息。
-  - AC-1a: `world_web_launcher` 与 `oasis7_client_launcher` 对 `viewer_static_dir=web` 的预校验必须按目标 `launcher_bin` 的 bundle 相对路径解析，不得仅按当前工作目录判定缺失。
+  - AC-1: `oasis7_web_launcher` 在源码直跑场景（无 bundle `web/`）下可通过默认回退路径启动，或返回可操作错误信息。
+  - AC-1a: `oasis7_web_launcher` 与 `oasis7_client_launcher` 对 `viewer_static_dir=web` 的预校验必须按目标 `launcher_bin` 的 bundle 相对路径解析，不得仅按当前工作目录判定缺失。
   - AC-2: Web 端在 `disabled/not_started/starting/unreachable/config_error` 任一非 `ready` 状态时，必须显示反馈不可用原因。
   - AC-3: `app_process.rs` 与 `app_process_web.rs` 所有 explorer/transfer/search 查询参数构造均使用统一编码函数。
   - AC-4: `/api/stop` 与 `/api/chain/stop` 在 no-op 场景不覆盖 `StartFailed/QueryFailed/Unreachable/ConfigError` 等错误态。
@@ -80,12 +80,12 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - 控制面：`world_web_launcher` 负责配置校验、进程编排、状态快照与 API 代理。
+  - 控制面：`oasis7_web_launcher` 负责配置校验、进程编排、状态快照与 API 代理。
   - 客户端：`oasis7_client_launcher` native/web 共用状态模型与查询构造逻辑。
   - UI schema：继续复用 `oasis7_launcher_ui`，仅调整渲染布局与提示逻辑。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_web_launcher/runtime_paths.rs`
-  - `crates/oasis7/src/bin/world_web_launcher/control_plane.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/runtime_paths.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/control_plane.rs`
   - `crates/oasis7_client_launcher/src/platform_ops.rs`
   - `crates/oasis7_client_launcher/src/main.rs`
   - `crates/oasis7_client_launcher/src/config_ui.rs`
@@ -105,7 +105,7 @@
   - 问题映射字段重复：同一字段被多个问题引用时仅渲染一次，避免重复输入造成困惑。
   - 浏览器静态资源：默认提供 favicon，避免无意义 404 噪声淹没真实错误。
 - Non-Functional Requirements:
-  - NFR-1: 源码直跑 `world_web_launcher` 后首次 `/api/start` 成功率达到 100%（前提存在至少一个有效静态目录候选）。
+  - NFR-1: 源码直跑 `oasis7_web_launcher` 后首次 `/api/start` 成功率达到 100%（前提存在至少一个有效静态目录候选）。
   - NFR-2: 查询参数编码后，含保留字符输入的 explorer/search 请求成功解析率 100%。
   - NFR-3: 390x844 视口下配置区可读性通过人工审查（字段标签与输入框可见率 100%）。
   - NFR-4: 控制面 no-op stop 不引入状态机回退，状态稳定性通过单测/集成回归验证。
@@ -132,7 +132,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + `agent-browser --headed`（桌面 + 390x844）采证 | 启动器控制面可用性、web 体验、native/web 请求一致性 |
+| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + `agent-browser --headed`（桌面 + 390x844）采证 | 启动器控制面可用性、web 体验、native/web 请求一致性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

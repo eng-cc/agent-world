@@ -48,7 +48,7 @@
 | 启动器浏览器 P0 面板 | `tab(blocks/txs/search)`、`page_cursor`、`filters`、`detail_card` | 切换 Tab、翻页、搜索、详情跳转 | `closed/open` + 子状态机 | UI 与 web/native 文案与字段一致 | 链就绪可操作 |
 - Acceptance Criteria:
   - AC-1: `world_chain_runtime` 支持 `GET /v1/chain/explorer/blocks`、`/block`、`/txs`、`/tx`、`/search`。
-  - AC-2: `world_web_launcher` 提供对应 `/api/chain/explorer/*` 代理并保留结构化错误语义。
+  - AC-2: `oasis7_web_launcher` 提供对应 `/api/chain/explorer/*` 代理并保留结构化错误语义。
   - AC-3: 区块与交易接口支持分页参数 `limit/cursor`，默认 `limit=50`，`limit` 上限可控（<=200）。
   - AC-4: `tx` 详情支持 `tx_hash` 查询，返回 receipt-like 结果；`not_found` 保持结构化错误。
   - AC-5: 搜索支持 `height/block_hash/tx_hash/action_id/account_id`，返回可区分类型的结果集合。
@@ -66,15 +66,15 @@
 ## 4. Technical Specifications
 - Architecture Overview:
   - 运行时层: 新增 explorer 索引模块，统一消费 committed batches，维护内存 + 本地持久化索引，并提供 P0 查询接口。
-  - 控制面层: `world_web_launcher` 透传 explorer P0 查询到 runtime，保持统一错误封装。
+  - 控制面层: `oasis7_web_launcher` 透传 explorer P0 查询到 runtime，保持统一错误封装。
   - 客户端层: 启动器 explorer 窗口扩展为 Blocks/Txs/Search 三视图，并增加分页与详情联动。
 - Integration Points:
   - `crates/oasis7/src/bin/world_chain_runtime.rs`
   - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
   - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
   - `crates/oasis7/src/bin/world_chain_runtime/explorer_p0_api.rs`
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
-  - `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs`
   - `crates/oasis7_client_launcher/src/app_process.rs`
   - `crates/oasis7_client_launcher/src/app_process_web.rs`
   - `crates/oasis7_client_launcher/src/explorer_window.rs`
@@ -113,7 +113,7 @@
   - 计划验证命令:
     - `./scripts/doc-governance-check.sh`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:

@@ -4,10 +4,10 @@
 - 对应项目管理文档: `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.project.md`
 
 ## 1. 设计定位
-定义面向无图形会话服务器的 `world_web_launcher`：通过 HTTP 控制台页面与 API 托管 `world_game_launcher` 子进程，提供远程启停、状态轮询与日志观察能力。
+定义面向无图形会话服务器的 `oasis7_web_launcher`：通过 HTTP 控制台页面与 API 托管 `oasis7_game_launcher` 子进程，提供远程启停、状态轮询与日志观察能力。
 
 ## 2. 设计结构
-- 二进制托管层：`world_web_launcher` 负责进程生命周期与日志缓存。
+- 二进制托管层：`oasis7_web_launcher` 负责进程生命周期与日志缓存。
 - 控制面 API 层：暴露 `/api/start`、`/api/stop`、`/api/state` 等接口。
 - Web 页面层：提供浏览器可用的控制台表单与状态视图。
 - 打包入口层：发行包输出 Web 控制台启动脚本，便于远程部署。
@@ -17,7 +17,7 @@
 - `GET /api/state`
 - `POST /api/start`
 - `POST /api/stop`
-- `world_web_launcher.rs`
+- `oasis7_web_launcher.rs`
 - `build-game-launcher-bundle.sh`
 
 ## 4. 约束与边界

@@ -39,7 +39,7 @@
   - AC-1: 新增共享 crate（或模块）承载 launcher UI schema。
   - AC-2: native 启动器主配置区域改为 schema 驱动渲染。
   - AC-3: web 控制台通过 `/api/ui/schema` 动态渲染表单字段。
-  - AC-4: `world_web_launcher` 主文件拆分后单文件不超过 1200 行。
+  - AC-4: `oasis7_web_launcher` 主文件拆分后单文件不超过 1200 行。
   - AC-5: 测试覆盖 schema 输出与核心映射行为。
 - Non-Goals:
   - 不在本轮统一 native/web 的全部交互样式和视觉主题。
@@ -52,10 +52,10 @@
 - Architecture Overview:
   - 新增共享 crate：`oasis7_launcher_ui`，提供 schema 数据结构与静态字段定义。
   - `oasis7_client_launcher`：消费 schema 渲染配置输入区。
-  - `world_web_launcher`：新增 `/api/ui/schema`，前端按 schema 动态构建表单。
+  - `oasis7_web_launcher`：新增 `/api/ui/schema`，前端按 schema 动态构建表单。
 - Integration Points:
   - `crates/oasis7_client_launcher/src/main.rs`
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
   - `scripts/build-game-launcher-bundle.sh`
 - Edge Cases & Error Handling:
   - schema 接口失败时，web 页面展示错误并保留最近状态。

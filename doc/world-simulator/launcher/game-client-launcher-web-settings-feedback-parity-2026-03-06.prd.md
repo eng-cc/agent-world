@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 - Problem Statement: 启动器 native 与 web 已共用统一控制面，但 Web 端 `设置` 与 `反馈` 入口仍为禁用，占位实现导致跨端体验不一致。
-- Proposed Solution: 在 wasm 端补齐设置中心可用 UI 与反馈提交流程，并在 `world_web_launcher` 新增反馈代理 API，使 Web 与 native 在核心功能上保持同层可用。
+- Proposed Solution: 在 wasm 端补齐设置中心可用 UI 与反馈提交流程，并在 `oasis7_web_launcher` 新增反馈代理 API，使 Web 与 native 在核心功能上保持同层可用。
 - Success Criteria:
   - SC-1: Web 端可打开设置窗口，支持编辑游戏/区块链配置并维护 LLM 连接参数。
   - SC-2: Web 端可打开反馈窗口并提交反馈到链运行时，不再显示“暂不支持”。
@@ -40,7 +40,7 @@
   - AC-1: Web 顶部栏 `设置` 与 `反馈` 按钮可点击，不再固定禁用。
   - AC-2: `llm_settings_web.rs` 提供可交互设置窗口，不再立即关闭。
   - AC-3: `feedback_window_web.rs` 提供可交互反馈窗口并执行提交。
-  - AC-4: `world_web_launcher` 暴露 `/api/chain/feedback` 并返回结构化结果。
+  - AC-4: `oasis7_web_launcher` 暴露 `/api/chain/feedback` 并返回结构化结果。
   - AC-5: wasm 反馈提交在成功/失败场景都能显示明确状态文案。
 - Non-Goals:
   - 不实现 Web 本地文件落盘回退（保持浏览器约束）。
@@ -60,8 +60,8 @@
   - `crates/oasis7_client_launcher/src/app_process.rs`
   - `crates/oasis7_client_launcher/src/feedback_window_web.rs`
   - `crates/oasis7_client_launcher/src/llm_settings_web.rs`
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
-  - `crates/oasis7/src/bin/world_web_launcher/control_plane.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/control_plane.rs`
   - `crates/oasis7/src/bin/world_chain_runtime/feedback_submit_api.rs`
 - Edge Cases & Error Handling:
   - 链未就绪：反馈提交前阻断并提示。
@@ -89,9 +89,9 @@
 - Test Plan & Traceability:
   - PRD-WORLD_SIMULATOR-021 -> TASK-WORLD_SIMULATOR-048/049 -> `test_tier_required`。
   - 计划验证：
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:
-  - DEC-LAUNCHER-WEB-PARITY-001: Web 反馈采用“wasm -> world_web_launcher -> world_chain_runtime”代理链路，而非 wasm 直连链状态端口。理由：复用既有控制面与跨端一致性。
+  - DEC-LAUNCHER-WEB-PARITY-001: Web 反馈采用“wasm -> oasis7_web_launcher -> world_chain_runtime”代理链路，而非 wasm 直连链状态端口。理由：复用既有控制面与跨端一致性。
   - DEC-LAUNCHER-WEB-PARITY-002: Web 设置中心中的 LLM 参数采用浏览器本地存储，不模拟 native 文件写入。理由：遵循 wasm 运行环境能力边界并保持可用。

@@ -13,8 +13,8 @@
 - 回归层：覆盖 stale 失败、fresh node id 恢复、恢复后 explorer 查询成功。
 
 ## 3. 关键接口 / 入口
-- `world_web_launcher` 进程/状态机与 `gui_agent_api`
-- `world_game_launcher` 链启动参数与错误反馈
+- `oasis7_web_launcher` 进程/状态机与 `gui_agent_api`
+- `oasis7_game_launcher` 链启动参数与错误反馈
 - launcher UI 中的链状态区、引导/错误卡片、恢复 CTA
 
 ## 4. 约束与边界

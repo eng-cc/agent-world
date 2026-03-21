@@ -85,7 +85,7 @@
   - `crates/oasis7/src/simulator/memory.rs`
   - `crates/oasis7_proto/src/viewer.rs`
   - `crates/oasis7_client_launcher/src/*`
-  - `crates/oasis7/src/bin/world_web_launcher/gui_agent_api.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/gui_agent_api.rs`
 - Local HTTP Endpoints:
   - `GET /v1/provider/info`
     - 返回 `provider_id/name/version/protocol_version/capabilities/supported_action_sets`。
@@ -108,7 +108,7 @@
     - `openclaw_agent_profile`
   - profile 约定：首期 `P0` / parity / experimental 试点默认使用 `oasis7_p0_low_freq_npc`；旧别名 `oasis7_p0_low_freq_npc` 已移除。若 provider 不识别当前默认 profile，必须返回结构化 `unsupported_agent_profile`，禁止静默改用通用玩法。
   - 发现逻辑：优先读取显式配置；若未配置且开启 auto-discover，则探测默认地址。
-  - 产品主链路：`oasis7_client_launcher -> world_game_launcher -> world_viewer_live` 现已透传 `agent_provider_mode/openclaw_*` 参数，并通过子进程环境把 OpenClaw 设置送入 runtime live sidecar。
+  - 产品主链路：`oasis7_client_launcher -> oasis7_game_launcher -> world_viewer_live` 现已透传 `agent_provider_mode/openclaw_*` 参数，并通过子进程环境把 OpenClaw 设置送入 runtime live sidecar。
 - DecisionRequest Shape:
   - 顶层字段：`request_id/agent_id/world_time/provider_session_id?/provider_config_ref?/agent_profile?/timeout_ms`
   - `observation`: 当前可见世界状态摘要、附近实体、最近事件、目标与资源摘要。
@@ -144,7 +144,7 @@
   - `openclaw_gateway_unreachable`: 本地兼容桥无法通过 `openclaw agent` / Gateway 拿到响应时，provider health 需暴露最近错误，launcher / parity bench 必须明确提示“OpenClaw Gateway 未就绪”。
   - `bundle_cache_path_unexpanded`: `oasis7` 的 bundle-first 下载辅助必须先展开当前用户 `~`，再落缓存与返回 `bundle_dir`；若解析后的 bundle 缺少 `run-game.sh`，`doctor` 必须输出解析后的绝对路径，避免把产物误写到 repo-local `~/...`。
   - `repo_bootstrap_unavailable`: `oasis7 doctor` 必须把 bundle-first no-`cargo` 可玩性（bundle + bridge 是否就绪）与 repo-backed bridge/bootstrap 能力（repo root + `cargo`）分开汇报；缺少 `cargo` 或 repo root 时，若 bundle-first reuse path 仍可用，不得把其伪装成通用阻断。`play` 若落到 repo-backed bridge/bootstrap 依赖，必须输出可执行指引：安装 `cargo` / 提供 `--repo-root`，或改走 `--reuse-bridge --skip-agent-setup`。
-  - `play_wrapper_orphan_subtree`: `oasis7-run.sh play` 被中断或 wrapper 退出时，必须尽最大努力终止其启动的 launcher 子树；不能出现 wrapper 已退但 `world_game_launcher` / `world_chain_runtime` / `world_viewer_live` 继续常驻并占端口的假停止状态。
+  - `play_wrapper_orphan_subtree`: `oasis7-run.sh play` 被中断或 wrapper 退出时，必须尽最大努力终止其启动的 launcher 子树；不能出现 wrapper 已退但 `oasis7_game_launcher` / `world_chain_runtime` / `world_viewer_live` 继续常驻并占端口的假停止状态。
   - `bundle_download_observability_gap`: `oasis7` 的 bundle-first 下载辅助必须输出可见阶段日志（至少覆盖 asset download / checksum / extract / bundle ready）；当 stderr 非 TTY 且下载耗时较长时，必须持续输出周期性 heartbeat，避免首轮下载被误判为卡死。
   - `bridge_model_output_invalid`: 兼容桥若拿到非 JSON、缺字段或超出 phase-1 白名单的输出，必须在 provider 侧记录结构化 diagnostics/trace；若当前 profile/fixture 已明确给出低风险可达动作（如 `P0-001` 巡游移动），允许通过 profile guardrail 把无效输出重路由到最近可达的合法动作，否则才降级为 `Wait`。
   - `session_cross_talk`: 兼容桥必须使用 `provider_config_ref + agent_profile + agent_id` 派生 OpenClaw session scope，防止不同 benchmark run / runtime live 进程复用同一 session 造成旧世界状态串线。
@@ -165,7 +165,7 @@
   - 仅接受 loopback 地址；launcher 对 base URL 做 host allowlist 校验。
   - 不向 provider 暴露私钥、完整 auth proof 或内部存储路径。
   - `openclaw_auth_token` 如启用，只存本地配置，不回显在 viewer / logs。
-- 若 OpenClaw 玩法链路沿用产品默认 `world_game_launcher` 启动栈并拉起 `world_chain_runtime`，则所选 chain profile 下的 node private key 必须按高敏资产处理：禁止提交到仓库、回显到诊断日志/截图/issue，并要求操作者优先使用临时 profile 或明确的资产归属 profile。
+- 若 OpenClaw 玩法链路沿用产品默认 `oasis7_game_launcher` 启动栈并拉起 `world_chain_runtime`，则所选 chain profile 下的 node private key 必须按高敏资产处理：禁止提交到仓库、回显到诊断日志/截图/issue，并要求操作者优先使用临时 profile 或明确的资产归属 profile。
   - 用户必须显式开启 `OpenClaw(Local HTTP)` 模式，默认仍使用内置 provider。
 
 ## 5. Risks & Roadmap

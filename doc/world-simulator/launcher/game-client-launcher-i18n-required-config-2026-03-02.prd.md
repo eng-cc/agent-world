@@ -19,7 +19,7 @@
 
 ## 非目标
 - 本阶段不引入外部 i18n 文件系统（如 json/yaml 资源包）。
-- 不改造 `world_game_launcher` CLI 的参数定义与行为。
+- 不改造 `oasis7_game_launcher` CLI 的参数定义与行为。
 - 不新增复杂配置向导流程（仅做必填/格式校验与提示）。
 
 ## 3. AI System Requirements (If Applicable)

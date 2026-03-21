@@ -10,7 +10,7 @@
 - 启动模式分层：
   - `producer wrapper`：`run-producer-playtest.sh` 负责自动准备或复用本地 bundle，然后转入 `run-game-test.sh --bundle-dir <bundle>`；这是制作人日常试玩的最短入口。
   - `bundle mode`：由 `--bundle-dir <bundle>` 触发，执行 `<bundle>/run-game.sh`，默认使用 bundle 自带 `web/` 静态资源。
-  - `source mode`：未传 `--bundle-dir` 时沿用 `cargo run -p oasis7 --bin world_game_launcher`，并保留 fresh `web` 构建兜底。
+  - `source mode`：未传 `--bundle-dir` 时沿用 `cargo run -p oasis7 --bin oasis7_game_launcher`，并保留 fresh `web` 构建兜底。
 - 参数策略：
   - 端口、链参数、`--no-llm`、`--with-llm` 等继续由 `run-game-test.sh` 统一透传。
   - `--viewer-static-dir` 在 `source mode` 沿用现有逻辑；在 `bundle mode` 仅作为高级覆盖，不再默认触发源码静态目录 fresh build。

@@ -6,7 +6,7 @@
 审计轮次: 6
 
 ## 1. Executive Summary
-- Problem Statement: 当前 `world_web_launcher` 已有多组分散 API（启停、反馈、转账、浏览器查询），但缺少面向 GUI Agent 的“单一机器接口”与能力声明，导致自动化代理需要手工拼接多路端点与状态语义。
+- Problem Statement: 当前 `oasis7_web_launcher` 已有多组分散 API（启停、反馈、转账、浏览器查询），但缺少面向 GUI Agent 的“单一机器接口”与能力声明，导致自动化代理需要手工拼接多路端点与状态语义。
 - Proposed Solution: 在 Web Console 增加 `gui-agent` 命名空间，提供“能力发现 + 统一动作执行 + 状态别名”接口，将人工可做的启动器功能映射为可编排动作。
 - Success Criteria:
   - SC-1: GUI Agent 可通过统一入口覆盖人工操作的全功能集合（游戏/链启停、反馈、转账、浏览器查询、状态读取）。
@@ -63,12 +63,12 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - `world_web_launcher` 新增 `gui_agent_api` 子模块，负责动作协议解析与统一响应封装。
+  - `oasis7_web_launcher` 新增 `gui_agent_api` 子模块，负责动作协议解析与统一响应封装。
   - 路由层增加 `/api/gui-agent/*` 命名空间，复用现有 `control_plane` 与 `transfer_query_proxy` 能力。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
-  - `crates/oasis7/src/bin/world_web_launcher/gui_agent_api.rs`（新增）
-  - `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/gui_agent_api.rs`（新增）
+  - `crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs`
 - Edge Cases & Error Handling:
   - 未知 action：返回 `invalid_request`。
   - payload 缺失或 JSON 不合法：返回 `invalid_request`。
@@ -95,7 +95,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-031 | TASK-WORLD_SIMULATOR-091/092 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_web_launcher` | web console 机器控制面、人工操作可替代性、既有控制面兼容性 |
+| PRD-WORLD_SIMULATOR-031 | TASK-WORLD_SIMULATOR-091/092 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin oasis7_web_launcher` | web console 机器控制面、人工操作可替代性、既有控制面兼容性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

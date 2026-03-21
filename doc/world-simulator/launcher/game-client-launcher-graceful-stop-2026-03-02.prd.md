@@ -6,7 +6,7 @@
 审计轮次: 6
 
 ## 1. Executive Summary
-- 在桌面启动器点击“停止”或直接关闭窗口时，优先让 `world_game_launcher` 走优雅退出路径。
+- 在桌面启动器点击“停止”或直接关闭窗口时，优先让 `oasis7_game_launcher` 走优雅退出路径。
 - 提升“启动器退出后残留子进程”问题的可控性，尽量确保 `world_viewer_live` 与 `world_chain_runtime` 被一并清理。
 
 ## 2. User Experience & Functionality
@@ -18,7 +18,7 @@
 - 补充单元测试覆盖停止逻辑关键路径。
 
 ## 非目标
-- 不改动 `world_game_launcher` 的参数接口或核心编排逻辑。
+- 不改动 `oasis7_game_launcher` 的参数接口或核心编排逻辑。
 - 不在本轮引入跨平台完整进程组管理（Windows JobObject 等）。
 
 ## 3. AI System Requirements (If Applicable)
@@ -46,7 +46,7 @@
 
 ## 完成态（2026-03-02）
 - 启动器停止策略已改为：
-  - 先请求优雅退出（Unix 下向 `world_game_launcher` 发送 `SIGINT`）；
+  - 先请求优雅退出（Unix 下向 `oasis7_game_launcher` 发送 `SIGINT`）；
   - 在 `GRACEFUL_STOP_TIMEOUT_MS` 窗口内轮询等待；
   - 超时后执行 `kill` 兜底。
 - 点击“停止”和直接关闭启动器窗口都走同一停止逻辑，行为一致。

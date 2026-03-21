@@ -7,7 +7,7 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-024) [test_tier_required]: 完成专题 PRD 建模、验收标准冻结与模块文档树回写。
-- [x] T1 (PRD-WORLD_SIMULATOR-024) [test_tier_required]: 落地 `world_chain_runtime` explorer RPC 与 `world_web_launcher` 代理接口，并补齐契约测试。
+- [x] T1 (PRD-WORLD_SIMULATOR-024) [test_tier_required]: 落地 `world_chain_runtime` explorer RPC 与 `oasis7_web_launcher` 代理接口，并补齐契约测试。
 - [x] T2 (PRD-WORLD_SIMULATOR-024) [test_tier_required]: 落地启动器“区块链浏览器”面板（native/web 同源）并完成跨端回归。
 
 ## 依赖
@@ -16,8 +16,8 @@
 - `doc/world-simulator/prd.index.md`
 - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
 - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
-- `crates/oasis7/src/bin/world_web_launcher.rs`
-- `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+- `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+- `crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs`
 - `crates/oasis7_client_launcher/src/main.rs`
 - `crates/oasis7_client_launcher/src/app_process.rs`
 - `crates/oasis7_client_launcher/src/app_process_web.rs`

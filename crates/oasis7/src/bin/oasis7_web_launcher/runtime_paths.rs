@@ -8,18 +8,18 @@ const WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "OASIS7_WORLD_CHAIN_RUNTIME_BIN";
 const GAME_STATIC_DIR_ENV: &str = "OASIS7_GAME_STATIC_DIR";
 const WEB_LAUNCHER_STATIC_DIR_ENV: &str = "OASIS7_WEB_LAUNCHER_STATIC_DIR";
 
-pub(super) fn resolve_world_game_launcher_binary() -> PathBuf {
+pub(super) fn resolve_oasis7_game_launcher_binary() -> PathBuf {
     if let Some(path) = resolve_non_empty_override_value(env::var(GAME_LAUNCHER_BIN_ENV).ok()) {
         return PathBuf::from(path);
     }
 
     if let Ok(current_exe) = env::current_exe() {
         if let Some(bin_dir) = current_exe.parent() {
-            return bin_dir.join(binary_name("world_game_launcher"));
+            return bin_dir.join(binary_name("oasis7_game_launcher"));
         }
     }
 
-    PathBuf::from(binary_name("world_game_launcher"))
+    PathBuf::from(binary_name("oasis7_game_launcher"))
 }
 
 pub(super) fn resolve_world_chain_runtime_binary() -> PathBuf {

@@ -10,7 +10,7 @@
 - Problem Statement: 通过启动器打开 Web Viewer 时，聊天与 Prompt 控制鉴权依赖手工设置 `OASIS7_VIEWER_AUTH_PUBLIC_KEY/PRIVATE_KEY`，导致易错且与节点配置割裂。且 `agent_chat` 业务拒绝会被 Viewer 误判为连接失败，造成“发送消息后连接异常”的错误反馈。
 - Proposed Solution: 将 Viewer 鉴权默认口径收敛到 `config.toml [node]` keypair，并在启动器注入/Viewer 回退链路中统一读取，同时保留环境变量覆盖能力。补充连接状态分类规则：`AgentChatError` 仅作为业务层错误，不降级全局连接状态。
 - Success Criteria:
-  - SC-1: `world_game_launcher` 在 Web 注入 `window.__OASIS7_VIEWER_AUTH_ENV`，默认带入 node keypair。
+  - SC-1: `oasis7_game_launcher` 在 Web 注入 `window.__OASIS7_VIEWER_AUTH_ENV`，默认带入 node keypair。
   - SC-2: Viewer wasm 端优先读取注入配置，native 端支持 `config.toml [node]` 回退。
   - SC-3: `OASIS7_VIEWER_*` 环境变量覆盖能力保持不变。
   - SC-4: 用户无需手工设置鉴权 env 即可在启动器链路使用聊天与 Prompt 控制。
@@ -32,7 +32,7 @@
   - PRD-TESTING-LAUNCHER-AUTH-003: As a 自动化维护者, I want env overrides preserved, so that existing scripts remain compatible.
   - PRD-TESTING-LAUNCHER-AUTH-004: As a 启动器体验验证者, I want agent_chat business errors to not be treated as transport disconnects, so that connection diagnosis is accurate.
 - Critical User Flows:
-  1. Flow-AUTH-001: `world_game_launcher 读取 config.toml[node] -> 注入 __OASIS7_VIEWER_AUTH_ENV -> Web Viewer 使用鉴权`
+  1. Flow-AUTH-001: `oasis7_game_launcher 读取 config.toml[node] -> 注入 __OASIS7_VIEWER_AUTH_ENV -> Web Viewer 使用鉴权`
   2. Flow-AUTH-002: `wasm Viewer 优先读注入 -> 注入缺失时回退进程环境变量`
   3. Flow-AUTH-003: `native Viewer 读取环境变量 -> 无环境变量时回退 config.toml[node]`
   4. Flow-AUTH-004: `玩家发送 agent_chat -> runtime 返回 AgentChatError -> Viewer 显示聊天失败原因但保持连接状态`
@@ -63,8 +63,8 @@
 ## 4. Technical Specifications
 - Architecture Overview: 通过启动器注入 + Viewer 双端回退策略，将鉴权默认源统一到 node 配置，兼容历史 env 覆盖并减少手工配置成本。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_game_launcher.rs`
-  - `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+  - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs`
   - `crates/oasis7_viewer/src/egui_right_panel_chat_auth.rs`
   - `crates/oasis7_viewer/src/egui_right_panel_chat_tests.rs`
   - `crates/oasis7_viewer/src/main_connection.rs`

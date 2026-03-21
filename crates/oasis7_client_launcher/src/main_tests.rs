@@ -909,7 +909,7 @@ fn collect_required_config_issues_accepts_valid_required_fields() {
 fn collect_required_config_issues_accepts_bundle_relative_web_path_from_launcher_bin() {
     let bundle_root = make_temp_dir("client_launcher_bundle_relative");
     let bundle_bin = bundle_root.join("bin");
-    let launcher_bin = bundle_bin.join("world_game_launcher");
+    let launcher_bin = bundle_bin.join("oasis7_game_launcher");
     let bundle_web = bundle_root.join("web");
     fs::create_dir_all(&bundle_bin).expect("create bundle bin dir");
     fs::create_dir_all(&bundle_web).expect("create bundle web dir");

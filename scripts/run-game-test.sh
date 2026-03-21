@@ -30,13 +30,13 @@ Preferred producer/release path:
 - stale or manifest-less bundles fail fast unless `--allow-stale-bundle` is passed
 
 Development fallback:
-- source world_game_launcher via cargo run with the same runtime defaults
+- source oasis7_game_launcher via cargo run with the same runtime defaults
 
 Options:
   --bundle-dir <path>      Use packaged bundle <path>/run-game.sh (recommended for producer/release playtests)
   --viewer-host <host>     Viewer HTTP host (default: 127.0.0.1)
   --viewer-port <port>     Viewer HTTP port (default: 4173)
-  --live-bind <addr:port>  world_game_launcher live TCP bind (default: 127.0.0.1:5023)
+  --live-bind <addr:port>  oasis7_game_launcher live TCP bind (default: 127.0.0.1:5023)
   --web-bind <addr:port>   WebSocket bridge bind (default: 127.0.0.1:5011)
   --viewer-static-dir <p>  Override viewer static dir; source mode defaults to fresh `web`, bundle mode only uses this as an advanced override
   --allow-stale-bundle    Skip workspace freshness guard for --bundle-dir (advanced / explicit override)
@@ -347,16 +347,16 @@ if [[ -n "$BUNDLE_DIR" ]]; then
   ) &
 else
   LAUNCH_MODE="source"
-  LAUNCH_CMD="cargo run -p oasis7 --bin world_game_launcher"
+  LAUNCH_CMD="cargo run -p oasis7 --bin oasis7_game_launcher"
   (
     cd "$ROOT_DIR"
-    env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher -- "${WORLD_ARGS[@]}" >"$WORLD_LOG" 2>&1
+    env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_game_launcher -- "${WORLD_ARGS[@]}" >"$WORLD_LOG" 2>&1
   ) &
 fi
 LAUNCHER_PID=$!
 cat <<'INFO' >"$WEB_LOG"
 run-viewer-web.sh no longer runs as a standalone process in this stack.
-web viewer is served by world_game_launcher built-in static server.
+web viewer is served by oasis7_game_launcher built-in static server.
 INFO
 
 {
@@ -424,7 +424,7 @@ INFO
 
 while true; do
   if ! kill -0 "$LAUNCHER_PID" >/dev/null 2>&1; then
-    echo "error: world_game_launcher exited unexpectedly" >&2
+    echo "error: oasis7_game_launcher exited unexpectedly" >&2
     tail_logs_on_error
     exit 1
   fi

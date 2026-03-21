@@ -13,8 +13,8 @@
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
-- `crates/oasis7/src/bin/world_web_launcher.rs`
-- `crates/oasis7/src/bin/world_web_launcher/control_plane.rs`
+- `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+- `crates/oasis7/src/bin/oasis7_web_launcher/control_plane.rs`
 - `crates/oasis7_client_launcher/src/main.rs`
 - `crates/oasis7_client_launcher/src/app_process_web.rs`
 - `crates/oasis7_client_launcher/src/transfer_window.rs`

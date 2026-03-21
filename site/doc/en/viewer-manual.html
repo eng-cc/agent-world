@@ -80,7 +80,7 @@
 
         <h3>5) Release mode (P2P recommended)</h3>
         <p>`world_viewer_live` is now a pure viewer live service and no longer accepts `--release-config`, `--runtime-world`, or `--node-*` control-plane flags.</p>
-        <p>For P2P release flows, lock chain parameters through `world_chain_runtime` (typically managed by `world_game_launcher` / `world_web_launcher` / `oasis7_client_launcher`). Viewer keeps only `--bind`, `--web-bind`, and `--llm/--no-llm`.</p>
+        <p>For P2P release flows, lock chain parameters through `world_chain_runtime` (typically managed by `oasis7_game_launcher` / `oasis7_web_launcher` / `oasis7_client_launcher`). Viewer keeps only `--bind`, `--web-bind`, and `--llm/--no-llm`.</p>
       </section>
 
       <section class="section" data-reveal>
@@ -158,7 +158,7 @@ window.__AW_TEST__.sendPromptControl("preview", { agentId: "agent-0", shortTermG
 window.__AW_TEST__.sendPromptControl("apply", { agentId: "agent-0", shortTermGoal: "software-safe apply" });
 window.__AW_TEST__.sendAgentChat("agent-0", "hello from software_safe");
 window.__AW_TEST__.getState();</code></pre>
-        <p>When the page is served by <code>world_game_launcher</code> with viewer auth bootstrap injected, <code>software_safe</code> also exposes a minimal selected-agent prompt/chat surface. The matching automation methods are <code>sendPromptControl(mode, payload)</code> and <code>sendAgentChat(agentId, message)</code>.</p>
+        <p>When the page is served by <code>oasis7_game_launcher</code> with viewer auth bootstrap injected, <code>software_safe</code> also exposes a minimal selected-agent prompt/chat surface. The matching automation methods are <code>sendPromptControl(mode, payload)</code> and <code>sendAgentChat(agentId, message)</code>.</p>
 
         <h3>Outputs and Minimum Acceptance</h3>
         <ul>

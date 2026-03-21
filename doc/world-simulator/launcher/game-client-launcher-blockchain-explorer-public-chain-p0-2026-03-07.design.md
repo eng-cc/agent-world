@@ -8,7 +8,7 @@
 
 ## 2. 设计结构
 - 运行时索引层：持久化维护 blocks/block/txs/tx/search 所需的最近窗口索引。
-- 控制面代理层：`world_web_launcher` 透传 `/api/chain/explorer/*` P0 查询接口并保留结构化错误。
+- 控制面代理层：`oasis7_web_launcher` 透传 `/api/chain/explorer/*` P0 查询接口并保留结构化错误。
 - UI 视图层：Blocks、Txs、Search 三视图共享分页、跳转和详情状态机。
 - 搜索编排层：对 `height/block_hash/tx_hash/action_id/account_id` 做统一解析与分类跳转。
 

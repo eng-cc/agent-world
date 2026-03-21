@@ -26,7 +26,7 @@
   - 非法 TOML 输入时给出错误。
 
 ### Out of Scope
-- 不改造 `world_game_launcher` 参数协议。
+- 不改造 `oasis7_game_launcher` 参数协议。
 - 不新增 profile/provider 的可视化管理（仅覆盖本次明确要求的 3 个字段）。
 - 不移除环境变量回退能力。
 

@@ -11,7 +11,7 @@
 - Proposed Solution: 基于现有 PRD 与测试手册执行启动器全功能审查，覆盖 CLI/脚本行为、生命周期与就绪、Web 闭环（agent-browser）以及迁移阻断路径，并沉淀审计结论与证据路径。
 - Success Criteria:
   - SC-1: 启动器核心能力清单（脚本迁移/生命周期/鉴权注入/静态目录覆盖/阻断策略）均有逐项结论。
-  - SC-2: 至少完成 1 次真实 Web 闭环（`world_game_launcher + agent-browser`）并产出截图/日志/state 证据。
+  - SC-2: 至少完成 1 次真实 Web 闭环（`oasis7_game_launcher + agent-browser`）并产出截图/日志/state 证据。
   - SC-3: 启动器相关 `test_tier_required` 回归命令执行并记录通过/失败。
   - SC-4: 若发现问题，提供可定位的故障签名、复现路径与影响范围分级。
   - SC-5: 审查结果可追溯到 PRD-ID -> Task -> Test。
@@ -30,7 +30,7 @@
   - PRD-TESTING-LAUNCHER-REVIEW-002: As a 测试维护者, I want real Web loop evidence from agent-browser, so that UI availability is not inferred from unit tests only.
   - PRD-TESTING-LAUNCHER-REVIEW-003: As a 脚本维护者, I want migration and block paths verified in one run, so that old entrypoints cannot regress silently.
 - Critical User Flows:
-  1. Flow-REVIEW-001: `启动 world_game_launcher -> ready 探针通过 -> Web 主页可访问 -> Viewer 状态可读`
+  1. Flow-REVIEW-001: `启动 oasis7_game_launcher -> ready 探针通过 -> Web 主页可访问 -> Viewer 状态可读`
   2. Flow-REVIEW-002: `执行 agent-browser 语义动作 -> 采集 snapshot/console/screenshot/state -> 形成闭环证据`
   3. Flow-REVIEW-003: `执行 run-game-test/viewer-release-qa-loop -> 验证迁移后脚本参数与产物路径`
   4. Flow-REVIEW-004: `执行 longrun 旧入口脚本 -> 命中阻断文案 -> 输出迁移方向`
@@ -59,10 +59,10 @@
 - Evaluation Strategy: 通过闭环动作成功率、脚本返回码、启动器就绪判定、故障签名可定位性评估审查质量。
 
 ## 4. Technical Specifications
-- Architecture Overview: 本审查以 `world_game_launcher` 为核心执行器，结合启动脚本与 agent-browser 形成“进程编排 -> Web 可达 -> 语义交互 -> 证据采集 -> 分级结论”的验证流水线。
+- Architecture Overview: 本审查以 `oasis7_game_launcher` 为核心执行器，结合启动脚本与 agent-browser 形成“进程编排 -> Web 可达 -> 语义交互 -> 证据采集 -> 分级结论”的验证流水线。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_game_launcher.rs`
-  - `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+  - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs`
   - `crates/oasis7_client_launcher/src/main.rs`
   - `scripts/run-game-test.sh`
   - `scripts/viewer-release-qa-loop.sh`
@@ -99,12 +99,12 @@
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
 | PRD-TESTING-LAUNCHER-REVIEW-001 | LAUNCHREV-1/2/4 | `test_tier_required` | 启动器功能清单审计 + 脚本可执行性检查 + 审计结论收口 | 启动入口可发布性 |
-| PRD-TESTING-LAUNCHER-REVIEW-002 | LAUNCHREV-2/3 | `test_tier_required` | `world_game_launcher` 定向测试 + agent-browser 真实闭环采样 | Web 可用性与 UI 真实性 |
+| PRD-TESTING-LAUNCHER-REVIEW-002 | LAUNCHREV-2/3 | `test_tier_required` | `oasis7_game_launcher` 定向测试 + agent-browser 真实闭环采样 | Web 可用性与 UI 真实性 |
 | PRD-TESTING-LAUNCHER-REVIEW-003 | LAUNCHREV-2/4 | `test_tier_required` | 迁移脚本行为验证 + 阻断文案验证 + 风险分级 | 脚本兼容与误用防护 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
-| DEC-REVIEW-001 | 审查默认采用 `world_game_launcher + agent-browser` 真闭环 | 仅依赖单元测试/日志静态审查 | 真闭环可验证真实用户路径，降低假通过。 |
+| DEC-REVIEW-001 | 审查默认采用 `oasis7_game_launcher + agent-browser` 真闭环 | 仅依赖单元测试/日志静态审查 | 真闭环可验证真实用户路径，降低假通过。 |
 | DEC-REVIEW-002 | 把迁移脚本与阻断脚本纳入同批审查 | 仅验证 happy path | 启动器可用性需同时覆盖误用防护能力。 |
 | DEC-REVIEW-003 | 输出 pass/conditional/fail 分级结论 | 仅输出二元 pass/fail | 分级有助于发布方按风险做决策。 |
 

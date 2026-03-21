@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 - Problem Statement: 当前启动器浏览器已具备 `blocks/txs/search`，但缺少地址页、合约页、Token/NFT 资产页与 mempool 视图，仍不足以支持“公共主链状态全景查询”。
-- Proposed Solution: 在 runtime explorer 索引基础上扩展 P1 查询接口（address/contracts/contract/assets/mempool），由 `world_web_launcher` 代理透传，并在 native/web 共用启动器浏览器面板新增四类视图。
+- Proposed Solution: 在 runtime explorer 索引基础上扩展 P1 查询接口（address/contracts/contract/assets/mempool），由 `oasis7_web_launcher` 代理透传，并在 native/web 共用启动器浏览器面板新增四类视图。
 - Success Criteria:
   - SC-1: runtime 提供 `GET /v1/chain/explorer/address`、`/contracts`、`/contract`、`/assets`、`/mempool`。
   - SC-2: 地址页支持余额、nonce、关联交易分页，并可查询 pending 状态。
@@ -47,7 +47,7 @@
 | 启动器浏览器 P1 面板 | `tab(address/contracts/assets/mempool)`、`filters`、`page_cursor` | 切换 tab、查询、翻页、详情跳转 | `closed/open` + 子状态机 | 字段/文案在 native/web 保持一致 | 链就绪可操作 |
 - Acceptance Criteria:
   - AC-1: runtime 可处理 `GET /v1/chain/explorer/address/contracts/contract/assets/mempool`。
-  - AC-2: `world_web_launcher` 提供对应 `/api/chain/explorer/*` 代理路由。
+  - AC-2: `oasis7_web_launcher` 提供对应 `/api/chain/explorer/*` 代理路由。
   - AC-3: 地址查询支持账户输入校验与分页，`not_found` 保持结构化语义。
   - AC-4: 合约目录与单合约详情可查询，且明确“系统合约”边界。
   - AC-5: 资产页返回主 token 供应、holders 列表与 `nft_supported` 状态字段。
@@ -65,14 +65,14 @@
 ## 4. Technical Specifications
 - Architecture Overview:
   - 运行时层: 在 explorer store 基础上增加 address/contracts/assets/mempool 查询聚合。
-  - 控制面层: `world_web_launcher` 新增 P1 路由 remap 到 runtime。
+  - 控制面层: `oasis7_web_launcher` 新增 P1 路由 remap 到 runtime。
   - 客户端层: 扩展 explorer 窗口状态机与请求层，新增四个视图并复用统一事件通道。
 - Integration Points:
   - `crates/oasis7/src/bin/world_chain_runtime/explorer_p0_api.rs`
   - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
   - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
-  - `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs`
   - `crates/oasis7_client_launcher/src/app_process.rs`
   - `crates/oasis7_client_launcher/src/app_process_web.rs`
   - `crates/oasis7_client_launcher/src/explorer_window.rs`
@@ -108,7 +108,7 @@
   - 计划验证命令:
     - `./scripts/doc-governance-check.sh`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:

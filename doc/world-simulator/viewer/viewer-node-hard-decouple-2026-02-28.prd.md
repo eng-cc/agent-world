@@ -8,7 +8,7 @@
 ## 1. Executive Summary
 - 将 `world_viewer_live` 从“可内嵌节点运行时”的混合进程，重构为纯 Viewer/游戏服务进程。
 - 明确节点运行时唯一入口为 `world_chain_runtime`，避免双路径并存导致的配置歧义。
-- 对外发行统一链路保持不变：`world_game_launcher` 负责编排 viewer + chain-runtime。
+- 对外发行统一链路保持不变：`oasis7_game_launcher` 负责编排 viewer + chain-runtime。
 
 ## 2. User Experience & Functionality
 - 重写 `world_viewer_live` 启动入口与 CLI，仅保留 Viewer 相关参数与 Web bridge。
@@ -46,7 +46,7 @@
 
 ### Technical Risks
 - 依赖旧 `world_viewer_live --node-*` 的脚本将失效。
-  - 缓解：CLI 显式报错并提示改用 `world_chain_runtime`/`world_game_launcher`。
+  - 缓解：CLI 显式报错并提示改用 `world_chain_runtime`/`oasis7_game_launcher`。
 - 历史大体量节点代码暂存仓库，后续维护成本仍在。
   - 缓解：后续补一轮“归档/删除死代码”专项。
 

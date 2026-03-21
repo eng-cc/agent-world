@@ -44,7 +44,7 @@
   - AC-4: `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` 通过。
   - AC-5: `agent-browser --headed` 闭环与 `/api/start` `/api/stop` 回归通过并归档证据。
 - Non-Goals:
-  - 不重构 `world_web_launcher` API 协议。
+  - 不重构 `oasis7_web_launcher` API 协议。
   - 不新增启动器配置字段。
 
 ## 3. AI System Requirements (If Applicable)
@@ -58,7 +58,7 @@
   - `crates/oasis7_client_launcher/src/launcher_core.rs`
   - `crates/oasis7_client_launcher/src/main.rs`
   - `crates/oasis7_launcher_ui/src/lib.rs`
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
 - Edge Cases & Error Handling:
   - Web API 返回配置中无 binary path 字段时，不得触发 native-only 必填错误。
   - native 若 binary path 为空，必须继续阻断并提示必填。

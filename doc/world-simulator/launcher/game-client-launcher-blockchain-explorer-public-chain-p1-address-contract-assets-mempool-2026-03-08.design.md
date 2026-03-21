@@ -8,7 +8,7 @@
 
 ## 2. 设计结构
 - 运行时层：address/contracts/contract/assets/mempool 查询聚合。
-- 控制面层：`world_web_launcher` 对应 `/api/chain/explorer/*` 路由代理。
+- 控制面层：`oasis7_web_launcher` 对应 `/api/chain/explorer/*` 路由代理。
 - UI 层：Address/Contracts/Assets/Mempool 四视图统一状态机。
 
 ## 3. 关键接口 / 入口

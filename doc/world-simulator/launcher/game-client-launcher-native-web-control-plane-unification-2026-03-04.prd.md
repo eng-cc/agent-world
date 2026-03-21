@@ -6,10 +6,10 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- Problem Statement: 当前启动器 native 端直接本地拉起游戏/区块链进程，而 web 端通过 `world_web_launcher` 间接控制，导致两端状态机与按钮行为不一致，链路回归成本高。
-- Proposed Solution: 将 `world_web_launcher` 升级为统一控制面（游戏/区块链独立编排）；native 启动器改为“客户端 + 本地服务端”模式，和 web 启动器共用同一套 API 状态机。
+- Problem Statement: 当前启动器 native 端直接本地拉起游戏/区块链进程，而 web 端通过 `oasis7_web_launcher` 间接控制，导致两端状态机与按钮行为不一致，链路回归成本高。
+- Proposed Solution: 将 `oasis7_web_launcher` 升级为统一控制面（游戏/区块链独立编排）；native 启动器改为“客户端 + 本地服务端”模式，和 web 启动器共用同一套 API 状态机。
 - Success Criteria:
-  - SC-1: `world_web_launcher` 提供游戏与区块链独立启动/停止 API，并返回独立状态。
+  - SC-1: `oasis7_web_launcher` 提供游戏与区块链独立启动/停止 API，并返回独立状态。
   - SC-2: `oasis7_client_launcher` native 与 wasm 统一消费同一 API 契约，不再维护双套进程编排逻辑。
   - SC-3: Web 端“启动区块链/停止区块链”按钮恢复可用，状态文案与 native 对齐。
   - SC-4: native 端功能行为与历史桌面版一致（自动拉起链、独立控制游戏/区块链、链状态门控）。
@@ -28,25 +28,25 @@
   - As an 运维人员, I want browser and desktop launcher to control chain/game independently through one API contract, so that headless and local workflows are interchangeable.
 - Critical User Flows:
   1. Flow-LAUNCHER-CP-001（统一控制面启动）:
-     `启动 world_web_launcher -> native 或 web 客户端连接 /api/state -> 展示一致状态`
+     `启动 oasis7_web_launcher -> native 或 web 客户端连接 /api/state -> 展示一致状态`
   2. Flow-LAUNCHER-CP-002（链独立控制）:
      `点击启动区块链 -> /api/chain/start -> 状态 not_started/starting/ready -> 点击停止区块链 -> /api/chain/stop`
   3. Flow-LAUNCHER-CP-003（游戏独立控制）:
      `点击启动游戏 -> /api/start -> 状态 running -> 点击停止游戏 -> /api/stop`
   4. Flow-LAUNCHER-CP-004（native 客户端服务端分离）:
-     `打开 native 启动器 -> 本地拉起 world_web_launcher -> 后续全部操作经 HTTP API`
+     `打开 native 启动器 -> 本地拉起 oasis7_web_launcher -> 后续全部操作经 HTTP API`
   5. Flow-LAUNCHER-CP-005（功能对齐回归）:
      ``agent-browser --headed` 打开 web 启动器 -> 链/游戏独立启停 -> 状态与按钮反馈一致`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 控制面 API 契约 | `/api/state` `/api/start` `/api/stop` `/api/chain/start` `/api/chain/stop` | 游戏与区块链分别触发独立 API | `idle/running/stopped/...` + `disabled/not_started/starting/ready/...` | 轮询刷新状态；动作响应覆盖最新快照 | 受信网络部署 |
-| native 客户端服务端分离 | 本地 `world_web_launcher` 子进程 + 监听地址 | 启动器 UI 不再直接 spawn 游戏/链，改为 API 调用 | `service_booting -> service_ready -> control_ready` | native 端优先连接本地服务端 | 仅本机会话可管理本地子进程 |
+| native 客户端服务端分离 | 本地 `oasis7_web_launcher` 子进程 + 监听地址 | 启动器 UI 不再直接 spawn 游戏/链，改为 API 调用 | `service_booting -> service_ready -> control_ready` | native 端优先连接本地服务端 | 仅本机会话可管理本地子进程 |
 | 链状态门控对齐 | `chain_enabled` + `chain_status_bind` | 链未就绪时反馈入口禁用，链就绪后启用 | `not_started/starting/ready/unreachable/config_error` | 以服务端状态为唯一来源 | 客户端只读状态 |
 - Acceptance Criteria:
-  - AC-1: `world_web_launcher` 支持 `POST /api/chain/start`、`POST /api/chain/stop`，且与游戏启停互不耦合。
+  - AC-1: `oasis7_web_launcher` 支持 `POST /api/chain/start`、`POST /api/chain/stop`，且与游戏启停互不耦合。
   - AC-2: `/api/state` 返回游戏与区块链独立状态字段，客户端不再用 `snapshot.running` 推断链状态。
-  - AC-3: `oasis7_client_launcher` native 不再直接拉起 `world_game_launcher` / `world_chain_runtime`，改为通过 `world_web_launcher` API 控制。
+  - AC-3: `oasis7_client_launcher` native 不再直接拉起 `oasis7_game_launcher` / `world_chain_runtime`，改为通过 `oasis7_web_launcher` API 控制。
   - AC-4: wasm/web 启动器的“启动区块链/停止区块链”按钮恢复可操作，并与 native 同状态语义。
   - AC-5: native 与 web 在“自动拉起链 + 游戏/链独立启停 + 状态展示”行为上保持一致。
   - AC-6: `test_tier_required` 通过：`cargo test/check` + `agent-browser --headed` 闭环证据。
@@ -59,11 +59,11 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - `world_web_launcher` 升级为统一控制平面：内部维护游戏进程与区块链进程两套状态。
+  - `oasis7_web_launcher` 升级为统一控制平面：内部维护游戏进程与区块链进程两套状态。
   - `oasis7_client_launcher` native 与 wasm 共用 API 驱动状态机；native 增加本地服务进程守护。
   - UI 层继续复用同一套 egui 渲染与 schema 字段映射。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
   - `crates/oasis7_client_launcher/src/main.rs`
   - `crates/oasis7_client_launcher/src/app_process.rs`
   - `crates/oasis7_client_launcher/src/app_process_web.rs`
@@ -88,7 +88,7 @@
 ## 5. Risks & Roadmap
 - Phased Rollout:
   - M1: PRD 建模与任务拆解。
-  - M2: `world_web_launcher` 双进程控制面能力落地。
+  - M2: `oasis7_web_launcher` 双进程控制面能力落地。
   - M3: native 客户端接入统一 API，完成 web/native 对齐回归。
 - Technical Risks:
   - 风险-1: 控制面状态机变更引发旧 UI 映射兼容问题。
@@ -99,4 +99,4 @@
 - Test Plan & Traceability:
   - PRD-WORLD_SIMULATOR-015 -> TASK-WORLD_SIMULATOR-033/034/035 -> `test_tier_required`。
 - Decision Log:
-  - DEC-LAUNCHER-CP-001: 采用“native/web 共用 world_web_launcher 控制面”的客户端-服务端分离方案，而非继续维护 native 本地直连进程 + web API 双路径。理由：双端行为可强制对齐，回归与维护成本显著下降。
+  - DEC-LAUNCHER-CP-001: 采用“native/web 共用 oasis7_web_launcher 控制面”的客户端-服务端分离方案，而非继续维护 native 本地直连进程 + web API 双路径。理由：双端行为可强制对齐，回归与维护成本显著下降。

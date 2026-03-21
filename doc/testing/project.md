@@ -56,7 +56,7 @@
 - [x] TASK-TESTING-033 (PRD-TESTING-004) [test_tier_required]: 完成 `systematic-application-testing-manual` 专题文档逐篇人工迁移到 strict schema，并统一 `.prd` 命名。
 - [x] TASK-TESTING-034 (PRD-TESTING-004) [test_tier_required]: 完成 `web-ui-agent-browser-closure-manual` 专题文档逐篇人工迁移到 strict schema，并补齐 `.project.md` 管理文档。
 - [x] TASK-TESTING-042 (PRD-TESTING-002/003/004) [test_tier_required]: 将 Web UI 闭环默认工具口径统一收口到 `agent-browser`，同步主手册、专题分册、Viewer 手册、站内镜像与门禁脚本。
-- [x] TASK-TESTING-043 (PRD-TESTING-002/003) [test_tier_required]: 修正文档边界歧义，明确 `Viewer` 页面默认走 `agent-browser`，`world_web_launcher` / launcher Web 控制面默认走 GUI Agent，再用页面做状态与字段校验。
+- [x] TASK-TESTING-043 (PRD-TESTING-002/003) [test_tier_required]: 修正文档边界歧义，明确 `Viewer` 页面默认走 `agent-browser`，`oasis7_web_launcher` / launcher Web 控制面默认走 GUI Agent，再用页面做状态与字段校验。
 - [x] TASK-TESTING-044 (PRD-TESTING-LAUNCHER-BUNDLE-001) [test_tier_required]: 完成“启动器 bundle-first 试玩入口收敛（2026-03-12）”专题 PRD / design / project 建档，并同步 testing 索引与 README。
 - [x] TASK-TESTING-045 (PRD-TESTING-LAUNCHER-BUNDLE-001/002) [test_tier_required]: 为 `run-game-test.sh` 增加 `--bundle-dir`，同步主手册/人工清单帮助口径，并完成 bundle 产物闭环验证与 blocker 归档。
 - [x] TASK-TESTING-046 (PRD-TESTING-LAUNCHER-BUNDLE-002) [test_tier_required]: 查明 `run-game-test-ab.sh --headless` 的阻断根因是 `SwiftShader` software renderer，并新增环境快失败与 `browser_env.json` 证据落盘，避免把环境问题误判成 fresh Web 回归。

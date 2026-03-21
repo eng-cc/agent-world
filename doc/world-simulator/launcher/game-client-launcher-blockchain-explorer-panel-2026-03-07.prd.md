@@ -10,7 +10,7 @@
 - Proposed Solution: 先补齐链浏览器最小 RPC（overview/transactions/transaction），再在 native/web 共用启动器中新增“区块链浏览器”面板，提供概览、过滤检索与交易详情。
 - Success Criteria:
   - SC-1: `world_chain_runtime` 提供可消费的浏览器 RPC，覆盖总览、交易列表、交易详情三类查询。
-  - SC-2: `world_web_launcher` 暴露 `/api/chain/explorer/*` 代理，native/web 客户端统一消费同一控制面。
+  - SC-2: `oasis7_web_launcher` 暴露 `/api/chain/explorer/*` 代理，native/web 客户端统一消费同一控制面。
   - SC-3: `oasis7_client_launcher` 新增“区块链浏览器”面板，支持按账户/状态过滤与按 `action_id` 明细查询。
   - SC-4: 浏览器面板在链未就绪时给出结构化错误提示，不出现 panic 或卡死。
   - SC-5: `test_tier_required` 回归通过，且不回归既有转账/反馈/状态链路。
@@ -44,7 +44,7 @@
 | 启动器浏览器面板 | `overview`、`filters`、`transactions`、`selected_transaction` | 打开窗口、刷新、过滤、详情查询 | `closed/open` + 子状态机 | 与转账面板共享 `WebTransferLifecycleStatus` 语义 | 仅链就绪可操作 |
 - Acceptance Criteria:
   - AC-1: `world_chain_runtime` 支持 `GET /v1/chain/explorer/overview`、`GET /v1/chain/explorer/transactions`、`GET /v1/chain/explorer/transaction`。
-  - AC-2: `world_web_launcher` 提供对应 `/api/chain/explorer/*` 代理接口并保持结构化错误语义。
+  - AC-2: `oasis7_web_launcher` 提供对应 `/api/chain/explorer/*` 代理接口并保持结构化错误语义。
   - AC-3: 启动器新增“区块链浏览器”入口与面板，native/web 同源 UI 行为一致。
   - AC-4: 列表支持账户过滤、状态过滤（accepted/pending/confirmed/failed/timeout）与默认 `limit=50`。
   - AC-5: 详情查询支持 `action_id` 输入与列表项点击两种路径。
@@ -61,13 +61,13 @@
 ## 4. Technical Specifications
 - Architecture Overview:
   - 运行时层: `world_chain_runtime` 提供 explorer 查询 RPC（链总览 + 交易列表 + 交易详情）。
-  - 控制面层: `world_web_launcher` 将 explorer 查询代理为 `/api/chain/explorer/*`。
+  - 控制面层: `oasis7_web_launcher` 将 explorer 查询代理为 `/api/chain/explorer/*`。
   - 客户端层: `oasis7_client_launcher` 新增 explorer window，消费控制面接口并展示结构化结果。
 - Integration Points:
   - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
   - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
-  - `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs`
   - `crates/oasis7_client_launcher/src/main.rs`
   - `crates/oasis7_client_launcher/src/app_process.rs`
   - `crates/oasis7_client_launcher/src/app_process_web.rs`
@@ -102,7 +102,7 @@
   - 计划验证命令:
     - `./scripts/doc-governance-check.sh`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
 - Decision Log:

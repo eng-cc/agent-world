@@ -27,8 +27,8 @@
 - `run-chain-runtime.sh` 从 `OASIS7_CHAIN_STORAGE_PROFILE` 组装 `--storage-profile <value>`。
 
 ## 动态核对
-- `OASIS7_CHAIN_STORAGE_PROFILE=soak_forensics bash -x ./run-game.sh --help`：trace 显示最终执行 `world_game_launcher ... --chain-storage-profile soak_forensics --help`。
-- `OASIS7_CHAIN_STORAGE_PROFILE=release_default bash -x ./run-web-launcher.sh --help`：trace 显示最终执行 `world_web_launcher --chain-storage-profile release_default --help`。
+- `OASIS7_CHAIN_STORAGE_PROFILE=soak_forensics bash -x ./run-game.sh --help`：trace 显示最终执行 `oasis7_game_launcher ... --chain-storage-profile soak_forensics --help`。
+- `OASIS7_CHAIN_STORAGE_PROFILE=release_default bash -x ./run-web-launcher.sh --help`：trace 显示最终执行 `oasis7_web_launcher --chain-storage-profile release_default --help`。
 - `OASIS7_CHAIN_STORAGE_PROFILE=dev_local bash -x ./run-chain-runtime.sh --help`：trace 显示最终执行 `world_chain_runtime --storage-profile dev_local --help`。
 
 ## 结论

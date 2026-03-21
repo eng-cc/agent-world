@@ -90,7 +90,7 @@
   - runtime 将 action 转为 domain event 并更新 main token 账户状态。
   - 响应返回启动器 UI，UI 渲染成功信息或拒绝原因。
 - Integration Points:
-  - `world_game_launcher` 对链运行时配置透传能力。
+  - `oasis7_game_launcher` 对链运行时配置透传能力。
   - `world_chain_runtime` 转账接口与现有 `status/balances/feedback` 接口并存。
   - runtime 主 token 动作链路：`events`、`action_to_event_core`、`apply_domain_event_main_token`。
 - Security & Privacy:

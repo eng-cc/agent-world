@@ -15,7 +15,7 @@
 ## 3. 关键接口 / 入口
 - web 设置 UI 与保存动作
 - 反馈窗口 / 提交状态机
-- `world_web_launcher` 对应控制面接口
+- `oasis7_web_launcher` 对应控制面接口
 - native/web 共用状态与错误语义
 
 ## 4. 约束与边界

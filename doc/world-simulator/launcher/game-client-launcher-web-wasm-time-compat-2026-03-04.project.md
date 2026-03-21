@@ -19,7 +19,7 @@
 - `crates/oasis7_client_launcher/src/main.rs`
 - `crates/oasis7_client_launcher/src/app_process_web.rs`
 - `crates/oasis7_client_launcher/Cargo.toml`
-- `crates/oasis7/src/bin/world_web_launcher.rs`
+- `crates/oasis7/src/bin/oasis7_web_launcher.rs`
 - `output/playwright/`
 
 ## 状态

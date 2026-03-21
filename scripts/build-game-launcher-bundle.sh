@@ -16,8 +16,8 @@ Usage: ./scripts/build-game-launcher-bundle.sh [options]
 
 Build a distributable launcher bundle:
 - bin/oasis7_client_launcher
-- bin/world_game_launcher
-- bin/world_web_launcher
+- bin/oasis7_game_launcher
+- bin/oasis7_web_launcher
 - bin/world_viewer_live
 - bin/world_chain_runtime
 - web/ (prebuilt viewer static assets)
@@ -194,8 +194,8 @@ if [[ -n "$WEB_LAUNCHER_DIST_SOURCE" ]]; then
   validate_web_launcher_dist_source "$WEB_LAUNCHER_DIST_SOURCE"
 fi
 
-LAUNCHER_BIN_NAME="$(resolve_binary_name world_game_launcher "$TARGET_TRIPLE")"
-WEB_LAUNCHER_BIN_NAME="$(resolve_binary_name world_web_launcher "$TARGET_TRIPLE")"
+LAUNCHER_BIN_NAME="$(resolve_binary_name oasis7_game_launcher "$TARGET_TRIPLE")"
+WEB_LAUNCHER_BIN_NAME="$(resolve_binary_name oasis7_web_launcher "$TARGET_TRIPLE")"
 LIVE_BIN_NAME="$(resolve_binary_name world_viewer_live "$TARGET_TRIPLE")"
 CHAIN_BIN_NAME="$(resolve_binary_name world_chain_runtime "$TARGET_TRIPLE")"
 CLIENT_LAUNCHER_BIN_NAME="$(resolve_binary_name oasis7_client_launcher "$TARGET_TRIPLE")"
@@ -221,8 +221,8 @@ BUNDLE_NATIVE_BUILD_ARGS=(
   "${CARGO_TARGET_ARGS[@]}"
   -p oasis7
   -p oasis7_client_launcher
-  --bin world_game_launcher
-  --bin world_web_launcher
+  --bin oasis7_game_launcher
+  --bin oasis7_web_launcher
   --bin world_viewer_live
   --bin world_chain_runtime
   --bin oasis7_client_launcher
@@ -378,8 +378,8 @@ Optional:
 
 Bundle layout:
 - bin/oasis7_client_launcher
-- bin/world_game_launcher
-- bin/world_web_launcher
+- bin/oasis7_game_launcher
+- bin/oasis7_web_launcher
 - bin/world_viewer_live
 - bin/world_chain_runtime
 - web/

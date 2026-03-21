@@ -51,7 +51,7 @@
   - macOS：`macos-14` + `x86_64-apple-darwin`（避免仓库不支持的 `macos-13` 配置）
   - windows：`windows-2022` + `native`
 - 打包内容（每个平台）：
-  - `bin/world_game_launcher`
+  - `bin/oasis7_game_launcher`
   - `bin/world_viewer_live`
   - `bin/world_chain_runtime`
   - `bin/oasis7_client_launcher`

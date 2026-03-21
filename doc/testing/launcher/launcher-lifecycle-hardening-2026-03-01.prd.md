@@ -7,13 +7,13 @@
 
 
 ## 1. Executive Summary
-- Problem Statement: `world_game_launcher` 在启动失败、外部停止和就绪探针场景存在生命周期缺陷，可能残留子进程或产生“已就绪”假阳性，影响测试门禁与人工验收可信度。
+- Problem Statement: `oasis7_game_launcher` 在启动失败、外部停止和就绪探针场景存在生命周期缺陷，可能残留子进程或产生“已就绪”假阳性，影响测试门禁与人工验收可信度。
 - Proposed Solution: 强化启动器生命周期管理（信号清理、失败回滚、就绪健康联动）并统一 IPv6 解析/URL 规则到 CLI 与 GUI 入口。
 - Success Criteria:
   - SC-1: 启动失败（如静态 HTTP 绑定失败）时已拉起子进程可立即回滚终止。
   - SC-2: 就绪探针仅在子进程持续存活且响应合法时判定成功。
   - SC-3: IPv6 地址解析强制 bracket 规范，URL 输出自动兼容 `[ipv6]:port`。
-  - SC-4: `world_game_launcher` 与 `oasis7_client_launcher` 规则一致并通过定向测试。
+  - SC-4: `oasis7_game_launcher` 与 `oasis7_client_launcher` 规则一致并通过定向测试。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -41,10 +41,10 @@
 | IPv6 解析与 URL | `[::1]:port`、URL host 包裹规则 | 接受 bracket IPv6，拒绝裸 IPv6:port | `input -> parsed/rejected` | URL 输出时 IPv6 自动加 `[]` | CLI/GUI 统一遵循 |
 | 代码清理降噪 | 未使用测试包装函数、测试模块路径 | 移除冗余并重组测试入口 | `noisy -> cleaned` | 保持测试语义不变 | 维护者可调整结构 |
 - Acceptance Criteria:
-  - AC-1: `world_game_launcher` 支持终止信号清理、启动失败回滚、就绪存活联动。
+  - AC-1: `oasis7_game_launcher` 支持终止信号清理、启动失败回滚、就绪存活联动。
   - AC-2: HTTP ready 仅在合法响应前缀下判定成功。
   - AC-3: `parse_host_port` 支持 bracket IPv6，拒绝未 bracket 写法。
-  - AC-4: `oasis7_client_launcher` 与 `world_game_launcher` 地址规则一致。
+  - AC-4: `oasis7_client_launcher` 与 `oasis7_game_launcher` 地址规则一致。
   - AC-5: 定向单测与文档收口完成，`--all-targets` 构建噪音下降。
 - Non-Goals:
   - 不改动 `world_chain_runtime` 业务协议。
@@ -56,10 +56,10 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 以 `world_game_launcher` 为核心执行器，围绕“启动-就绪-停止”阶段增加失败原子性和探针真实性保障，并由客户端启动器共享同一地址解析语义。
+- Architecture Overview: 以 `oasis7_game_launcher` 为核心执行器，围绕“启动-就绪-停止”阶段增加失败原子性和探针真实性保障，并由客户端启动器共享同一地址解析语义。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_game_launcher.rs`
-  - `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
+  - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs`
   - `crates/oasis7_client_launcher/src/main.rs`
   - `crates/oasis7/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
   - `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
@@ -79,7 +79,7 @@
 ## 5. Risks & Roadmap
 - Phased Rollout:
   - MVP (LCH-1): 设计/项目文档建档。
-  - v1.1 (LCH-2): `world_game_launcher` 生命周期与就绪逻辑硬化。
+  - v1.1 (LCH-2): `oasis7_game_launcher` 生命周期与就绪逻辑硬化。
   - v2.0 (LCH-3): `oasis7_client_launcher` IPv6/URL 规则对齐。
   - v2.1 (LCH-4): 回归测试、文档收口与代码噪音清理。
 - Technical Risks:
@@ -96,8 +96,8 @@
 | PRD-TESTING-LAUNCHER-HARDEN-003 | LCH-3/4 | `test_tier_required` | IPv6 解析/URL 规则单测与文档一致性检查 | CLI/GUI 联调与地址兼容 |
 
 ### 最小验收命令
-- `test -f crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`
-- `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_game_launcher`
+- `test -f crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs`
+- `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_game_launcher`
 - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher`
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |

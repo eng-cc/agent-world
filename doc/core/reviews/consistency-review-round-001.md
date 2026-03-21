@@ -94,16 +94,16 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | I-001 | agent-browser wrapper 路径口径漂移：文档/脚本混用 `scripts/agent-browser`、`$REPO_ROOT/.codex/...`、`./.codex/...`，与当前执行口径不一致。 | `world-simulator/viewer`、`testing/manual`、`playability_test_result`、`site/doc`、`scripts/*` | high |
 | I-002 | 多份活跃文档仍引用旧文档路径（如 `scripts/viewer-tools/*.prd.md`、`scripts/precommit/*.prd.md`），当前有效入口应为 `doc/scripts/...`。 | `engineering`、`testing/ci`、`world-simulator/viewer`、`p2p/node` | high |
 | I-003 | `pre-commit` 文档对 `required` 套件定义与 `scripts/ci-tests.sh` 实现不一致（文档仍写 `sync-m1/m4/m5 --check`）。 | `doc/scripts/precommit/*`、`doc/testing/ci/*` | high |
-| I-004 | launcher 生命周期文档引用不存在的测试文件 `crates/oasis7/src/bin/world_game_launcher/tests.rs`。 | `doc/testing/launcher/*` | high |
+| I-004 | launcher 生命周期文档引用不存在的测试文件 `crates/oasis7/src/bin/oasis7_game_launcher/tests.rs`。 | `doc/testing/launcher/*` | high |
 | I-005 | world-runtime 治理/审计事件模型与代码不一致（`ShadowReport` 字段、事件枚举、失败类型）。 | `doc/world-runtime/governance/*`、`crates/oasis7/src/runtime/*` | high |
 | I-006 | `audit-export.md` 的导出 API 描述（`limit/cursor` 分页）与实现 `save_audit_log(path, filter)` 不一致。 | `doc/world-runtime/governance/audit-export.md` | high |
 | I-007 | world-runtime 根 PRD 生命周期状态机仍写 `deprecated/blocked`，与当前 ABI action 集合不一致。 | `doc/world-runtime/prd.md` | high |
-| I-008 | world-simulator 旧 launcher 文档仍描述 native 直拉 game/chain；当前实现已切换到 `world_web_launcher` 控制面。 | `doc/world-simulator/launcher/*` | medium |
+| I-008 | world-simulator 旧 launcher 文档仍描述 native 直拉 game/chain；当前实现已切换到 `oasis7_web_launcher` 控制面。 | `doc/world-simulator/launcher/*` | medium |
 | I-009 | web 控制台 PRD 状态机（`starting/stopping`）与当前 `ProcessState` 枚举不一致。 | `doc/world-simulator/launcher/game-client-launcher-web-console-2026-03-04.prd.md` | medium |
 | I-010 | viewer 行数收口文档声称“全部 <=1200”，但当前多个 viewer 源文件已超限。 | `doc/world-simulator/viewer/*` | medium |
 | I-011 | p2p 分布式文档仍含旧路径 `distributed_membership_sync/logic.rs`，phase7 验收主要锚定“旧路径删除”，缺少现状正向锚点。 | `doc/p2p/distributed/*` | medium |
 | I-012 | site 中 4 处 gameplay top-level design 外链指向不存在的 `.md`（应为 `.prd.md`），产生 404。 | `site/index.html`、`site/en/index.html`、`site/doc/cn/index.html`、`site/doc/en/index.html` | high |
-| I-013 | `game-test` 文档启动链路仍写 `world_viewer_live + run-viewer-web.sh`，与现有 `world_game_launcher` 流程不一致。 | `doc/playability_test_result/game-test.prd.md` | high |
+| I-013 | `game-test` 文档启动链路仍写 `world_viewer_live + run-viewer-web.sh`，与现有 `oasis7_game_launcher` 流程不一致。 | `doc/playability_test_result/game-test.prd.md` | high |
 | I-014 | 资源/计费口径在文档间不一致（`Compound/Hardware`、`Token Gas` 与实现 `Electricity/Data` 计费不一致）。 | `doc/readme/governance/*`、`doc/game/gameplay/*` | medium |
 | I-015 | `release.md` 类型文档未纳入 `prd.index` 树，可追溯性不足。 | `doc/p2p/*/*.release.md` | medium |
 | I-016 | `site/doc/*/viewer-manual.html` 外链仍指向历史 `.md` 路径（缺少 `/viewer/` 目录与 `.prd.md` 后缀），导致 GitHub 404。 | `site/doc/cn/viewer-manual.html`、`site/doc/en/viewer-manual.html` | high |
@@ -126,7 +126,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | --- | --- | --- | --- | --- |
 | A-001 | 统一 agent-browser wrapper 口径（文档与脚本统一使用 `agent-browser`，并注明仓库开发副本 `.agents/...`） | testing + scripts + site 维护者 | 2026-03-07 | done |
 | A-002 | 回写所有 `scripts/viewer-tools/*.prd.md`、`scripts/precommit/*.prd.md` 等旧路径为 `doc/scripts/...` | core + engineering 维护者 | 2026-03-07 | done |
-| A-003 | 修正 launcher 生命周期专题测试路径（`world_game_launcher/tests.rs` -> 当前真实测试文件）并补最小验收命令 | testing/launcher 维护者 | 2026-03-07 | done |
+| A-003 | 修正 launcher 生命周期专题测试路径（`oasis7_game_launcher/tests.rs` -> 当前真实测试文件）并补最小验收命令 | testing/launcher 维护者 | 2026-03-07 | done |
 | A-004 | 修正 `pre-commit` required/full 套件描述，使其与 `scripts/ci-tests.sh` 当前行为一致 | scripts + testing/ci 维护者 | 2026-03-08 | done |
 | A-005 | world-runtime 治理/审计口径对齐：`ShadowReport`、事件枚举、失败类型、导出 API 一次性统一（文档回写或代码补齐需二选一明确） | world-runtime 维护者 | 2026-03-10 | done |
 | A-006 | world-runtime 基础语义对齐：生命周期状态机、`module_id/instance_id` 调度说明、Trap 映射、WASM 枚举（`Gameplay`/`Tick`） | world-runtime 维护者 | 2026-03-10 | done |
@@ -141,7 +141,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 
 ## 整改验证快照（2026-03-05）
 - A-002：`rg -n "scripts/(precommit|viewer-tools)/.*\\.prd(\\.project)?\\.md" doc --glob '*.md' | grep -v 'doc/scripts/'` 无命中。
-- A-003：`test -f crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`；文档已补“最小验收命令”。
+- A-003：`test -f crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs`；文档已补“最小验收命令”。
 - A-004：`doc/scripts/precommit/pre-commit.prd.md` 已与 `scripts/ci-tests.sh` required/full 行为对齐并补验收命令。
 - A-011：`readme-resource-model-layering` 与 `gameplay-engineering-architecture` 已统一为 `Electricity`/`Data` 计费口径。
 - A-013：`S_round001` 已按 `审计轮次: 1` 规则重生成，统计基线更新为 67 份。

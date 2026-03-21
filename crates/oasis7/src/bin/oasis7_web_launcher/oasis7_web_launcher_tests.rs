@@ -58,7 +58,7 @@ fn parse_options_accepts_overrides() {
             "--listen-bind",
             "127.0.0.1:7510",
             "--launcher-bin",
-            "/tmp/world_game_launcher",
+            "/tmp/oasis7_game_launcher",
             "--chain-runtime-bin",
             "/tmp/world_chain_runtime",
             "--console-static-dir",
@@ -97,7 +97,7 @@ fn parse_options_accepts_overrides() {
     .expect("parse overrides");
 
     assert_eq!(options.listen_bind, "127.0.0.1:7510");
-    assert_eq!(options.launcher_bin, "/tmp/world_game_launcher");
+    assert_eq!(options.launcher_bin, "/tmp/oasis7_game_launcher");
     assert_eq!(options.chain_runtime_bin, "/tmp/world_chain_runtime");
     assert_eq!(
         options.console_static_dir,
@@ -110,7 +110,7 @@ fn parse_options_accepts_overrides() {
     assert_eq!(options.initial_config.viewer_port, "4777");
     assert_eq!(
         options.initial_config.launcher_bin,
-        "/tmp/world_game_launcher"
+        "/tmp/oasis7_game_launcher"
     );
     assert_eq!(
         options.initial_config.chain_runtime_bin,
@@ -378,7 +378,7 @@ fn validate_game_config_reports_missing_required_fields() {
 
 #[test]
 fn validate_game_config_accepts_minimal_valid_setup() {
-    let static_dir = make_temp_dir("world_web_launcher_valid");
+    let static_dir = make_temp_dir("oasis7_web_launcher_valid");
     let config = LauncherConfig {
         viewer_static_dir: static_dir.to_string_lossy().to_string(),
         chain_enabled: false,
@@ -391,12 +391,12 @@ fn validate_game_config_accepts_minimal_valid_setup() {
 
 #[test]
 fn validate_game_config_accepts_default_web_alias_using_service_launcher_path() {
-    let bundle_root = make_temp_dir("world_web_launcher_bundle");
+    let bundle_root = make_temp_dir("oasis7_web_launcher_bundle");
     let bin_dir = bundle_root.join("bin");
     let web_dir = bundle_root.join("web");
     fs::create_dir_all(&bin_dir).expect("create bin dir");
     fs::create_dir_all(&web_dir).expect("create web dir");
-    let launcher_bin = bin_dir.join("world_game_launcher");
+    let launcher_bin = bin_dir.join("oasis7_game_launcher");
     fs::write(&launcher_bin, b"").expect("create launcher stub");
 
     let config = LauncherConfig {
@@ -428,9 +428,9 @@ fn validate_game_config_accepts_default_web_alias_using_service_launcher_path() 
 
 #[test]
 fn validate_game_config_accepts_bundle_relative_web_path_from_launcher_bin() {
-    let bundle_root = make_temp_dir("world_web_launcher_bundle_relative");
+    let bundle_root = make_temp_dir("oasis7_web_launcher_bundle_relative");
     let bundle_bin = bundle_root.join("bin");
-    let launcher_bin = bundle_bin.join("world_game_launcher");
+    let launcher_bin = bundle_bin.join("oasis7_game_launcher");
     let bundle_web = bundle_root.join("web");
     fs::create_dir_all(&bundle_bin).expect("create bundle bin dir");
     fs::create_dir_all(&bundle_web).expect("create bundle web dir");
@@ -742,7 +742,7 @@ fn make_temp_dir(label: &str) -> PathBuf {
         .expect("time")
         .as_nanos();
     path.push(format!(
-        "oasis7_world_web_launcher_test_{label}_{}_{}",
+        "oasis7_oasis7_web_launcher_test_{label}_{}_{}",
         std::process::id(),
         stamp
     ));

@@ -7,14 +7,14 @@
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 建档并冻结 Web 控制台需求、验收标准与非目标。
-- [x] T1 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 新增 `world_web_launcher` 二进制（HTTP 控制台 + 启停 API + 状态/日志接口）。
+- [x] T1 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 新增 `oasis7_web_launcher` 二进制（HTTP 控制台 + 启停 API + 状态/日志接口）。
 - [x] T2 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 将 Web 控制台入口接入发行打包脚本并生成运行脚本。
 - [x] T3 (PRD-WORLD_SIMULATOR-010) [test_tier_required]: 补齐单元测试、模块 PRD 追溯与当日 devlog。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
-- `crates/oasis7/src/bin/world_game_launcher.rs`
+- `crates/oasis7/src/bin/oasis7_game_launcher.rs`
 - `scripts/build-game-launcher-bundle.sh`
 - `testing-manual.md`
 

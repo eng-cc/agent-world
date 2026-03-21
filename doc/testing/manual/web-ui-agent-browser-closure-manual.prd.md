@@ -7,21 +7,21 @@
 
 ## 1. Executive Summary
 - Problem Statement: Web UI 验收若缺少统一启动、采样、门禁与故障分级，且未区分 Viewer 页面与 launcher 控制面的驱动优先级，容易出现“看起来可用但证据不可复现”的假通过。
-- Proposed Solution: 保留 agent-browser 作为 Viewer 页面默认闭环手册，同时显式规定 `world_web_launcher` / launcher Web 控制面先用 GUI Agent 驱动产品动作，再用页面做状态与字段校验，并统一接入发布脚本与 fail-fast 处置；Viewer Web 默认通过 `--use-angle=gl,--ignore-gpu-blocklist` 固定硬件 WebGL 路径，若 headed 仍落到 software renderer 则继续按环境阻断。
+- Proposed Solution: 保留 agent-browser 作为 Viewer 页面默认闭环手册，同时显式规定 `oasis7_web_launcher` / launcher Web 控制面先用 GUI Agent 驱动产品动作，再用页面做状态与字段校验，并统一接入发布脚本与 fail-fast 处置；Viewer Web 默认通过 `--use-angle=gl,--ignore-gpu-blocklist` 固定硬件 WebGL 路径，若 headed 仍落到 software renderer 则继续按环境阻断。
 - Success Criteria:
   - SC-1: S6 Web 闭环流程可由手册命令一键复现，并明确区分 Viewer 与 launcher 控制面两类 surface。
   - SC-2: 验收口径强制 `open ... --headed`，并默认附带 `--use-angle=gl,--ignore-gpu-blocklist`；若仍命中 `SwiftShader/software rendering` 继续阻断。
   - SC-3: 至少输出 `snapshot + console + screenshot + state` 证据。
   - SC-4: 发布验收脚本（`viewer-release-qa-loop/full-coverage`）可直接复用手册约束。
   - SC-5: 文档迁移后统一 `.prd.md/.project.md` 命名并通过治理检查。
-  - SC-6: `world_web_launcher` 的产品动作路径默认走 GUI Agent，不再把 canvas 直点或纯 agent-browser 动作作为首选执行链路。
+  - SC-6: `oasis7_web_launcher` 的产品动作路径默认走 GUI Agent，不再把 canvas 直点或纯 agent-browser 动作作为首选执行链路。
   - SC-7: 当 Viewer 进入 `renderMode=software_safe` 且 auth bootstrap 可用时，QA 可通过专用脚本稳定复验 prompt apply/rollback、chat ack 与消息流采样，并将 `agent_spoke` 缺失分级为可追溯失败签名。
   - SC-8: 当 runtime 以 `OASIS7_RUNTIME_AGENT_CHAT_ECHO=1` 启动时，software-safe Web 闭环应能稳定看到标准 `AgentSpoke` 事件，并将其汇入统一消息流。
 
 ## 2. User Experience & Functionality
 - User Personas:
   - Web 闭环执行者：按手册运行 agent-browser 并归档证据。
-  - 启动器控制面执行者：通过 GUI Agent 驱动 `world_web_launcher` 产品动作，并用页面做结果核对。
+  - 启动器控制面执行者：通过 GUI Agent 驱动 `oasis7_web_launcher` 产品动作，并用页面做结果核对。
   - 发布负责人：用一键脚本快速判断是否可放行。
   - 故障值守人员：根据 fail-fast 等级快速定位问题归属。
 - User Scenarios & Frequency:
@@ -35,7 +35,7 @@
   - PRD-TESTING-WEB-002: As a 发布负责人, I want hard GPU/headed gate and clear pass criteria, so that release decisions are defensible.
   - PRD-TESTING-WEB-003: As a 故障值守人员, I want fail-fast taxonomy with actions, so that incident triage is fast and consistent.
 - Critical User Flows:
-  1. Flow-WEB-001: `启动 world_game_launcher -> 端口/主页自检 -> 打开 Web 页`
+  1. Flow-WEB-001: `启动 oasis7_game_launcher -> 端口/主页自检 -> 打开 Web 页`
   2. Flow-WEB-002: `Viewer 页面执行 agent-browser 语义步骤 -> 采集状态/日志/截图 -> 关闭会话`
   3. Flow-WEB-002A: `launcher 控制面执行 GUI Agent 动作 -> 页面核对状态/字段 -> 归档响应与截图`
   3. Flow-WEB-003: `执行 GPU/headed 硬门禁 -> 检测软件渲染关键字 -> pass/fail`
@@ -70,18 +70,18 @@
   - 不在本专题扩展非 Web 场景测试规范。
 
 ## 3. AI System Requirements (If Applicable)
-- Tool Requirements: `agent-browser` CLI（二进制命令）用于 Viewer 页面自动化，默认通过 `--use-angle=gl,--ignore-gpu-blocklist` 固定硬件 WebGL 路径（可用 `AGENT_BROWSER_ARGS` 覆盖）；`world_web_launcher` 的 GUI Agent 接口用于 launcher 控制面动作驱动；执行环境需保证两者均可直接调用。
+- Tool Requirements: `agent-browser` CLI（二进制命令）用于 Viewer 页面自动化，默认通过 `--use-angle=gl,--ignore-gpu-blocklist` 固定硬件 WebGL 路径（可用 `AGENT_BROWSER_ARGS` 覆盖）；`oasis7_web_launcher` 的 GUI Agent 接口用于 launcher 控制面动作驱动；执行环境需保证两者均可直接调用。
 - Evaluation Strategy: 通过语义动作成功率（`__AW_TEST__` 可用性）、门禁通过率和故障分级命中率评估闭环质量。
 
 ## 4. Technical Specifications
-- Architecture Overview: Web 闭环按 surface 分为两条路径：`world_viewer_live` / Viewer 页面由 agent-browser 负责页面驱动与证据采样；`world_web_launcher` / launcher Web 控制面由 GUI Agent 负责产品动作驱动，再由页面校验状态与字段；发布脚本承载标准化验收与总结。
+- Architecture Overview: Web 闭环按 surface 分为两条路径：`world_viewer_live` / Viewer 页面由 agent-browser 负责页面驱动与证据采样；`oasis7_web_launcher` / launcher Web 控制面由 GUI Agent 负责产品动作驱动，再由页面校验状态与字段；发布脚本承载标准化验收与总结。
 - Integration Points:
   - `testing-manual.md`
   - `scripts/run-viewer-web.sh`
   - `scripts/viewer-release-qa-loop.sh`
   - `scripts/viewer-release-full-coverage.sh`
   - `agent-browser` CLI（通过 `PATH` 调用）
-  - `world_web_launcher` GUI Agent 接口（`/api/gui-agent/*`）
+  - `oasis7_web_launcher` GUI Agent 接口（`/api/gui-agent/*`）
   - `window.__AW_TEST__`（`runSteps/setMode/focus/select/sendControl/getState`）
 - Edge Cases & Error Handling:
   - F1 `ERR_CONNECTION_REFUSED`: launcher 未就绪或已退出；先确认端口监听再重试。

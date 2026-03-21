@@ -147,15 +147,15 @@
   - SC-43: `OpenClaw` provider 在纳入范围的 agent 场景中必须达到与内置 agent 可感知等价的用户体验；若未通过 parity 验收，不得默认启用或扩大覆盖范围。
   - SC-44: 启动器 / Viewer 的浏览器存储键、临时状态文件名、Canvas/字体等公开前端运行时 key 必须优先使用 `oasis7` 前缀；迁移期需兼容读取旧 `oasis7` / `oasis7` / `OASIS7_*` key，避免现有脚本与本地状态立即失效。
   - SC-45: Viewer 的 auth bootstrap object、玩家鉴权 env key、右侧面板持久化路径与诊断类 viewer env key 必须优先迁移到 `oasis7` 前缀；迁移期需同时兼容旧 `oasis7` key，避免 software-safe / native / embedded launcher 三条链路出现断裂。
-  - SC-46: `world_game_launcher` / `world_web_launcher` 的运行时路径覆盖 env key（launcher bin、chain runtime bin、viewer/game static dir、web launcher static dir）必须优先迁移到 `OASIS7_*`，同时兼容旧 `OASIS7_*`，避免已有 bundle、shell 脚本与运维环境变量在品牌迁移时失效。
+  - SC-46: `oasis7_game_launcher` / `oasis7_web_launcher` 的运行时路径覆盖 env key（launcher bin、chain runtime bin、viewer/game static dir、web launcher static dir）必须优先迁移到 `OASIS7_*`，同时兼容旧 `OASIS7_*`，避免已有 bundle、shell 脚本与运维环境变量在品牌迁移时失效。
   - SC-47: Viewer 的 3D 配置、theme preset、panel/headless 行为控制与 release profile 脚本中的 `VIEWER_*` env key 必须统一到 `OASIS7_VIEWER_*`，避免渲染调参、无头回归与 operator 预设在品牌迁移后继续依赖旧前缀。
   - SC-48: Viewer operator 脚本中的抓帧、材质巡检与压力测试默认 env 写入必须统一使用 `OASIS7_VIEWER_*`，避免 capture/inspection/stress 自动化继续分叉出旧前缀入口。
   - SC-49: simulator LLM 配置链路的默认 env key 必须统一到 `OASIS7_LLM_*`；`llm_agent`、agent-scoped goal override、runtime live 测试与长稳脚本不得继续保留旧前缀入口。
-  - SC-50: runtime live 的 OpenClaw provider / QA chat echo 链路默认 env key 必须优先迁移到 `OASIS7_AGENT_PROVIDER_MODE`、`OASIS7_OPENCLAW_*` 与 `OASIS7_RUNTIME_AGENT_CHAT_ECHO`，同时兼容旧 `OASIS7_*` fallback；`world_game_launcher` 注入、runtime_live 读取、software-safe QA 脚本与对应测试不得继续把旧前缀当作唯一入口。
+  - SC-50: runtime live 的 OpenClaw provider / QA chat echo 链路默认 env key 必须优先迁移到 `OASIS7_AGENT_PROVIDER_MODE`、`OASIS7_OPENCLAW_*` 与 `OASIS7_RUNTIME_AGENT_CHAT_ECHO`，同时兼容旧 `OASIS7_*` fallback；`oasis7_game_launcher` 注入、runtime_live 读取、software-safe QA 脚本与对应测试不得继续把旧前缀当作唯一入口。
   - SC-51: bundle 产物中的 `run-client.sh` / `run-game.sh` / `run-web-launcher.sh` / `run-chain-runtime.sh` 默认 env 注入与 README 示例必须优先迁移到 `OASIS7_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，同时兼容旧 `OASIS7_*` fallback；bundle-first operator 路径不得继续把旧前缀当作默认口径。
   - SC-52: viewer theme preset `.env` 文件中的默认导出 key 必须统一到 `OASIS7_VIEWER_*`，避免 theme 预设成为 viewer 配置链路里最后一批仍默认写旧前缀的 operator 入口。
   - SC-53: repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup 脚本 operator env key 必须迁移到 `oasis7_openclaw_agent` 与 `OPENCLAW_OASIS7_*`，并移除旧品牌 runtime agent 命名与运行时 fallback；`oasis7-run.sh`、skill 文档、bridge 示例与 setup 脚本不得继续把旧品牌命名当作当前默认或有效 operator 入口。
-  - SC-54: `world_game_launcher` / `world_web_launcher` 相关测试与静态资源测试写入系统临时目录时，默认前缀必须使用 `oasis7_*`，避免本地测试产物与失败签名继续泄露旧 `oasis7_*` 品牌字符串。
+  - SC-54: `oasis7_game_launcher` / `oasis7_web_launcher` 相关测试与静态资源测试写入系统临时目录时，默认前缀必须使用 `oasis7_*`，避免本地测试产物与失败签名继续泄露旧 `oasis7_*` 品牌字符串。
   - SC-55: 内部 CI 编排脚本中的 helper 函数名与聚合入口必须优先使用 `oasis7_*` 口径，避免 `scripts/ci-tests.sh` 继续通过 `run_oasis7_*` 这类内部标识扩散旧品牌命名。
   - SC-56: `world_chain_runtime` 转账提交相关测试写入系统临时目录时，默认前缀必须使用 `oasis7_*`，避免链运行时转账测试产物继续泄露旧 `oasis7_*` 内部命名。
   - SC-57: OpenClaw 首期 `P0` 默认 gameplay profile id 必须迁移到 `oasis7_p0_low_freq_npc`，并移除旧 `oasis7_p0_low_freq_npc` 兼容别名；launcher、runtime live、parity bench、bridge 与 `oasis7` operator 文档不得继续把旧 profile id 当作当前默认或有效入口。
@@ -163,7 +163,7 @@
   - SC-59: `oasis7` 主包内 runtime / chain-runtime / simulator 的测试临时目录、缺失路径 helper 与 builtin wasm 临时构建目录必须默认使用 `oasis7_*`，避免主包回归产物与本地 `.tmp` 工作目录继续泄露旧 `oasis7` / `oasis7` 品牌字符串。
   - SC-60: `world_openclaw_parity_bench` 的自定义 OpenClaw profile 样例必须优先使用 `oasis7_*` 命名，避免 bench 参数解析测试继续把旧 `oasis7_*` profile id 当作非默认样例真值。
   - SC-61: runtime test module signer seed、governance local finality signer seed 与 chain runtime node consensus signer 派生命名空间必须优先使用 `oasis7_*` 口径，避免确定性测试密钥与 validator signer 派生链路继续内嵌旧 `oasis7` 品牌字符串。
-  - SC-62: `world_game_launcher` / `world_web_launcher` 的 viewer 开发态 fallback 路径必须优先探测 `oasis7_viewer/dist`，同时保留 `oasis7_viewer/dist` 兼容回退，避免源码态调试链路在品牌迁移期间继续把旧 viewer 目录名当作当前默认真值。
+  - SC-62: `oasis7_game_launcher` / `oasis7_web_launcher` 的 viewer 开发态 fallback 路径必须优先探测 `oasis7_viewer/dist`，同时保留 `oasis7_viewer/dist` 兼容回退，避免源码态调试链路在品牌迁移期间继续把旧 viewer 目录名当作当前默认真值。
   - SC-63: `oasis7_client_launcher` 的源码态 viewer static dir 默认探测与 launcher 端配置校验必须优先探测 `oasis7_viewer/dist`，同时保留 `oasis7_viewer/dist` 兼容回退，避免 client launcher 与其他 launcher 在品牌迁移期对 dev fallback 目录名产生分叉。
   - SC-64: `oasis7_viewer` 的 auth/node-config 相关测试临时目录前缀必须默认使用 `oasis7_*`，避免 viewer auth 回归产物继续泄露旧 `oasis7_viewer_*` 内部命名。
   - SC-65: `crates/oasis7/tests` 下的 module store 集成测试临时目录前缀与测试模块 artifact signer seed 必须优先使用 `oasis7_*` 口径，避免 integration test 产物与确定性签名种子继续内嵌旧 `oasis7` 品牌字符串。
@@ -172,9 +172,9 @@
   - SC-68: 保留旧品牌 fallback literal 的兼容代码路径中，源码级常量/标识符命名必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*oasis7*` 口径，避免维护层面的模块名/变量名继续把旧品牌当作当前源码真值。
   - SC-69: `oasis7_viewer` 的 auth bootstrap、viewer env alias、automation 与 perf probe 兼容代码路径中，源码级常量/测试命名必须优先使用 `compat` 语义而不是继续沿用旧品牌 viewer 维护口径，避免 Viewer 维护层的模块名/变量名继续扩散旧品牌。
   - SC-70: `oasis7` runtime 的 builtin wasm、module source compile 与 simulator LLM 兼容 env 代码路径中，源码级常量/辅助函数/定向测试命名必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*OASIS7_*` 口径，避免 runtime 维护层的模块名/变量名继续把旧品牌当作当前源码真值。
-  - SC-71: `world_game_launcher` 与 `viewer/runtime_live` 的 launcher path、viewer auth、OpenClaw/runtime chat echo 兼容 env 代码路径中，源码级常量/辅助函数/定向测试命名必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*OASIS7_*` 口径，避免 launcher/runtime live 维护层的模块名/变量名继续把旧品牌当作当前源码真值。
-  - SC-72: `world_web_launcher` 与 `oasis7_client_launcher/src/main.rs` 的 launcher path、console static、字体/语言/control bind 兼容 env 代码路径中，源码级常量/辅助函数/定向测试命名必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*OASIS7_*` 口径，避免 launcher 维护层的模块名/变量名继续把旧品牌当作当前源码真值。
-  - SC-73: `world_web_launcher` 与 `oasis7_client_launcher` 的 launcher 测试文件中，源码级测试函数命名也必须优先使用 `compat` 语义而不是继续沿用 `before_legacy` / `legacy_name` 口径，避免测试层继续扩散旧品牌维护语义。
+  - SC-71: `oasis7_game_launcher` 与 `viewer/runtime_live` 的 launcher path、viewer auth、OpenClaw/runtime chat echo 兼容 env 代码路径中，源码级常量/辅助函数/定向测试命名必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*OASIS7_*` 口径，避免 launcher/runtime live 维护层的模块名/变量名继续把旧品牌当作当前源码真值。
+  - SC-72: `oasis7_web_launcher` 与 `oasis7_client_launcher/src/main.rs` 的 launcher path、console static、字体/语言/control bind 兼容 env 代码路径中，源码级常量/辅助函数/定向测试命名必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*OASIS7_*` 口径，避免 launcher 维护层的模块名/变量名继续把旧品牌当作当前源码真值。
+  - SC-73: `oasis7_web_launcher` 与 `oasis7_client_launcher` 的 launcher 测试文件中，源码级测试函数命名也必须优先使用 `compat` 语义而不是继续沿用 `before_legacy` / `legacy_name` 口径，避免测试层继续扩散旧品牌维护语义。
   - SC-74: runtime `power_bootstrap_release_manifest_full` 全量回归中的 builtin wasm 兼容 env 常量与测试局部变量命名也必须优先使用 `compat` 语义而不是继续沿用 `LEGACY_*OASIS7_*` 口径，避免 full-tier 测试层继续扩散旧品牌维护语义。
   - SC-75: `build-wasm-module` / `ci-m1-wasm-summary` / `sync-m1-builtin-wasm-artifacts` 脚本中的旧品牌 wasm env helper 与局部变量命名也必须优先使用 `compat` 语义而不是继续沿用 `wasm_legacy_env_key` / `legacy_key` 口径，避免脚本维护层继续把旧品牌当作当前源码真值。
   - SC-76: `setup-openclaw-oasis7-runtime`、`viewer-texture-inspector-lib` 与 `capture-viewer-frame` 脚本中的旧品牌 viewer/OpenClaw env helper 与局部变量命名也必须优先使用 `compat` 语义而不是继续沿用 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径，避免脚本维护层继续把旧品牌当作当前源码真值。
@@ -199,7 +199,7 @@
   - SC-95: 活跃工具源码中的旧品牌 env helper / 常量命名也必须收口到 `compat_old_brand` 等中性语义；兼容字面量值可继续保留为 fallback，但内部实现不应继续使用 `LEGACY_WASM_ENV_PREFIX` 这类把旧品牌当作主语义的标识名。
   - SC-96: Viewer 运行时自身不再接受任何旧品牌 viewer alias；`viewer_env`、auth/bootstrap、automation、perf probe 与 right-panel 模块可见性状态路径必须只认 `OASIS7_VIEWER_*` / `.oasis7_viewer`。
   - SC-97: Client launcher 运行时自身不再接受任何旧品牌 launcher alias；字体/语言/control-plane env、launcher/runtime/static dir 覆盖 env、Web console static dir 覆盖 env，以及 UX/LLM 本地状态 key 必须只认 `OASIS7_*` / `oasis7_*` 当前入口。
-  - SC-98: `world_game_launcher` / `world_web_launcher` 运行时自身不再接受任何旧品牌 launcher alias；服务端 launcher/runtime bin 覆盖 env、viewer auth bootstrap 注入对象/键名与 console/viewer static dir 覆盖 env 必须只认 `OASIS7_*` 当前入口。
+  - SC-98: `oasis7_game_launcher` / `oasis7_web_launcher` 运行时自身不再接受任何旧品牌 launcher alias；服务端 launcher/runtime bin 覆盖 env、viewer auth bootstrap 注入对象/键名与 console/viewer static dir 覆盖 env 必须只认 `OASIS7_*` 当前入口。
   - SC-99: `viewer/runtime_live` 运行时自身不再接受任何旧品牌 provider/chat echo alias；OpenClaw provider 配置与 QA chat echo 开关必须只认 `OASIS7_*` 当前入口。
   - SC-100: runtime/simulator 自身不再接受任何旧品牌 module source / builtin wasm / LLM alias；模块源码编译、builtin wasm 获取与 LLM 配置必须只认 `OASIS7_*` 当前入口。
   - SC-101: repo-owned wasm build / sync 脚本不再接受任何旧品牌 alias；deterministic wasm build、CI summary 与 builtin wasm manifest sync 的当前 operator 入口必须只认 `OASIS7_WASM_*`。
@@ -280,17 +280,17 @@
   7. Flow-WS-007（Launcher 重复打包容错）:
      `已有 bundle 运行中 -> 再次执行 build-game-launcher-bundle -> 二进制替换成功 -> 产物完整可启动`
   8. Flow-WS-008（Launcher Web 控制台远程运维）:
-     `SSH 启动 world_web_launcher -> 浏览器访问控制台 -> 提交配置并启动 -> 观察状态/日志 -> 远程停止`
+     `SSH 启动 oasis7_web_launcher -> 浏览器访问控制台 -> 提交配置并启动 -> 观察状态/日志 -> 远程停止`
   9. Flow-WS-009（Launcher UI Schema 共享）:
      `更新共享 schema -> native 配置区渲染同步变更 -> web 控制台通过 /api/ui/schema 动态渲染同字段`
   10. Flow-WS-010（Launcher egui Web 同层复用）:
-     `构建 launcher wasm 静态资源 -> world_web_launcher 托管静态目录 -> 浏览器加载同一 egui UI -> 调用 /api/state|start|stop`
+     `构建 launcher wasm 静态资源 -> oasis7_web_launcher 托管静态目录 -> 浏览器加载同一 egui UI -> 调用 /api/state|start|stop`
   11. Flow-WS-011（Launcher wasm 时间兼容闭环）:
      `headed `agent-browser` 打开 launcher Web 页面 -> wasm 初始化 -> 无 time panic -> snapshot/console/screenshot 采证`
   12. Flow-WS-012（Launcher Web 必填校验分流）:
      `浏览器加载配置 -> 必填校验 -> 不再提示 launcher/chain runtime bin 必填 -> 继续启动流程`
   13. Flow-WS-013（Launcher native/web 同控制面）:
-     `启动 world_web_launcher -> native/wasm 客户端轮询 /api/state -> 分别触发 /api/start|stop 与 /api/chain/start|stop -> 状态一致反馈`
+     `启动 oasis7_web_launcher -> native/wasm 客户端轮询 /api/state -> 分别触发 /api/start|stop 与 /api/chain/start|stop -> 状态一致反馈`
   14. Flow-WS-014（Viewer live runtime 接管 Phase 1）:
      `world_viewer_live -> runtime::World 驱动 step -> 适配为 simulator 协议快照/事件 -> oasis7_viewer 消费`
   15. Flow-WS-015（Viewer live runtime 接管 Phase 2）:
@@ -314,7 +314,7 @@
   24. Flow-WS-024（Launcher 区块链浏览器 P1 公共主链视角）:
      `打开浏览器面板 -> Address 查询余额/nonce/交易 -> Contracts 查看系统合约目录与详情 -> Assets 查看主 token 与 NFT 能力状态 -> Mempool 查看 pending 交易`
   25. Flow-WS-025（Launcher 可用性与体验硬化）:
-     `源码直跑 world_web_launcher -> 默认静态目录自动回退 -> 链未就绪时按钮禁用并显示原因 -> 查询参数编码后发起 explorer/search/transfer 请求 -> 未运行时 stop no-op 保留错误态 -> 移动端可读布局 + favicon 无 404 噪声`
+     `源码直跑 oasis7_web_launcher -> 默认静态目录自动回退 -> 链未就绪时按钮禁用并显示原因 -> 查询参数编码后发起 explorer/search/transfer 请求 -> 未运行时 stop no-op 保留错误态 -> 移动端可读布局 + favicon 无 404 噪声`
   26. Flow-WS-026（Launcher 启动阻断配置引导）:
      `点击启动游戏/区块链 -> 检测到阻断配置 -> 弹出配置引导窗口并直接填写字段 -> 校验通过后再次启动`
   27. Flow-WS-027（Launcher 区块链浏览器视觉与交互优化）:
@@ -328,7 +328,7 @@
   31. Flow-WS-031（runtime required 失败用例临时下线）:
      `执行 required 测试 -> 命中已知 10 项失败 -> 精确白名单加 #[ignore] 并标注原因 -> required 测试恢复可执行 -> 根因修复后逐项解除 ignore`
   32. Flow-WS-032（launcher execution world 输出路径收敛）:
-     `启动 world_game_launcher/world_web_launcher -> 构造 world_chain_runtime 参数时显式附带 --execution-world-dir -> runtime 持久化 explorer-index.json 到 output/chain-runtime/<node_id>/reward-runtime-execution-world`
+     `启动 oasis7_game_launcher/oasis7_web_launcher -> 构造 world_chain_runtime 参数时显式附带 --execution-world-dir -> runtime 持久化 explorer-index.json 到 output/chain-runtime/<node_id>/reward-runtime-execution-world`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -341,7 +341,7 @@
 | Launcher bundle 二进制替换容错 | `OUT_DIR/bin/*`、目标文件占用状态、`--profile`、`--web-dist` | 打包时先删除目标二进制再 copy；若旧进程占用也需完成替换 | `build_start -> binaries_replaced -> web_prepared -> bundle_ready` | 同一 `OUT_DIR` 多次执行后产物版本需一致，不得残留半更新状态 | 仅本地构建者可写 bundle 输出目录 |
 | Launcher Web 控制台 | `scenario/live_bind/web_bind/viewer_host/viewer_port/viewer_static_dir/llm/chain` | 浏览器点击“启动/停止”触发子进程编排与状态刷新 | `idle -> running -> stopped/exited` | bind/端口/目录先校验，失败时拒绝启动并返回错误详情 | 默认部署在受信网络，具备远程访问能力 |
 | Launcher UI schema 共享 | `id/section/kind/label_zh/label_en/web_visible/native_visible` | UI 按 schema 动态渲染字段，新增字段无需双端重复定义 | `schema_loaded -> form_ready` | section 内按 schema 顺序渲染 | schema 只读；不含敏感数据 |
-| Launcher egui Web 复用与静态托管 | `launcher wasm dist`、`console_static_dir`、`/api/state|start|stop` | `world_web_launcher` 托管静态资源并由浏览器运行同一 egui UI | `boot -> static_ready -> interactive` | 静态请求走目录白名单，API 路径优先级高于静态路径 | 受信网络部署，禁止目录穿越 |
+| Launcher egui Web 复用与静态托管 | `launcher wasm dist`、`console_static_dir`、`/api/state|start|stop` | `oasis7_web_launcher` 托管静态资源并由浏览器运行同一 egui UI | `boot -> static_ready -> interactive` | 静态请求走目录白名单，API 路径优先级高于静态路径 | 受信网络部署，禁止目录穿越 |
 | Launcher wasm 时间兼容 | `WEB_POLL_INTERVAL_MS`、`last_web_poll_at`、web time primitive | 页面轮询 `/api/state` 且不触发 wasm 时间平台 panic | `interactive -> polling -> synced` | 轮询基于单调时钟差值，防并发请求堆积 | 浏览器会话可读，接口由受信网络控制 |
 | Launcher Web 必填分流 | `launcher_bin`、`chain_runtime_bin`（native-only） | Web 端校验排除 native-only 必填，native 端保持阻断 | `config_loaded -> validated` | 按 `target_arch` 分流 | 平台边界一致 |
 | Launcher native/web 同控制面 | `/api/state`、`/api/start`、`/api/stop`、`/api/chain/start`、`/api/chain/stop` | native 与 web 端统一走 API 触发游戏/区块链独立启停 | `service_ready -> game_running/stopped + chain_starting/ready/stopped` | 状态以服务端快照为准，客户端仅做展示与轮询 | 控制面部署在受信网络，客户端仅消费授权 API |
@@ -379,12 +379,12 @@
   - AC-14: 设置中心内的 LLM 配置（`llm.api_key/base_url/model`）必须支持文件重载与保存；游戏/区块链配置变更应即时作用于启动器内存配置。
   - AC-15: `oasis7_viewer` native 链路在默认渲染配置下不得出现 `TonyMcMapFace tonemapping requires tonemapping_luts feature` 错误；2D/3D 均可正常渲染并可交互。
   - AC-16: `scripts/build-game-launcher-bundle.sh` 在 `OUT_DIR/bin` 目标文件已存在且正被运行时，重复执行仍可成功产出完整 bundle，不得出现 `Text file busy` 或“二进制部分更新”状态。
-  - AC-17: `world_web_launcher` 支持在无 GUI 服务器上通过浏览器完成启动/停止、状态查询与日志查看，且打包产物提供独立入口脚本。
-  - AC-18: `oasis7_client_launcher` 与 `world_web_launcher` 必须消费同一份 launcher UI schema；web 控制台表单字段通过 `/api/ui/schema` 动态渲染。
-  - AC-19: 启动器 web UI 必须由 `oasis7_client_launcher` 的 egui wasm 产物提供；`world_web_launcher` 默认托管该静态目录且保持 API 闭环可用。
+  - AC-17: `oasis7_web_launcher` 支持在无 GUI 服务器上通过浏览器完成启动/停止、状态查询与日志查看，且打包产物提供独立入口脚本。
+  - AC-18: `oasis7_client_launcher` 与 `oasis7_web_launcher` 必须消费同一份 launcher UI schema；web 控制台表单字段通过 `/api/ui/schema` 动态渲染。
+  - AC-19: 启动器 web UI 必须由 `oasis7_client_launcher` 的 egui wasm 产物提供；`oasis7_web_launcher` 默认托管该静态目录且保持 API 闭环可用。
   - AC-20: 启动器 wasm 页面在 `agent-browser --headed` 打开后不得出现 `time not implemented on this platform` 或 `RuntimeError: unreachable`，并需输出 snapshot/console/screenshot 证据。
   - AC-21: 启动器 Web 端不得再提示 `launcher bin` 与 `chain runtime bin` 必填；native 端保留对应必填校验。
-  - AC-22: 启动器 native 与 web 必须统一消费 `world_web_launcher` 控制面 API，并支持链/游戏独立启停及一致状态展示。
+  - AC-22: 启动器 native 与 web 必须统一消费 `oasis7_web_launcher` 控制面 API，并支持链/游戏独立启停及一致状态展示。
   - AC-23: `world_viewer_live` 可启动 runtime 驱动 live server，并保持现有 viewer 协议兼容（`WorldSnapshot/WorldEvent`）。
   - AC-24: `world_viewer_live --llm` 必须支持 prompt/chat 鉴权与控制闭环，runtime script 模式对 prompt/chat 返回 `llm_mode_required`。
   - AC-25: runtime live 补齐动作映射覆盖并新增等价回归；`world_viewer_live` 移除 simulator 启动分支并统一 runtime-only 路径。
@@ -393,7 +393,7 @@
   - AC-28: 启动器在轮询并发场景下保持交互稳定：配置编辑不被回写、请求按域并发、反馈草稿不丢失、顶栏窄屏可读、转账过滤可一键清空。
   - AC-29: 启动器 Web 端支持转账提交（`/api/chain/transfer`），并可展示结构化 `action_id/error_code/error`。
   - AC-30: 启动器 Web 端 `设置` 与 `反馈` 入口可用，反馈提交流程通过 `/api/chain/feedback` 返回结构化成功/失败结果。
-  - AC-31: 启动器 native 已失效遗留代码（状态字段/测试资产）完成清理后，`oasis7_client_launcher` 与 `world_web_launcher` required 回归通过且行为无回归。
+  - AC-31: 启动器 native 已失效遗留代码（状态字段/测试资产）完成清理后，`oasis7_client_launcher` 与 `oasis7_web_launcher` required 回归通过且行为无回归。
   - AC-32: 启动器转账功能升级为产品级体验（账户/余额辅助、自动 nonce、最终状态与历史可视化），且 native/web 同层前端行为一致并通过跨端回归。
   - AC-33: 启动器区块链浏览器面板支持 overview/transactions/transaction 查询，且 native/web 行为一致并通过 required 回归。
   - AC-34: 启动器区块链浏览器支持 `blocks/block/txs/tx/search`、分页与 `tx_hash` 查询，并具备重启后索引恢复能力（最近窗口）且 native/web 行为一致。
@@ -404,32 +404,32 @@
   - AC-39: 启动器自引导闭环完成：首次 3 步引导、任务流卡片、禁用态 CTA、转账金额预设与时间线、浏览器快捷入口、术语解释、成功配置画像、演示模式与本地引导计数在 native/web 双端一致可用。
   - AC-40: 启动器自引导 round-2 完成：错误卡片三动作（修复配置/自动补默认值/重试）、阻塞态可执行下一步、启动前体检修复清单、跳过引导后的持续轻提示在 native/web 双端一致可用。
   - AC-41: 启动器代码治理满足工程约束：`oasis7_client_launcher` 单个 Rust 源文件不得超过 1200 行，超限时需模块化拆分且行为不回归。
-  - AC-42: `world_web_launcher` 新增 `/api/gui-agent/capabilities|state|action`，并通过统一动作集合覆盖人工操作全功能（启停、反馈、转账、浏览器查询），所有动作返回结构化 `{ok,action,error_code?,error?,data?,state}`。
+  - AC-42: `oasis7_web_launcher` 新增 `/api/gui-agent/capabilities|state|action`，并通过统一动作集合覆盖人工操作全功能（启停、反馈、转账、浏览器查询），所有动作返回结构化 `{ok,action,error_code?,error?,data?,state}`。
   - AC-43: `oasis7` required 测试中 10 个已知失败项按白名单临时下线（`#[ignore]`）且保留原因注释；`env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required` 不再因这 10 项失败阻塞。
   - AC-44: Viewer 活跃手册、原生窗口标题、Web 页面 `<title>` 与弱图形页标题必须统一使用 `oasis7 Viewer` 品牌；旧 `oasis7 Viewer` 仅可作为脚本兼容匹配或历史证据上下文保留，不得继续作为当前公开标题。
   - AC-45: `doc/world-simulator/**` 仍可读历史专题的首行标题必须统一切换到 `oasis7` / `oasis7 Simulator` / `oasis7 Viewer` 品牌；旧 `oasis7*` 标题仅允许出现在正文历史上下文中，不改动内部实现兼容名与历史证据正文。
   - AC-46: `oasis7_client_launcher` 在 Web/native 两端对外暴露的新前端运行时 key（如 localStorage key、UX 状态文件名、Canvas id、字体/env key）默认切到 `oasis7` 前缀，同时继续兼容读取旧 key；不得因为改名前缀变更而丢失既有浏览器配置或阻断 bundle/script 现网入口。
   - AC-47: `oasis7_client_launcher` Web 静态入口 `<title>` 必须使用 `oasis7 Launcher (Web)`；旧 `oasis7 Launcher (Web)` 不得继续作为当前公开标题。
   - AC-48: `oasis7_client_launcher` 原生窗口标题与应用内主标题必须统一使用 `oasis7 Client Launcher` / `oasis7 客户端启动器`；旧 `oasis7 Client Launcher` 文案不得继续作为当前公开标题。
-  - AC-49: `oasis7_viewer` 与 `world_game_launcher` 的 viewer auth/bootstrap 链路必须默认写入并优先读取 `OASIS7_VIEWER_*` 与 `__OASIS7_VIEWER_AUTH_ENV`；`software_safe`、chat auth、automation、embedded launcher 注入与右侧面板持久化路径不得因改名失配。
-  - AC-50: `world_game_launcher` 与 `world_web_launcher` 必须默认优先读取 `OASIS7_WORLD_VIEWER_LIVE_BIN`、`OASIS7_WORLD_CHAIN_RUNTIME_BIN`、`OASIS7_GAME_STATIC_DIR`、`OASIS7_GAME_LAUNCHER_BIN`、`OASIS7_WEB_LAUNCHER_STATIC_DIR`；帮助文案、错误信息和控制面静态目录校验不得再暴露旧品牌 env 名。
+  - AC-49: `oasis7_viewer` 与 `oasis7_game_launcher` 的 viewer auth/bootstrap 链路必须默认写入并优先读取 `OASIS7_VIEWER_*` 与 `__OASIS7_VIEWER_AUTH_ENV`；`software_safe`、chat auth、automation、embedded launcher 注入与右侧面板持久化路径不得因改名失配。
+  - AC-50: `oasis7_game_launcher` 与 `oasis7_web_launcher` 必须默认优先读取 `OASIS7_WORLD_VIEWER_LIVE_BIN`、`OASIS7_WORLD_CHAIN_RUNTIME_BIN`、`OASIS7_GAME_STATIC_DIR`、`OASIS7_GAME_LAUNCHER_BIN`、`OASIS7_WEB_LAUNCHER_STATIC_DIR`；帮助文案、错误信息和控制面静态目录校验不得再暴露旧品牌 env 名。
   - AC-51: `oasis7_viewer` 的 3D 配置、theme runtime、panel/headless 控制与 release UI profile 默认必须写入并优先读取 `OASIS7_VIEWER_*`；`viewer_3d_config`、theme preset 解析、无头 auto-play、panel mode/experience mode 与 profile env 文件不得因前缀切换而丢失既有本地覆盖或回归脚本能力。
   - AC-52: `oasis7_viewer` 的 automation、auto-focus、auto-degrade、event window 与 internal capture 默认必须写入并优先读取 `OASIS7_VIEWER_*`；startup automation、聚焦/降级策略、事件抽样与内部抓帧入口不得因前缀切换而失效。
   - AC-53: `scripts/capture-viewer-frame.sh`、`scripts/viewer-texture-inspector*.sh` 与 `scripts/viewer-owr4-stress.sh` 必须默认写入或展示 `OASIS7_VIEWER_*`；脚本输出的运行命令、状态文件、meta 记录与清理逻辑不得再把旧前缀当作唯一真值。
   - AC-54: `simulator/llm_defaults`、`simulator/llm_agent` 与 `scripts/llm-longrun-stress.sh` 必须默认优先读取或写入 `OASIS7_LLM_MODEL`、`OASIS7_LLM_BASE_URL`、`OASIS7_LLM_API_KEY`、`OASIS7_LLM_TIMEOUT_MS`、`OASIS7_LLM_PROMPT_*`、`OASIS7_LLM_DEBUG_MODE`、`OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`；agent-scoped goal override、调试提示与 longrun stress 命令注入不得因前缀切换而失效。
-  - AC-55: `viewer/runtime_live/llm_sidecar`、`viewer/runtime_live/control_plane`、`world_game_launcher`、`viewer/runtime_live/tests` 与 `scripts/viewer-software-safe-chat-regression.sh` 必须默认优先读取或写入 `OASIS7_AGENT_PROVIDER_MODE`、`OASIS7_OPENCLAW_BASE_URL`、`OASIS7_OPENCLAW_AUTH_TOKEN`、`OASIS7_OPENCLAW_CONNECT_TIMEOUT_MS`、`OASIS7_OPENCLAW_AGENT_PROFILE`、`OASIS7_OPENCLAW_EXECUTION_MODE`、`OASIS7_RUNTIME_AGENT_CHAT_ECHO`；OpenClaw provider 解析、player_parity 元数据、QA echo 注入与 software-safe Web 回归不得因前缀切换而失效。
+  - AC-55: `viewer/runtime_live/llm_sidecar`、`viewer/runtime_live/control_plane`、`oasis7_game_launcher`、`viewer/runtime_live/tests` 与 `scripts/viewer-software-safe-chat-regression.sh` 必须默认优先读取或写入 `OASIS7_AGENT_PROVIDER_MODE`、`OASIS7_OPENCLAW_BASE_URL`、`OASIS7_OPENCLAW_AUTH_TOKEN`、`OASIS7_OPENCLAW_CONNECT_TIMEOUT_MS`、`OASIS7_OPENCLAW_AGENT_PROFILE`、`OASIS7_OPENCLAW_EXECUTION_MODE`、`OASIS7_RUNTIME_AGENT_CHAT_ECHO`；OpenClaw provider 解析、player_parity 元数据、QA echo 注入与 software-safe Web 回归不得因前缀切换而失效。
   - AC-56: `scripts/build-game-launcher-bundle.sh` 生成的 wrapper 脚本必须默认写入 `OASIS7_GAME_LAUNCHER_BIN`、`OASIS7_GAME_STATIC_DIR`、`OASIS7_WORLD_CHAIN_RUNTIME_BIN`、`OASIS7_WEB_LAUNCHER_STATIC_DIR` 与 `OASIS7_CHAIN_STORAGE_PROFILE`；README 中的 bundle-first operator 示例不得再把旧前缀作为默认真值。
   - AC-57: `crates/oasis7_viewer/assets/themes/**/presets/*.env` 必须默认导出 `OASIS7_VIEWER_*`；同一主题的 default/glossy/matte 预设都必须完成一致迁移，且 theme preset 仍能被现有 viewer env 解析链路消费。
   - AC-58: `scripts/setup-openclaw-oasis7-runtime.sh`、`.agents/skills/oasis7/scripts/oasis7-run.sh`、`.agents/skills/oasis7/**/*.md` 与 `world_openclaw_local_bridge` 相关测试样例必须只使用 `oasis7_openclaw_agent` 与 `OPENCLAW_OASIS7_{AGENT_ID,WORKSPACE,MODEL}`；repo-owned runtime workspace 默认路径必须切到 `tools/openclaw/oasis7_openclaw_workspace`，旧品牌 runtime setup 路径仅可作为历史路径上下文保留，不得继续作为 operator-facing 真值。
-  - AC-59: `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`、`crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs` 与 `crates/oasis7/src/bin/world_web_launcher/static_files.rs` 里的临时目录前缀必须默认改为 `oasis7_*`；launcher/web-launcher 定向测试通过后，临时目录命名不得继续输出 `oasis7_*` 作为当前默认值。
+  - AC-59: `crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs`、`crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs` 与 `crates/oasis7/src/bin/oasis7_web_launcher/static_files.rs` 里的临时目录前缀必须默认改为 `oasis7_*`；launcher/web-launcher 定向测试通过后，临时目录命名不得继续输出 `oasis7_*` 作为当前默认值。
   - AC-60: `scripts/ci-tests.sh` 里的 required/full/support 分层 helper 与分发入口必须默认改为 `run_oasis7_*` 命名；脚本帮助、tier dispatch 与执行行为保持不变，且脚本内不得残留 `run_oasis7_*` 作为当前 helper 真值。
   - AC-61: `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs` 的临时目录前缀必须默认改为 `oasis7_transfer_submit_api_tests_*`；转账提交/状态/浏览器查询定向测试通过后，不得继续输出 `oasis7_transfer_submit_api_tests_*` 作为当前默认值。
-  - AC-62: `world_game_launcher`、`world_openclaw_parity_bench`、`viewer/runtime_live/llm_sidecar`、`oasis7_client_launcher`、`scripts/openclaw-parity-p0.sh` 与 `.agents/skills/oasis7/**` 必须只使用 `oasis7_p0_low_freq_npc`；`world_openclaw_local_bridge` 不得继续接受旧 `oasis7_p0_low_freq_npc` 别名，定向回归必须明确断言旧 profile id 已失效。
+  - AC-62: `oasis7_game_launcher`、`world_openclaw_parity_bench`、`viewer/runtime_live/llm_sidecar`、`oasis7_client_launcher`、`scripts/openclaw-parity-p0.sh` 与 `.agents/skills/oasis7/**` 必须只使用 `oasis7_p0_low_freq_npc`；`world_openclaw_local_bridge` 不得继续接受旧 `oasis7_p0_low_freq_npc` 别名，定向回归必须明确断言旧 profile id 已失效。
   - AC-63: `crates/oasis7_distfs/src/{lib.rs,manifest.rs,replication.rs,feedback/tests.rs,feedback_p2p.rs,challenge/tests.rs,challenge_scheduler.rs}` 与 `crates/oasis7_consensus/src/**/*tests*.rs` 中的临时目录前缀必须默认改为 `oasis7_distfs_*` / `oasis7_consensus_*` 系列；对应包测试通过后，不得继续输出 `oasis7-*` 或 `oasis7_*` 作为当前默认值。
-  - AC-64: `crates/oasis7/src/bin/world_chain_runtime/{execution_bridge.rs,reward_runtime_worker.rs,storage_metrics.rs}`、`crates/oasis7/src/runtime/{builtin_wasm_materializer.rs,segmenter.rs,node_points_runtime.rs}`、`crates/oasis7/src/runtime/tests/{audit.rs,builtin_wasm_materializer.rs,gameplay_protocol_split_part1.rs,persistence.rs,power_bootstrap_release_manifest_full.rs,storage_cold_index.rs,storage_footprint_fixture.rs}`、`crates/oasis7/src/simulator/tests/persist.rs` 与 `crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs` 的临时目录/工作目录前缀必须默认改为 `oasis7_*`；定向回归通过后，主包不得继续输出这些旧 `oasis7-*` / `oasis7_*` 默认值。
+  - AC-64: `crates/oasis7/src/bin/world_chain_runtime/{execution_bridge.rs,reward_runtime_worker.rs,storage_metrics.rs}`、`crates/oasis7/src/runtime/{builtin_wasm_materializer.rs,segmenter.rs,node_points_runtime.rs}`、`crates/oasis7/src/runtime/tests/{audit.rs,builtin_wasm_materializer.rs,gameplay_protocol_split_part1.rs,persistence.rs,power_bootstrap_release_manifest_full.rs,storage_cold_index.rs,storage_footprint_fixture.rs}`、`crates/oasis7/src/simulator/tests/persist.rs` 与 `crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs` 的临时目录/工作目录前缀必须默认改为 `oasis7_*`；定向回归通过后，主包不得继续输出这些旧 `oasis7-*` / `oasis7_*` 默认值。
   - AC-65: `crates/oasis7/src/bin/world_openclaw_parity_bench.rs` 的 `parse_options_accepts_custom_openclaw_agent_profile` 样例值必须改为 `oasis7_p1_memory_loop`，避免 bench 的自定义 profile 参数解析回归继续把旧 `oasis7_p1_memory_loop` 当作当前样例真值。
   - AC-66: `crates/oasis7/src/runtime/world/{mod.rs,governance.rs}`、`crates/oasis7/src/runtime/tests/{mod.rs,governance.rs,module_action_loop_split_part1.rs}`、`crates/oasis7/src/bin/world_chain_runtime.rs` 与 `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs` 中的 deterministic signer seed / namespace 字符串必须改为 `oasis7-test-module-artifact-signer-v1`、`oasis7-governance-local-finality-signer-{1,2}-v1`、`oasis7-governance-test-finality-signer-3-v1` 与 `oasis7-node-consensus-signer-v1`；相关 governance / module / execution 回归通过后，不得继续把旧 `oasis7-*signer*` 当作当前真值。
-  - AC-67: `crates/oasis7/src/bin/world_game_launcher.rs`、`crates/oasis7/src/bin/world_web_launcher/{runtime_paths.rs,control_plane.rs}` 与对应测试必须把 viewer 开发态 fallback 候选顺序改为 `oasis7_viewer/dist` 优先、`oasis7_viewer/dist` 次之；`world_viewer_demo` 的 operator 提示不得继续把 `oasis7_viewer` 当作当前连接指引真值。
+  - AC-67: `crates/oasis7/src/bin/oasis7_game_launcher.rs`、`crates/oasis7/src/bin/oasis7_web_launcher/{runtime_paths.rs,control_plane.rs}` 与对应测试必须把 viewer 开发态 fallback 候选顺序改为 `oasis7_viewer/dist` 优先、`oasis7_viewer/dist` 次之；`world_viewer_demo` 的 operator 提示不得继续把 `oasis7_viewer` 当作当前连接指引真值。
   - AC-68: `crates/oasis7_client_launcher/src/{platform_ops.rs,launcher_core.rs,main_tests.rs}` 必须把源码态 viewer fallback 候选顺序统一为 `oasis7_viewer/dist` 优先、`oasis7_viewer/dist` 次之；`resolve_static_dir_path` 与 launcher config 校验不得继续把旧 viewer 目录名当作 client launcher 当前默认真值。
   - AC-69: `crates/oasis7_viewer/src/egui_right_panel_chat_tests.rs` 的 viewer auth 临时目录前缀必须改为 `oasis7_viewer_chat_auth_*`；对应 node-config signer 定向回归通过后，不得继续输出 `oasis7_viewer_chat_auth_*` 作为当前默认测试产物命名。
   - AC-70: `crates/oasis7/tests/module_store.rs` 的集成测试临时目录前缀必须改为 `oasis7-store-*` 系列，且 `crates/oasis7/tests/common/mod.rs` 的 deterministic module artifact signer seed 必须改为 `oasis7-test-module-artifact-signer-v1`；module store 定向回归通过后，不得继续把 `oasis7-store-*` 或旧 `oasis7-test-module-artifact-signer-v1` 当作当前默认真值。
@@ -438,9 +438,9 @@
   - AC-73: `crates/oasis7_client_launcher/src/{self_guided.rs,llm_settings_web.rs}`、`crates/oasis7_viewer/src/right_panel_module_visibility.rs` 与 `crates/oasis7/src/bin/world_openclaw_local_bridge.rs` 中保留旧品牌 fallback literal 的源码常量/测试名必须改为 `compat` 语义命名；兼容读取行为保持不变，但源码中不得继续把 `LEGACY_*oasis7*` 当作当前维护口径。
   - AC-74: `crates/oasis7_viewer/{software_safe.js,src/viewer_automation.rs,src/egui_right_panel_chat.rs,src/egui_right_panel_chat_auth.rs,src/viewer_env.rs,src/perf_probe.rs}` 中原旧品牌 fallback literal 对应的源码常量与定向测试名必须改为 `compat` 语义命名；源码中不得继续把旧品牌 viewer 维护口径当作当前命名规范。
   - AC-75: `crates/oasis7/src/runtime/{builtin_wasm_materializer.rs,module_source_compiler.rs}`、`crates/oasis7/src/simulator/llm_agent.rs` 与对应定向测试中原旧品牌 fallback literal 对应的源码常量/辅助函数/测试名必须改为 `compat` 语义命名；源码中不得继续把旧品牌运行时维护口径当作当前命名规范。
-  - AC-76: `crates/oasis7/src/bin/world_game_launcher.rs`、`crates/oasis7/src/viewer/runtime_live/{control_plane.rs,llm_sidecar.rs,tests.rs}` 中原旧品牌 launcher/provider/chat echo fallback literal 对应的源码常量/辅助函数/定向测试名必须改为 `compat` 语义命名；源码中不得继续把旧品牌维护口径当作当前命名规范。
-  - AC-77: `crates/oasis7/src/bin/world_web_launcher/{runtime_paths.rs,control_plane.rs,world_web_launcher_tests.rs}` 与 `crates/oasis7_client_launcher/src/{main.rs,platform_ops.rs,main_tests.rs}` 中原旧品牌 launcher path fallback literal 对应的源码常量/辅助函数/定向测试名必须改为 `compat` 语义命名；源码中不得继续把旧品牌维护口径当作当前命名规范。
-  - AC-78: `crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`、`crates/oasis7_client_launcher/src/platform_ops.rs` 与 `crates/oasis7_client_launcher/src/main_tests.rs` 中涉及 `viewer_dev_dist_candidates` 的定向测试函数名必须改为 `compat` 语义命名；测试行为保持不变，但源码中不得继续把 `legacy_name` 当作当前测试维护口径。
+  - AC-76: `crates/oasis7/src/bin/oasis7_game_launcher.rs`、`crates/oasis7/src/viewer/runtime_live/{control_plane.rs,llm_sidecar.rs,tests.rs}` 中原旧品牌 launcher/provider/chat echo fallback literal 对应的源码常量/辅助函数/定向测试名必须改为 `compat` 语义命名；源码中不得继续把旧品牌维护口径当作当前命名规范。
+  - AC-77: `crates/oasis7/src/bin/oasis7_web_launcher/{runtime_paths.rs,control_plane.rs,oasis7_web_launcher_tests.rs}` 与 `crates/oasis7_client_launcher/src/{main.rs,platform_ops.rs,main_tests.rs}` 中原旧品牌 launcher path fallback literal 对应的源码常量/辅助函数/定向测试名必须改为 `compat` 语义命名；源码中不得继续把旧品牌维护口径当作当前命名规范。
+  - AC-78: `crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs`、`crates/oasis7_client_launcher/src/platform_ops.rs` 与 `crates/oasis7_client_launcher/src/main_tests.rs` 中涉及 `viewer_dev_dist_candidates` 的定向测试函数名必须改为 `compat` 语义命名；测试行为保持不变，但源码中不得继续把 `legacy_name` 当作当前测试维护口径。
   - AC-79: `crates/oasis7/src/runtime/tests/power_bootstrap_release_manifest_full.rs` 中原旧品牌 fallback literal 对应的源码常量与测试局部变量名必须改为 `compat` 语义命名；`test_tier_full` 行为保持不变，且源码中不得继续把旧品牌维护口径当作当前命名规范。
   - AC-80: `scripts/{build-wasm-module.sh,ci-m1-wasm-summary.sh,sync-m1-builtin-wasm-artifacts.sh}` 中原旧品牌 fallback literal 对应的 helper/局部变量名必须改为 `compat` 语义命名；脚本行为保持不变，且源码中不得继续把旧品牌 helper 命名当作当前维护口径。
   - AC-81: `scripts/{setup-openclaw-oasis7-runtime.sh,viewer-texture-inspector-lib.sh,viewer-texture-inspector.sh,capture-viewer-frame.sh}` 中原旧品牌 fallback literal 对应的 helper/局部变量名与调用点必须改为 `compat` 语义命名；脚本行为保持不变，且源码中不得继续把旧品牌 helper 命名当作当前维护口径。
@@ -465,7 +465,7 @@
   - AC-100: `tools/wasm_build_suite/src/lib.rs` 中处理旧品牌 fallback 的 helper / 常量 / 测试命名必须改为 `compat_old_brand_*` 语义；变更后 `cargo test --manifest-path tools/wasm_build_suite/Cargo.toml` 必须通过。
   - AC-101: `crates/oasis7_viewer/{software_safe.js,src/viewer_env.rs,src/egui_right_panel_chat.rs,src/egui_right_panel_chat_auth.rs,src/viewer_automation.rs,src/perf_probe.rs,src/right_panel_module_visibility.rs}` 必须移除旧品牌 viewer fallback 读取；相应 compat 测试必须删除或改为断言旧 alias 已失效，且 `cargo test -p oasis7_viewer` 的定向用例与 `cargo check -p oasis7_viewer --target wasm32-unknown-unknown` 必须通过。
   - AC-102: `crates/oasis7_client_launcher/{src/main.rs,src/platform_ops.rs,src/launcher_core.rs,src/app_process.rs,src/self_guided.rs,src/llm_settings_web.rs}` 必须移除 `OASIS7_*` / `oasis7_*` fallback 读取；相应 compat 测试必须删除或改为断言旧 alias 已失效，且 `cargo test -p oasis7_client_launcher --bin oasis7_client_launcher` 与 `cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` 必须通过。
-  - AC-103: `crates/oasis7/src/bin/{world_game_launcher.rs,world_web_launcher/runtime_paths.rs,world_web_launcher/control_plane.rs}` 必须移除 `OASIS7_*` launcher/runtime fallback 读取；`world_game_launcher` 只能注入 `__OASIS7_VIEWER_AUTH_ENV` 与 `OASIS7_VIEWER_*` auth key，`world_web_launcher` 只能接受 `OASIS7_*` 的 launcher/runtime/static dir 覆盖 env，相应定向测试必须改为断言旧 alias 已失效，且 `cargo test -p oasis7 --bin world_game_launcher`、`cargo test -p oasis7 --bin world_web_launcher`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
+  - AC-103: `crates/oasis7/src/bin/{oasis7_game_launcher.rs,oasis7_web_launcher/runtime_paths.rs,oasis7_web_launcher/control_plane.rs}` 必须移除 `OASIS7_*` launcher/runtime fallback 读取；`oasis7_game_launcher` 只能注入 `__OASIS7_VIEWER_AUTH_ENV` 与 `OASIS7_VIEWER_*` auth key，`oasis7_web_launcher` 只能接受 `OASIS7_*` 的 launcher/runtime/static dir 覆盖 env，相应定向测试必须改为断言旧 alias 已失效，且 `cargo test -p oasis7 --bin oasis7_game_launcher`、`cargo test -p oasis7 --bin oasis7_web_launcher`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
   - AC-104: `crates/oasis7/src/viewer/runtime_live/{llm_sidecar.rs,control_plane.rs,tests.rs}` 必须移除旧品牌 provider/chat echo fallback 读取；OpenClaw provider 配置与 chat echo 定向测试必须改为断言旧 alias 已失效，且 `cargo test -p oasis7 runtime_live::tests -- --nocapture`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
   - AC-105: `crates/oasis7/src/{runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent.rs}` 与相关定向测试必须移除旧品牌 module source / builtin wasm / LLM fallback 读取，并把 compat 测试改为断言旧 alias 已失效；变更后至少 `cargo test -p oasis7 builtin_wasm_materializer -- --nocapture`、`cargo test -p oasis7 module_action_loop -- --nocapture`、`cargo test -p oasis7 llm_agent -- --nocapture`、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
   - AC-106: `scripts/{build-wasm-module.sh,ci-m1-wasm-summary.sh,sync-m1-builtin-wasm-artifacts.sh}` 必须移除旧品牌 wasm fallback 读取与旧品牌 operator 文案，使 wasm build/sync 脚本只认 `OASIS7_WASM_*` 当前入口；变更后 `bash -n` 校验这三支脚本、`./scripts/doc-governance-check.sh` 与 `git diff --check` 必须通过。
@@ -520,8 +520,8 @@
   - `crates/oasis7_client_launcher/src/transfer_window.rs`
   - `crates/oasis7_client_launcher/src/launcher_core.rs`
   - `crates/oasis7_client_launcher/Cargo.toml`
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
-  - `crates/oasis7/src/bin/world_web_launcher/gui_agent_api.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/gui_agent_api.rs`
   - `crates/oasis7/src/bin/world_viewer_live.rs`
   - `crates/oasis7/src/viewer/runtime_live.rs`
   - `crates/oasis7_client_launcher/index.html`
@@ -540,7 +540,7 @@
   - 无 GUI 环境：桌面 GUI 不可用时需通过 Web 控制台操作启动器，且必须支持远程状态可见与错误可诊断。
   - wasm 时间兼容：浏览器运行路径不得使用不支持的平台时间实现，避免页面初始化阶段 panic 直接阻断闭环。
   - Web 必填误判：Web API 配置不含 native-only 字段时，必填校验必须按平台分流，防止误报阻断。
-  - 控制面分离回归：native 若无法拉起本地 `world_web_launcher`，必须回传可诊断错误且禁止误导性“运行中”状态。
+  - 控制面分离回归：native 若无法拉起本地 `oasis7_web_launcher`，必须回传可诊断错误且禁止误导性“运行中”状态。
   - Web 设置存储失败：浏览器禁用本地存储时，设置窗口需返回明确失败提示，不得 silent fail。
   - Web 反馈代理失败：`/api/chain/feedback` 不可达或上游拒绝时，前端需展示结构化错误并保留重试能力。
   - 转账最终态悬挂：`accepted` 长时间未进入 `confirmed/failed` 时需明确标记为 `pending/timeout`，避免“仅 action_id”误判成功。
@@ -554,8 +554,8 @@
   - runtime llm 桥接缺口：LLM 决策动作若无 runtime 映射实现，需返回结构化拒绝并继续服务循环，禁止 panic/卡死。
   - required 基线失败下线漂移：临时下线必须限定白名单；若 ignore 数量超出已知 10 项需视为异常并阻断合入。
   - 启动器品牌 key 迁移：浏览器 localStorage、native UX 状态文件、环境变量覆盖与测试临时目录在改名前缀切换后，必须先读 `oasis7` 再回退旧 `OASIS7_*` / `oasis7*`；禁止一次性硬切导致现有配置、bundle 或 QA 脚本失效。
-  - Viewer auth/bootstrap 迁移：`software_safe.js`、viewer wasm/native 鉴权、`world_game_launcher` 注入脚本与右侧面板持久化路径在切到 `oasis7` 前缀后，必须仍能消费旧 `oasis7` 对象名、env 名和默认目录，避免旧 bundle、旧浏览器缓存和 operator 环境变量同时失效。
-  - 服务端 launcher 路径 key 迁移：`world_game_launcher` / `world_web_launcher` 在切到 `OASIS7_*` 路径覆盖 env 后，必须继续接受旧 `OASIS7_*`，并同步更新 help / validation / error 文案；禁止出现“运行时兼容新旧 key、但诊断仍只提示旧 key”这种半迁移状态。
+  - Viewer auth/bootstrap 迁移：`software_safe.js`、viewer wasm/native 鉴权、`oasis7_game_launcher` 注入脚本与右侧面板持久化路径在切到 `oasis7` 前缀后，必须仍能消费旧 `oasis7` 对象名、env 名和默认目录，避免旧 bundle、旧浏览器缓存和 operator 环境变量同时失效。
+  - 服务端 launcher 路径 key 迁移：`oasis7_game_launcher` / `oasis7_web_launcher` 在切到 `OASIS7_*` 路径覆盖 env 后，必须继续接受旧 `OASIS7_*`，并同步更新 help / validation / error 文案；禁止出现“运行时兼容新旧 key、但诊断仍只提示旧 key”这种半迁移状态。
   - Viewer 运行时调参 key 迁移：`viewer_3d_config`、theme runtime、panel/headless 行为控制与 release profile 在切到 `OASIS7_VIEWER_*` 后，必须完全停止消费旧品牌 viewer key；禁止出现“主程序已迁新 key、但旧 preset / 脚本 / 无头回归仍被静默忽略”的半迁移状态。
 - Non-Functional Requirements:
   - 性能目标:
@@ -565,9 +565,9 @@
     - NFR-3: Launcher/Web 闭环流程在 Linux/macOS 开发环境可执行并产出一致证据结构。
     - NFR-8: Viewer 2D/3D 默认渲染在 Linux native + Web 环境可稳定启动，且不出现粉紫回退屏。
     - NFR-9: 复用同一 `--out-dir` 连续执行 `build-game-launcher-bundle.sh`（含“上一次 bundle 仍运行”场景）时，打包成功率需为 100%（`test_tier_required`）。
-    - NFR-10: `world_web_launcher` 在受信网络下可绑定 `0.0.0.0`，并在浏览器端稳定轮询状态接口（`p95 <= 200ms`，本地网络）。
+    - NFR-10: `oasis7_web_launcher` 在受信网络下可绑定 `0.0.0.0`，并在浏览器端稳定轮询状态接口（`p95 <= 200ms`，本地网络）。
     - NFR-11: `/api/ui/schema` 响应 `p95 <= 100ms`（本地网络），且 schema 新增字段不破坏既有渲染逻辑。
-    - NFR-12: launcher wasm 静态资源由 `world_web_launcher` 托管时，首屏可交互时间（本地网络）`p95 <= 2s`。
+    - NFR-12: launcher wasm 静态资源由 `oasis7_web_launcher` 托管时，首屏可交互时间（本地网络）`p95 <= 2s`。
     - NFR-13: launcher wasm 在 headed 浏览器启动后 `console error` 不得包含 `time not implemented on this platform`，且不出现 `RuntimeError: unreachable`。
     - NFR-14: Web 必填校验分流后不得新增 native 校验退化，`launcher_bin`/`chain_runtime_bin` 在 native 仍为必填。
     - NFR-15: native 与 web 客户端状态刷新节奏一致（默认 1s），不得出现持续状态漂移（>2 个轮询周期）。
@@ -618,31 +618,31 @@
 | PRD-WORLD_SIMULATOR-007 | TASK-WORLD_SIMULATOR-016/017 | `test_tier_required` | 设置中心分区配置读写与生效验证 | 启动器配置可用性与一致性 |
 | PRD-WORLD_SIMULATOR-008 | TASK-WORLD_SIMULATOR-019/020 | `test_tier_required` + `test_tier_full` | native 抓帧脚本复现/回归、`oasis7_viewer` 单测与构建检查 | Viewer 2D/3D 渲染稳定性、native 交互可用性 |
 | PRD-WORLD_SIMULATOR-009 | TASK-WORLD_SIMULATOR-021/022 | `test_tier_required` | 启动 `run-game.sh` 占用二进制后重复执行 bundle 脚本，验证无 `Text file busy` 且新产物可启动 | 启动器发行打包稳定性、重复发布可靠性 |
-| PRD-WORLD_SIMULATOR-010 | TASK-WORLD_SIMULATOR-023/024 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher` + 启动 `world_web_launcher` 后通过 `/api/start`/`/api/stop`/`/api/state` 回归 + `bash -n scripts/build-game-launcher-bundle.sh` 校验打包入口脚本 | 无 GUI 服务器远程运维、launcher Web 控制能力 |
-| PRD-WORLD_SIMULATOR-011 | TASK-WORLD_SIMULATOR-025/026 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7_launcher_ui` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher`，验证 shared schema 定义、native/web 同源渲染与接口输出 | 启动器 UI 一致性、跨端配置项治理能力 |
-| PRD-WORLD_SIMULATOR-012 | TASK-WORLD_SIMULATOR-027/028 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher` + `bash -n scripts/build-game-launcher-bundle.sh`，验证同层 egui 复用、静态托管与打包入口 | 启动器 UI 统一维护能力、headless 运维体验一致性 |
-| PRD-WORLD_SIMULATOR-013 | TASK-WORLD_SIMULATOR-029/030/097 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + headed agent-browser 打开 `world_web_launcher` 控制台并校验 `console error` 无 `time not implemented` + 归档 screenshot/console/snapshot 证据 | 启动器 Web 端可用性、wasm 运行时兼容稳定性 |
+| PRD-WORLD_SIMULATOR-010 | TASK-WORLD_SIMULATOR-023/024 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher` + 启动 `oasis7_web_launcher` 后通过 `/api/start`/`/api/stop`/`/api/state` 回归 + `bash -n scripts/build-game-launcher-bundle.sh` 校验打包入口脚本 | 无 GUI 服务器远程运维、launcher Web 控制能力 |
+| PRD-WORLD_SIMULATOR-011 | TASK-WORLD_SIMULATOR-025/026 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7_launcher_ui` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher`，验证 shared schema 定义、native/web 同源渲染与接口输出 | 启动器 UI 一致性、跨端配置项治理能力 |
+| PRD-WORLD_SIMULATOR-012 | TASK-WORLD_SIMULATOR-027/028 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher` + `bash -n scripts/build-game-launcher-bundle.sh`，验证同层 egui 复用、静态托管与打包入口 | 启动器 UI 统一维护能力、headless 运维体验一致性 |
+| PRD-WORLD_SIMULATOR-013 | TASK-WORLD_SIMULATOR-029/030/097 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + headed agent-browser 打开 `oasis7_web_launcher` 控制台并校验 `console error` 无 `time not implemented` + 归档 screenshot/console/snapshot 证据 | 启动器 Web 端可用性、wasm 运行时兼容稳定性 |
 | PRD-WORLD_SIMULATOR-014 | TASK-WORLD_SIMULATOR-031/032 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + headed agent-browser 打开 launcher web 并回归 `/api/start` `/api/stop`，验证 Web 端不再受 native-only 必填项阻断 | 启动器 Web 配置校验准确性、跨端校验边界一致性 |
-| PRD-WORLD_SIMULATOR-015 | TASK-WORLD_SIMULATOR-033/034/035 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + headed agent-browser 覆盖链/游戏独立启停 | 启动器 native/web 控制面一致性、链路维护成本与回归稳定性 |
+| PRD-WORLD_SIMULATOR-015 | TASK-WORLD_SIMULATOR-033/034/035 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + headed agent-browser 覆盖链/游戏独立启停 | 启动器 native/web 控制面一致性、链路维护成本与回归稳定性 |
 | PRD-WORLD_SIMULATOR-016 | TASK-WORLD_SIMULATOR-036/037 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_viewer_live`，验证 runtime 驱动 live 链路与协议兼容适配 | viewer live runtime/simulator 双模式一致性与迁移风险可控 |
 | PRD-WORLD_SIMULATOR-017 | TASK-WORLD_SIMULATOR-038/039 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_viewer_live`，验证 runtime llm/chat/prompt 控制链路打通与脚本模式边界错误码 | viewer live runtime llm/script 体验连续性、鉴权与桥接稳定性 |
 | PRD-WORLD_SIMULATOR-018 | TASK-WORLD_SIMULATOR-040/041 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_viewer_live`，验证 action 映射覆盖扩展、等价回归与 runtime-only 启动分支收敛 | viewer live runtime 映射覆盖稳定性、旧分支移除风险与体验一致性 |
 | PRD-WORLD_SIMULATOR-019 | TASK-WORLD_SIMULATOR-042/043/044/045 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_viewer_live` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_viewer_live`，验证真实 LLM 决策链路、100% 映射覆盖与硬失败语义 | runtime live LLM 行为真实性与观测完整性 |
-| PRD-WORLD_SIMULATOR-020 | TASK-WORLD_SIMULATOR-046/047 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 Web 转账代理与 wasm 提交流程 | 启动器 Web 转账闭环可用性与跨端语义一致性 |
-| PRD-WORLD_SIMULATOR-021 | TASK-WORLD_SIMULATOR-048/049 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 Web 设置中心可用化与反馈代理提交闭环 | 启动器 Web 设置/反馈跨端一致性与功能可达性 |
-| PRD-WORLD_SIMULATOR-022 | TASK-WORLD_SIMULATOR-050/051 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 native 遗留代码清理后行为稳定 | 启动器 native 维护面收敛与跨端行为稳定性 |
-| PRD-WORLD_SIMULATOR-023 | TASK-WORLD_SIMULATOR-052/053 | `test_tier_required` + `test_tier_full` | `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_full transfer_submit_api::tests:: -- --nocapture`，验证账户/余额辅助、自动 nonce、最终状态与历史面板跨端一致 | 启动器转账产品化体验、跨端前端一致性与链路可观测性 |
-| PRD-WORLD_SIMULATOR-024 | TASK-WORLD_SIMULATOR-054/055/056 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 explorer RPC、控制面代理与启动器面板闭环 | 启动器区块链浏览器可用性、跨端一致性与发布前诊断效率 |
-| PRD-WORLD_SIMULATOR-025 | TASK-WORLD_SIMULATOR-057/058/059 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 explorer P0 API（blocks/block/txs/tx/search）、持久化索引与跨端分页搜索 UI | 启动器区块链浏览器公共主链视角 P0 能力、可观测性与跨端一致性 |
-| PRD-WORLD_SIMULATOR-026 | TASK-WORLD_SIMULATOR-060/061/062 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 explorer P1 API（address/contracts/contract/assets/mempool）与启动器四视图闭环 | 启动器区块链浏览器公共主链视角 P1 能力、可观测性与跨端一致性 |
-| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + agent-browser（桌面 + 390x844）采证，验证路径回退、禁用态提示、参数编码、stop no-op 语义、移动端可读性、favicon 噪声治理与启动阻断引导 | 启动器可用性稳定性、跨端体验一致性与运维可诊断性 |
+| PRD-WORLD_SIMULATOR-020 | TASK-WORLD_SIMULATOR-046/047 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 Web 转账代理与 wasm 提交流程 | 启动器 Web 转账闭环可用性与跨端语义一致性 |
+| PRD-WORLD_SIMULATOR-021 | TASK-WORLD_SIMULATOR-048/049 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 Web 设置中心可用化与反馈代理提交闭环 | 启动器 Web 设置/反馈跨端一致性与功能可达性 |
+| PRD-WORLD_SIMULATOR-022 | TASK-WORLD_SIMULATOR-050/051 | `test_tier_required` | `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 native 遗留代码清理后行为稳定 | 启动器 native 维护面收敛与跨端行为稳定性 |
+| PRD-WORLD_SIMULATOR-023 | TASK-WORLD_SIMULATOR-052/053 | `test_tier_required` + `test_tier_full` | `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_full transfer_submit_api::tests:: -- --nocapture`，验证账户/余额辅助、自动 nonce、最终状态与历史面板跨端一致 | 启动器转账产品化体验、跨端前端一致性与链路可观测性 |
+| PRD-WORLD_SIMULATOR-024 | TASK-WORLD_SIMULATOR-054/055/056 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 explorer RPC、控制面代理与启动器面板闭环 | 启动器区块链浏览器可用性、跨端一致性与发布前诊断效率 |
+| PRD-WORLD_SIMULATOR-025 | TASK-WORLD_SIMULATOR-057/058/059 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 explorer P0 API（blocks/block/txs/tx/search）、持久化索引与跨端分页搜索 UI | 启动器区块链浏览器公共主链视角 P0 能力、可观测性与跨端一致性 |
+| PRD-WORLD_SIMULATOR-026 | TASK-WORLD_SIMULATOR-060/061/062 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证 explorer P1 API（address/contracts/contract/assets/mempool）与启动器四视图闭环 | 启动器区块链浏览器公共主链视角 P1 能力、可观测性与跨端一致性 |
+| PRD-WORLD_SIMULATOR-027 | TASK-WORLD_SIMULATOR-063/064/065/066 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + agent-browser（桌面 + 390x844）采证，验证路径回退、禁用态提示、参数编码、stop no-op 语义、移动端可读性、favicon 噪声治理与启动阻断引导 | 启动器可用性稳定性、跨端体验一致性与运维可诊断性 |
 | PRD-WORLD_SIMULATOR-028 | TASK-WORLD_SIMULATOR-067/068 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + `env -u RUSTC_WRAPPER cargo fmt --all`，验证浏览器面板视觉层级、状态可视化、筛选恢复与列表-详情协同交互 | 启动器区块链浏览器日常核查效率、跨端体验一致性 |
 | PRD-WORLD_SIMULATOR-029 | TASK-WORLD_SIMULATOR-069/070/071 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`，验证配置防回写、请求按域并发、反馈草稿保护、顶栏响应式与转账过滤清空 | 启动器高频交互稳定性、并发可用性与窄屏可读性 |
 | PRD-WORLD_SIMULATOR-030 | TASK-WORLD_SIMULATOR-072/073/074/075/076/077/078/079/080/081/082/083/084/085/086/087/088/089/090 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` + agent-browser（桌面 + 390x844）采证 + `wc -l crates/oasis7_client_launcher/src/main.rs crates/oasis7_client_launcher/src/explorer_window.rs`，验证首次引导、任务流、错误恢复、preflight、持续轻提示、术语解释、快捷入口、成功配置画像、演示模式、本地计数与超长文件治理 | 启动器新用户自引导闭环、失败恢复效率、跨端一致性与代码维护可持续性 |
-| PRD-WORLD_SIMULATOR-031 | TASK-WORLD_SIMULATOR-091/092 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_web_launcher`，验证 GUI Agent 能力声明、统一动作执行与结构化响应稳定性 | Web Console 机器控制面、人工操作可替代性、既有控制面兼容性 |
+| PRD-WORLD_SIMULATOR-031 | TASK-WORLD_SIMULATOR-091/092 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin oasis7_web_launcher`，验证 GUI Agent 能力声明、统一动作执行与结构化响应稳定性 | Web Console 机器控制面、人工操作可替代性、既有控制面兼容性 |
 | PRD-WORLD_SIMULATOR-032 | TASK-WORLD_SIMULATOR-093/094 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --tests --features test_tier_required`，验证 10 项已知失败用例临时下线后 required 测试链路恢复可执行且白名单外覆盖保持有效 | runtime required 回归可用性、pre-commit 稳定性、测试资产可追溯性 |
-| PRD-WORLD_SIMULATOR-033 | TASK-WORLD_SIMULATOR-095/096 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_game_launcher world_game_launcher_tests::build_world_chain_runtime_args_includes_storage_profile -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher world_web_launcher_tests::build_chain_runtime_args_includes_chain_overrides_when_on -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_game_launcher --bin world_web_launcher`，验证双启动器均显式传递 `--execution-world-dir` 并固定到 `output/chain-runtime/<node_id>/reward-runtime-execution-world` | 运行时产物路径可控性、源码目录洁净度、launcher 对 runtime 参数透传稳定性 |
-| PRD-WORLD_SIMULATOR-034 | TASK-WORLD_SIMULATOR-103/104/107/108 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_game_launcher -- --nocapture` + GUI Agent 闭环（默认 node id stale 失败 + fresh node id 恢复 + explorer overview 查询成功） + `./scripts/run-game-test.sh --no-llm` / agent-browser Web 闭环（fresh `chain_node_id` 默认值） | launcher 链启动恢复体验、GUI Agent 契约、chain-enabled 试玩可达性与一键试玩栈稳定性 |
+| PRD-WORLD_SIMULATOR-033 | TASK-WORLD_SIMULATOR-095/096 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_game_launcher oasis7_game_launcher_tests::build_world_chain_runtime_args_includes_storage_profile -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher oasis7_web_launcher_tests::build_chain_runtime_args_includes_chain_overrides_when_on -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin oasis7_game_launcher --bin oasis7_web_launcher`，验证双启动器均显式传递 `--execution-world-dir` 并固定到 `output/chain-runtime/<node_id>/reward-runtime-execution-world` | 运行时产物路径可控性、源码目录洁净度、launcher 对 runtime 参数透传稳定性 |
+| PRD-WORLD_SIMULATOR-034 | TASK-WORLD_SIMULATOR-103/104/107/108 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_game_launcher -- --nocapture` + GUI Agent 闭环（默认 node id stale 失败 + fresh node id 恢复 + explorer overview 查询成功） + `./scripts/run-game-test.sh --no-llm` / agent-browser Web 闭环（fresh `chain_node_id` 默认值） | launcher 链启动恢复体验、GUI Agent 契约、chain-enabled 试玩可达性与一键试玩栈稳定性 |
 | PRD-WORLD_SIMULATOR-035 | TASK-WORLD_SIMULATOR-105/106 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer` + `env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknown` + agent-browser Web 闭环（验证 `__AW_TEST__.getState().lastError` 能命中浏览器 fatal 并触发快失败） | Viewer Web 图形链路可诊断性、producer/QA 闭环失败透明度、手册与脚本口径一致性 |
 | PRD-WORLD_SIMULATOR-039 | TASK-WORLD_SIMULATOR-139/140/141/142/143/158 | `test_tier_required` | `./scripts/doc-governance-check.sh` + Web agent-browser 闭环（software renderer 环境下验证 `render_mode=software_safe` 可加载、选中目标、推进 tick、看到新反馈） + 定向 viewer/runtime 协议回归 + stale viewer dist freshness 回归 | Web Viewer 无 GPU 硬件依赖兜底、弱图形环境最小玩法闭环、source-tree stale dist 门禁与 `#39` 收口路径 |
 | PRD-WORLD_SIMULATOR-038 | TASK-WORLD_SIMULATOR-114/115/116/118/123/125/126/128/129/154 | `test_tier_required` / `test_tier_full` | `./scripts/doc-governance-check.sh` + fixture benchmark + 真实 builtin/OpenClaw `P0` 对照采证 + QA/producer 评分结论 | OpenClaw 与 builtin 体验等价门禁、`experimental` / 默认启用准入与后续扩面策略 |
@@ -657,12 +657,12 @@
 | DEC-WS-003 | 反馈分布式提交在 `Connection refused` 时强制本地回落并保留错误签名 | 远端失败直接报错终止，不落盘 | 可确保证据不丢失，便于回归和线上诊断；已被 `TASK-WORLD_SIMULATOR-012` 验证。 |
 | DEC-WS-004 | 保留 `TonyMcMapFace` 默认色调映射并显式启用 `bevy/tonemapping_luts` 依赖 | 改默认 tonemapping 或运行时静默降级 | 保持既有视觉基线，同时消除 native 粉紫回退与不可交互回归；已由 `TASK-WORLD_SIMULATOR-020` 的 native 抓帧与 viewer 回归验证。 |
 | DEC-WS-005 | `build-game-launcher-bundle.sh` 在 copy 前删除目标二进制，规避运行中覆盖 `Text file busy` | 保持直接 `cp` 覆写（遇占用即失败） | Linux 上删除运行中可执行文件不会中断现有进程，可确保同一路径重建 bundle 不进入半更新态；已由 `TASK-WORLD_SIMULATOR-022` 通过“运行中重复打包”回归验证。 |
-| DEC-WS-006 | 新增 `world_web_launcher` 作为 headless 场景控制平面 | 仅保留桌面 GUI / 仅依赖 CLI 手工操作 | headless 服务器无图形会话，Web 控制台可在浏览器统一操作并保留日志可观察性；由 `TASK-WORLD_SIMULATOR-024` 落地。 |
+| DEC-WS-006 | 新增 `oasis7_web_launcher` 作为 headless 场景控制平面 | 仅保留桌面 GUI / 仅依赖 CLI 手工操作 | headless 服务器无图形会话，Web 控制台可在浏览器统一操作并保留日志可观察性；由 `TASK-WORLD_SIMULATOR-024` 落地。 |
 | DEC-WS-007 | 采用共享 launcher UI schema，由 native 与 web 双端适配渲染 | 继续维持 native/web 双端字段硬编码 | 单点维护字段与文案可显著降低配置漂移风险，且可保持 UI 行为一致性；由 `TASK-WORLD_SIMULATOR-026` 落地。 |
-| DEC-WS-008 | 采用 `oasis7_client_launcher` 同一套 egui UI 跨 native/wasm 双目标，并由 `world_web_launcher` 托管 launcher 静态资源 | 继续维护独立 HTML 控制台并与 native 并行演进 | 可彻底消除 UI 双栈分叉，降低维护与验收成本；由 `TASK-WORLD_SIMULATOR-028` 落地。 |
+| DEC-WS-008 | 采用 `oasis7_client_launcher` 同一套 egui UI 跨 native/wasm 双目标，并由 `oasis7_web_launcher` 托管 launcher 静态资源 | 继续维护独立 HTML 控制台并与 native 并行演进 | 可彻底消除 UI 双栈分叉，降低维护与验收成本；由 `TASK-WORLD_SIMULATOR-028` 落地。 |
 | DEC-WS-009 | launcher wasm 轮询计时切换到 Web 兼容时间实现，并将 `agent-browser --headed` 闭环作为回归门禁 | 接受已知 panic 并仅做文档告警 | 该问题会直接导致 Web UI 不可用，必须通过代码修复 + 自动化采证闭环防止回归；由 `TASK-WORLD_SIMULATOR-030` 落地。 |
 | DEC-WS-010 | 启动器必填校验按平台分流（Web 排除 native-only binary 必填；native 保持阻断） | 在 Web 端注入伪二进制路径默认值 | 分流更符合字段语义边界，避免伪配置污染与误导；由 `TASK-WORLD_SIMULATOR-032` 落地。 |
-| DEC-WS-011 | native 客户端改为“客户端 + 本地 world_web_launcher 服务端”，与 web 客户端共用同一控制面 API | 继续维护 native 直连本地进程 + web API 双路径 | 单一控制面可保证行为一致并降低并行回归成本；由 `TASK-WORLD_SIMULATOR-035` 落地。 |
+| DEC-WS-011 | native 客户端改为“客户端 + 本地 oasis7_web_launcher 服务端”，与 web 客户端共用同一控制面 API | 继续维护 native 直连本地进程 + web API 双路径 | 单一控制面可保证行为一致并降低并行回归成本；由 `TASK-WORLD_SIMULATOR-035` 落地。 |
 | DEC-WS-012 | viewer live 采用“runtime 驱动 + simulator 协议兼容适配”的 Phase 1 迁移 | 一次性替换 viewer 协议与前端模型 | 先切 runtime 主驱动可快速降低双轨风险，同时控制改动面与回归成本；由 `TASK-WORLD_SIMULATOR-037` 落地。 |
 | DEC-WS-013 | viewer live runtime Phase 2 采用“LLM sidecar + prompt/chat/auth + 动作桥接子集”渐进方案 | 等待 runtime action 全量 1:1 映射后再开放控制面 | 先打通 runtime 的 LLM/chat/prompt 体验可立即消除双套控制断裂，并将动作映射风险限制在可诊断范围内；由 `TASK-WORLD_SIMULATOR-039` 落地。 |
 | DEC-WS-014 | viewer live runtime Phase 3 采用“补齐高频动作映射 + 等价回归 + runtime-only 启动”方案 | 保留 simulator fallback 分支与部分映射缺口 | fallback 分支会持续制造双轨行为与回归成本，统一 runtime-only 并补齐映射可把风险收敛到单一可诊断链路；由 `TASK-WORLD_SIMULATOR-041` 落地。 |
@@ -672,6 +672,6 @@
 | DEC-WS-018 | 使用统一 explorer store 单点消费 committed batches，并扩展为持久化索引（blocks/txs/search）供旧/新查询接口共享 | 多个查询模块分别 drain committed batches | committed batches 为单消费语义，多点消费会导致索引漂移；统一状态源可保证查询一致性并降低维护复杂度；对应 `TASK-WORLD_SIMULATOR-058/059`。 |
 | DEC-WS-019 | 以“默认可用 + 可解释失败 + 跨端一致”一次性硬化启动器可用性基线（路径回退、禁用态原因、参数编码、stop no-op 语义、移动端可读性、favicon） | 仅修复单点缺陷，保留其余体验债务 | 该批问题会叠加放大运维诊断成本与用户失败感知；合并治理能在一次回归中收敛可用性风险；对应 `TASK-WORLD_SIMULATOR-063/064`。 |
 | DEC-WS-020 | 启动器采用“默认自引导 + 专家模式可切换 + 本地可复盘计数”策略 | 保持纯按钮面板 + 外链文档说明 | 新用户首会话需在产品内闭环完成关键任务，且要兼顾专家用户效率与后续迭代可观测性；对应 `TASK-WORLD_SIMULATOR-072~084`。 |
-| DEC-WS-021 | 在 `world_web_launcher` 增加 `/api/gui-agent/*` 统一机器接口并复用既有控制面能力 | 要求 GUI Agent 直接拼接分散 `/api/*` 旧路由 | 单入口 + 统一响应结构可显著降低自动化复杂度，并保持与人工功能的一致映射；对应 `TASK-WORLD_SIMULATOR-091/092`。 |
+| DEC-WS-021 | 在 `oasis7_web_launcher` 增加 `/api/gui-agent/*` 统一机器接口并复用既有控制面能力 | 要求 GUI Agent 直接拼接分散 `/api/*` 旧路由 | 单入口 + 统一响应结构可显著降低自动化复杂度，并保持与人工功能的一致映射；对应 `TASK-WORLD_SIMULATOR-091/092`。 |
 | DEC-WS-022 | 对 runtime required 已知 10 项失败测试执行函数级 `#[ignore]` 临时下线，并保留恢复追踪 | 模块级屏蔽整组测试或删除失败测试 | 函数级白名单可最小化影响面，保证 required 链路恢复执行的同时保留测试资产与回收路径；对应 `TASK-WORLD_SIMULATOR-093/094`。 |
 | DEC-WS-023 | 将默认 node id 命中 stale execution world 视为 launcher 级可恢复错误，并优先提供 fresh node id 恢复 | 保持底层日志直出，由用户手工改 node id 或删目录 | 默认试玩/QA 路径会高频复用默认 node id；若不提升为产品级恢复问题，链模式体验难以稳定复跑。 |

@@ -12,7 +12,7 @@ const DEFAULT_SCENARIO: &str = "llm_bootstrap";
 const DEFAULT_BIND: &str = "127.0.0.1:5023";
 const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
 const REMOVAL_HINT: &str =
-    "embedded node flags were removed from world_viewer_live; use world_chain_runtime (normally launched by world_game_launcher)";
+    "embedded node flags were removed from world_viewer_live; use world_chain_runtime (normally launched by oasis7_game_launcher)";
 const RUNTIME_ALIAS_REMOVAL_HINT: &str =
     "`--runtime-world` was removed; world_viewer_live is runtime/world only, start without this flag";
 
@@ -200,7 +200,7 @@ Options:\n\
   -h, --help                show help\n\n\
 Removed:\n\
   --release-config, --runtime-world, all --node-*, --topology, --triad-*, --reward-runtime-*, --no-node, --viewer-no-consensus-gate\n\
-  -> use world_chain_runtime (usually managed by world_game_launcher)"
+  -> use world_chain_runtime (usually managed by oasis7_game_launcher)"
     );
 }
 

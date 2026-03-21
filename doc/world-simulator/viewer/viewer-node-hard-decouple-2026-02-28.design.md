@@ -10,13 +10,13 @@
 - 入口收敛层：`world_viewer_live` 改为纯 viewer 入口。
 - 参数清理层：删除内嵌节点参数与启动链路，CLI 对旧参数给出显式报错。
 - 依赖分离层：viewer 仅依赖 `ViewerLiveServer` / `ViewerWebBridge`，不再持有节点侧运行时。
-- 迁移提示层：引导用户改用 `world_chain_runtime` / `world_game_launcher`。
+- 迁移提示层：引导用户改用 `world_chain_runtime` / `oasis7_game_launcher`。
 
 ## 3. 关键接口 / 入口
 - `world_viewer_live`
 - `ViewerLiveServer` / `ViewerWebBridge`
 - `world_chain_runtime`
-- `world_game_launcher`
+- `oasis7_game_launcher`
 
 ## 4. 约束与边界
 - 本阶段只做 viewer/node 入口硬解耦，不处理后续历史死代码归档。

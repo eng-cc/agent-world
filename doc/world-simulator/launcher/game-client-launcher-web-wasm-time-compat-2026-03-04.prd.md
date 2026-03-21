@@ -27,7 +27,7 @@
   - As a 测试执行者, I want agent-browser evidence to include console/state/screenshot, so that regressions are quickly diagnosable.
 - Critical User Flows:
   1. Flow-LAUNCHER-WASM-TIME-001（页面加载）:
-     `启动 world_web_launcher -> 浏览器打开 / -> wasm 初始化 -> egui UI 可交互`
+     `启动 oasis7_web_launcher -> 浏览器打开 / -> wasm 初始化 -> egui UI 可交互`
   2. Flow-LAUNCHER-WASM-TIME-002（状态轮询）:
      `UI 定时 GET /api/state -> 页面状态更新 -> 无 panic/阻塞`
   3. Flow-LAUNCHER-WASM-TIME-003（闭环采证）:
@@ -43,11 +43,11 @@
   - AC-2: `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown` 通过。
   - AC-3: `agent-browser --headed` 打开 launcher 页面后，`console error` 中不包含 `time not implemented on this platform`。
   - AC-4: 闭环证据包含至少 1 份 snapshot、1 份 console、1 张 screenshot。
-  - AC-5: `world_web_launcher` API（至少 `/api/state`）在闭环期间保持可用。
+  - AC-5: `oasis7_web_launcher` API（至少 `/api/state`）在闭环期间保持可用。
   - AC-6: `self_guided::current_unix_ms` 在 wasm 目标使用 Web 兼容实现，避免触发 `time not implemented` panic。
 - Non-Goals:
   - 不在本轮扩展新的 launcher Web 功能模块。
-  - 不在本轮重构 `world_web_launcher` 进程编排协议。
+  - 不在本轮重构 `oasis7_web_launcher` 进程编排协议。
 
 ## 3. AI System Requirements (If Applicable)
 - N/A: 本专题不新增 AI 模型能力需求。
@@ -55,13 +55,13 @@
 ## 4. Technical Specifications
 - Architecture Overview:
   - `oasis7_client_launcher` 在 `cfg(target_arch = "wasm32")` 路径使用 Web 兼容时间类型。
-  - `world_web_launcher` 保持 API 与静态托管职责；验证重点在 wasm UI 初始化与轮询稳定性。
+  - `oasis7_web_launcher` 保持 API 与静态托管职责；验证重点在 wasm UI 初始化与轮询稳定性。
   - agent-browser CLI 作为 Web 闭环执行器，输出标准证据。
 - Integration Points:
   - `crates/oasis7_client_launcher/src/main.rs`
   - `crates/oasis7_client_launcher/src/app_process_web.rs`
   - `crates/oasis7_client_launcher/Cargo.toml`
-  - `crates/oasis7/src/bin/world_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 浏览器平台不支持 `std` 时间 API：必须使用 Web 兼容计时实现，避免 panic。

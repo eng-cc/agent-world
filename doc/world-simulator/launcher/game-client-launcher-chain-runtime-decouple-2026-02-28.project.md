@@ -7,7 +7,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 建档：设计文档 + 项目管理文档。
 - [x] T1 新增 `world_chain_runtime`：节点启动/停止、状态 API、余额 API。
-- [x] T2 重构 `world_game_launcher`：默认托管 `world_chain_runtime`，`world_viewer_live` 收敛为纯观察服务。
+- [x] T2 重构 `oasis7_game_launcher`：默认托管 `world_chain_runtime`，`world_viewer_live` 收敛为纯观察服务。
 - [x] T3 更新发行链路：`build-game-launcher-bundle.sh` 纳入 `world_chain_runtime`，更新桌面/CLI 入口参数透传。
 - [x] T4 回归与收口：required 测试、项目状态与文档更新。
 - [x] T5 残留语义修正：对齐 PoS 时间锚定参数（`--chain-pos-*`）与 `world_viewer_live` 纯观察服务边界描述。
@@ -17,7 +17,7 @@
 - doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md
 - `oasis7_node`（NodeRuntime/PoS/P2P）
 - `oasis7::runtime::World`（execution world 读取余额）
-- 现有 `world_game_launcher` 与 `oasis7_client_launcher`
+- 现有 `oasis7_game_launcher` 与 `oasis7_client_launcher`
 
 ## 状态
 - 最近更新：2026-03-08（ROUND-006 语义口径回写）

@@ -50,12 +50,12 @@
 
 ### TASK-P2P-012 执行拆解（PRD-P2P-009）
 - [x] TASK-P2P-012-T0 [test_tier_required]: 在 `doc/p2p/prd.md` 与 `doc/p2p/project.md` 建立“默认参数口径收敛”任务链并冻结验收口径。
-- [x] TASK-P2P-012-T1 [test_tier_required]: 调整 `world_chain_runtime/world_game_launcher/world_web_launcher/oasis7_client_launcher` 默认 `slot_duration_ms` 为统一基线值，并收敛 `world_web_launcher` 校验文案为 poll interval 语义，补齐定向回归。
+- [x] TASK-P2P-012-T1 [test_tier_required]: 调整 `world_chain_runtime/oasis7_game_launcher/oasis7_web_launcher/oasis7_client_launcher` 默认 `slot_duration_ms` 为统一基线值，并收敛 `oasis7_web_launcher` 校验文案为 poll interval 语义，补齐定向回归。
 - [x] TASK-P2P-012-T2 [test_tier_required]: 回写 launcher/testing 相关文档默认值与语义说明，执行文档门禁并完成任务收口。
 
 ### TASK-P2P-013 执行拆解（PRD-P2P-009）
 - [x] TASK-P2P-013-T0 [test_tier_required]: 在主 PRD/project 建立“12s/10/9 默认参数”任务链并冻结验收口径。
-- [x] TASK-P2P-013-T1 [test_tier_required]: 调整 `world_chain_runtime/world_game_launcher/world_web_launcher/oasis7_client_launcher/world_viewer_live` 默认 `slot_duration_ms/ticks_per_slot/proposal_tick_phase` 到 `12000/10/9`，并补齐定向回归。
+- [x] TASK-P2P-013-T1 [test_tier_required]: 调整 `world_chain_runtime/oasis7_game_launcher/oasis7_web_launcher/oasis7_client_launcher/world_viewer_live` 默认 `slot_duration_ms/ticks_per_slot/proposal_tick_phase` 到 `12000/10/9`，并补齐定向回归。
 - [x] TASK-P2P-013-T2 [test_tier_required]: 调整 `scripts/p2p-longrun-soak.sh` 与 `scripts/s10-five-node-game-soak.sh` 默认 PoS 参数到 `12000/10/9`，并更新帮助文案。
 - [x] TASK-P2P-013-T3 [test_tier_required]: 回写 launcher/testing/longrun 相关文档默认值与语义说明，执行文档门禁并完成任务收口。
 
@@ -366,10 +366,10 @@
 - TASK-P2P-011 启动（2026-03-08）: 新增残留语义收敛任务链，覆盖状态字段命名、launcher 校验文案与跨文档能力对齐。
 - TASK-P2P-011 进展（2026-03-08）: `TASK-P2P-011-T1` 已完成代码落地（`/v1/chain/status` 新增 `worker_poll_count` 并保留 `tick_count` 兼容别名；launcher `chain_node_tick_ms` 校验文案改为“poll interval”语义）。
 - TASK-P2P-011 进展（2026-03-08）: `TASK-P2P-011-T2` 已完成文档残留收敛（world-rule、p2p node 专题、launcher/longrun 专题、viewer 手册与 site 镜像全部对齐当前 CLI 能力）。
-- TASK-P2P-011 收口（2026-03-08）: `TASK-P2P-011-T3` 定向 required 回归通过（`world_chain_runtime/world_game_launcher/world_web_launcher/oasis7_client_launcher`）并完成任务闭环。
+- TASK-P2P-011 收口（2026-03-08）: `TASK-P2P-011-T3` 定向 required 回归通过（`world_chain_runtime/oasis7_game_launcher/oasis7_web_launcher/oasis7_client_launcher`）并完成任务闭环。
 - TASK-P2P-012 启动（2026-03-08）: 新增默认参数口径收敛任务链，覆盖 runtime/game/web/client launcher 默认 `slot_duration_ms` 基线与校验文案统一。
 - TASK-P2P-012 进展（2026-03-08）: `TASK-P2P-012-T0` 已完成（主 PRD / project 建档并冻结验收口径）。
-- TASK-P2P-012 进展（2026-03-08）: `TASK-P2P-012-T1` 已完成代码落地（统一 runtime/game/web/client launcher 默认 `slot_duration_ms=200`，并将 `world_web_launcher` 的 `chain_node_tick_ms` 校验文案收敛为 poll interval 语义）。
+- TASK-P2P-012 进展（2026-03-08）: `TASK-P2P-012-T1` 已完成代码落地（统一 runtime/game/web/client launcher 默认 `slot_duration_ms=200`，并将 `oasis7_web_launcher` 的 `chain_node_tick_ms` 校验文案收敛为 poll interval 语义）。
 - TASK-P2P-012 收口（2026-03-08）: `TASK-P2P-012-T2` 已完成文档回写（launcher/testing/viewer 专题默认值与语义说明对齐）并通过文档门禁。
 - TASK-P2P-013 启动（2026-03-08）: 基于“12s 出块、每块 10 tick”设计口径新增默认参数对齐任务链，覆盖 runtime/game/web/client launcher/world_viewer_live 与 longrun 脚本默认值收敛。
 - TASK-P2P-013 进展（2026-03-08）: `TASK-P2P-013-T0` 已完成（主 PRD/project 建档并冻结 `12000/10/9` 验收口径）。
