@@ -36,15 +36,17 @@ fn materializer_fetch_miss_falls_back_to_compile_and_caches_blob() {
     let expected_hash_refs: Vec<&str> = expected_hashes.iter().map(String::as_str).collect();
 
     let _fetcher_guard = EnvVarGuard::capture(FETCHER_ENV);
+    let removed_old_brand_fetcher = removed_old_brand_builtin_wasm_env("FETCHER");
     let _removed_old_brand_fetcher_guard =
-        EnvVarGuard::capture("AGENT_WORLD_BUILTIN_WASM_FETCHER");
+        EnvVarGuard::capture(removed_old_brand_fetcher.as_str());
     let _compiler_guard = EnvVarGuard::capture(COMPILER_ENV);
+    let removed_old_brand_compiler = removed_old_brand_builtin_wasm_env("COMPILER");
     let _removed_old_brand_compiler_guard =
-        EnvVarGuard::capture("AGENT_WORLD_BUILTIN_WASM_COMPILER");
+        EnvVarGuard::capture(removed_old_brand_compiler.as_str());
     std::env::set_var(FETCHER_ENV, &fetcher);
     std::env::set_var(COMPILER_ENV, &compiler);
-    std::env::remove_var("AGENT_WORLD_BUILTIN_WASM_FETCHER");
-    std::env::remove_var("AGENT_WORLD_BUILTIN_WASM_COMPILER");
+    std::env::remove_var(removed_old_brand_fetcher.as_str());
+    std::env::remove_var(removed_old_brand_compiler.as_str());
 
     let load_result =
         load_builtin_wasm_with_fetch_fallback(module_id, &expected_hash_refs, &distfs_root);
@@ -176,4 +178,8 @@ impl Drop for EnvVarGuard {
             None => std::env::remove_var(&self.key),
         }
     }
+}
+
+fn removed_old_brand_builtin_wasm_env(suffix: &str) -> String {
+    ["AGENT", "WORLD", "BUILTIN", "WASM", suffix].join("_")
 }

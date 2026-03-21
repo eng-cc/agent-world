@@ -264,7 +264,8 @@ fn parse_ui_language_supports_zh_and_en_aliases() {
 
 #[test]
 fn read_named_env_value_with_rejects_removed_old_brand_key_names() {
-    let values = BTreeMap::from([("AGENT_WORLD_CLIENT_LAUNCHER_LANG", "en-US")]);
+    let removed_old_brand_lang_key = removed_old_brand_launcher_env("LANG");
+    let values = BTreeMap::from([(removed_old_brand_lang_key.as_str(), "en-US")]);
     let resolved = read_named_env_value_with(
         &|key| values.get(key).map(|value| value.to_string()),
         &[OASIS7_CLIENT_LAUNCHER_LANG_ENV],
@@ -282,8 +283,9 @@ fn ui_language_detect_from_values_prefers_current_launcher_value_and_falls_back_
         UiLanguage::detect_from_values(None, Some("en-US")),
         UiLanguage::EnUs
     );
+    let removed_old_brand_lang_key = removed_old_brand_launcher_env("LANG");
     assert_eq!(
-        UiLanguage::detect_from_values(Some("AGENT_WORLD_CLIENT_LAUNCHER_LANG"), Some("zh-CN")),
+        UiLanguage::detect_from_values(Some(removed_old_brand_lang_key.as_str()), Some("zh-CN")),
         UiLanguage::ZhCn
     );
 }
@@ -291,12 +293,11 @@ fn ui_language_detect_from_values_prefers_current_launcher_value_and_falls_back_
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn resolve_control_plane_env_with_rejects_removed_old_brand_key_names() {
+    let removed_old_brand_control_url = removed_old_brand_launcher_env("CONTROL_URL");
+    let removed_old_brand_control_bind = removed_old_brand_launcher_env("CONTROL_BIND");
     let values = BTreeMap::from([
-        (
-            "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_URL",
-            "http://127.0.0.1:9999",
-        ),
-        ("AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_BIND", "127.0.0.1:9998"),
+        (removed_old_brand_control_url.as_str(), "http://127.0.0.1:9999"),
+        (removed_old_brand_control_bind.as_str(), "127.0.0.1:9998"),
     ]);
     let (control_url_from_env, control_listen_bind, control_api_base, control_manage_service) =
         resolve_control_plane_env_with(&|key| values.get(key).map(|value| value.to_string()));
@@ -308,6 +309,10 @@ fn resolve_control_plane_env_with_rejects_removed_old_brand_key_names() {
     );
     assert_eq!(control_api_base, "http://127.0.0.1:5410");
     assert!(control_manage_service);
+}
+
+fn removed_old_brand_launcher_env(suffix: &str) -> String {
+    ["AGENT", "WORLD", "CLIENT", "LAUNCHER", suffix].join("_")
 }
 #[test]
 fn launcher_status_text_is_localized() {

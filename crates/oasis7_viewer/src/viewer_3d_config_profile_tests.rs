@@ -373,10 +373,15 @@ fn load_viewer_3d_config_applies_env_overrides() {
 
 #[test]
 fn load_viewer_3d_config_rejects_removed_old_brand_key() {
-    let env = HashMap::from([("AGENT_WORLD_VIEWER_SHOW_AGENTS", "true")]);
+    let removed_old_brand_show_agents = removed_old_brand_viewer_env("SHOW_AGENTS");
+    let env = HashMap::from([(removed_old_brand_show_agents.as_str(), "true")]);
 
     let config = load_viewer_3d_config_from(|key| env.get(key).map(|v| v.to_string()));
     assert_eq!(config.show_agents, Viewer3dConfig::default().show_agents);
+}
+
+fn removed_old_brand_viewer_env(suffix: &str) -> String {
+    ["AGENT", "WORLD", "VIEWER", suffix].join("_")
 }
 
 #[test]

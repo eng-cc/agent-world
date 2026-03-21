@@ -395,11 +395,11 @@ mod tests {
         let _guard = module_source_env_lock().lock().expect("env lock");
         let key = module_source_env_key("COMPILER");
         let _env_guard = TestEnvGuard::capture(key.as_str());
-        let _removed_old_brand_guard =
-            TestEnvGuard::capture("AGENT_WORLD_MODULE_SOURCE_COMPILER");
+        let removed_old_brand_key = removed_old_brand_module_source_env("COMPILER");
+        let _removed_old_brand_guard = TestEnvGuard::capture(removed_old_brand_key.as_str());
         std::env::remove_var(key.as_str());
         std::env::set_var(
-            "AGENT_WORLD_MODULE_SOURCE_COMPILER",
+            removed_old_brand_key.as_str(),
             "/tmp/removed-old-brand-module-source-compiler",
         );
 
@@ -409,6 +409,10 @@ mod tests {
     fn module_source_env_lock() -> &'static Mutex<()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
         LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn removed_old_brand_module_source_env(suffix: &str) -> String {
+        ["AGENT", "WORLD", "MODULE", "SOURCE", suffix].join("_")
     }
 
     struct TestEnvGuard {

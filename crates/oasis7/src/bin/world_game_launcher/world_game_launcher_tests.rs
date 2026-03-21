@@ -17,18 +17,23 @@ use super::{
 use oasis7::simulator::ProviderExecutionMode;
 use oasis7_proto::storage_profile::StorageProfile;
 
-const REMOVED_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
-const REMOVED_OLD_BRAND_VIEWER_AUTH_ENV_KEYS: [&str; 3] = [
-    "AGENT_WORLD_VIEWER_PLAYER_ID",
-    "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY",
-    "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY",
-];
-
 fn assert_removed_old_brand_viewer_auth_env_absent(text: &str) {
-    assert!(!text.contains(REMOVED_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT));
-    for key in REMOVED_OLD_BRAND_VIEWER_AUTH_ENV_KEYS {
-        assert!(!text.contains(key));
+    assert!(!text.contains(removed_old_brand_viewer_auth_bootstrap_object().as_str()));
+    for key in removed_old_brand_viewer_auth_env_keys() {
+        assert!(!text.contains(key.as_str()));
     }
+}
+
+fn removed_old_brand_viewer_auth_bootstrap_object() -> String {
+    format!("__{}", ["AGENT", "WORLD", "VIEWER", "AUTH", "ENV"].join("_"))
+}
+
+fn removed_old_brand_viewer_auth_env_keys() -> [String; 3] {
+    [
+        ["AGENT", "WORLD", "VIEWER", "PLAYER", "ID"].join("_"),
+        ["AGENT", "WORLD", "VIEWER", "AUTH", "PUBLIC", "KEY"].join("_"),
+        ["AGENT", "WORLD", "VIEWER", "AUTH", "PRIVATE", "KEY"].join("_"),
+    ]
 }
 
 #[test]

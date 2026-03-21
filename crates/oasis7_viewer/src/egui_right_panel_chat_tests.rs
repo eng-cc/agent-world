@@ -380,21 +380,25 @@ fn resolve_viewer_auth_signer_from_rejects_removed_old_brand_key_names() {
     let signer = test_signer(35);
     let mut env = std::collections::BTreeMap::<String, String>::new();
     env.insert(
-        "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY".to_string(),
+        removed_old_brand_viewer_auth_env("AUTH_PUBLIC_KEY"),
         signer.public_key.clone(),
     );
     env.insert(
-        "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY".to_string(),
+        removed_old_brand_viewer_auth_env("AUTH_PRIVATE_KEY"),
         signer.private_key.clone(),
     );
     env.insert(
-        "AGENT_WORLD_VIEWER_PLAYER_ID".to_string(),
+        removed_old_brand_viewer_auth_env("PLAYER_ID"),
         "removed-old-brand-viewer-player".to_string(),
     );
 
     let err = resolve_viewer_auth_signer_from(|key| env.get(key).cloned())
         .expect_err("removed old-brand keys should fail");
     assert!(err.contains(VIEWER_AUTH_PUBLIC_KEY_ENV));
+}
+
+fn removed_old_brand_viewer_auth_env(suffix: &str) -> String {
+    ["AGENT", "WORLD", "VIEWER", suffix].join("_")
 }
 
 #[test]

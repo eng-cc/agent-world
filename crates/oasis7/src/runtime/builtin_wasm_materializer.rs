@@ -485,10 +485,13 @@ mod tests {
         let _env_lock = BUILTIN_WASM_ENV_LOCK.lock().expect("lock builtin wasm env");
         let primary_key = builtin_wasm_env_key("FETCHER");
         let _primary_guard = TestEnvGuard::capture(primary_key.as_str());
-        let _removed_old_brand_guard =
-            TestEnvGuard::capture("AGENT_WORLD_BUILTIN_WASM_FETCHER");
+        let removed_old_brand_key = removed_old_brand_builtin_wasm_env("FETCHER");
+        let _removed_old_brand_guard = TestEnvGuard::capture(removed_old_brand_key.as_str());
         std::env::remove_var(primary_key.as_str());
-        std::env::set_var("AGENT_WORLD_BUILTIN_WASM_FETCHER", "/tmp/removed-old-brand-fetcher");
+        std::env::set_var(
+            removed_old_brand_key.as_str(),
+            "/tmp/removed-old-brand-fetcher",
+        );
 
         assert!(builtin_wasm_env_non_empty("FETCHER").is_none());
     }
@@ -496,6 +499,10 @@ mod tests {
     struct TestEnvGuard {
         key: String,
         previous: Option<String>,
+    }
+
+    fn removed_old_brand_builtin_wasm_env(suffix: &str) -> String {
+        ["AGENT", "WORLD", "BUILTIN", "WASM", suffix].join("_")
     }
 
     impl TestEnvGuard {

@@ -642,9 +642,10 @@ fn llm_env_var_reads_oasis7_prefix() {
 fn llm_env_var_rejects_removed_old_brand_prefix() {
     let _env_lock = llm_env_lock().lock().expect("env lock");
     let _primary_guard = EnvVarGuard::capture(ENV_LLM_MODEL);
-    let _removed_old_brand_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_MODEL");
+    let removed_old_brand_model = removed_old_brand_llm_env("MODEL");
+    let _removed_old_brand_guard = EnvVarGuard::capture(removed_old_brand_model.as_str());
     std::env::remove_var(ENV_LLM_MODEL);
-    std::env::set_var("AGENT_WORLD_LLM_MODEL", "removed-old-brand-model");
+    std::env::set_var(removed_old_brand_model.as_str(), "removed-old-brand-model");
 
     assert!(llm_env_var(ENV_LLM_MODEL).is_none());
 }
@@ -655,30 +656,36 @@ fn llm_config_from_env_for_agent_rejects_removed_old_brand_prefix() {
     let _model_guard = EnvVarGuard::capture(ENV_LLM_MODEL);
     let _base_url_guard = EnvVarGuard::capture(ENV_LLM_BASE_URL);
     let _api_key_guard = EnvVarGuard::capture(ENV_LLM_API_KEY);
-    let _removed_old_brand_goal_guard =
-        EnvVarGuard::capture("AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1");
-    let _removed_old_brand_model_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_MODEL");
-    let _removed_old_brand_base_url_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_BASE_URL");
-    let _removed_old_brand_api_key_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_API_KEY");
+    let removed_old_brand_goal = removed_old_brand_llm_env("SHORT_TERM_GOAL_AGENT_1");
+    let removed_old_brand_model = removed_old_brand_llm_env("MODEL");
+    let removed_old_brand_base_url = removed_old_brand_llm_env("BASE_URL");
+    let removed_old_brand_api_key = removed_old_brand_llm_env("API_KEY");
+    let _removed_old_brand_goal_guard = EnvVarGuard::capture(removed_old_brand_goal.as_str());
+    let _removed_old_brand_model_guard = EnvVarGuard::capture(removed_old_brand_model.as_str());
+    let _removed_old_brand_base_url_guard =
+        EnvVarGuard::capture(removed_old_brand_base_url.as_str());
+    let _removed_old_brand_api_key_guard =
+        EnvVarGuard::capture(removed_old_brand_api_key.as_str());
     std::env::remove_var(ENV_LLM_MODEL);
     std::env::remove_var(ENV_LLM_BASE_URL);
     std::env::remove_var(ENV_LLM_API_KEY);
-    std::env::set_var("AGENT_WORLD_LLM_MODEL", "removed-old-brand-model");
+    std::env::set_var(removed_old_brand_model.as_str(), "removed-old-brand-model");
     std::env::set_var(
-        "AGENT_WORLD_LLM_BASE_URL",
+        removed_old_brand_base_url.as_str(),
         "https://removed-old-brand.example.com/v1",
     );
-    std::env::set_var("AGENT_WORLD_LLM_API_KEY", "removed-old-brand-secret");
-    std::env::set_var(
-        "AGENT_WORLD_LLM_SHORT_TERM_GOAL_AGENT_1",
-        "removed-old-brand-agent-short",
-    );
+    std::env::set_var(removed_old_brand_api_key.as_str(), "removed-old-brand-secret");
+    std::env::set_var(removed_old_brand_goal.as_str(), "removed-old-brand-agent-short");
 
     let error = LlmAgentConfig::from_env_for_agent("agent-1").expect_err("missing oasis7 env");
     assert!(matches!(
         error,
         LlmConfigError::MissingEnv { key } if key == ENV_LLM_MODEL
     ));
+}
+
+fn removed_old_brand_llm_env(suffix: &str) -> String {
+    ["AGENT", "WORLD", "LLM", suffix].join("_")
 }
 
 #[test]

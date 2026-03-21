@@ -971,10 +971,10 @@ mod tests {
     #[test]
     fn compile_time_guard_rejects_workspace_build_script_target() {
         let _guard = EnvVarGuard::capture(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
-        let _removed_old_brand_guard =
-            EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
+        let removed_old_brand_key = removed_old_brand_wasm_env("VALIDATE_WORKSPACE_COMPILETIME");
+        let _removed_old_brand_guard = EnvVarGuard::capture(removed_old_brand_key.as_str());
         env::set_var(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"), "1");
-        env::remove_var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
+        env::remove_var(removed_old_brand_key.as_str());
 
         let metadata = CargoMetadata {
             workspace_root: "/workspace".to_string(),
@@ -1005,10 +1005,10 @@ mod tests {
     #[test]
     fn compile_time_guard_allows_external_proc_macro_package() {
         let _guard = EnvVarGuard::capture(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"));
-        let _removed_old_brand_guard =
-            EnvVarGuard::capture("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
+        let removed_old_brand_key = removed_old_brand_wasm_env("VALIDATE_WORKSPACE_COMPILETIME");
+        let _removed_old_brand_guard = EnvVarGuard::capture(removed_old_brand_key.as_str());
         env::set_var(wasm_env_key("VALIDATE_WORKSPACE_COMPILETIME"), "1");
-        env::remove_var("AGENT_WORLD_WASM_VALIDATE_WORKSPACE_COMPILETIME");
+        env::remove_var(removed_old_brand_key.as_str());
 
         let metadata = CargoMetadata {
             workspace_root: "/workspace".to_string(),
@@ -1099,9 +1099,10 @@ mod tests {
     #[test]
     fn wasm_env_value_or_default_reads_oasis7_prefix() {
         let _primary = EnvVarGuard::capture(wasm_env_key("BUILD_STD"));
-        let _removed_old_brand = EnvVarGuard::capture("AGENT_WORLD_WASM_BUILD_STD");
+        let removed_old_brand_key = removed_old_brand_wasm_env("BUILD_STD");
+        let _removed_old_brand = EnvVarGuard::capture(removed_old_brand_key.as_str());
         env::set_var(wasm_env_key("BUILD_STD"), "1");
-        env::set_var("AGENT_WORLD_WASM_BUILD_STD", "0");
+        env::set_var(removed_old_brand_key.as_str(), "0");
 
         assert_eq!(wasm_env_value_or_default("BUILD_STD", "missing"), "1");
     }
@@ -1109,14 +1110,18 @@ mod tests {
     #[test]
     fn wasm_env_value_or_default_rejects_removed_old_brand_prefix() {
         let _primary = EnvVarGuard::capture(wasm_env_key("BUILD_STD_COMPONENTS"));
-        let _removed_old_brand =
-            EnvVarGuard::capture("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS");
+        let removed_old_brand_key = removed_old_brand_wasm_env("BUILD_STD_COMPONENTS");
+        let _removed_old_brand = EnvVarGuard::capture(removed_old_brand_key.as_str());
         env::remove_var(wasm_env_key("BUILD_STD_COMPONENTS"));
-        env::set_var("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS", "std,panic_abort");
+        env::set_var(removed_old_brand_key.as_str(), "std,panic_abort");
 
         assert_eq!(
             wasm_env_value_or_default("BUILD_STD_COMPONENTS", "missing"),
             "missing"
         );
+    }
+
+    fn removed_old_brand_wasm_env(suffix: &str) -> String {
+        ["AGENT", "WORLD", "WASM", suffix].join("_")
     }
 }

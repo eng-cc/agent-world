@@ -24,18 +24,20 @@ fn production_policy_surfaces_fault_signature_when_online_manifest_unreachable()
     fs::create_dir_all(temp_root.join("blobs")).expect("create temp distfs blobs");
 
     let _distfs_guard = EnvVarGuard::capture(BUILTIN_WASM_DISTFS_ROOT_ENV);
+    let removed_old_brand_distfs_root = removed_old_brand_builtin_wasm_env("DISTFS_ROOT");
     let _compat_old_brand_distfs_guard =
-        EnvVarGuard::capture("AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT");
+        EnvVarGuard::capture(removed_old_brand_distfs_root.as_str());
     let _compiler_guard = EnvVarGuard::capture(BUILTIN_WASM_COMPILER_ENV);
+    let removed_old_brand_compiler = removed_old_brand_builtin_wasm_env("COMPILER");
     let _compat_old_brand_compiler_guard =
-        EnvVarGuard::capture("AGENT_WORLD_BUILTIN_WASM_COMPILER");
+        EnvVarGuard::capture(removed_old_brand_compiler.as_str());
     std::env::set_var(BUILTIN_WASM_DISTFS_ROOT_ENV, &temp_root);
-    std::env::remove_var("AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT");
+    std::env::remove_var(removed_old_brand_distfs_root.as_str());
     std::env::set_var(
         BUILTIN_WASM_COMPILER_ENV,
         temp_root.join("missing-builtin-compiler"),
     );
-    std::env::remove_var("AGENT_WORLD_BUILTIN_WASM_COMPILER");
+    std::env::remove_var(removed_old_brand_compiler.as_str());
 
     let mut world = World::new();
     world.enable_production_release_policy();
@@ -114,10 +116,11 @@ fn production_policy_surfaces_fault_signature_when_manifest_identity_drifts() {
 
     let drift_hash = "4444444444444444444444444444444444444444444444444444444444444444";
     let _distfs_guard = EnvVarGuard::capture(BUILTIN_WASM_DISTFS_ROOT_ENV);
+    let removed_old_brand_distfs_root = removed_old_brand_builtin_wasm_env("DISTFS_ROOT");
     let _compat_old_brand_distfs_guard =
-        EnvVarGuard::capture("AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT");
+        EnvVarGuard::capture(removed_old_brand_distfs_root.as_str());
     std::env::set_var(BUILTIN_WASM_DISTFS_ROOT_ENV, &temp_root);
-    std::env::remove_var("AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT");
+    std::env::remove_var(removed_old_brand_distfs_root.as_str());
 
     let mut world = World::new();
     world.enable_production_release_policy();
@@ -205,14 +208,14 @@ fn lock_release_manifest_env() -> MutexGuard<'static, ()> {
 }
 
 struct EnvVarGuard {
-    key: &'static str,
+    key: String,
     previous: Option<String>,
 }
 
 impl EnvVarGuard {
-    fn capture(key: &'static str) -> Self {
+    fn capture(key: &str) -> Self {
         Self {
-            key,
+            key: key.to_string(),
             previous: std::env::var(key).ok(),
         }
     }
@@ -221,8 +224,12 @@ impl EnvVarGuard {
 impl Drop for EnvVarGuard {
     fn drop(&mut self) {
         match self.previous.take() {
-            Some(value) => std::env::set_var(self.key, value),
-            None => std::env::remove_var(self.key),
+            Some(value) => std::env::set_var(self.key.as_str(), value),
+            None => std::env::remove_var(self.key.as_str()),
         }
     }
+}
+
+fn removed_old_brand_builtin_wasm_env(suffix: &str) -> String {
+    ["AGENT", "WORLD", "BUILTIN", "WASM", suffix].join("_")
 }

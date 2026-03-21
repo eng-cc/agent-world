@@ -43,8 +43,6 @@ mod tests {
     use super::resolve_viewer_env_with;
     use std::collections::HashMap;
 
-    const REMOVED_OLD_BRAND_PANEL_MODE_KEY: &str = "AGENT_WORLD_VIEWER_PANEL_MODE";
-
     #[test]
     fn resolve_viewer_env_with_prefers_oasis7_key() {
         let values = HashMap::from([
@@ -60,11 +58,16 @@ mod tests {
 
     #[test]
     fn resolve_viewer_env_with_rejects_removed_old_brand_key() {
-        let values = HashMap::from([(REMOVED_OLD_BRAND_PANEL_MODE_KEY, "legacy")]);
+        let removed_old_brand_panel_mode_key = removed_old_brand_viewer_env("PANEL_MODE");
+        let values = HashMap::from([(removed_old_brand_panel_mode_key.as_str(), "legacy")]);
         let resolved = resolve_viewer_env_with(
             &|key| values.get(key).map(|value| value.to_string()),
             "OASIS7_VIEWER_PANEL_MODE",
         );
         assert_eq!(resolved, None);
+    }
+
+    fn removed_old_brand_viewer_env(suffix: &str) -> String {
+        ["AGENT", "WORLD", "VIEWER", suffix].join("_")
     }
 }

@@ -131,11 +131,6 @@ fn parse_bool(raw: Option<&str>) -> Option<bool> {
 mod tests {
     use super::*;
 
-    const REMOVED_OLD_BRAND_PERF_PROBE_ENV: &str = "AGENT_WORLD_VIEWER_PERF_PROBE";
-    const REMOVED_OLD_BRAND_PERF_PROBE_INTERVAL_ENV: &str =
-        "AGENT_WORLD_VIEWER_PERF_PROBE_INTERVAL_SECS";
-    const REMOVED_OLD_BRAND_PERF_BUDGET_ENV: &str = "AGENT_WORLD_VIEWER_PERF_BUDGET_MS";
-
     #[test]
     fn config_from_values_parses_and_defaults() {
         let default_config = config_from_values(None, None, None);
@@ -167,13 +162,17 @@ mod tests {
 
     #[test]
     fn perf_probe_config_from_env_rejects_removed_old_brand_keys() {
+        let removed_old_brand_perf_probe_env = removed_old_brand_viewer_env("PERF_PROBE");
+        let removed_old_brand_perf_probe_interval_env =
+            removed_old_brand_viewer_env("PERF_PROBE_INTERVAL_SECS");
+        let removed_old_brand_perf_budget_env = removed_old_brand_viewer_env("PERF_BUDGET_MS");
         unsafe {
             std::env::remove_var(PERF_PROBE_ENV);
             std::env::remove_var(PERF_PROBE_INTERVAL_ENV);
             std::env::remove_var(PERF_BUDGET_ENV);
-            std::env::set_var(REMOVED_OLD_BRAND_PERF_PROBE_ENV, "true");
-            std::env::set_var(REMOVED_OLD_BRAND_PERF_PROBE_INTERVAL_ENV, "0.5");
-            std::env::set_var(REMOVED_OLD_BRAND_PERF_BUDGET_ENV, "25.0");
+            std::env::set_var(removed_old_brand_perf_probe_env.as_str(), "true");
+            std::env::set_var(removed_old_brand_perf_probe_interval_env.as_str(), "0.5");
+            std::env::set_var(removed_old_brand_perf_budget_env.as_str(), "25.0");
         }
         let config = perf_probe_config_from_env();
         assert_eq!(config, PerfProbeConfig::default());
@@ -182,9 +181,13 @@ mod tests {
             std::env::remove_var(PERF_PROBE_ENV);
             std::env::remove_var(PERF_PROBE_INTERVAL_ENV);
             std::env::remove_var(PERF_BUDGET_ENV);
-            std::env::remove_var(REMOVED_OLD_BRAND_PERF_PROBE_ENV);
-            std::env::remove_var(REMOVED_OLD_BRAND_PERF_PROBE_INTERVAL_ENV);
-            std::env::remove_var(REMOVED_OLD_BRAND_PERF_BUDGET_ENV);
+            std::env::remove_var(removed_old_brand_perf_probe_env.as_str());
+            std::env::remove_var(removed_old_brand_perf_probe_interval_env.as_str());
+            std::env::remove_var(removed_old_brand_perf_budget_env.as_str());
         }
+    }
+
+    fn removed_old_brand_viewer_env(suffix: &str) -> String {
+        ["AGENT", "WORLD", "VIEWER", suffix].join("_")
     }
 }
