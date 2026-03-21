@@ -33,8 +33,8 @@
 - wasm build suite：
   - `tools/wasm_build_suite/src/lib.rs` 在 cargo build 参数注入 `-Z build-std*`（受环境变量控制）。
 - 清单与校验：
-  - `crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules.sha256`
-  - `crates/agent_world/src/runtime/world/artifacts/m4_builtin_modules.sha256`
+  - `crates/oasis7/src/runtime/world/artifacts/m1_builtin_modules.sha256`
+  - `crates/oasis7/src/runtime/world/artifacts/m4_builtin_modules.sha256`
   - `scripts/sync-m1-builtin-wasm-artifacts.sh --check`
   - `scripts/sync-m4-builtin-wasm-artifacts.sh --check`
 

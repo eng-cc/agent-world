@@ -64,6 +64,11 @@
     - `rg -n "oasis7_viewer|OASIS7_VIEWER_" doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.prd.md doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.project.md doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-03-01.prd.md doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-03-01.project.md doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-02-28.prd.md doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-02-28.project.md doc/scripts/viewer-tools/viewer-texture-inspector-material-recognizability-2026-02-28.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-SCRIPTS-013 (PRD-SCRIPTS-001/002) [test_tier_required]: 补齐 `doc/scripts/wasm/**` 活跃手册中遗漏的 builtin wasm artifact 当前路径口径，统一到 `crates/oasis7/...`。
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "crates/oasis7/src/runtime/world/artifacts/m[14]_builtin_modules.sha256" doc/scripts/wasm/builtin-wasm-nightly-build-std.prd.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/scripts/design.md`
@@ -77,6 +82,7 @@
 - 更新日期: 2026-03-21
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-SCRIPTS-013`（`doc/scripts/wasm/**` 活跃手册中遗漏的 builtin wasm artifact 当前路径已统一切到 `crates/oasis7/...`。）
 - 最新完成: `TASK-SCRIPTS-012`（texture-inspector 活跃专题中遗漏的 viewer crate、环境变量与运行命令口径已统一切到 `oasis7_viewer` / `OASIS7_VIEWER_*`。）
 - 最新完成: `TASK-SCRIPTS-011`（repo-owned OpenClaw real-play helper 文档与脚本中的当前 cargo 运行命令和入口路径已统一切到 `oasis7` / `crates/oasis7*` 当前口径。）
 - 最新完成: `TASK-SCRIPTS-010`（`capture-viewer-frame` 活跃 fallback 文档中的 viewer crate 与环境变量命名已统一切到 `oasis7_viewer` / `OASIS7_VIEWER_*` 当前口径）。
