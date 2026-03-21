@@ -39,6 +39,14 @@
     - `rg -n "oasis7(_node|_consensus|_distfs|_proto|_viewer)?|crates/oasis7|crates/oasis7_node|crates/oasis7_consensus|crates/oasis7_distfs|crates/oasis7_proto|crates/oasis7_viewer" doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.prd.md doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.project.md doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.prd.md doc/headless-runtime/nonviewer/nonviewer-design-alignment-review-2026-02-25.project.md doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.prd.md doc/headless-runtime/nonviewer/nonviewer-longrun-traceable-memory-archive-hardening-2026-02-23.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-NONVIEWER-008 (PRD-NONVIEWER-002) [test_tier_required]: 补齐 `nonviewer-onchain-auth-protocol-hardening` 项目文档中遗漏的当前实现 crate 名，统一到 `oasis7::viewer`。
+  - 产物文件:
+    - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md`
+    - `doc/headless-runtime/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7::viewer" doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/headless-runtime/design.md`
@@ -49,9 +57,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-20
+- 更新日期: 2026-03-21
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-NONVIEWER-008`（已补齐 `nonviewer-onchain-auth-protocol-hardening` 项目文档中遗漏的当前实现 crate 名，统一切到 `oasis7::viewer`。）
 - 最新完成: `TASK-NONVIEWER-007`（已完成 `doc/headless-runtime/nonviewer/**` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-NONVIEWER-006`（headless-runtime 模块 README / PRD 索引入口同步）。
 - 阶段收口优先级: `P1`

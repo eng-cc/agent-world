@@ -13,7 +13,7 @@
 
 ### T1 协议与鉴权内核
 - [x] 扩展 `oasis7_proto::viewer` 请求结构，新增 `PlayerAuthProof`
-- [x] 在 `agent_world::viewer` 实现 canonical payload + ed25519 签名/验签工具
+- [x] 在 `oasis7::viewer` 实现 canonical payload + ed25519 签名/验签工具
 - [x] 补协议与鉴权内核测试（roundtrip + tamper）
 
 ### T2 Live 服务端强制鉴权 + 防重放
