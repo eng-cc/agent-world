@@ -37,7 +37,7 @@
   - SC-4: 站点改动任务全部映射到 PRD-SITE-ID。
   - SC-5: 当产品尚不可玩时，首页与文档入口页 100% 显式标注“开发中技术预览 / Not playable yet”。
   - SC-6: 首页不得出现与真实状态冲突的“已可玩/赛季进行中”表述（违规数 0）。
-  - SC-7: `doc/site/github-pages/**` 活跃专题中的当前校验命令、viewer crate 路径与 wasm 包名必须统一使用 `oasis7_viewer` / `crates/oasis7*` 口径；旧 `agent_world_viewer` / `crates/agent_world*` 仅允许保留在历史证据或外部原文引用中。
+  - SC-7: `doc/site/github-pages/**` 活跃专题中的当前校验命令、viewer crate 路径与 wasm 包名必须统一使用 `oasis7_viewer` / `crates/oasis7*` 口径；旧品牌 viewer 包名与源码路径仅允许保留在历史证据或外部原文引用中。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -77,7 +77,7 @@
   - AC-4: 发布前完成链接有效性与基础质量检查。
   - AC-5: 首页与文档入口页（`site/index.html`、`site/en/index.html`、`site/doc/cn/index.html`、`site/doc/en/index.html`）对“是否可玩”状态的表达必须一致且与真实状态相符。
   - AC-6: `doc/site/github-pages/**` 仍可读历史专题的首行标题必须统一使用 `oasis7` 品牌；旧 `Agent World*` 标题仅允许保留在正文历史上下文与证据原文中。
-  - AC-7: `doc/site/github-pages/**` 活跃专题中的当前 `cargo check -p` 命令、viewer crate 路径与 wasm 包名必须写为 `oasis7_viewer` / `crates/oasis7*`；旧 `agent_world_viewer` / `crates/agent_world*` 仅允许保留在历史证据或外部原文引用中。
+  - AC-7: `doc/site/github-pages/**` 活跃专题中的当前 `cargo check -p` 命令、viewer crate 路径与 wasm 包名必须写为 `oasis7_viewer` / `crates/oasis7*`；旧品牌 viewer 包名与源码路径仅允许保留在历史证据或外部原文引用中。
 - Non-Goals:
   - 不在 site PRD 中定义 runtime/p2p 低层实现。
   - 不覆盖内部测试流程细节（由 testing 模块负责）。

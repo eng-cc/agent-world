@@ -45,7 +45,7 @@
   - SC-6: 发布前必须先完成玩法微循环、runtime 验收、testing 证据、playability 反馈四条 P0 闭环，缺任一项不得给出 go 结论。
   - SC-7: headless-runtime、自动化稳定性、文档一致性收口具备明确 P1 责任划分与交付标准。
   - SC-8: `standard_3d / software_safe / pure_api` 三模式在 core 中具备唯一 taxonomy、claim envelope 与 mode/lane 分层约束。
-  - SC-9: core 活跃专题标题、Viewer 活跃手册与实际窗口/Web 标题对齐 `oasis7` 品牌；内部 `agent_world*` / `world_*` 兼容命名仅以实现说明形式保留，不得继续冒充公开标题。
+  - SC-9: core 活跃专题标题、Viewer 活跃手册与实际窗口/Web 标题对齐 `oasis7` 品牌；内部旧品牌兼容命名仅以实现说明形式保留，不得继续冒充公开标题。
   - SC-10: `engineering`、`scripts`、`world-runtime` 的历史专题标题在不改动内部实现标识的前提下完成 `oasis7` 品牌收口，减少 active/historical 入口里的旧品牌混用。
 
 ## 2. User Experience & Functionality
