@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- A new CLI binary `world_viewer_demo` in `crates/agent_world`.
+- A new CLI binary `world_viewer_demo` in `crates/oasis7`.
 - Deterministic demo script that produces at least one event.
 - Output directory containing `snapshot.json` and `journal.json` for `world_viewer_server`.
 - Simple CLI flags: scenario selection and output directory.

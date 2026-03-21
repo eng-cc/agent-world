@@ -18,7 +18,7 @@
 - `testing-manual.md`
 - `scripts/viewer-visual-baseline.sh`
 - `scripts/run-viewer-web.sh`
-- `crates/agent_world_viewer/src/web_test_api.rs`
+- `crates/oasis7_viewer/src/web_test_api.rs`
 - `agent-browser` CLI（默认直接通过 `PATH` 调用）
 
 ## 状态

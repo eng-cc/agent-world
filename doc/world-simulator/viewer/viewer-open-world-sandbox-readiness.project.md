@@ -14,7 +14,7 @@
 ### OWR1 观察态/运营态信息架构（对应缺口 1）
 - [x] OWR1.1 定义 `Observe/Prompt Ops` 双模式 UI 状态机与切换规则
 - [x] OWR1.2 新增运营态总览（Prompt-only 约束、Agent 选择、Prompt 草稿区、审计占位）
-- [x] OWR1.3 补充 UI 回归测试（模式文案、Prompt Ops 面板渲染）并通过 `cargo test -p agent_world_viewer`
+- [x] OWR1.3 补充 UI 回归测试（模式文案、Prompt Ops 面板渲染）并通过 `cargo test -p oasis7_viewer`
 
 ### OWR2 Prompt 控制面（对应缺口 2，严格 prompt-only）
 - [x] OWR2-Server 协议与运行态闭环：`prompt_control.preview/apply/rollback`、`AgentPromptProfile`（版本/审计/冲突处理）、`AgentPromptUpdated` 事件与 replay 一致性
@@ -46,10 +46,10 @@
 
 ## 依赖
 - `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.design.md`
-- 协议与服务端：`crates/agent_world/src/viewer/protocol.rs`、`crates/agent_world/src/viewer/live.rs`
-- viewer：`crates/agent_world_viewer/src/main.rs`、`egui_right_panel.rs`、`scene_helpers.rs`、`world_overlay.rs`
+- 协议与服务端：`crates/oasis7/src/viewer/protocol.rs`、`crates/oasis7/src/viewer/live.rs`
+- viewer：`crates/oasis7_viewer/src/main.rs`、`egui_right_panel.rs`、`scene_helpers.rs`、`world_overlay.rs`
 - 既有 3D 优化基线：`doc/world-simulator/viewer/viewer-3d-polish-performance*.md`
-- 联测与脚本：`crates/agent_world/tests/viewer_live_integration.rs`、`scripts/capture-viewer-frame.sh`
+- 联测与脚本：`crates/oasis7/tests/viewer_live_integration.rs`、`scripts/capture-viewer-frame.sh`
 
 ## 状态
 - 当前阶段：OWR1/OWR2/OWR3 已完成（Prompt 控制双端闭环 + VPP5~VPP9）
@@ -59,7 +59,7 @@
 ### OWR4.5 基线结论（2026-02-12）
 - 采样口径：
   - 场景：`triad_region_bootstrap`、`llm_bootstrap`（无 `OPENAI_API_KEY` 时为 `script_fallback(no_openai_key)`）。
-  - Tick：`200ms`；采样时长：`12s`；预算阈值：`AGENT_WORLD_VIEWER_PERF_BUDGET_MS=33`。
+  - Tick：`200ms`；采样时长：`12s`；预算阈值：`OASIS7_VIEWER_PERF_BUDGET_MS=33`。
 - 结论数据：
 
 | 场景 | mode | events/s | frame_ms_avg | frame_ms_p95 | over_budget_pct |

@@ -16,7 +16,7 @@
 - `world_viewer_demo [scenario] [--out <dir>]`
 - `snapshot.json`
 - `journal.json`
-- `world_viewer_server` / `agent_world_viewer`
+- `world_viewer_server` / `oasis7_viewer`
 
 ## 4. 约束与边界
 - 这是离线 replay demo，不包含 live simulation server。

@@ -32,7 +32,7 @@
 ## 4. Technical Specifications
 
 ### 1) 新中间层
-- 模块：`crates/agent_world_viewer/src/industry_graph_view_model.rs`
+- 模块：`crates/oasis7_viewer/src/industry_graph_view_model.rs`
 - 关键结构：
   - `IndustryGraphViewModel`
   - `IndustryGraphNode`（kind/tier/stage/status/position/chunk）

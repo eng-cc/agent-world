@@ -35,7 +35,7 @@
 - doc/world-simulator/viewer/viewer-live-full-event-driven-phase10-2026-02-27.prd.md
 - `crates/oasis7/src/viewer/server.rs`
 - `crates/oasis7/src/viewer/web_bridge.rs`
-- `crates/agent_world/tests/viewer_offline_integration.rs`
+- `crates/oasis7/tests/viewer_offline_integration.rs`
 - `site/index.html`
 - `site/en/index.html`
 - `testing-manual.md` / `doc/world-simulator/viewer/viewer-manual.md`（如需）

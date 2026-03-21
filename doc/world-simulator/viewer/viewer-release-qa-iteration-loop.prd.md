@@ -22,7 +22,7 @@
 - 生成 QA 汇总报告（Markdown），记录完成度与视觉门禁结果。
 
 ### Out of Scope
-- 不在本轮重写 `agent_world_viewer` 渲染表现或玩法逻辑。
+- 不在本轮重写 `oasis7_viewer` 渲染表现或玩法逻辑。
 - 不引入完整 CI 常驻 E2E（本轮先以本地/agent 闭环脚本为主）。
 - 不替代已有 `test_tier_required/full`，仅作为发行验收补充层。
 

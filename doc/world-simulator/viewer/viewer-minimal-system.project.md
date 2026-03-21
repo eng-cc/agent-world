@@ -13,7 +13,7 @@
 - doc/world-simulator/viewer/viewer-minimal-system.prd.md
 - `WorldInitConfig` / `WorldScenario` / `initialize_kernel`
 - `WorldKernel` persistence (`snapshot.json` / `journal.json`)
-- Viewer server (`world_viewer_server`) and viewer client (`agent_world_viewer`)
+- Viewer server (`world_viewer_server`) and viewer client (`oasis7_viewer`)
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

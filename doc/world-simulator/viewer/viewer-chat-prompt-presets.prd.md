@@ -27,7 +27,7 @@
   - 删除 Prompt Ops UI 模块接线与不再使用的分支/测试。
 
 ### 范围外
-- 不改动 `agent_world` live server 的 `prompt_control.*` 协议定义。
+- 不改动 `oasis7` live server 的 `prompt_control.*` 协议定义。
 - 不做预设 prompt 的磁盘持久化（本轮仅保留运行期本地状态）。
 - 不改动会话聚合算法、消息流渲染样式和 AgentChat 协议字段。
 

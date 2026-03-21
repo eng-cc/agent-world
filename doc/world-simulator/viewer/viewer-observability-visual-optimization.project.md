@@ -20,12 +20,12 @@
 ## 依赖
 - doc/world-simulator/viewer/viewer-observability-visual-optimization.prd.md
 - `scripts/capture-viewer-frame.sh`
-- `crates/agent_world_viewer/Cargo.toml`
-- `crates/agent_world_viewer/src/main.rs`
-- `crates/agent_world_viewer/src/egui_right_panel.rs`
-- `crates/agent_world_viewer/tests/snapshots/*.png`
-- `crates/agent_world_viewer/src/copyable_text.rs`
-- `crates/agent_world_viewer/src/i18n.rs`
+- `crates/oasis7_viewer/Cargo.toml`
+- `crates/oasis7_viewer/src/main.rs`
+- `crates/oasis7_viewer/src/egui_right_panel.rs`
+- `crates/oasis7_viewer/tests/snapshots/*.png`
+- `crates/oasis7_viewer/src/copyable_text.rs`
+- `crates/oasis7_viewer/src/i18n.rs`
 
 ## 状态
 - 当前阶段：已完成 VO1~VO11

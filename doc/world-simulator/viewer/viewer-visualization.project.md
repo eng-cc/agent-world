@@ -27,7 +27,7 @@
 - [x] viewer offline 模式（headless 无网络权限运行）
 - [x] headless 默认离线并支持强制联网开关（OASIS7_VIEWER_FORCE_ONLINE）
 - [x] 更新任务日志
-- [x] 运行测试 `env -u RUSTC_WRAPPER cargo test -p agent_world`
+- [x] 运行测试 `env -u RUSTC_WRAPPER cargo test -p oasis7`
 - [x] 在线模式：live viewer server（WorldKernel + demo script）
 - [x] 在线模式：CLI（world_viewer_live）与运行说明
 - [x] 在线模式：基础单元测试（script/step/reset）
@@ -100,7 +100,7 @@
 - [x] UI 测试覆盖：图例显示与线宽提示文案
 
 ## 依赖
-- `WorldSnapshot` / `WorldEvent` / `RunnerMetrics`（`crates/agent_world`）
+- `WorldSnapshot` / `WorldEvent` / `RunnerMetrics`（`crates/oasis7`）
 - 持久化文件格式（`snapshot.json` / `journal.json`）
 - Bevy（viewer 客户端）
 

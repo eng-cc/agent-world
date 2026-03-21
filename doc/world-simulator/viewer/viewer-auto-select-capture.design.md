@@ -9,13 +9,13 @@
 ## 2. 设计结构
 - 自动步骤层：按步骤驱动相机状态和选中状态变化。
 - 目标解析层：支持 `agent:<id>`、`location:<id>`、`first_agent`、`first_location` 等目标语法。
-- 兼容层：保留 `AGENT_WORLD_VIEWER_AUTO_SELECT*` 的旧路径作为单步快捷入口。
+- 单步入口层：使用 `OASIS7_VIEWER_AUTO_SELECT*` 提供单步快捷入口。
 - 脚本桥接层：截图脚本透传自动选中目标和完整步骤串。
 
 ## 3. 关键接口 / 入口
-- `AGENT_WORLD_VIEWER_AUTO_SELECT`
-- `AGENT_WORLD_VIEWER_AUTO_SELECT_TARGET`
-- `AGENT_WORLD_VIEWER_AUTOMATION_STEPS`
+- `OASIS7_VIEWER_AUTO_SELECT`
+- `OASIS7_VIEWER_AUTO_SELECT_TARGET`
+- `OASIS7_VIEWER_AUTOMATION_STEPS`
 - `mode/focus/pan/zoom/orbit/select/wait`
 - `capture-viewer-frame.sh --auto-select-target --automation-steps`
 
