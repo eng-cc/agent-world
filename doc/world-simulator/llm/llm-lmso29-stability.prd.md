@@ -49,11 +49,11 @@
   - 新增并校验 peak/soft cap 相关单测，确保预算逻辑可回归。
   - 在 prompt 约束中增加 `move_agent.to` 不得指向当前位置的显式规则，降低无效移动概率。
 - 已验证（命令）：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world prompt_budget_peak_targets_use_relaxed_reserve_values -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_prompt_profile_uses_relaxed_token_budget_for_stability -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world llm_agent_prompt_contains_execute_until_and_exploration_guidance -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world`
-  - `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 30 --report-json .tmp/lmso29_final_30_promptfix/report.json`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 prompt_budget_peak_targets_use_relaxed_reserve_values -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_prompt_profile_uses_relaxed_token_budget_for_stability -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 llm_agent_prompt_contains_execute_until_and_exploration_guidance -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7`
+  - `env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_llm_agent_demo -- llm_bootstrap --ticks 30 --report-json .tmp/lmso29_final_30_promptfix/report.json`
 
 ## 回归观察
 - 对比 LMSO28 基线（`.tmp/lmso28_peak_30_final/report.json`）：

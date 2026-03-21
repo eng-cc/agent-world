@@ -441,7 +441,7 @@
 ## LMSO27B 30 tick 回归对比（2026-02-10）
 
 ### 回归命令
-- `env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 30 --report-json .tmp/lmso27b_replan_30/report.json`
+- `env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_llm_agent_demo -- llm_bootstrap --ticks 30 --report-json .tmp/lmso27b_replan_30/report.json`
 
 ### 回归结果
 - 报告：`.tmp/lmso27b_replan_30/report.json`
@@ -491,7 +491,7 @@
 ### 已实施与验证（LMSO28A~C）
 - 已实施：增加 soft/hard 双阈值峰值预算收敛；峰值超 soft 时先压 `history/memory/step`，超 hard 时再强压并必要时降级软段。
 - 已实施：进一步收敛 observation 近邻注入与 `module_history` / `memory_digest` 摘要长度上限。
-- 回归命令：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 30 --report-json .tmp/lmso28_peak_30_final/report.json`
+- 回归命令：`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_llm_agent_demo -- llm_bootstrap --ticks 30 --report-json .tmp/lmso28_peak_30_final/report.json`
 - 对比基线（`.tmp/lmso27b_replan_30/report.json` -> `.tmp/lmso28_peak_30_final/report.json`）：
   - `llm_input_chars_max: 14216 -> 9373`
   - `llm_input_chars_avg: 1786 -> 1121`

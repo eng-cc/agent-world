@@ -73,7 +73,7 @@
 ## 已知问题与后续优化点（2026-02-10）
 
 基于实跑命令
-`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_llm_agent_demo -- llm_bootstrap --ticks 30 --report-json .tmp/llm_multi_round_30/report.json`
+`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_llm_agent_demo -- llm_bootstrap --ticks 30 --report-json .tmp/llm_multi_round_30/report.json`
 的结果（`active_ticks=30`、`llm_errors=0`、`parse_errors=4`）：
 
 1. **Responses 兼容输出仍有解析噪声**
