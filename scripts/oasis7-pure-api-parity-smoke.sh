@@ -6,7 +6,7 @@ cd "$repo_root"
 
 usage() {
   cat <<'USAGE'
-Usage: ./scripts/world-pure-api-parity-smoke.sh [options] [run-game-test options...]
+Usage: ./scripts/oasis7-pure-api-parity-smoke.sh [options] [run-game-test options...]
 
 Validate the pure API gameplay path against the live TCP protocol using
 `oasis7_pure_api_client`.
@@ -34,8 +34,8 @@ Options:
   -h, --help                  Show this help
 
 Examples:
-  ./scripts/world-pure-api-parity-smoke.sh --bundle-dir output/release/game-launcher-local --no-llm
-  ./scripts/world-pure-api-parity-smoke.sh --tier full --live-addr 127.0.0.1:5023
+  ./scripts/oasis7-pure-api-parity-smoke.sh --bundle-dir output/release/game-launcher-local --no-llm
+  ./scripts/oasis7-pure-api-parity-smoke.sh --tier full --live-addr 127.0.0.1:5023
 USAGE
 }
 

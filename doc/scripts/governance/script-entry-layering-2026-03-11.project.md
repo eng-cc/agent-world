@@ -31,7 +31,7 @@
 | 需求类型 | 推荐主入口 | 辅助入口 | fallback | 说明 |
 | --- | --- | --- | --- | --- |
 | P2P soak | `scripts/p2p-longrun-soak.sh` | `scripts/s10-five-node-game-soak.sh` | 无 | S10 更偏五节点真实游戏场景。 |
-| Runtime 存储治理 | `scripts/world-runtime-storage-gate.sh` | `scripts/world-runtime-finality-baseline.sh` | 无 | 一个看 storage gate，一个看 finality baseline。 |
+| Runtime 存储治理 | `scripts/oasis7-runtime-storage-gate.sh` | `scripts/oasis7-runtime-finality-baseline.sh` | 无 | 一个看 storage gate，一个看 finality baseline。 |
 | LLM 压测 | `scripts/llm-longrun-stress.sh` | `scripts/llm-baseline-fixture-smoke.sh` | 无 | smoke 只做基线。 |
 
 ### 4. 站点 / 发布资产巡检

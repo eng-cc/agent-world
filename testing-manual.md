@@ -245,16 +245,16 @@ cargo run -q -p oasis7 --bin oasis7_pure_api_client -- keygen
 cargo run -q -p oasis7 --bin oasis7_pure_api_client -- --addr 127.0.0.1:5023 reconnect-sync --player-id player-1 --with-snapshot
 ```
   - 若要覆盖 `agent_chat` / `prompt_control`，需先 `keygen`，再携带 `--player-id` 与 `--private-key-hex` 走签名请求；无 LLM 模式下这两类请求仍会按当前产品约束返回 `llm_mode_required`。
-- 若需要执行 pure API required/full 回归，优先运行 `./scripts/world-pure-api-parity-smoke.sh`。
+- 若需要执行 pure API required/full 回归，优先运行 `./scripts/oasis7-pure-api-parity-smoke.sh`。
   - 该回归验证的是 `pure_api` 玩家访问模式的正式可玩性，不等同于 OpenClaw `headless_agent` 回归。
   - required-tier 推荐 bundle 口径：
 ```bash
 ./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-local
-./scripts/world-pure-api-parity-smoke.sh --tier required --bundle-dir output/release/game-launcher-local --no-llm
+./scripts/oasis7-pure-api-parity-smoke.sh --tier required --bundle-dir output/release/game-launcher-local --no-llm
 ```
   - full-tier 抽样：
 ```bash
-./scripts/world-pure-api-parity-smoke.sh --tier full --bundle-dir output/release/game-launcher-local --no-llm
+./scripts/oasis7-pure-api-parity-smoke.sh --tier full --bundle-dir output/release/game-launcher-local --no-llm
 ```
   - 结果说明：
     当前脚本已覆盖 `player_gameplay`、正式 `gameplay_action` 推进、`reconnect-sync --with-snapshot` 恢复，以及 `FirstSessionLoop -> PostOnboarding -> choose_midloop_path` 的 required/full 收口路径。
@@ -270,7 +270,7 @@ cargo run -q -p oasis7 --bin oasis7_pure_api_client -- --addr 127.0.0.1:5023 rec
 ./scripts/viewer-post-onboarding-headless-smoke.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-software-safe-chat-regression.sh --bundle-dir output/release/game-launcher-local
 cargo run -q -p oasis7 --bin oasis7_pure_api_client -- --addr 127.0.0.1:5023 snapshot --player-gameplay-only
-./scripts/world-pure-api-parity-smoke.sh --tier required --bundle-dir output/release/game-launcher-local --no-llm
+./scripts/oasis7-pure-api-parity-smoke.sh --tier required --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/viewer-release-qa-loop.sh
 ./scripts/viewer-release-full-coverage.sh --quick
 ./scripts/viewer-release-art-baseline.sh
@@ -287,7 +287,7 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full world_init_d
 ### S6.5：Chain Runtime Storage Profile / Gate 核验（L4/L5 补充）
 ```bash
 env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_chain_runtime node_runtime_execution_driver_uses_storage_profile_checkpoint_interval -- --nocapture
-./scripts/world-runtime-storage-gate.sh --status-json <status.json> --expected-profile release_default --min-checkpoint-count 1 --max-orphan-blob-count 0 --require-no-degraded
+./scripts/oasis7-runtime-storage-gate.sh --status-json <status.json> --expected-profile release_default --min-checkpoint-count 1 --max-orphan-blob-count 0 --require-no-degraded
 OASIS7_CHAIN_STORAGE_PROFILE=release_default bash -x <bundle>/run-game.sh --help
 OASIS7_CHAIN_STORAGE_PROFILE=soak_forensics bash -x <bundle>/run-web-launcher.sh --help
 OASIS7_CHAIN_STORAGE_PROFILE=dev_local bash -x <bundle>/run-chain-runtime.sh --help
@@ -491,8 +491,8 @@ python3 ./scripts/ci-verify-m1-wasm-summaries.py --module-set m1 --summary-dir <
 ```
 - finality 基准固定入口（`stake/epoch` 验签耗时 + 2 epoch 收敛）：
 ```bash
-./scripts/world-runtime-finality-baseline.sh
-./scripts/world-runtime-finality-baseline.sh --required-samples 1 --full-samples 1 --warmup-samples 0
+./scripts/oasis7-runtime-finality-baseline.sh
+./scripts/oasis7-runtime-finality-baseline.sh --required-samples 1 --full-samples 1 --warmup-samples 0
 ```
 - 基准产物：
   - 默认输出目录：`.tmp/world_runtime_finality_baseline/<timestamp>/`

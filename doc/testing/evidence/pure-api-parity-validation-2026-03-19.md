@@ -14,8 +14,8 @@
   - 根因不是 `job_id` 字段值错误，而是 `runtime_snapshot` 内部带 `u64` 键的 `BTreeMap`（例如 `pending_factory_builds`）在 JSON 中被编码为字符串键，native 反序列化会在首次工厂建造 `step` 后报 `invalid type: string "6", expected u64`。
   - 修复方案是在 runtime `Snapshot / WorldState` 的所有数值键 map 上统一接入字符串键兼容反序列化，并补充 `snapshot_runtime_snapshot_accepts_stringified_numeric_map_keys` 回归。
 - 修复后追加 source required/full 复验：
-  - `./scripts/world-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4297 --web-bind 127.0.0.1:5161 --live-bind 127.0.0.1:5163 --chain-status-bind 127.0.0.1:5249`
-  - `./scripts/world-pure-api-parity-smoke.sh --tier full --no-llm --viewer-port 4299 --web-bind 127.0.0.1:5171 --live-bind 127.0.0.1:5173 --chain-status-bind 127.0.0.1:5251`
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4297 --web-bind 127.0.0.1:5161 --live-bind 127.0.0.1:5163 --chain-status-bind 127.0.0.1:5249`
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier full --no-llm --viewer-port 4299 --web-bind 127.0.0.1:5171 --live-bind 127.0.0.1:5173 --chain-status-bind 127.0.0.1:5251`
 - 复验结果：
   - required/full 都已通过。
   - pure API 现已稳定完成 `build_factory_smelter_mk1 -> schedule_recipe_smelter_iron_ingot -> PostOnboarding -> choose_midloop_path`。
@@ -25,7 +25,7 @@
 - `runtime_engineer` 已修复 `oasis7_pure_api_client reconnect-sync --with-snapshot`，现在会显式补拉 `snapshot`，恢复结果可直接携带 `latest_snapshot + player_gameplay`。
 - `viewer_engineer` 已把 Mission HUD / PostOnboarding 主卡改为优先消费 canonical `snapshot.player_gameplay`；只有缺少协议级玩家语义时才回退旧事件聚合逻辑。
 - 修复后追加 source required 回归：
-  - `./scripts/world-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4283 --web-bind 127.0.0.1:5123 --live-bind 127.0.0.1:5133 --chain-status-bind 127.0.0.1:5243`
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4283 --web-bind 127.0.0.1:5123 --live-bind 127.0.0.1:5133 --chain-status-bind 127.0.0.1:5243`
   - 产物：`output/playwright/playability/pure-api-required-20260319-135315/`
   - 新增检查 `recovery_snapshot_present / recovery_player_gameplay_present` 均已通过。
 - 定向验证：
@@ -38,16 +38,16 @@
 
 ## 执行命令
 - source required-tier 预跑:
-  - `./scripts/world-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4277 --web-bind 127.0.0.1:5117 --live-bind 127.0.0.1:5127 --chain-status-bind 127.0.0.1:5237`
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4277 --web-bind 127.0.0.1:5117 --live-bind 127.0.0.1:5127 --chain-status-bind 127.0.0.1:5237`
 - fresh bundle required-tier 正式口径:
   - `./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-local`
-  - `./scripts/world-pure-api-parity-smoke.sh --tier required --bundle-dir output/release/game-launcher-local --no-llm --viewer-port 4278 --web-bind 127.0.0.1:5118 --live-bind 127.0.0.1:5128 --chain-status-bind 127.0.0.1:5238`
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier required --bundle-dir output/release/game-launcher-local --no-llm --viewer-port 4278 --web-bind 127.0.0.1:5118 --live-bind 127.0.0.1:5128 --chain-status-bind 127.0.0.1:5238`
 - bundle full-tier 抽样:
-  - `./scripts/world-pure-api-parity-smoke.sh --tier full --bundle-dir output/release/game-launcher-local --no-llm --viewer-port 4279 --web-bind 127.0.0.1:5119 --live-bind 127.0.0.1:5129 --chain-status-bind 127.0.0.1:5239`
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier full --bundle-dir output/release/game-launcher-local --no-llm --viewer-port 4279 --web-bind 127.0.0.1:5119 --live-bind 127.0.0.1:5129 --chain-status-bind 127.0.0.1:5239`
 - source required-tier 收口复验:
-  - `./scripts/world-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4297 --web-bind 127.0.0.1:5161 --live-bind 127.0.0.1:5163 --chain-status-bind 127.0.0.1:5249`
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4297 --web-bind 127.0.0.1:5161 --live-bind 127.0.0.1:5163 --chain-status-bind 127.0.0.1:5249`
 - source full-tier 收口复验:
-  - `./scripts/world-pure-api-parity-smoke.sh --tier full --no-llm --viewer-port 4299 --web-bind 127.0.0.1:5171 --live-bind 127.0.0.1:5173 --chain-status-bind 127.0.0.1:5251`
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier full --no-llm --viewer-port 4299 --web-bind 127.0.0.1:5171 --live-bind 127.0.0.1:5173 --chain-status-bind 127.0.0.1:5251`
 
 ## 产物路径
 - source required-tier:

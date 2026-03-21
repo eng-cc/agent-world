@@ -216,7 +216,7 @@
   - `TASK-WORLD_RUNTIME-040` 已完成：在 `DecisionRequest` / `ObservationEnvelope` 中补齐 `mode`、`observation_schema_version`、`action_schema_version`、`environment_class`、`fallback_reason`、`fixture_id`、`replay_id`，并将其接入 `oasis7_openclaw_parity_bench`、`oasis7_openclaw_local_bridge`、`runtime_live llm_sidecar` 与聚合脚本，确保 headless parity 与 runtime live 产物可追溯到统一 replay/summary 元数据。
   - `TASK-WORLD_RUNTIME-041` 已完成：根据最新需求将专题从“host deterministic guard + keyed 平台 hash 对账”修正为“Docker-first canonical builder + single canonical publish hash”，并明确 `compile_module_artifact_from_source` 生产路径需要外移或 gated。
   - `TASK-WORLD_RUNTIME-028` 已完成：新增节点侧固定验收入口 `scripts/module-release-node-acceptance.sh` 并将 S11 运行手册切换为“脚本入口 + 等价拆分命令 + 证据目录”；同时收敛 `sync-m1/m4/m5` 非 `--check` 写入授权为“CI 禁止、仅本地显式授权（`OASIS7_WASM_SYNC_WRITE_ALLOW=local-dev`）”，主 CI 不再具备生产发布写入/激活路径。
-  - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/world-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
+  - `TASK-WORLD_RUNTIME-029` 已完成：新增 `scripts/oasis7-runtime-finality-baseline.sh` 固定基准入口，输出 `stake/epoch` 验签耗时聚合指标与 `2 epoch` 收敛状态（`summary.md`/`summary.json` 可归档）；S11 运行手册已补齐命令与产物路径。
   - `TASK-WORLD_RUNTIME-034` 已完成：补齐 `runtime-storage-footprint-governance-2026-03-08.design.md`，明确 replay contract、checkpoint、GC、metrics 与迁移边界。
   - `TASK-WORLD_RUNTIME-035` 已完成：将专题执行拆解到 T1.1 ~ T7.5，明确实现顺序、依赖边界与测试闭环。
   - `TASK-WORLD_RUNTIME-031` 已启动并完成 T1.1：execution bridge record 已升级为 V2 schema，并具备 legacy 兼容读取。
@@ -316,9 +316,9 @@
 
 - 模块进展补充（2026-03-10 / candidate）: 已新增 `doc/world-runtime/evidence/runtime-release-gate-metrics-task-game-018-2026-03-10.md`，将 `TASK-GAME-018` 所需 runtime P0 候选级实测证据实例化，并绑定到 core go/no-go 记录。
 
-- 模块进展补充（2026-03-10 / T7.2）: 已新增 `scripts/world-runtime-storage-gate.sh` 作为 storage/GC/replay gate 固定入口，当前已用 `release_default` 样本生成 `.tmp/world_runtime_storage_gate/20260310-234359/summary.md`，下一步接真实 runtime 状态样本。
+- 模块进展补充（2026-03-10 / T7.2）: 已新增 `scripts/oasis7-runtime-storage-gate.sh` 作为 storage/GC/replay gate 固定入口，当前已用 `release_default` 样本生成 `.tmp/world_runtime_storage_gate/20260310-234359/summary.md`，下一步接真实 runtime 状态样本。
 
-- 模块进展补充（2026-03-10 / T7.2 实测）: 已用真实 `oasis7_chain_runtime --storage-profile release_default` 样本跑通 `scripts/world-runtime-storage-gate.sh`，且在扩展 probe 中确认 `checkpoint_count` 会在 `height=32` 左右出现，而不是 status budget 声明的 `64`。详见 `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`。
+- 模块进展补充（2026-03-10 / T7.2 实测）: 已用真实 `oasis7_chain_runtime --storage-profile release_default` 样本跑通 `scripts/oasis7-runtime-storage-gate.sh`，且在扩展 probe 中确认 `checkpoint_count` 会在 `height=32` 左右出现，而不是 status budget 声明的 `64`。详见 `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`。
 - 模块进展补充（2026-03-10 / T7.2 根因）: 已定位 `oasis7_chain_runtime` 的 execution bridge 仍使用硬编码 `32/4` retention 默认值，尚未绑定 `StorageProfileConfig`；当前真实 gate 的 `qa_engineer` 复跑已完成：真实 `release_default` 样本在 `47` 仍为 `full_log_only`，在 `65` 切到 `checkpoint_plus_log`，T7.2 已完成闭环。
 - 模块进展补充（2026-03-11 / T7.2 QA 复验）: `qa_engineer` 已基于真实 `oasis7_chain_runtime` 样本完成修复后复验，`doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md` 已确认 `<64` 无 checkpoint、`>=64` 生成首个 checkpoint，下一步转入 T7.3 的 GC fail-safe / orphan 证据补齐。
 - 模块进展补充（2026-03-11 / T7.3 handoff）: `qa_engineer` 已新增 `doc/world-runtime/qa-to-runtime-task-world_runtime-033-t7.3-orphan-gc-failsafe-2026-03-11.md`，将 pre-checkpoint 窗口瞬时 `orphan_blob_count=1` 交接给 `runtime_engineer` 作为下一步闭环目标。

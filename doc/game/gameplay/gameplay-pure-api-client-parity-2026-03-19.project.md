@@ -35,6 +35,6 @@
   - 现阶段已有的 headless smoke 仅证明协议推进与事件流存在，不构成正式等价验收。
   - `TASK-GAMEPLAY-API-002` 已完成首个实现切片：live 协议快照新增 `player_gameplay`，当前覆盖 `FirstSessionLoop` 与 `PostOnboarding` 的 canonical 阶段目标、进度、阻塞、下一步建议、可执行动作和最近控制反馈。
   - `TASK-GAMEPLAY-API-003` 已完成首个参考客户端交付：`oasis7_pure_api_client` 支持 `snapshot / step / play / pause / agent_chat / prompt_control / reconnect_sync / rotate_session / revoke_session`，并可直接生成/使用 Ed25519 玩家密钥。
-  - `qa_engineer` 已新增 `scripts/world-pure-api-parity-smoke.sh`，并在 source required、fresh bundle required 与 bundle full 三条链路产出 `doc/testing/evidence/pure-api-parity-validation-2026-03-19.md` 的证据。
+  - `qa_engineer` 已新增 `scripts/oasis7-pure-api-parity-smoke.sh`，并在 source required、fresh bundle required 与 bundle full 三条链路产出 `doc/testing/evidence/pure-api-parity-validation-2026-03-19.md` 的证据。
   - 后续实现已补齐两个协议/表现层缺口：`reconnect-sync --with-snapshot` 现在会直接恢复 `player_gameplay`，Viewer Mission HUD / PostOnboarding 主卡也已优先消费 canonical `snapshot.player_gameplay`。
   - `runtime_engineer` 已进一步修复 `runtime_snapshot` 数值键 map 在 pure API fresh no-LLM 路径上的反序列化问题；source required/full 收口复验均已通过，pure API 已能经由 `build_factory_smelter_mk1 -> schedule_recipe_smelter_iron_ingot` 到达 `post_onboarding.choose_midloop_path`。

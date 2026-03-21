@@ -6,7 +6,7 @@ cd "$repo_root"
 
 usage() {
   cat <<'USAGE'
-Usage: ./scripts/world-runtime-storage-gate.sh [options]
+Usage: ./scripts/oasis7-runtime-storage-gate.sh [options]
 
 Purpose:
   Evaluate runtime storage/GC/replay gate from either:

@@ -6,7 +6,7 @@ cd "$repo_root"
 
 usage() {
   cat <<'USAGE'
-Usage: ./scripts/world-runtime-finality-baseline.sh [options]
+Usage: ./scripts/oasis7-runtime-finality-baseline.sh [options]
 
 Purpose:
   Run fixed baselines for world-runtime finality:

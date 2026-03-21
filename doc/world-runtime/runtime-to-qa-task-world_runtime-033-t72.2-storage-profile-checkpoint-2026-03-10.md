@@ -25,7 +25,7 @@
 ## Scope
 - In Scope:
   - 复跑真实 `oasis7_chain_runtime --storage-profile release_default` 样本。
-  - 复跑 `scripts/world-runtime-storage-gate.sh` 并确认 checkpoint 生成高度。
+  - 复跑 `scripts/oasis7-runtime-storage-gate.sh` 并确认 checkpoint 生成高度。
   - 回写测试记录、失败签名或放行结论。
 - Out of Scope:
   - 修改 runtime 实现逻辑。
@@ -62,7 +62,7 @@
 
 ## Validation Plan
 - 测试层级：`test_tier_required`
-- 验证命令：定向 cargo test + `oasis7_chain_runtime` 真实 probe + `scripts/world-runtime-storage-gate.sh`
+- 验证命令：定向 cargo test + `oasis7_chain_runtime` 真实 probe + `scripts/oasis7-runtime-storage-gate.sh`
 - 预期结果：status `effective_budget` 与实际 checkpoint cadence 一致
 - 回归影响范围：`world-runtime` storage gate / replay evidence / release gate judgement
 
