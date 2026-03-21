@@ -1,7 +1,7 @@
 # oasis7_viewer_live 发行锁定启动（P2P）设计文档（2026-02-23）设计
 
-- 对应需求文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md`
-- 对应项目管理文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md`
+- 对应需求文档: `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.prd.md`
+- 对应项目管理文档: `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.project.md`
 
 ## 1. 设计定位
 定义 `oasis7_viewer_live` 发行锁定启动设计，确保 P2P 发行版本的启动参数、能力开关与锁定口径保持一致。

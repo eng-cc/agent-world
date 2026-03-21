@@ -291,12 +291,12 @@
     - `git diff --check`
 - [x] TASK-P2P-030 (PRD-P2P-001/004) [test_tier_required]: 收口 `viewer-live` 活跃专题中仍把旧 `oasis7*` crate/path 或 launcher 名称写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
-    - `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md`
-    - `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md`
-    - `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.md`
+    - `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.prd.md`
+    - `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.prd.md`
+    - `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.prd.md`
     - `doc/p2p/project.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "oasis7_client_launcher|crates/oasis7/" doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.md`
+    - `rg -n "oasis7_client_launcher|crates/oasis7/" doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.prd.md doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.prd.md doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.prd.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 

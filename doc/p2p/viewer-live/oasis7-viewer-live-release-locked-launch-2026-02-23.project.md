@@ -1,7 +1,7 @@
 # oasis7_viewer_live 发行锁定启动（P2P）项目管理文档（2026-02-23）（项目管理文档）
 
-- 对应设计文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.design.md`
-- 对应需求文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md`
+- 对应设计文档: `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.design.md`
+- 对应需求文档: `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.prd.md`
 
 审计轮次: 5
 > 状态更新（2026-03-08）:
@@ -15,7 +15,7 @@
 - [x] T3 (PRD-P2P-MIG-115)：补发行配置样例与手册说明，执行 `oasis7_viewer_live` 定向回归并回写文档/devlog 状态。
 
 ## 依赖
-- doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md
+- doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.prd.md
 - T1 依赖 T0（接口与语义冻结后实现）。
 - T2 依赖 T1（白名单约束建立在锁定加载路径之上）。
 - T3 依赖 T1/T2（样例与手册需对齐最终 CLI 行为）。

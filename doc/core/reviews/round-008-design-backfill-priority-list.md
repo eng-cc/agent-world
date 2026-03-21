@@ -106,9 +106,9 @@
 - `doc/p2p/observer/observer-sync-source-mode`
 - `doc/p2p/token/mainchain-token-allocation-mechanism`
 - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26`
-- `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23`
-- `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23`
-- `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23`
+- `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23`
+- `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23`
+- `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23`
 
 ## 新增已补齐（2026-03-10 / world-runtime + world-simulator 收口）
 - `doc/world-runtime/module/module-subscription-filters`

@@ -88,9 +88,9 @@
 | `doc/p2p/observer/observer-sync-source-mode.prd.md` | `doc/p2p/observer/observer-sync-source-mode.design.md` | `doc/p2p/observer/observer-sync-source-mode.project.md` |
 | `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md` | `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.design.md` | `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.project.md` |
 | `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md` | `doc/p2p/token/mainchain-token-allocation-mechanism.design.md` | `doc/p2p/token/mainchain-token-allocation-mechanism.project.md` |
-| `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.md` | `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.design.md` | `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.project.md` |
-| `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md` | `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.design.md` | `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.project.md` |
-| `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md` | `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.design.md` | `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md` |
+| `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.prd.md` | `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.design.md` | `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.project.md` |
+| `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.prd.md` | `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.design.md` | `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.project.md` |
+| `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.prd.md` | `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.design.md` | `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.project.md` |
 
 ## 发布说明文档（release，补充材料）
 | 发布说明 | 对应专题 |

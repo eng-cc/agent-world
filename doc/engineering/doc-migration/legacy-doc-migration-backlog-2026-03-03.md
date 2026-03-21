@@ -229,9 +229,9 @@
 - `doc/p2p/observer/observer-sync-source-mode.project.md`
 - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.project.md`
 - `doc/p2p/token/mainchain-token-allocation-mechanism.project.md`
-- `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.project.md`
-- `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.project.md`
-- `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md`
+- `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.project.md`
+- `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.project.md`
+- `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.project.md`
 
 ## Owner-C 清单（30）
 - `doc/headless-runtime/nonviewer/nonviewer-design-alignment-closure-2026-02-25.project.md`

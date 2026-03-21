@@ -147,9 +147,9 @@
 - [x] 2026-03-04 00:18:15 CST | doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/p2p/token/mainchain-token-allocation-mechanism.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/p2p/token/mainchain-token-allocation-mechanism.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验

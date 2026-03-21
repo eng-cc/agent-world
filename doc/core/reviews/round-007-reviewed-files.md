@@ -291,12 +291,12 @@
 | `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
 | `doc/p2p/token/mainchain-token-allocation-mechanism.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
 | `doc/p2p/token/mainchain-token-allocation-mechanism.release.md` | `legacy_misc` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | 补充文档/台账类，未发现本轮关注的职责边界高信号问题 |
-| `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
-| `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
-| `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
-| `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
-| `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
-| `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
 | `doc/playability_test_card.md` | `legacy_misc` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | 补充文档/台账类，未发现本轮关注的职责边界高信号问题 |
 | `doc/playability_test_manual.md` | `legacy_misc` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | 补充文档/台账类，未发现本轮关注的职责边界高信号问题 |
 | `doc/playability_test_result/README.md` | `readme` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | 导航/索引文档，未发现越权承载需求/设计/项目权威内容 |

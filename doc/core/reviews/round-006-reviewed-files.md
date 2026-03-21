@@ -310,12 +310,12 @@
 | `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/p2p/token/mainchain-token-allocation-mechanism.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/p2p/token/mainchain-token-allocation-mechanism.release.md` | `legacy_misc` | `待判定` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/playability_test_card.md` | `legacy_misc` | `待判定` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/playability_test_manual.md` | `legacy_misc` | `待判定` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/playability_test_result/README.md` | `readme_entry` | `readme_entry` | no | no | n/a | done | done | `backfill` | `producer_system_designer` | `done` | B6-001 已接入模块 design / project 入口 |

@@ -1,7 +1,7 @@
 # oasis7_viewer_live `--no-llm` 关闭开关项目管理文档（2026-02-23）（项目管理文档）
 
-- 对应设计文档: `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.design.md`
-- 对应需求文档: `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md`
+- 对应设计文档: `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.design.md`
+- 对应需求文档: `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.prd.md`
 
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
@@ -11,7 +11,7 @@
 - [x] T3 (PRD-P2P-MIG-114)：回写设计/项目文档状态与 devlog，完成收口。
 
 ## 依赖
-- doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md
+- doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.prd.md
 - T1 依赖 T0（接口语义冻结后实现）。
 - T2 依赖 T1（手册需与最终 CLI 行为一致）。
 - T3 依赖 T2（回归后收口状态）。

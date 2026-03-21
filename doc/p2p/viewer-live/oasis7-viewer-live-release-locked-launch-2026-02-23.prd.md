@@ -1,7 +1,7 @@
 # oasis7_viewer_live 发行锁定启动（P2P）设计文档（2026-02-23）
 
-- 对应设计文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.design.md`
-- 对应项目管理文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md`
+- 对应设计文档: `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.design.md`
+- 对应项目管理文档: `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.project.md`
 
 审计轮次: 5
 > 状态更新（2026-03-08）:
@@ -43,8 +43,8 @@
 ## 4. Technical Specifications
 - Architecture Overview: 保持原文技术边界，按 strict PRD 结构重排。
 - Integration Points:
-  - `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md`
-  - `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.project.md`
+  - `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.prd.md`
+  - `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.project.md`
   - `testing-manual.md`
 - Edge Cases & Error Handling: 命名不一致、章节缺失、引用断链需在同提交修复。
 - Non-Functional Requirements: PRD-ID/任务映射完整；治理检查通过。
