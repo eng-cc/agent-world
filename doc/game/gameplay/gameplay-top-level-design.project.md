@@ -59,11 +59,11 @@
 
 - `test_tier_required` 基线：`./scripts/ci-tests.sh required`（来源：`testing-manual.md` S1）
 - `test_tier_full` 基线：`./scripts/ci-tests.sh full`（来源：`testing-manual.md` S2）
-- Gameplay Runtime 协议定向：`env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay_protocol:: -- --nocapture`（来源：`testing-manual.md` S3）
+- Gameplay Runtime 协议定向：`env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::gameplay_protocol:: -- --nocapture`（来源：`testing-manual.md` S3）
 - Gameplay LLM/Simulator 协议定向：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world simulator::llm_agent::tests:: -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world simulator::tests::submitter_access:: -- --nocapture`
-- 场景回归入口：`env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required scenario_specs_match_ids -- --nocapture`（来源：`testing-manual.md` S7）
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 simulator::llm_agent::tests:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 simulator::tests::submitter_access:: -- --nocapture`
+- 场景回归入口：`env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required scenario_specs_match_ids -- --nocapture`（来源：`testing-manual.md` S7）
 
 ## 状态
 

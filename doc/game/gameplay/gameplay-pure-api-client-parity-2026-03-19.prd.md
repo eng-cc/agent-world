@@ -132,10 +132,10 @@
 - Integration Points:
   - `doc/game/gameplay/gameplay-top-level-design.prd.md`
   - `doc/game/gameplay/gameplay-post-onboarding-stage-2026-03-18.prd.md`
-  - `crates/agent_world_proto/src/viewer.rs`
-  - `crates/agent_world/src/viewer/runtime_live.rs`
-  - `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
-  - `crates/agent_world_viewer/src/web_test_api.rs`
+  - `crates/oasis7_proto/src/viewer.rs`
+  - `crates/oasis7/src/viewer/runtime_live.rs`
+  - `crates/oasis7_viewer/src/egui_right_panel_player_guide.rs`
+  - `crates/oasis7_viewer/src/web_test_api.rs`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
   - 协议只返回原始事件无聚合语义: 结论必须降级为 `observer_only`，不得宣称“可玩等价”。

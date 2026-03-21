@@ -38,8 +38,8 @@
 - [x] 运行相关测试并记录
 
 ## 依赖
-- Runtime Gameplay 基线：`crates/agent_world/src/runtime/world/*`
-- LLM 决策协议：`crates/agent_world/src/simulator/llm_agent/*`
+- Runtime Gameplay 基线：`crates/oasis7/src/runtime/world/*`
+- LLM 决策协议：`crates/oasis7/src/simulator/llm_agent/*`
 - 压测脚本：`scripts/llm-longrun-stress.sh`
 - 测试口径手册：`testing-manual.md`
 

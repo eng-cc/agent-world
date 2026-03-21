@@ -31,10 +31,10 @@
 - 前端治理页面交互稿和可视化设计细节。
 
 ### 0.3 接口/数据
-- 运行时执行闭环：`crates/agent_world/src/runtime/world/step.rs`
-- 世界状态与事件：`crates/agent_world/src/runtime/state.rs`、`crates/agent_world/src/runtime/events.rs`
-- 快照/回放：`crates/agent_world/src/runtime/world/persistence.rs`、`crates/agent_world/src/runtime/snapshot.rs`
-- 现有治理链路：`crates/agent_world/src/runtime/world/governance.rs`
+- 运行时执行闭环：`crates/oasis7/src/runtime/world/step.rs`
+- 世界状态与事件：`crates/oasis7/src/runtime/state.rs`、`crates/oasis7/src/runtime/events.rs`
+- 快照/回放：`crates/oasis7/src/runtime/world/persistence.rs`、`crates/oasis7/src/runtime/snapshot.rs`
+- 现有治理链路：`crates/oasis7/src/runtime/world/governance.rs`
 
 ### 0.4 里程碑
 - DCG-M1: Tick 证书数据结构、哈希链与审计查询落地（write-only，不改业务规则）。

@@ -124,8 +124,8 @@
   - Gameplay DomainEvent -> 映射摘要 -> 事件行/Toast/倒计时刷新。
   - 无进展监控：基于 tick/event 增量与最近动作状态生成诊断提示。
 - **Integration Points**:
-  - Runtime 事件与状态：`crates/agent_world/src/runtime/events.rs`、`crates/agent_world/src/runtime/state/apply_domain_event_gameplay.rs`
-  - Viewer 映射与反馈：`crates/agent_world/src/viewer/runtime_live/mapping.rs`、`crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`
+  - Runtime 事件与状态：`crates/oasis7/src/runtime/events.rs`、`crates/oasis7/src/runtime/state/apply_domain_event_gameplay.rs`
+  - Viewer 映射与反馈：`crates/oasis7/src/viewer/runtime_live/mapping.rs`、`crates/oasis7_viewer/src/egui_right_panel_player_experience.rs`
   - 玩法设计基线：`doc/game/gameplay/gameplay-top-level-design.prd.md`
   - 可玩性卡片：`doc/playability_test_result/playability_test_card.md`
   - 测试门禁：`testing-manual.md`

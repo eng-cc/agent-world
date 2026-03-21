@@ -127,9 +127,9 @@
   - `doc/game/gameplay/gameplay-top-level-design.prd.md`
   - `doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.prd.md`
   - `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
-  - `crates/agent_world_viewer/src/egui_right_panel_player_experience.rs`
-  - `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
-  - `crates/agent_world_viewer/src/egui_right_panel_player_micro_loop.rs`
+  - `crates/oasis7_viewer/src/egui_right_panel_player_experience.rs`
+  - `crates/oasis7_viewer/src/egui_right_panel_player_guide.rs`
+  - `crates/oasis7_viewer/src/egui_right_panel_player_micro_loop.rs`
 - Edge Cases & Error Handling:
   - 无可行工业主目标：若当前世界状态没有可执行工业链路，回退到“恢复被阻塞产线”或“完成首次交易 / 协作”目标，但仍需保持“持续能力”导向。
   - 主目标在进入阶段前已满足：自动标记为 `completed`，并立即生成下一个主目标或进入 `branch_ready`。

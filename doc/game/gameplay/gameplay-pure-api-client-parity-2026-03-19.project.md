@@ -17,9 +17,9 @@
 - `doc/game/gameplay/gameplay-top-level-design.prd.md`
 - `doc/game/gameplay/gameplay-post-onboarding-stage-2026-03-18.prd.md`
 - `testing-manual.md`
-- `crates/agent_world_proto/src/viewer.rs`
-- `crates/agent_world/src/viewer/runtime_live.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_player_guide.rs`
+- `crates/oasis7_proto/src/viewer.rs`
+- `crates/oasis7/src/viewer/runtime_live.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_player_guide.rs`
 
 ## 状态
 
