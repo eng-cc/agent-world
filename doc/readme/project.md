@@ -145,6 +145,14 @@
     - `rg -n "OASIS7_MODULE_SOURCE_COMPILER" doc/readme/gap/readme-gap123-runtime-consensus-metering.prd.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-README-023 (PRD-README-014) [test_tier_required]: 补齐 `doc/readme/production/**` 活跃专题中遗漏的当前实现模块名口径，统一到 `oasis7::runtime`。
+  - 产物文件:
+    - `doc/readme/production/readme-p0-p1-closure.prd.md`
+    - `doc/readme/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7::runtime" doc/readme/production/readme-p0-p1-closure.prd.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -160,6 +168,7 @@
 - 更新日期: 2026-03-21
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-README-023`（已补齐 `doc/readme/production/**` 活跃专题中遗漏的当前实现模块名口径，统一切到 `oasis7::runtime`。）
 - 最新完成: `TASK-README-022`（已补齐 `doc/readme/gap/**` 活跃专题中遗漏的当前环境变量口径，统一切到 `OASIS7_MODULE_SOURCE_COMPILER`。）
 - 最新完成: `TASK-README-021`（已完成 `doc/readme/gap/**` 与 `doc/readme/production/**` 活跃专题中旧 `agent_world*` crate/path 当前真值口径与已迁移源码路径的 `oasis7*` 收口。）
 - 最新完成: `TASK-README-018`（根 README / testing-manual / world-rule 已统一为 `oasis7` 品牌，并补 internal naming compatibility 说明）。

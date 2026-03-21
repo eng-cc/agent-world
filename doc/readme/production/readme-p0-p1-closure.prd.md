@@ -17,7 +17,7 @@
 ## 范围
 - P0：`oasis7_node` 共识 commit/gossip/replication 链路增加执行哈希绑定字段并签名。
 - P1-A：`world_viewer_live` 增加默认启用的“共识执行高度门控”运行模式。
-- P1-B：`agent_world::runtime` 新增世界内模块部署/安装动作，打通提案-影子-批准-应用闭环。
+- P1-B：`oasis7::runtime` 新增世界内模块部署/安装动作，打通提案-影子-批准-应用闭环。
 
 不在本次范围：
 - 完整“游戏内 Rust 编译器”实现；仍以链下构建后将 wasm 工件提交到世界为边界。
