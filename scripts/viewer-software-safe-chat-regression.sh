@@ -363,7 +363,7 @@ if [[ -z "$GAME_URL" ]]; then
 
   BOOTSTRAPPED_STACK=1
   if [[ "$BOOTSTRAP_USES_BUNDLE" -ne 1 ]]; then
-    log_note build_world_viewer_live
+    log_note build_oasis7_viewer_live
     env -u RUSTC_WRAPPER cargo build -p oasis7 --bin oasis7_viewer_live >>"$ab_log" 2>&1
   fi
   if [[ "$REQUIRE_AGENT_SPOKE_EXPLICIT" -ne 1 && "$BOOTSTRAP_USES_BUNDLE" -ne 1 ]]; then

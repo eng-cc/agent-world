@@ -75,18 +75,18 @@
 
 | 场景 ID | 主要测试目标 | 关键覆盖测试 |
 | --- | --- | --- |
-| `minimal` | 最小初始化基线（origin + 默认 agent） | `scenario_specs_match_ids`、`scenario_templates_build_models`、`scenarios_are_stable`、`world_init_demo_runs_summary_only`、`world_init_demo_runs_from_scenario_file` |
+| `minimal` | 最小初始化基线（origin + 默认 agent） | `scenario_specs_match_ids`、`scenario_templates_build_models`、`scenarios_are_stable`、`oasis7_init_demo_runs_summary_only`、`oasis7_init_demo_runs_from_scenario_file` |
 | `two_bases` | 双基地拓扑与双 agent 基础分布 | `scenario_specs_match_ids`、`scenario_templates_build_models`、`scenarios_are_stable`、`scenario_aliases_parse(two-bases)` |
-| `llm_bootstrap` | LLM 驱动预置基线（双站点 + 辐射 profile + data/electricity 资源） | `scenario_specs_match_ids`、`scenario_templates_build_models`、`scenarios_are_stable`、`scenario_aliases_parse(llm)`、`world_init_demo_runs_llm_bootstrap_summary` |
+| `llm_bootstrap` | LLM 驱动预置基线（双站点 + 辐射 profile + data/electricity 资源） | `scenario_specs_match_ids`、`scenario_templates_build_models`、`scenarios_are_stable`、`scenario_aliases_parse(llm)`、`oasis7_init_demo_runs_llm_bootstrap_summary` |
 | `power_bootstrap` | 电力设施（plant/storage）与 owner 约束 | `scenario_specs_match_ids`、`scenario_templates_build_models`、`scenarios_are_stable`、`scenario_aliases_parse(bootstrap)` |
 | `resource_bootstrap` | 资源初值注入（origin/agent） | `resource_bootstrap_seeds_stock`、`scenario_specs_match_ids`、`scenarios_are_stable`、`scenario_aliases_parse(resources)` |
 | `twin_region_bootstrap` | 双区域结构（location/agents） | `twin_region_bootstrap_seeds_regions`、`scenarios_are_stable`、`scenario_aliases_parse(twin-regions)`、`plan_demo_actions_includes_move_for_multi_location_scenario` |
-| `triad_region_bootstrap` | 三区域结构（location/agents/resource） | `triad_region_bootstrap_seeds_regions`、`scenarios_are_stable`、`scenario_aliases_parse(triad-regions)`、`world_init_demo_runs_triad_summary` |
+| `triad_region_bootstrap` | 三区域结构（location/agents/resource） | `triad_region_bootstrap_seeds_regions`、`scenarios_are_stable`、`scenario_aliases_parse(triad-regions)`、`oasis7_init_demo_runs_triad_summary` |
 | `triad_p2p_bootstrap` | P2P 节点化分布（seed 生成节点 + 随机出生） | `triad_p2p_bootstrap_seeds_nodes_and_agents`、`scenarios_are_stable`、`scenario_aliases_parse(p2p-triad)` |
-| `asteroid_fragment_bootstrap` | 碎片分块生成 + bootstrap chunk + 预算账本（无默认设施） | `asteroid_fragment_bootstrap_seeds_fragments_and_resources`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_summary` |
-| `asteroid_fragment_detail_bootstrap` | 细粒度渲染调试场景（高密度碎片，无 origin/agent） | `asteroid_fragment_detail_bootstrap_seeds_dense_fragments_for_viewer`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_detail_summary` |
-| `asteroid_fragment_twin_region_bootstrap` | 碎片分块 + 双区域结构联动（无默认设施） | `asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_twin_summary` |
-| `asteroid_fragment_triad_region_bootstrap` | 碎片分块 + 三区域结构联动（无默认设施） | `asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions`、`scenarios_are_stable`、`world_init_demo_runs_asteroid_fragment_triad_summary` |
+| `asteroid_fragment_bootstrap` | 碎片分块生成 + bootstrap chunk + 预算账本（无默认设施） | `asteroid_fragment_bootstrap_seeds_fragments_and_resources`、`scenarios_are_stable`、`oasis7_init_demo_runs_asteroid_fragment_summary` |
+| `asteroid_fragment_detail_bootstrap` | 细粒度渲染调试场景（高密度碎片，无 origin/agent） | `asteroid_fragment_detail_bootstrap_seeds_dense_fragments_for_viewer`、`scenarios_are_stable`、`oasis7_init_demo_runs_asteroid_fragment_detail_summary` |
+| `asteroid_fragment_twin_region_bootstrap` | 碎片分块 + 双区域结构联动（无默认设施） | `asteroid_fragment_twin_region_bootstrap_seeds_fragments_and_regions`、`scenarios_are_stable`、`oasis7_init_demo_runs_asteroid_fragment_twin_summary` |
+| `asteroid_fragment_triad_region_bootstrap` | 碎片分块 + 三区域结构联动（无默认设施） | `asteroid_fragment_triad_region_bootstrap_seeds_fragments_and_regions`、`scenarios_are_stable`、`oasis7_init_demo_runs_asteroid_fragment_triad_summary` |
 
 场景说明补充：
 - `asteroid_fragment_detail_bootstrap` 设计用于 viewer 细粒度 location 渲染回归，默认关闭 origin 与 agents，避免干扰观察。

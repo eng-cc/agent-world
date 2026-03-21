@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const DEFAULT_CONSOLE_STATIC_DIR: &str = "web-launcher";
 const GAME_LAUNCHER_BIN_ENV: &str = "OASIS7_GAME_LAUNCHER_BIN";
-const WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "OASIS7_WORLD_CHAIN_RUNTIME_BIN";
+const OASIS7_CHAIN_RUNTIME_BIN_ENV: &str = "OASIS7_CHAIN_RUNTIME_BIN";
 const GAME_STATIC_DIR_ENV: &str = "OASIS7_GAME_STATIC_DIR";
 const WEB_LAUNCHER_STATIC_DIR_ENV: &str = "OASIS7_WEB_LAUNCHER_STATIC_DIR";
 
@@ -22,8 +22,9 @@ pub(super) fn resolve_oasis7_game_launcher_binary() -> PathBuf {
     PathBuf::from(binary_name("oasis7_game_launcher"))
 }
 
-pub(super) fn resolve_world_chain_runtime_binary() -> PathBuf {
-    if let Some(path) = resolve_non_empty_override_value(env::var(WORLD_CHAIN_RUNTIME_BIN_ENV).ok())
+pub(super) fn resolve_oasis7_chain_runtime_binary() -> PathBuf {
+    if let Some(path) =
+        resolve_non_empty_override_value(env::var(OASIS7_CHAIN_RUNTIME_BIN_ENV).ok())
     {
         return PathBuf::from(path);
     }

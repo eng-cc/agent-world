@@ -4,8 +4,8 @@ use std::process::Command;
 
 #[cfg(feature = "test_tier_required")]
 #[test]
-fn world_init_demo_runs_summary_only() {
-    let bin = env!("CARGO_BIN_EXE_world_init_demo");
+fn oasis7_init_demo_runs_summary_only() {
+    let bin = env!("CARGO_BIN_EXE_oasis7_init_demo");
     let output = Command::new(bin)
         .args(["--summary-only", "minimal"])
         .output()
@@ -18,8 +18,8 @@ fn world_init_demo_runs_summary_only() {
 
 #[cfg(feature = "test_tier_full")]
 #[test]
-fn world_init_demo_runs_llm_bootstrap_summary() {
-    let bin = env!("CARGO_BIN_EXE_world_init_demo");
+fn oasis7_init_demo_runs_llm_bootstrap_summary() {
+    let bin = env!("CARGO_BIN_EXE_oasis7_init_demo");
     let output = Command::new(bin)
         .args(["--summary-only", "llm_bootstrap"])
         .output()
@@ -32,8 +32,8 @@ fn world_init_demo_runs_llm_bootstrap_summary() {
 
 #[cfg(feature = "test_tier_full")]
 #[test]
-fn world_init_demo_runs_asteroid_fragment_summary() {
-    let bin = env!("CARGO_BIN_EXE_world_init_demo");
+fn oasis7_init_demo_runs_asteroid_fragment_summary() {
+    let bin = env!("CARGO_BIN_EXE_oasis7_init_demo");
     let output = Command::new(bin)
         .args(["--summary-only", "asteroid_fragment_bootstrap"])
         .output()
@@ -47,8 +47,8 @@ fn world_init_demo_runs_asteroid_fragment_summary() {
 
 #[cfg(feature = "test_tier_full")]
 #[test]
-fn world_init_demo_runs_asteroid_fragment_detail_summary() {
-    let bin = env!("CARGO_BIN_EXE_world_init_demo");
+fn oasis7_init_demo_runs_asteroid_fragment_detail_summary() {
+    let bin = env!("CARGO_BIN_EXE_oasis7_init_demo");
     let output = Command::new(bin)
         .args(["--summary-only", "asteroid_fragment_detail_bootstrap"])
         .output()
@@ -62,8 +62,8 @@ fn world_init_demo_runs_asteroid_fragment_detail_summary() {
 
 #[cfg(feature = "test_tier_full")]
 #[test]
-fn world_init_demo_runs_asteroid_fragment_twin_summary() {
-    let bin = env!("CARGO_BIN_EXE_world_init_demo");
+fn oasis7_init_demo_runs_asteroid_fragment_twin_summary() {
+    let bin = env!("CARGO_BIN_EXE_oasis7_init_demo");
     let output = Command::new(bin)
         .args(["--summary-only", "asteroid_fragment_twin_region_bootstrap"])
         .output()
@@ -77,8 +77,8 @@ fn world_init_demo_runs_asteroid_fragment_twin_summary() {
 
 #[cfg(feature = "test_tier_full")]
 #[test]
-fn world_init_demo_runs_asteroid_fragment_triad_summary() {
-    let bin = env!("CARGO_BIN_EXE_world_init_demo");
+fn oasis7_init_demo_runs_asteroid_fragment_triad_summary() {
+    let bin = env!("CARGO_BIN_EXE_oasis7_init_demo");
     let output = Command::new(bin)
         .args(["--summary-only", "asteroid_fragment_triad_region_bootstrap"])
         .output()
@@ -92,8 +92,8 @@ fn world_init_demo_runs_asteroid_fragment_triad_summary() {
 
 #[cfg(feature = "test_tier_full")]
 #[test]
-fn world_init_demo_runs_triad_summary() {
-    let bin = env!("CARGO_BIN_EXE_world_init_demo");
+fn oasis7_init_demo_runs_triad_summary() {
+    let bin = env!("CARGO_BIN_EXE_oasis7_init_demo");
     let output = Command::new(bin)
         .args(["--summary-only", "triad_region_bootstrap"])
         .output()
@@ -106,8 +106,8 @@ fn world_init_demo_runs_triad_summary() {
 
 #[cfg(feature = "test_tier_full")]
 #[test]
-fn world_init_demo_runs_from_scenario_file() {
-    let bin = env!("CARGO_BIN_EXE_world_init_demo");
+fn oasis7_init_demo_runs_from_scenario_file() {
+    let bin = env!("CARGO_BIN_EXE_oasis7_init_demo");
     let scenario_path = format!("{}/scenarios/minimal.json", env!("CARGO_MANIFEST_DIR"));
     let output = Command::new(bin)
         .args(["--summary-only", "--scenario-file", &scenario_path])

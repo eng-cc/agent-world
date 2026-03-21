@@ -1417,5 +1417,5 @@ fn now_unix_ms() -> i64 {
 mod execution_bridge_real_tests;
 
 #[cfg(test)]
-#[path = "oasis7_chain_runtime/world_chain_runtime_tests.rs"]
+#[path = "oasis7_chain_runtime/oasis7_chain_runtime_tests.rs"]
 mod tests;

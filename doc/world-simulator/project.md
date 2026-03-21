@@ -530,7 +530,7 @@
     - `crates/oasis7/src/runtime/tests/module_action_loop_split_part1.rs`
     - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
     - `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`
-    - `crates/oasis7/src/bin/oasis7_chain_runtime/world_chain_runtime_tests.rs`
+    - `crates/oasis7/src/bin/oasis7_chain_runtime/oasis7_chain_runtime_tests.rs`
   - 验收命令 (`test_tier_required`):
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 governance_flow_applies_manifest -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 governance_finality_epoch_snapshot_rotation_rejects_stale_signers_and_accepts_rotated_set -- --nocapture`

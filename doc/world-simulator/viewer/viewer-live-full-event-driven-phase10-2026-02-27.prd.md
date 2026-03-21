@@ -207,7 +207,7 @@
   - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
   - `env -u RUSTC_WRAPPER cargo check -p oasis7`
   - `env -u RUSTC_WRAPPER cargo test -p oasis7 viewer::live::tests:: -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p oasis7 world_viewer_live_tests:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 tests:: -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features "viewer_live_integration test_tier_full" --test viewer_live_integration -- --nocapture`
 - 文档残留扫描：
   - 活跃手册范围内 `--tick-ms` 已清零（仅历史 devlog/历史文档保留存档记录）。

@@ -21,8 +21,8 @@ const DEFAULT_VIEWER_HOST: &str = "127.0.0.1";
 const DEFAULT_VIEWER_PORT: u16 = 4173;
 const DEFAULT_VIEWER_STATIC_DIR: &str = "web";
 const GAME_STATIC_DIR_ENV: &str = "OASIS7_GAME_STATIC_DIR";
-const WORLD_VIEWER_LIVE_BIN_ENV: &str = "OASIS7_WORLD_VIEWER_LIVE_BIN";
-const WORLD_CHAIN_RUNTIME_BIN_ENV: &str = "OASIS7_WORLD_CHAIN_RUNTIME_BIN";
+const OASIS7_VIEWER_LIVE_BIN_ENV: &str = "OASIS7_VIEWER_LIVE_BIN";
+const OASIS7_CHAIN_RUNTIME_BIN_ENV: &str = "OASIS7_CHAIN_RUNTIME_BIN";
 const BUILTIN_LLM_PROVIDER_MODE: &str = "builtin_llm";
 const OPENCLAW_LOCAL_HTTP_PROVIDER_MODE: &str = "openclaw_local_http";
 const DEFAULT_OPENCLAW_BASE_URL: &str = "http://127.0.0.1:5841";
@@ -169,20 +169,20 @@ fn run_launcher(options: &CliOptions) -> Result<(), String> {
     install_signal_handler()?;
     TERMINATION_REQUESTED.store(false, Ordering::SeqCst);
 
-    let world_viewer_live_bin = resolve_world_viewer_live_binary()?;
-    let world_chain_runtime_bin = if options.chain_enabled {
-        Some(resolve_world_chain_runtime_binary()?)
+    let oasis7_viewer_live_bin = resolve_oasis7_viewer_live_binary()?;
+    let oasis7_chain_runtime_bin = if options.chain_enabled {
+        Some(resolve_oasis7_chain_runtime_binary()?)
     } else {
         None
     };
     let viewer_static_dir = resolve_viewer_static_dir(options.viewer_static_dir.as_str())?;
 
-    let mut chain_child = if let Some(chain_bin) = world_chain_runtime_bin.as_ref() {
-        Some(spawn_world_chain_runtime(chain_bin.as_path(), options)?)
+    let mut chain_child = if let Some(chain_bin) = oasis7_chain_runtime_bin.as_ref() {
+        Some(spawn_oasis7_chain_runtime(chain_bin.as_path(), options)?)
     } else {
         None
     };
-    let mut world_child = match spawn_world_viewer_live(&world_viewer_live_bin, options) {
+    let mut world_child = match spawn_oasis7_viewer_live(&oasis7_viewer_live_bin, options) {
         Ok(child) => child,
         Err(err) => {
             if let Some(child) = chain_child.as_mut() {
@@ -260,7 +260,7 @@ fn install_signal_handler() -> Result<(), String> {
         .clone()
 }
 
-fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, String> {
+fn spawn_oasis7_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, String> {
     let mut command = Command::new(path);
     command
         .arg(options.scenario.as_str())
@@ -319,9 +319,9 @@ fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, S
     })
 }
 
-fn spawn_world_chain_runtime(path: &Path, options: &CliOptions) -> Result<Child, String> {
+fn spawn_oasis7_chain_runtime(path: &Path, options: &CliOptions) -> Result<Child, String> {
     let mut command = Command::new(path);
-    command.args(build_world_chain_runtime_args(options));
+    command.args(build_oasis7_chain_runtime_args(options));
     command
         .arg("--node-role")
         .arg(options.chain_node_role.as_str())
@@ -372,7 +372,7 @@ fn chain_execution_world_dir(node_id: &str) -> String {
         .into_owned()
 }
 
-fn build_world_chain_runtime_args(options: &CliOptions) -> Vec<String> {
+fn build_oasis7_chain_runtime_args(options: &CliOptions) -> Vec<String> {
     let execution_world_dir = chain_execution_world_dir(options.chain_node_id.as_str());
     vec![
         "--node-id".to_string(),
@@ -1241,8 +1241,8 @@ fn validate_chain_node_validator(raw: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn resolve_world_viewer_live_binary() -> Result<PathBuf, String> {
-    if let Some((path, env_name)) = resolve_non_empty_env_override(WORLD_VIEWER_LIVE_BIN_ENV) {
+fn resolve_oasis7_viewer_live_binary() -> Result<PathBuf, String> {
+    if let Some((path, env_name)) = resolve_non_empty_env_override(OASIS7_VIEWER_LIVE_BIN_ENV) {
         let candidate = PathBuf::from(path);
         if candidate.is_file() {
             return Ok(candidate);
@@ -1276,12 +1276,12 @@ fn resolve_world_viewer_live_binary() -> Result<PathBuf, String> {
     }
 
     Err(format!(
-        "failed to locate `oasis7_viewer_live` binary; build it first or set {WORLD_VIEWER_LIVE_BIN_ENV}"
+        "failed to locate `oasis7_viewer_live` binary; build it first or set {OASIS7_VIEWER_LIVE_BIN_ENV}"
     ))
 }
 
-fn resolve_world_chain_runtime_binary() -> Result<PathBuf, String> {
-    if let Some((path, env_name)) = resolve_non_empty_env_override(WORLD_CHAIN_RUNTIME_BIN_ENV) {
+fn resolve_oasis7_chain_runtime_binary() -> Result<PathBuf, String> {
+    if let Some((path, env_name)) = resolve_non_empty_env_override(OASIS7_CHAIN_RUNTIME_BIN_ENV) {
         let candidate = PathBuf::from(path);
         if candidate.is_file() {
             return Ok(candidate);
@@ -1315,7 +1315,7 @@ fn resolve_world_chain_runtime_binary() -> Result<PathBuf, String> {
     }
 
     Err(format!(
-        "failed to locate `oasis7_chain_runtime` binary; build it first or set {WORLD_CHAIN_RUNTIME_BIN_ENV}"
+        "failed to locate `oasis7_chain_runtime` binary; build it first or set {OASIS7_CHAIN_RUNTIME_BIN_ENV}"
     ))
 }
 
@@ -1507,8 +1507,8 @@ Options:\n\
   --no-open-browser            do not auto open browser\n\
   -h, --help                   show help\n\n\
 Env:\n\
-  OASIS7_WORLD_VIEWER_LIVE_BIN        explicit path of oasis7_viewer_live binary\n\
-  OASIS7_WORLD_CHAIN_RUNTIME_BIN      explicit path of oasis7_chain_runtime binary\n\
+  OASIS7_VIEWER_LIVE_BIN              explicit path of oasis7_viewer_live binary\n\
+  OASIS7_CHAIN_RUNTIME_BIN            explicit path of oasis7_chain_runtime binary\n\
   OASIS7_GAME_STATIC_DIR              override default viewer static dir when --viewer-static-dir is omitted"
     );
 }

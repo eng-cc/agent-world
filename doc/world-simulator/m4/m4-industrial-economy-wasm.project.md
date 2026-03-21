@@ -121,7 +121,7 @@
 ### E13 发布门禁收口（PRD-M4-E13）
 - [x] 新增/更新发布 gate 脚本：`full + sync-m1/m4/m5 --check + Web strict + S9/S10`
 - [x] 将发布 gate 接入 release workflow 前置步骤
-- [x] 收口 testing-manual S7 TODO 覆盖口径（`world_init_demo_runs_` 切换 full）
+- [x] 收口 testing-manual S7 TODO 覆盖口径（`oasis7_init_demo_runs_` 切换 full）
 - [x] 新增 gate 冒烟测试与失败提示校验
 - [x] 运行 `./scripts/release-gate-smoke.sh`
 - [x] 运行 `./scripts/ci-tests.sh full`

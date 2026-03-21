@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
-    build_game_url, build_viewer_auth_bootstrap_script, build_world_chain_runtime_args,
+    build_game_url, build_oasis7_chain_runtime_args, build_viewer_auth_bootstrap_script,
     content_type_for_path, parse_host_port, parse_options, resolve_static_asset_path,
     resolve_viewer_auth_bootstrap_from_path, resolve_viewer_static_dir_with_override,
     sanitize_index_html_for_embedded_server, sanitize_relative_request_path,
@@ -305,7 +305,7 @@ fn build_game_url_brackets_ipv6_hosts() {
 }
 
 #[test]
-fn build_world_chain_runtime_args_includes_storage_profile() {
+fn build_oasis7_chain_runtime_args_includes_storage_profile() {
     let options = CliOptions {
         scenario: "sandbox".to_string(),
         chain_node_id: "chain-a".to_string(),
@@ -313,7 +313,7 @@ fn build_world_chain_runtime_args_includes_storage_profile() {
         chain_storage_profile: StorageProfile::ReleaseDefault,
         ..CliOptions::default()
     };
-    let args = build_world_chain_runtime_args(&options);
+    let args = build_oasis7_chain_runtime_args(&options);
     assert!(args.contains(&"--storage-profile".to_string()));
     assert!(args.contains(&"release_default".to_string()));
     assert!(args.contains(&"--world-id".to_string()));
@@ -325,7 +325,7 @@ fn build_world_chain_runtime_args_includes_storage_profile() {
 }
 
 #[test]
-fn build_world_chain_runtime_args_supports_all_storage_profiles() {
+fn build_oasis7_chain_runtime_args_supports_all_storage_profiles() {
     for (profile, expected) in [
         (StorageProfile::DevLocal, "dev_local"),
         (StorageProfile::ReleaseDefault, "release_default"),
@@ -338,7 +338,7 @@ fn build_world_chain_runtime_args_supports_all_storage_profiles() {
             chain_storage_profile: profile,
             ..CliOptions::default()
         };
-        let args = build_world_chain_runtime_args(&options);
+        let args = build_oasis7_chain_runtime_args(&options);
         assert!(args.contains(&"--storage-profile".to_string()));
         assert!(args.contains(&expected.to_string()));
     }

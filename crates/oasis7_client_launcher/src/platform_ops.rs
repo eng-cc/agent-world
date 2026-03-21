@@ -26,7 +26,7 @@ pub(crate) fn resolve_launcher_binary_path() -> PathBuf {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn resolve_chain_runtime_binary_path() -> PathBuf {
-    if let Some((_, path)) = crate::read_named_env_value(&["OASIS7_WORLD_CHAIN_RUNTIME_BIN"]) {
+    if let Some((_, path)) = crate::read_named_env_value(&["OASIS7_CHAIN_RUNTIME_BIN"]) {
         return PathBuf::from(path);
     }
 

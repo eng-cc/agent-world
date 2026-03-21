@@ -153,7 +153,7 @@ impl Default for CliOptions {
             launcher_bin: resolve_oasis7_game_launcher_binary()
                 .to_string_lossy()
                 .to_string(),
-            chain_runtime_bin: runtime_paths::resolve_world_chain_runtime_binary()
+            chain_runtime_bin: runtime_paths::resolve_oasis7_chain_runtime_binary()
                 .to_string_lossy()
                 .to_string(),
             console_static_dir: resolve_console_static_dir_path(),

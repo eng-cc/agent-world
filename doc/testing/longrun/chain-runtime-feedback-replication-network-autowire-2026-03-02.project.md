@@ -14,7 +14,7 @@
 ## 依赖
 - doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.prd.md
 - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
-- `crates/oasis7/src/bin/oasis7_chain_runtime/world_chain_runtime_tests.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/oasis7_chain_runtime_tests.rs`
 - `doc/testing/prd.md`
 - `doc/testing/project.md`
 - `doc/devlog/2026-03-02.md`

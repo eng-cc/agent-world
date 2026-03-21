@@ -32,7 +32,7 @@
 | --- | --- | --- | --- | --- | --- |
 | runtime execution world 路径显式透传 | `chain_node_id`、`--execution-world-dir`、`output/chain-runtime/<node_id>/reward-runtime-execution-world` | 启动器拉起 runtime 时统一附带 `--execution-world-dir` | `launcher_start -> args_built -> runtime_running` | 路径拼接规则固定，不依赖 runtime 默认 cwd | 启动器维护路径可写；用户查询能力不变 |
 - Acceptance Criteria:
-  - AC-1: `oasis7_game_launcher::build_world_chain_runtime_args` 返回参数必须包含 `--execution-world-dir` 及 `output/chain-runtime/<node_id>/reward-runtime-execution-world`。
+  - AC-1: `oasis7_game_launcher::build_oasis7_chain_runtime_args` 返回参数必须包含 `--execution-world-dir` 及 `output/chain-runtime/<node_id>/reward-runtime-execution-world`。
   - AC-2: `oasis7_web_launcher::build_chain_runtime_args` 返回参数必须包含 `--execution-world-dir` 及同规则路径。
   - AC-3: 既有链参数（`--node-id`、`--status-bind`、`--storage-profile`、PoS 参数）保持兼容，不得回归。
   - AC-4: 定向测试覆盖两个参数构建函数，且通过 `test_tier_required` 回归。
@@ -80,7 +80,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-WORLD_SIMULATOR-033 | TASK-WORLD_SIMULATOR-095/096 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_game_launcher oasis7_game_launcher_tests::build_world_chain_runtime_args_includes_storage_profile -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher oasis7_web_launcher_tests::build_chain_runtime_args_includes_chain_overrides_when_on -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin oasis7_game_launcher --bin oasis7_web_launcher` | 运行时产物目录可控性、启动器参数透传稳定性、双入口一致性 |
+| PRD-WORLD_SIMULATOR-033 | TASK-WORLD_SIMULATOR-095/096 | `test_tier_required` | `./scripts/doc-governance-check.sh` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_game_launcher oasis7_game_launcher_tests::build_oasis7_chain_runtime_args_includes_storage_profile -- --nocapture` + `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher oasis7_web_launcher_tests::build_chain_runtime_args_includes_chain_overrides_when_on -- --nocapture` + `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin oasis7_game_launcher --bin oasis7_web_launcher` | 运行时产物目录可控性、启动器参数透传稳定性、双入口一致性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
