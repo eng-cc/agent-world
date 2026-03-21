@@ -3,13 +3,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use oasis7_distfs::{
     apply_replication_record, blake3_hex, build_replication_record_with_epoch, BlobStore as _,
     FileReplicationRecord, LocalCasStore, SingleWriterReplicationGuard,
     StorageChallengeProbeConfig, StorageChallengeProbeReport,
 };
 use oasis7_proto::world_error::WorldError;
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
 use crate::{NodeConsensusAction, NodeError, PosConsensusStatus, PosDecision};

@@ -1,6 +1,6 @@
 use super::viewer_3d_config::{ViewerFragmentMaterialConfig, ViewerFragmentMaterialStrategy};
-use oasis7::simulator::FragmentElementKind;
 use bevy::prelude::*;
+use oasis7::simulator::FragmentElementKind;
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Default)]

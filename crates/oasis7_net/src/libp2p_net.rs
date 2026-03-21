@@ -3,8 +3,6 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
-use oasis7_proto::distributed_dht::DistributedDht as ProtoDistributedDht;
-use oasis7_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
 use futures::channel::{mpsc, oneshot};
 use futures::{FutureExt, StreamExt};
 use libp2p::gossipsub::{self, IdentTopic, MessageAuthenticity, TopicHash};
@@ -14,6 +12,8 @@ use libp2p::noise;
 use libp2p::request_response::{self, ProtocolSupport};
 use libp2p::swarm::{NetworkBehaviour, Swarm, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, StreamProtocol, Transport as _};
+use oasis7_proto::distributed_dht::DistributedDht as ProtoDistributedDht;
+use oasis7_proto::distributed_net::DistributedNetwork as ProtoDistributedNetwork;
 
 use crate::error::WorldError;
 use oasis7_proto::distributed::{

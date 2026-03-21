@@ -37,8 +37,7 @@ fn materializer_fetch_miss_falls_back_to_compile_and_caches_blob() {
 
     let _fetcher_guard = EnvVarGuard::capture(FETCHER_ENV);
     let removed_old_brand_fetcher = removed_old_brand_builtin_wasm_env("FETCHER");
-    let _removed_old_brand_fetcher_guard =
-        EnvVarGuard::capture(removed_old_brand_fetcher.as_str());
+    let _removed_old_brand_fetcher_guard = EnvVarGuard::capture(removed_old_brand_fetcher.as_str());
     let _compiler_guard = EnvVarGuard::capture(COMPILER_ENV);
     let removed_old_brand_compiler = removed_old_brand_builtin_wasm_env("COMPILER");
     let _removed_old_brand_compiler_guard =

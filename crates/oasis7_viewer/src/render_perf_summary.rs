@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
-use oasis7::simulator::{RuntimePerfBottleneck, RuntimePerfHealth};
 use bevy::prelude::*;
+use oasis7::simulator::{RuntimePerfBottleneck, RuntimePerfHealth};
 
 use super::{LabelLodStats, Viewer3dConfig, Viewer3dScene, ViewerConfig, ViewerState};
 

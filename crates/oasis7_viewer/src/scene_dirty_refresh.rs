@@ -366,8 +366,7 @@ mod tests {
         );
         WorldSnapshot {
             version: oasis7::simulator::SNAPSHOT_VERSION,
-            chunk_generation_schema_version:
-                oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+            chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
             time,
             config: WorldConfig::default(),
             model,

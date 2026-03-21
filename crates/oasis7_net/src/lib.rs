@@ -74,8 +74,6 @@ pub mod modules {
     pub use oasis7_wasm_abi::{ModuleArtifact, ModuleManifest};
 }
 
-pub use oasis7_proto::distributed_dht as proto_dht;
-pub use oasis7_proto::distributed_net as proto_net;
 pub use client::DistributedClient;
 pub use dht::{DistributedDht, InMemoryDht};
 pub use dht_cache::{CachedDht, DhtCacheConfig};
@@ -90,6 +88,8 @@ pub use index::{
 pub use index_store::{DistributedIndexStore, HeadIndexRecord, InMemoryIndexStore};
 pub use modules::{ModuleArtifact, ModuleManifest};
 pub use network::{DistributedNetwork, InMemoryNetwork};
+pub use oasis7_proto::distributed_dht as proto_dht;
+pub use oasis7_proto::distributed_net as proto_net;
 pub use proto_dht::{MembershipDirectorySnapshot, ProviderRecord};
 pub use proto_net::{NetworkMessage, NetworkRequest, NetworkResponse, NetworkSubscription};
 pub use provider_cache::{ProviderCache, ProviderCacheConfig};

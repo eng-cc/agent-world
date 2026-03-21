@@ -1,8 +1,8 @@
-use oasis7::simulator::{PowerEvent, WorldEvent, WorldEventKind};
-use oasis7::viewer::ViewerControl;
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
+use oasis7::simulator::{PowerEvent, WorldEvent, WorldEventKind};
+use oasis7::viewer::ViewerControl;
 
 use crate::button_feedback::{mark_step_loading_on_control, StepControlLoadingState};
 use crate::i18n::{locale_or_default, UiI18n, UiLocale};

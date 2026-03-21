@@ -16,10 +16,10 @@ use crate::{
 #[cfg(target_arch = "wasm32")]
 use crate::{ConnectionStatus, SelectionKind};
 use crate::{OrbitCamera, Viewer3dCamera, ViewerCameraMode};
+use bevy::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use oasis7::viewer::ControlCompletionStatus;
 use oasis7::viewer::{ViewerControl, ViewerControlProfile};
-use bevy::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use std::cell::RefCell;
 #[cfg(target_arch = "wasm32")]
@@ -604,9 +604,7 @@ fn mutate_last_control_feedback(
 }
 
 #[cfg(target_arch = "wasm32")]
-fn take_control_completion_ack(
-    request_id: u64,
-) -> Option<oasis7::viewer::ControlCompletionAck> {
+fn take_control_completion_ack(request_id: u64) -> Option<oasis7::viewer::ControlCompletionAck> {
     WEB_TEST_API_COMPLETION_ACKS.with(|acks| acks.borrow_mut().remove(&request_id))
 }
 

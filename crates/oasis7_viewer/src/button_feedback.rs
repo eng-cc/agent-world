@@ -71,14 +71,13 @@ pub(super) fn mark_step_loading_on_control(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use oasis7::simulator::{AgentDecision, AgentDecisionTrace};
     use bevy::app::Update;
+    use oasis7::simulator::{AgentDecision, AgentDecisionTrace};
 
     fn sample_snapshot(time: u64) -> oasis7::simulator::WorldSnapshot {
         oasis7::simulator::WorldSnapshot {
             version: oasis7::simulator::SNAPSHOT_VERSION,
-            chunk_generation_schema_version:
-                oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+            chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
             time,
             config: oasis7::simulator::WorldConfig::default(),
             model: oasis7::simulator::WorldModel::default(),

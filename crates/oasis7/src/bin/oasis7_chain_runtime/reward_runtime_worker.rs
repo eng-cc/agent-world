@@ -497,9 +497,7 @@ fn update_metrics_snapshot(
     }
 }
 
-fn reward_runtime_consensus_ready_for_settlement(
-    snapshot: &oasis7_node::NodeSnapshot,
-) -> bool {
+fn reward_runtime_consensus_ready_for_settlement(snapshot: &oasis7_node::NodeSnapshot) -> bool {
     if matches!(
         snapshot.consensus.last_status,
         Some(PosConsensusStatus::Committed)

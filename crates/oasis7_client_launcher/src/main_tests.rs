@@ -296,7 +296,10 @@ fn resolve_control_plane_env_with_rejects_removed_old_brand_key_names() {
     let removed_old_brand_control_url = removed_old_brand_launcher_env("CONTROL_URL");
     let removed_old_brand_control_bind = removed_old_brand_launcher_env("CONTROL_BIND");
     let values = BTreeMap::from([
-        (removed_old_brand_control_url.as_str(), "http://127.0.0.1:9999"),
+        (
+            removed_old_brand_control_url.as_str(),
+            "http://127.0.0.1:9999",
+        ),
         (removed_old_brand_control_bind.as_str(), "127.0.0.1:9998"),
     ]);
     let (control_url_from_env, control_listen_bind, control_api_base, control_manage_service) =

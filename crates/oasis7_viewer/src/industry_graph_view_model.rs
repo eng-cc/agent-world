@@ -1,11 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use bevy::prelude::Resource;
 use oasis7::geometry::GeoPos;
 use oasis7::simulator::{
     chunk_coord_of, AssetKind, ChunkCoord, ModuleVisualAnchor, ModuleVisualEntity, PowerEvent,
     RejectReason, ResourceKind, ResourceOwner, WorldEvent, WorldEventKind, WorldSnapshot,
 };
-use bevy::prelude::Resource;
 
 const INDUSTRY_EVENT_WINDOW: usize = 192;
 const ROOT_CAUSE_CHAIN_LIMIT: usize = 8;

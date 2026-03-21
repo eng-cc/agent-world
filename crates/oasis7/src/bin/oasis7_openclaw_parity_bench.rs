@@ -261,15 +261,13 @@ impl AgentBehavior for BuiltinParityBehavior {
         if let Some(note) = guardrail_note {
             if let Some(trace) = trace.as_mut() {
                 trace.decision = decision.clone();
-                trace
-                    .llm_step_trace
-                    .push(oasis7::simulator::LlmStepTrace {
-                        step_index: trace.llm_step_trace.len(),
-                        step_type: "builtin_parity_guardrail".to_string(),
-                        input_summary: decision_label(&original_decision),
-                        output_summary: decision_label(&decision),
-                        status: note,
-                    });
+                trace.llm_step_trace.push(oasis7::simulator::LlmStepTrace {
+                    step_index: trace.llm_step_trace.len(),
+                    step_type: "builtin_parity_guardrail".to_string(),
+                    input_summary: decision_label(&original_decision),
+                    output_summary: decision_label(&decision),
+                    status: note,
+                });
             }
         }
         self.pending_trace = trace;

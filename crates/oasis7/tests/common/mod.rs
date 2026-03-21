@@ -1,5 +1,5 @@
-use oasis7::runtime::ModuleArtifactIdentity;
 use ed25519_dalek::{Signer, SigningKey};
+use oasis7::runtime::ModuleArtifactIdentity;
 use sha2::{Digest, Sha256};
 
 const TEST_MODULE_ARTIFACT_SIGNER_NODE_ID: &str = "test.module.release.signer";

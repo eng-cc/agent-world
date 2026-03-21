@@ -15,6 +15,12 @@ use std::sync::Mutex;
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 
+use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
+use bevy::post_process::bloom::Bloom;
+use bevy::prelude::*;
+use bevy::render::view::{ColorGrading, ColorGradingGlobal};
+#[cfg(target_arch = "wasm32")]
+use gloo_timers::callback::Interval;
 use oasis7::geometry::GeoPos;
 use oasis7::simulator::{
     AgentDecisionTrace, AgentKinematics, RunnerMetrics, SpaceConfig, WorldEvent, WorldSnapshot,
@@ -23,12 +29,6 @@ use oasis7::viewer::{
     ViewerControl, ViewerControlProfile, ViewerRequest, ViewerResponse, ViewerStream,
     VIEWER_PROTOCOL_VERSION,
 };
-use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
-use bevy::post_process::bloom::Bloom;
-use bevy::prelude::*;
-use bevy::render::view::{ColorGrading, ColorGradingGlobal};
-#[cfg(target_arch = "wasm32")]
-use gloo_timers::callback::Interval;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::closure::Closure;
 #[cfg(target_arch = "wasm32")]

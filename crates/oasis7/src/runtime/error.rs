@@ -153,9 +153,7 @@ impl From<oasis7_proto::world_error::WorldError> for WorldError {
                 WorldError::SignatureKeyInvalid
             }
             oasis7_proto::world_error::WorldError::Io(message) => WorldError::Io(message),
-            oasis7_proto::world_error::WorldError::Serde(message) => {
-                WorldError::Serde(message)
-            }
+            oasis7_proto::world_error::WorldError::Serde(message) => WorldError::Serde(message),
         }
     }
 }

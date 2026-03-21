@@ -935,7 +935,10 @@ fn runtime_agent_chat_echo_env_enqueues_agent_spoke_virtual_event() {
 #[test]
 fn runtime_agent_chat_echo_removed_old_brand_env_is_ignored() {
     let _guard = lock_test_llm_env();
-    std::env::set_var(removed_old_brand_runtime_live_env("RUNTIME_AGENT_CHAT_ECHO"), "1");
+    std::env::set_var(
+        removed_old_brand_runtime_live_env("RUNTIME_AGENT_CHAT_ECHO"),
+        "1",
+    );
     let mut server = ViewerRuntimeLiveServer::new(
         ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
             .with_decision_mode(ViewerLiveDecisionMode::Llm),

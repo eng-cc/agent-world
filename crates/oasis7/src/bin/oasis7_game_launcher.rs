@@ -798,7 +798,9 @@ fn monitor_world_chain_and_server(
                 .try_wait()
                 .map_err(|err| format!("failed to query oasis7_chain_runtime status: {err}"))?
             {
-                return Err(format!("oasis7_chain_runtime exited unexpectedly: {status}"));
+                return Err(format!(
+                    "oasis7_chain_runtime exited unexpectedly: {status}"
+                ));
             }
         }
 
@@ -901,7 +903,9 @@ fn poll_startup_health(
         .try_wait()
         .map_err(|err| format!("failed to query oasis7_viewer_live status during startup: {err}"))?
     {
-        return Err(format!("oasis7_viewer_live exited during startup: {status}"));
+        return Err(format!(
+            "oasis7_viewer_live exited during startup: {status}"
+        ));
     }
     if let Some(chain_child) = chain_child {
         if let Some(status) = chain_child.try_wait().map_err(|err| {

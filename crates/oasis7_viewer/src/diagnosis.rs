@@ -1,6 +1,6 @@
-use oasis7::simulator::{RejectReason, WorldEventKind};
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
+use oasis7::simulator::{RejectReason, WorldEventKind};
 
 use crate::i18n::{locale_or_default, UiI18n};
 use crate::ui_locale_text::{diagnosis_waiting, localize_diagnosis_text};

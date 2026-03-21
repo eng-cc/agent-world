@@ -1,5 +1,6 @@
 use super::gossip_udp::{GossipEndpoint, GossipProposalMessage};
 use super::*;
+use ed25519_dalek::{Signer as _, SigningKey};
 use oasis7_consensus::node_consensus_signature::{
     sign_proposal_message, NodeConsensusMessageSigner as ConsensusMessageSigner,
 };
@@ -11,7 +12,6 @@ use oasis7_distfs::{
 use oasis7_proto::distributed::DistributedErrorCode;
 use oasis7_proto::distributed_net::NetworkSubscription;
 use oasis7_proto::world_error::WorldError;
-use ed25519_dalek::{Signer as _, SigningKey};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
 use std::fs;

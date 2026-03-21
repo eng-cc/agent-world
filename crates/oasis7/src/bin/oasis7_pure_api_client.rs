@@ -3,6 +3,7 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::net::TcpStream;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use ed25519_dalek::SigningKey;
 use oasis7::simulator::WorldSnapshot;
 use oasis7::viewer::{
     sign_agent_chat_auth_proof, sign_gameplay_action_auth_proof,
@@ -13,7 +14,6 @@ use oasis7::viewer::{
     PromptControlRollbackRequest, ViewerRequest, ViewerResponse, ViewerStream,
     VIEWER_PROTOCOL_VERSION,
 };
-use ed25519_dalek::SigningKey;
 use rand_core::OsRng;
 use serde_json::{json, Value};
 

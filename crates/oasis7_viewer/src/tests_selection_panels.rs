@@ -186,10 +186,9 @@ fn update_ui_populates_chunk_selection_details() {
     budget
         .remaining_by_element_g
         .insert(oasis7::simulator::FragmentElementKind::Iron, 90);
-    model.chunk_resource_budgets.insert(
-        oasis7::simulator::ChunkCoord { x: 0, y: 0, z: 0 },
-        budget,
-    );
+    model
+        .chunk_resource_budgets
+        .insert(oasis7::simulator::ChunkCoord { x: 0, y: 0, z: 0 }, budget);
 
     let snapshot = oasis7::simulator::WorldSnapshot {
         version: oasis7::simulator::SNAPSHOT_VERSION,

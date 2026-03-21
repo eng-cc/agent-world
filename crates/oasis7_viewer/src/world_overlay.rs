@@ -1,6 +1,6 @@
-use oasis7::simulator::{ChunkState, ResourceKind, WorldEvent, WorldSnapshot};
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
+use oasis7::simulator::{ChunkState, ResourceKind, WorldEvent, WorldSnapshot};
 use std::collections::HashMap;
 
 use crate::i18n::{locale_or_default, UiI18n, UiLocale};
@@ -864,8 +864,7 @@ mod tests {
 
         WorldSnapshot {
             version: oasis7::simulator::SNAPSHOT_VERSION,
-            chunk_generation_schema_version:
-                oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+            chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
             time: 5,
             config: WorldConfig::default(),
             model,

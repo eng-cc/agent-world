@@ -1,9 +1,9 @@
-use oasis7::simulator::{
-    ChunkCoord, PowerEvent, RejectReason, ResourceOwner, WorldEvent, WorldEventKind,
-};
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
+use oasis7::simulator::{
+    ChunkCoord, PowerEvent, RejectReason, ResourceOwner, WorldEvent, WorldEventKind,
+};
 
 use super::location_fragment_render::FragmentElementMarker;
 use crate::i18n::{locale_or_default, UiI18n, UiLocale};

@@ -1,6 +1,6 @@
-use oasis7::simulator::WorldEvent;
 use bevy::ecs::hierarchy::ChildSpawnerCommands;
 use bevy::prelude::*;
+use oasis7::simulator::WorldEvent;
 
 use crate::i18n::UiLocale;
 use crate::ui_locale_text::{
@@ -324,9 +324,7 @@ fn selection_kind_name(kind: SelectionKind) -> &'static str {
 mod tests {
     use super::*;
     use oasis7::geometry::GeoPos;
-    use oasis7::simulator::{
-        ChunkRuntimeConfig, Location, WorldConfig, WorldModel, WorldSnapshot,
-    };
+    use oasis7::simulator::{ChunkRuntimeConfig, Location, WorldConfig, WorldModel, WorldSnapshot};
 
     fn sample_snapshot() -> WorldSnapshot {
         let mut model = WorldModel::default();
@@ -336,8 +334,7 @@ mod tests {
         );
         WorldSnapshot {
             version: oasis7::simulator::SNAPSHOT_VERSION,
-            chunk_generation_schema_version:
-                oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
+            chunk_generation_schema_version: oasis7::simulator::CHUNK_GENERATION_SCHEMA_VERSION,
             time: 7,
             config: WorldConfig::default(),
             model,

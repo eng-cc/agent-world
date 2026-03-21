@@ -373,12 +373,10 @@ fn commit_cold_index_uses_canonical_layout_and_refreshes_hot_range() {
     assert_eq!(cold_index.manifest.value_kind, "content_hash");
     assert_eq!(
         cold_index.manifest.hot_range,
-        Some(
-            oasis7_proto::storage_cold_index::StorageColdIndexRange {
-                from_key: 100,
-                to_key: 101,
-            }
-        )
+        Some(oasis7_proto::storage_cold_index::StorageColdIndexRange {
+            from_key: 100,
+            to_key: 101,
+        })
     );
     assert_eq!(
         cold_index.manifest.cold_range_anchor,

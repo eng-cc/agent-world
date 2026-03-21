@@ -12,9 +12,7 @@ use oasis7::consensus_action_payload::{
 use oasis7::runtime::{
     blake3_hex, BlobStore, LocalCasStore, ModuleRegistry, World as RuntimeWorld,
 };
-use oasis7::simulator::{
-    Action as SimulatorAction, ActionSubmitter, WorldEventKind, WorldKernel,
-};
+use oasis7::simulator::{Action as SimulatorAction, ActionSubmitter, WorldEventKind, WorldKernel};
 use oasis7_node::{
     compute_consensus_action_root, NodeExecutionCommitContext, NodeExecutionCommitResult,
     NodeExecutionHook, NodeSnapshot,
@@ -1949,6 +1947,7 @@ fn to_cbor<T: Serialize>(value: T) -> Result<Vec<u8>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ed25519_dalek::{Signer, SigningKey};
     use oasis7::consensus_action_payload::encode_consensus_action_payload;
     use oasis7::runtime::{
         Action as RuntimeAction, DomainEvent, ModuleArtifactIdentity, ModuleKind, ModuleLimits,
@@ -1958,7 +1957,6 @@ mod tests {
     use oasis7_node::{NodeConsensusSnapshot, NodeRole};
     use oasis7_wasm_abi::{ModuleCallFailure, ModuleOutput};
     use oasis7_wasm_executor::FixedSandbox;
-    use ed25519_dalek::{Signer, SigningKey};
     use sha2::{Digest, Sha256};
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -3600,9 +3598,8 @@ mod tests {
             ),
         )
         .expect("encode simulator payload");
-        let committed_action =
-            oasis7_node::NodeConsensusAction::from_payload(1, "node-a", payload)
-                .expect("consensus action");
+        let committed_action = oasis7_node::NodeConsensusAction::from_payload(1, "node-a", payload)
+            .expect("consensus action");
         let action_root =
             compute_consensus_action_root(std::slice::from_ref(&committed_action)).expect("root");
         let expected_action_root = action_root.clone();

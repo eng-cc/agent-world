@@ -146,9 +146,10 @@ pub(super) fn load_commit_message_cold_index_from_root(
     }
 
     if compat_alias_path.exists() {
-        let cold_index = normalize_commit_message_cold_index(load_json_or_default::<
-            CommitMessageColdIndex,
-        >(compat_alias_path.as_path())?);
+        let cold_index =
+            normalize_commit_message_cold_index(load_json_or_default::<CommitMessageColdIndex>(
+                compat_alias_path.as_path(),
+            )?);
         write_commit_message_cold_index_to_root(root_dir, &cold_index)?;
         return Ok(cold_index);
     }

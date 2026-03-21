@@ -1,6 +1,4 @@
-use oasis7_proto::distributed_pos::{
-    slot_epoch as shared_slot_epoch, weighted_expected_proposer,
-};
+use oasis7_proto::distributed_pos::{slot_epoch as shared_slot_epoch, weighted_expected_proposer};
 
 use crate::PosNodeEngine;
 

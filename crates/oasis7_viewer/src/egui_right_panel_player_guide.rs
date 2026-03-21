@@ -1,10 +1,10 @@
 use crate::web_test_api::WebTestApiControlFeedbackSnapshot;
 use crate::{RightPanelLayoutState, ViewerSelection, ViewerState};
+use bevy_egui::egui;
 use oasis7::simulator::{
     PlayerGameplayGoalKind, PlayerGameplaySnapshot, PlayerGameplayStageId,
     PlayerGameplayStageStatus, WorldEventKind,
 };
-use bevy_egui::egui;
 use std::collections::HashMap;
 
 use super::egui_right_panel_player_experience::PlayerGuideStep;

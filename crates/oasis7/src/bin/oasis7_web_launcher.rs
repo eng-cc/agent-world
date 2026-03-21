@@ -37,7 +37,7 @@ use parse_utils::{
 };
 use runtime_paths::{
     normalize_bind_host_for_local_access, now_unix_ms, resolve_console_static_dir_path,
-    resolve_static_dir_path, resolve_oasis7_game_launcher_binary,
+    resolve_oasis7_game_launcher_binary, resolve_static_dir_path,
 };
 use static_files::{load_console_static_asset, StaticAsset};
 use transfer_query_proxy::query_chain_transfer_json;

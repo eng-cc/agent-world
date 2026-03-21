@@ -1,5 +1,5 @@
-use oasis7::simulator::WorldEvent;
 use bevy::prelude::Resource;
+use oasis7::simulator::WorldEvent;
 
 const EVENT_WINDOW_SIZE_ENV: &str = "OASIS7_VIEWER_EVENT_WINDOW_SIZE";
 const EVENT_WINDOW_RECENT_ENV: &str = "OASIS7_VIEWER_EVENT_WINDOW_RECENT";

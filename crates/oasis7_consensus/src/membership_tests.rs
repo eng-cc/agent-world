@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use oasis7_proto::distributed_dht::{DistributedDht, MembershipDirectorySnapshot};
 use ed25519_dalek::SigningKey;
+use oasis7_proto::distributed_dht::{DistributedDht, MembershipDirectorySnapshot};
 
 use crate::distributed_dht::InMemoryDht;
 use crate::distributed_net::{DistributedNetwork, InMemoryNetwork};

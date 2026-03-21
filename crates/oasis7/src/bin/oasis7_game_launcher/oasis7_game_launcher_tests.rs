@@ -25,7 +25,10 @@ fn assert_removed_old_brand_viewer_auth_env_absent(text: &str) {
 }
 
 fn removed_old_brand_viewer_auth_bootstrap_object() -> String {
-    format!("__{}", ["AGENT", "WORLD", "VIEWER", "AUTH", "ENV"].join("_"))
+    format!(
+        "__{}",
+        ["AGENT", "WORLD", "VIEWER", "AUTH", "ENV"].join("_")
+    )
 }
 
 fn removed_old_brand_viewer_auth_env_keys() -> [String; 3] {

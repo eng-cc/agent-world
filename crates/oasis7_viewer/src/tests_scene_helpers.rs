@@ -439,11 +439,7 @@ pub(super) fn rebuild_scene_default_module_count_test_system(
     let mut model = oasis7::simulator::WorldModel::default();
     model.agents.insert(
         "agent-default-modules".to_string(),
-        oasis7::simulator::Agent::new(
-            "agent-default-modules",
-            "loc-1",
-            GeoPos::new(0.0, 0.0, 0.0),
-        ),
+        oasis7::simulator::Agent::new("agent-default-modules", "loc-1", GeoPos::new(0.0, 0.0, 0.0)),
     );
     model.locations.insert(
         "loc-1".to_string(),

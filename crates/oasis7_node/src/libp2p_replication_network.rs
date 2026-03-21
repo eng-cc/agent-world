@@ -2,14 +2,14 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
+use libp2p::identity::Keypair;
+use libp2p::{Multiaddr, PeerId};
 use oasis7_net::{Libp2pNetwork, Libp2pNetworkConfig};
 use oasis7_proto::distributed::ErrorResponse;
 use oasis7_proto::distributed_net::{
     DistributedNetwork as ProtoDistributedNetwork, NetworkSubscription,
 };
 use oasis7_proto::world_error::WorldError;
-use libp2p::identity::Keypair;
-use libp2p::{Multiaddr, PeerId};
 
 type Handler = Arc<dyn Fn(&[u8]) -> Result<Vec<u8>, WorldError> + Send + Sync>;
 

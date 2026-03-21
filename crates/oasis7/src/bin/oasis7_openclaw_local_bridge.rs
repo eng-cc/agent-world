@@ -1226,9 +1226,7 @@ fn apply_profile_guardrails(
     }
 }
 
-fn estimated_current_location_id(
-    observation: &oasis7::simulator::Observation,
-) -> Option<&str> {
+fn estimated_current_location_id(observation: &oasis7::simulator::Observation) -> Option<&str> {
     observation
         .visible_locations
         .iter()

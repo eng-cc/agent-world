@@ -14,8 +14,8 @@ use crate::viewer_3d_config::{
     Viewer3dConfig, ViewerExternalMaterialSlotConfig, ViewerExternalTextureSlotConfig,
     ViewerTonemappingMode,
 };
-use oasis7::simulator::{MaterialKind, ResourceKind, WorldEventKind};
 use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
+use oasis7::simulator::{MaterialKind, ResourceKind, WorldEventKind};
 
 #[path = "tests_selection_details.rs"]
 mod tests_selection_details;
@@ -179,8 +179,7 @@ fn update_ui_populates_agent_activity_panel() {
         ),
     );
 
-    let mut agent =
-        oasis7::simulator::Agent::new("agent-1", "loc-2", GeoPos::new(1.0, 1.0, 0.0));
+    let mut agent = oasis7::simulator::Agent::new("agent-1", "loc-2", GeoPos::new(1.0, 1.0, 0.0));
     agent
         .resources
         .set(ResourceKind::Electricity, 42)
@@ -633,9 +632,7 @@ fn poll_viewer_messages_applies_event_window_sampling_policy() {
                 id,
                 time: id,
                 kind: oasis7::simulator::WorldEventKind::ActionRejected {
-                    reason: oasis7::simulator::RejectReason::InvalidAmount {
-                        amount: id as i64,
-                    },
+                    reason: oasis7::simulator::RejectReason::InvalidAmount { amount: id as i64 },
                 },
                 runtime_event: None,
             },

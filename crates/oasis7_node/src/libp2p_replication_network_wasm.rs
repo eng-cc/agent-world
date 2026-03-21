@@ -1,7 +1,7 @@
-use oasis7_proto::distributed_net::{DistributedNetwork, NetworkSubscription};
-use oasis7_proto::world_error::WorldError;
 use libp2p::identity::Keypair;
 use libp2p::{Multiaddr, PeerId};
+use oasis7_proto::distributed_net::{DistributedNetwork, NetworkSubscription};
+use oasis7_proto::world_error::WorldError;
 
 // wasm32 target intentionally does not ship a full-node networking stack.
 // This stub exists only to keep API shape stable for compile-time compatibility.

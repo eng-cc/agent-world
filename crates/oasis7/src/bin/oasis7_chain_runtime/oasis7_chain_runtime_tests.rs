@@ -1,14 +1,14 @@
 use super::{
     build_chain_balances_payload_from_world, build_chain_status_payload,
-    build_default_replication_network_config, build_node_replication_config, node_keypair_config,
-    derive_node_consensus_signer_keypair, parse_options, parse_validator_spec,
+    build_default_replication_network_config, build_node_replication_config,
+    derive_node_consensus_signer_keypair, node_keypair_config, parse_options, parse_validator_spec,
     release_security_policy_for_storage_profile, CliOptions, DEFAULT_NODE_ID,
     DEFAULT_REPLICATION_NETWORK_LISTEN, DEFAULT_STATUS_BIND,
 };
+use ed25519_dalek::SigningKey;
 use oasis7::runtime::{ReleaseSecurityPolicy, World as RuntimeWorld};
 use oasis7_node::{NodeConsensusSnapshot, NodeRole, NodeSnapshot};
 use oasis7_proto::storage_profile::{StorageProfile, StorageProfileConfig};
-use ed25519_dalek::SigningKey;
 use std::collections::BTreeMap;
 use std::path::Path;
 
