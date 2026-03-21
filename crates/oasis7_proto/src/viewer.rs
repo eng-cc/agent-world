@@ -1061,10 +1061,10 @@ mod tests {
     }
 
     #[test]
-    fn viewer_hello_ack_defaults_to_playback_profile_for_compat_payload() {
+    fn viewer_hello_ack_defaults_to_playback_profile_for_default_payload() {
         let json = r#"{
             "type":"hello_ack",
-            "server":"agent_world",
+            "server":"oasis7",
             "version":1,
             "world_id":"w1"
         }"#;

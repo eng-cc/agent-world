@@ -1519,12 +1519,12 @@ mod tests {
     }
 
     #[test]
-    fn validate_profile_accepts_oasis7_and_rejects_removed_old_brand_profile() {
+    fn validate_profile_accepts_oasis7_and_rejects_removed_profile_alias() {
         assert_eq!(validate_profile(Some(DEFAULT_OPENCLAW_AGENT_PROFILE)), None);
         assert_eq!(
-            validate_profile(Some("agent_world_p0_low_freq_npc")),
+            validate_profile(Some("legacy_p0_low_freq_npc")),
             Some(format!(
-                "unsupported agent_profile `agent_world_p0_low_freq_npc`; expected {DEFAULT_OPENCLAW_AGENT_PROFILE}"
+                "unsupported agent_profile `legacy_p0_low_freq_npc`; expected {DEFAULT_OPENCLAW_AGENT_PROFILE}"
             ))
         );
     }
