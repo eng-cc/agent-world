@@ -1,6 +1,6 @@
 # game 文档索引
 
-审计轮次: 7
+审计轮次: 8
 
 ## 入口
 - PRD: `doc/game/prd.md`
@@ -12,12 +12,14 @@
 - 维护玩法目标态、核心循环与发布前可玩性口径。
 - 汇总 gameplay 主题下的规则、经济、治理、战争与生产闭环专题。
 - 承接体验优化、长期在线硬化与发布阻断相关设计追踪。
+- 承接当前阶段判断、封闭 Beta 准入门禁与对外口径收口。
 
 ## 主题文档
 - `gameplay/`：玩法、经济、治理、战争、长稳与发布闭环专题。
 
 ## 近期专题
 - `doc/game/gameplay/gameplay-top-level-design.prd.md`
+- `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.prd.md`
 - `doc/game/gameplay/gameplay-pure-api-client-parity-2026-03-19.prd.md`
 - `doc/game/gameplay/gameplay-post-onboarding-stage-2026-03-18.prd.md`
 - `doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.prd.md`

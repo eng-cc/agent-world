@@ -2,7 +2,7 @@
 
 - 对应设计文档: `doc/game/gameplay/gameplay-top-level-design.design.md`
 - 对应需求文档: `doc/game/gameplay/gameplay-top-level-design.prd.md`
-审计轮次: 4
+审计轮次: 5
 
 ## ROUND-002 主从口径
 - 本文件为 gameplay 项目主入口，其余 gameplay project 为增量计划。
@@ -38,15 +38,22 @@
 
 ### T5 PostOnboarding 阶段目标链（2026-03-18）
 - [x] 冻结 `FirstSessionLoop -> PostOnboarding -> MidLoop` 的阶段承接口径，并新增专题 PRD / design / project。
-- [ ] `viewer_engineer` / `runtime_engineer`：对齐 `PostOnboarding` 阶段机、主目标来源、阻塞分类与恢复逻辑。
-- [ ] `viewer_engineer`：落地阶段切换卡、主目标卡、阶段完成卡，关闭当前 `#46` 的产品承接缺口。
-- [ ] `qa_engineer`：新增 `#46` required-tier / Web 闭环与 playability 卡片证据，形成通过或阻断结论。
+- [x] `viewer_engineer` / `runtime_engineer`：对齐 `PostOnboarding` 阶段机、主目标来源、阻塞分类与恢复逻辑。
+- [x] `viewer_engineer`：落地阶段切换卡、主目标卡、阶段完成卡，关闭当前 `#46` 的产品承接缺口。
+- [x] `qa_engineer`：新增 `#46` required-tier / Web 闭环与 playability 卡片证据，形成通过或阻断结论。
 
 ### T6 纯 API 客户端等价（2026-03-19）
 - [x] 冻结“纯 API 客户端在信息粒度、动作能力和持续游玩上与 UI 等价”专题 PRD / design / project。
-- [ ] `viewer_engineer` / `runtime_engineer`：将关键玩家语义从 UI 私有组装下沉到协议级 canonical snapshot。
-- [ ] `runtime_engineer` / `agent_engineer` / `viewer_engineer`：补齐纯 API 正式玩家动作面与恢复逻辑，避免降级为 observer-only。
-- [ ] `qa_engineer`：建立 UI/API parity matrix 与纯 API 长玩 required/full 验收。
+- [x] `viewer_engineer` / `runtime_engineer`：将关键玩家语义从 UI 私有组装下沉到协议级 canonical snapshot。
+- [x] `runtime_engineer` / `agent_engineer` / `viewer_engineer`：补齐纯 API 正式玩家动作面与恢复逻辑，避免降级为 observer-only。
+- [x] `qa_engineer`：建立 UI/API parity matrix 与纯 API 长玩 required/full 验收。
+
+### T7 封闭 Beta 准入门禁（2026-03-21）
+- [x] 冻结“当前阶段为 internal_playable_alpha_late、下一阶段目标为 closed_beta_candidate”专题 PRD / design / project，并完成根入口挂载。
+- [ ] `runtime_engineer`：补齐 five-node no-LLM soak、replay/rollback drill 与 longrun release gate 的候选版本证据。
+- [ ] `viewer_engineer`：收口 `PostOnboarding` 首屏降噪、主目标优先级与玩家入口 full-coverage gate 的最小产品化包。
+- [ ] `qa_engineer`：建立统一 `closed_beta_candidate` release gate，串联 headed Web/UI、pure API、no-UI smoke、longrun/recovery 与 trend baseline。
+- [ ] `liveops_community`：收口封闭 Beta 候选 runbook、招募/反馈/事故回流模板与禁语清单。
 
 ## 依赖
 
@@ -68,9 +75,9 @@
 ## 状态
 
 - 当前状态：`进行中`
-- 已完成：文档归位、命名语义化、必备字段补齐、工程分册格式修复、Gameplay Runtime/模块化/协议扩展任务拆解与落地、Gameplay 模块测试矩阵引用固化、设计评审准备与战争/政治数值基线补齐、前期工业引导闭环文档冻结（首个制成品/工厂主链）、T4 的 runtime 工业状态/事件与 viewer 主反馈闭环、T5 的 `PostOnboarding` 阶段目标链文档冻结与根入口挂载、T6 的纯 API 客户端等价专题冻结与根入口挂载。
-- 未完成：`T6` 的协议级 canonical 玩家语义、正式玩家动作面与 parity 验收尚未实现。
-- 阻塞项：无（待相关 owner 按 `T6` 执行）
+- 已完成：文档归位、命名语义化、必备字段补齐、工程分册格式修复、Gameplay Runtime/模块化/协议扩展任务拆解与落地、Gameplay 模块测试矩阵引用固化、设计评审准备与战争/政治数值基线补齐、前期工业引导闭环文档冻结（首个制成品/工厂主链）、T4 的 runtime 工业状态/事件与 viewer 主反馈闭环、T5 的 `PostOnboarding` 阶段目标链闭环、T6 的纯 API 客户端等价闭环、T7 的封闭 Beta 准入专题冻结与根入口挂载。
+- 未完成：`T7` 的 runtime / viewer / QA / liveops 四条准入收口线尚未完成。
+- 阻塞项：无（待相关 owner 按 `T7` 执行）
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。

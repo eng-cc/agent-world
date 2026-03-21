@@ -1,6 +1,6 @@
 # game PRD Project
 
-审计轮次: 7
+审计轮次: 8
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-GAME-001 (PRD-GAME-001) [test_tier_required]: 完成 game PRD 改写，建立玩法设计总入口。
@@ -74,6 +74,30 @@
     - `rg -n "cargo test -p oasis7|cargo check -p oasis7|crates/oasis7/src/runtime" doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.md doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.project.md doc/game/gameplay/gameplay-runtime-governance-closure.project.md doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-GAME-028 (PRD-GAME-009) [test_tier_required]: 新增“封闭 Beta 准入门禁”专题 PRD / design / project，并完成 `game` 根 PRD、`gameplay-top-level-design` 主文档、索引、handoff 与 devlog 挂载。
+  - 产物文件:
+    - `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.prd.md`
+    - `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.design.md`
+    - `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.project.md`
+    - `doc/game/prd.md`
+    - `doc/game/project.md`
+    - `doc/game/prd.index.md`
+    - `doc/game/README.md`
+    - `doc/game/gameplay/gameplay-top-level-design.project.md`
+    - `doc/game/gameplay/producer-to-runtime-task-game-029-closed-beta-runtime-evidence-2026-03-21.md`
+    - `doc/game/gameplay/producer-to-viewer-task-game-030-closed-beta-first-screen-2026-03-21.md`
+    - `doc/game/gameplay/producer-to-qa-task-game-031-closed-beta-unified-gate-2026-03-21.md`
+    - `doc/game/gameplay/producer-to-liveops-task-game-032-closed-beta-candidate-runbook-2026-03-21.md`
+    - `doc/devlog/2026-03-21.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "PRD-GAME-009|internal_playable_alpha_late|closed_beta_candidate" doc/game/prd.md doc/game/project.md doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.prd.md doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.project.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
+- [ ] TASK-GAME-029 (PRD-GAME-009) [test_tier_required + test_tier_full]: `runtime_engineer` 收口 five-node no-LLM soak、replay/rollback drill 与 longrun release gate 的候选版本证据，形成封闭 Beta 准入所需的 runtime 最小硬证据包。
+- [ ] TASK-GAME-030 (PRD-GAME-009) [test_tier_required]: `viewer_engineer` 收口 `PostOnboarding` 首屏降噪、主目标优先级与玩家入口 full-coverage gate 的最小产品化包，确保核心首屏不再偏“工程工具”。
+- [ ] TASK-GAME-031 (PRD-GAME-009) [test_tier_required + test_tier_full]: `qa_engineer` 建立统一 `closed_beta_candidate` release gate，串联 headed Web/UI、pure API、no-UI smoke、longrun/recovery 与 trend baseline，给出升阶或阻断结论。
+- [ ] TASK-GAME-032 (PRD-GAME-009) [test_tier_required]: `liveops_community` 收口封闭 Beta 候选 runbook、招募/反馈/事故回流模板与禁语清单；在 `producer_system_designer` 放行前继续保持 `technical preview` 口径。
+- [ ] TASK-GAME-033 (PRD-GAME-009) [test_tier_required]: `producer_system_designer` 基于 `TASK-GAME-029/030/031/032` 的统一证据执行阶段评审，决定继续保持 `internal_playable_alpha_late` 还是升级为 `closed_beta_candidate`。
 
 ## 依赖
 - 模块设计总览：`doc/game/design.md`
@@ -89,7 +113,8 @@
 ## 状态
 - 更新日期: 2026-03-21
 - 当前状态: in_progress
-- 下一任务: `待新的 gameplay 闭环需求`
+- 下一任务: `TASK-GAME-029`
+- 最新完成: `TASK-GAME-028`（已冻结当前阶段为 `internal_playable_alpha_late`，新增 `PRD-GAME-009` 封闭 Beta 准入专题，并把下一阶段目标正式拆为 runtime / viewer / QA / liveops 四条线。）
 - 最新完成: `TASK-GAME-027`（已完成更早期 `gameplay` 活跃专题中遗漏的 runtime crate 路径与 `cargo -p` 命令收口，统一切到 `oasis7` / `crates/oasis7*`。）
 - 最新完成: `TASK-GAME-026`（已完成其余活跃 `gameplay` 专题中当前源码锚点与 `cargo -p` 命令的 `oasis7` / `oasis7_viewer` / `oasis7_proto` 收口，未改动历史证据与 release gate 记录。）
 - 最新完成: `TASK-GAME-025`（已将 gameplay 专题中仍作为当前真值使用的实现锚点与 `cargo -p` 命令统一切换到 `oasis7` / `oasis7_viewer` / `crates/oasis7*` 口径）。
@@ -103,9 +128,11 @@
 - 最新完成: `TASK-GAME-020`（前期工业引导闭环的 runtime / viewer / QA 落地与 required-tier 证据链）。
 - 最新完成: `TASK-GAME-019`（game 模块 README / PRD 索引入口同步）。
 - 阶段收口优先级: `P0`
-- 阶段 owner: `qa_engineer`（发起/裁剪：`producer_system_designer`；实现：`runtime_engineer` / `viewer_engineer`）
-- 阻断条件: 若后续 release gate 缺少 playability / testing / core 的证据互链，当前版本仍不得以“玩法体验已收口”为前提给出发布 `go` 结论。
-- 承接约束: `TASK-GAMEPLAY-MLF-005/006/007/008` 必须统一回写到同一轮视觉优化证据包，并同步引用 `playability_test_result` 模块的反馈口径。
+- 阶段 owner: `producer_system_designer`
+- 当前阶段判断: `internal_playable_alpha_late`
+- 下一阶段目标: `closed_beta_candidate`
+- 阻断条件: 若统一 `closed_beta_candidate` release gate 尚未建立或任一关键 lane `block`，当前项目仍不得升级为 `closed beta` 对外口径。
+- 承接约束: `TASK-GAME-029/030/031/032` 必须以同一候选版本互链，不能用不同批次专题 `pass` 拼凑升阶结论。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002/003/004` 与 `TASK-GAME-007` 已闭环；分布式长期在线专题已完成设计建档（`TASK-GAME-008`）与执行共识首个实现切片（`TASK-GAME-009`）。
 - ROUND-003 进展: `TASK-GAME-010` 已完成，治理 `Queued + timelock/epoch` 门禁与紧急控制（刹车/否决）状态机已落地并通过定向回归。
@@ -138,8 +165,9 @@
 - ROUND-030 进展: `runtime_engineer` 已修复 pure API fresh no-LLM 路径中 `runtime_snapshot` 数值键 map 的反序列化阻断，`qa_engineer` 随后通过 `./scripts/oasis7-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4297 --web-bind 127.0.0.1:5161 --live-bind 127.0.0.1:5163 --chain-status-bind 127.0.0.1:5249` 与 `./scripts/oasis7-pure-api-parity-smoke.sh --tier full --no-llm --viewer-port 4299 --web-bind 127.0.0.1:5171 --live-bind 127.0.0.1:5173 --chain-status-bind 127.0.0.1:5251` 完成 source required/full 收口复验；pure API 现已能以正式 `gameplay_action` 路径到达 `post_onboarding.choose_midloop_path`，`TASK-GAMEPLAY-API-004` 已完成，专题结论升级为 `parity_verified`。
 - ROUND-031 进展: `producer_system_designer` 已完成 `TASK-GAME-024`，将 `game` 根 PRD / project 中仍作为当前真值使用的 `cargo -p oasis7*` 命令与 pure API 客户端源码路径统一收口到 `oasis7` / `oasis7_viewer` / `crates/oasis7/src/bin/oasis7_pure_api_client.rs`，确保 `game` 模块入口文档不再把旧品牌当作默认口径。
 - ROUND-032 进展: `producer_system_designer` 已完成 `TASK-GAME-025`，将 `gameplay` 专题里仍作为当前真值使用的 runtime 源码锚点、builtin wasm 模块路径与 `cargo -p oasis7*` 命令统一收口到 `oasis7` / `oasis7_viewer` / `crates/oasis7*`，且保留历史证据、手动量化记录与 devlog 引用不变。
+- ROUND-033 进展: `producer_system_designer` 已新增 `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.{prd,design,project}.md`，正式冻结当前阶段为 `internal_playable_alpha_late`，并把冲 `closed_beta_candidate` 的工作拆为 `TASK-GAME-029/030/031/032/033`；对应 handoff 已分别发给 `runtime_engineer`、`viewer_engineer`、`qa_engineer` 与 `liveops_community`。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
-  - 最新过程记录补充见 `doc/devlog/2026-03-19.md`。
+  - 最新过程记录补充见 `doc/devlog/2026-03-21.md`。
 
 ## 阶段收口角色交接
 ### Meta
