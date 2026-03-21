@@ -54,7 +54,7 @@
 - [ ] TASK-WORLD_RUNTIME-043 (PRD-WORLD_RUNTIME-021/022) [test_tier_required + test_tier_full]: 将 manifest / identity / CI summary / release evidence 切换为 Docker canonical hash，对不同宿主只比较容器输出，不再比较 host-native 发布 hash。
 - [x] TASK-WORLD_RUNTIME-044 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 将 `compile_module_artifact_from_source` 的生产路径外移到 external Docker builder 或 production 默认禁用，runtime 仅消费 binary + receipt。
 - [x] TASK-WORLD_RUNTIME-045 (PRD-WORLD_RUNTIME-001) [test_tier_required]: 收口 `doc/world-runtime/**` 仍可读专题标题的 `oasis7 Runtime` 品牌，不改动内部实现兼容名与历史证据正文。
-- [x] TASK-WORLD_RUNTIME-046 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 将 WASM 构建、同步、CI summary 与 builder image 的 operator env key 默认优先切到 `OASIS7_WASM_*`，并保留旧 `AGENT_WORLD_WASM_*` fallback，收口 Docker-first canonical build 链路的低风险内部标识迁移。
+- [x] TASK-WORLD_RUNTIME-046 (PRD-WORLD_RUNTIME-020/021) [test_tier_required]: 将 WASM 构建、同步、CI summary 与 builder image 的 operator env key 默认优先切到 `OASIS7_WASM_*`，并移除旧品牌 fallback，收口 Docker-first canonical build 链路的低风险内部标识迁移。
   - 产物文件:
     - `doc/world-runtime/prd.md`
     - `doc/world-runtime/project.md`
@@ -73,7 +73,7 @@
     - `env -u RUSTC_WRAPPER cargo test --manifest-path tools/wasm_build_suite/Cargo.toml -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_RUNTIME-047 (PRD-WORLD_RUNTIME-020/021/022) [test_tier_required]: 将 builtin wasm materializer、release manifest fallback 与 DistFS root override 的 runtime env key 默认优先切到 `OASIS7_BUILTIN_WASM_*`，并保留旧 `AGENT_WORLD_BUILTIN_WASM_*` fallback，收口运行时取件/抓取/编译回退链路的低风险内部标识迁移。
+- [x] TASK-WORLD_RUNTIME-047 (PRD-WORLD_RUNTIME-020/021/022) [test_tier_required]: 将 builtin wasm materializer、release manifest fallback 与 DistFS root override 的 runtime env key 默认优先切到 `OASIS7_BUILTIN_WASM_*`，并移除旧品牌 fallback，收口运行时取件/抓取/编译回退链路的低风险内部标识迁移。
   - 产物文件:
     - `doc/world-runtime/prd.md`
     - `doc/world-runtime/project.md`
@@ -89,7 +89,7 @@
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full power_bootstrap_release_manifest_full -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_RUNTIME-048 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 将 `compile_module_artifact_from_source` 的 compiler/limits/timeout env key 默认优先切到 `OASIS7_MODULE_SOURCE_*`，并保留旧 `AGENT_WORLD_MODULE_SOURCE_*` fallback，收口 runtime source compile 链路的低风险内部标识迁移。
+- [x] TASK-WORLD_RUNTIME-048 (PRD-WORLD_RUNTIME-022) [test_tier_required]: 将 `compile_module_artifact_from_source` 的 compiler/limits/timeout env key 默认优先切到 `OASIS7_MODULE_SOURCE_*`，并移除旧品牌 fallback，收口 runtime source compile 链路的低风险内部标识迁移。
   - 产物文件:
     - `doc/world-runtime/prd.md`
     - `doc/world-runtime/project.md`
@@ -161,7 +161,7 @@
     - `rg -n "oasis7(_consensus|_node|_wasm_abi)?|crates/oasis7|crates/oasis7_consensus|crates/oasis7_node|crates/oasis7_wasm_abi|cargo test -p oasis7" doc/world-runtime/module/module-storage.project.md doc/world-runtime/module/player-published-entities-2026-03-05.prd.md doc/world-runtime/module/module-subscription-filters.project.md doc/world-runtime/governance/governance-events.md doc/world-runtime/testing/testing.md doc/world-runtime/runtime/bootstrap-power-modules.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase3.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase3.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase4.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase4.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase5.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase5.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase9.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase9.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase10.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase10.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase11.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase11.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase12.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase12.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase13.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase13.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase14.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase14.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase15.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase15.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_RUNTIME-052 (PRD-WORLD_RUNTIME-001/015/020/021/022) [test_tier_required]: 收口 `world-runtime` 仍活跃专题中把旧 builtin 模块命名、`AGENT_WORLD_CHAIN_STORAGE_PROFILE` 与“保留旧 `AGENT_WORLD_WASM_*` fallback”写成当前入口的口径，统一到 `oasis7_builtin_wasm`、`OASIS7_CHAIN_STORAGE_PROFILE`、`OASIS7_WASM_*` 与 `OASIS7_BUILTIN_WASM_*` 当前入口。
+- [x] TASK-WORLD_RUNTIME-052 (PRD-WORLD_RUNTIME-001/015/020/021/022) [test_tier_required]: 收口 `world-runtime` 仍活跃专题中把旧 builtin 模块命名、旧品牌 storage profile key 与旧品牌 wasm fallback 写成当前入口的口径，统一到 `oasis7_builtin_wasm`、`OASIS7_CHAIN_STORAGE_PROFILE`、`OASIS7_WASM_*` 与 `OASIS7_BUILTIN_WASM_*` 当前入口。
   - 产物文件:
     - `doc/world-runtime/runtime/bootstrap-power-modules.design.md`
     - `doc/world-runtime/runtime/bootstrap-power-modules.project.md`

@@ -53,9 +53,9 @@
 ## 3. 已解除的根因
 ### 3.1 代码修复点
 以下位置现在已经支持真实 `player_parity` lane：
-- `crates/agent_world/src/viewer/runtime_live/llm_sidecar.rs`：通过 `AGENT_WORLD_OPENCLAW_EXECUTION_MODE` 解析并透传 runtime live OpenClaw execution mode。
-- `crates/agent_world/src/bin/world_game_launcher.rs`：新增 `--openclaw-execution-mode`，把 execution mode 透传给 `world_viewer_live`。
-- `crates/agent_world/src/bin/world_openclaw_parity_bench.rs`：新增 `--execution-mode`，真实 OpenClaw parity bench 不再固定为 `headless_agent`。
+- `crates/oasis7/src/viewer/runtime_live/llm_sidecar.rs`：通过 `OASIS7_OPENCLAW_EXECUTION_MODE` 解析并透传 runtime live OpenClaw execution mode。
+- `crates/oasis7/src/bin/world_game_launcher.rs`：新增 `--openclaw-execution-mode`，把 execution mode 透传给 `world_viewer_live`。
+- `crates/oasis7/src/bin/world_openclaw_parity_bench.rs`：新增 `--execution-mode`，真实 OpenClaw parity bench 不再固定为 `headless_agent`。
 - `scripts/openclaw-parity-p0.sh` 与 `.agents/skills/oasis7/scripts/oasis7-run.sh`：新增 execution mode 参数并贯通 smoke / play 操作路径。
 
 ### 3.2 对 T4 的当前影响
@@ -64,7 +64,7 @@
 
 ## 4. QA / Producer 对照结论（2026-03-17）
 ### 4.1 同场景样本对比
-- 对照场景：`P0-001` / `llm_bootstrap` / `seed=5` / `4 ticks` / `agent_profile=agent_world_p0_low_freq_npc`。
+- 对照场景：`P0-001` / `llm_bootstrap` / `seed=5` / `4 ticks` / `agent_profile=oasis7_p0_low_freq_npc`。
 - `headless_agent`：`completion_time_ms=23894`、`decision_steps=4`、`invalid_action_count=0`、`timeout_count=0`、`trace_completeness_ratio_ppm=1000000`、`median_latency_ms=5890`、`p95_latency_ms=6316`。
 - `player_parity`：`completion_time_ms=23829`、`decision_steps=4`、`invalid_action_count=0`、`timeout_count=0`、`trace_completeness_ratio_ppm=1000000`、`median_latency_ms=5914`、`p95_latency_ms=6236`。
 - 差值结论：`decision_steps`、`invalid_action_count`、`timeout_count`、`trace_completeness_ratio_ppm`、`context_drift_count` 全部一致；`median_latency_ms` 差值 `+24ms`，`p95_latency_ms` 差值 `-80ms`，未观察到足以改变玩法判定的体验偏差。

@@ -54,10 +54,10 @@
   - `industrial_baseline`（工业建基线专用）
   - `civic_operator`
   - `resilience_drill`
-- 保持已有环境变量兼容：
-  - `AGENT_WORLD_LLM_SYSTEM_PROMPT`
-  - `AGENT_WORLD_LLM_SHORT_TERM_GOAL`
-  - `AGENT_WORLD_LLM_LONG_TERM_GOAL`
+- 当前环境变量入口：
+  - `OASIS7_LLM_SYSTEM_PROMPT`
+  - `OASIS7_LLM_SHORT_TERM_GOAL`
+  - `OASIS7_LLM_LONG_TERM_GOAL`
 - 默认起步 prompt 增强：
   - 明确“规则/观察 -> 资源稳态 -> 工业闭环 -> 治理协作”阶段推进。
   - 若前置条件不明确，优先调用规则查询工具再决策。
@@ -126,7 +126,7 @@
   - 阶段 A：工业建基线并保存。
   - 阶段 B：从基线加载，重点验证治理/危机/元进度动作覆盖。
 - 新增 `--llm-execute-until-auto-reenter-ticks <n>` 参数透传：
-  - 映射环境变量 `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`，用于长周期中减少重复动作的 LLM 往返。
+  - 映射环境变量 `OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`，用于长周期中减少重复动作的 LLM 往返。
   - `industrial_baseline` 默认设置 `24`，可显式覆盖。
 
 ### Tracked Baseline Fixture Smoke（full tier）

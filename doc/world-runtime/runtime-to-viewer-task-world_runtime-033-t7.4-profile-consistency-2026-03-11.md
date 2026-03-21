@@ -18,7 +18,7 @@
 
 ## Current State
 - 当前实现 / 文档状态：`runtime_engineer` 已新增 game/web launcher 的三档 profile 参数透传回归。
-- 已确认事实：`world_chain_runtime`、`world_game_launcher`、`world_web_launcher` 都支持 `dev_local/release_default/soak_forensics`；bundle wrapper 通过 `AGENT_WORLD_CHAIN_STORAGE_PROFILE` 覆盖。
+- 已确认事实：`world_chain_runtime`、`world_game_launcher`、`world_web_launcher` 都支持 `dev_local/release_default/soak_forensics`；bundle wrapper 通过 `OASIS7_CHAIN_STORAGE_PROFILE` 覆盖。
 - 待确认假设：bundle / launcher 的实际运行产物与 CLI/单测口径一致。
 - 当前失败信号 / 用户反馈：暂无新增失败；当前缺的是 T7.4 的正式跨入口证据。
 
@@ -31,7 +31,7 @@
   - Soak 长跑本体。
 
 ## Inputs
-- 关键文件：`crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`、`crates/agent_world/src/bin/world_web_launcher/world_web_launcher_tests.rs`、`scripts/build-game-launcher-bundle.sh`
+- 关键文件：`crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`、`crates/oasis7/src/bin/world_web_launcher/world_web_launcher_tests.rs`、`scripts/build-game-launcher-bundle.sh`
 - 现有测试 / 证据：新增 tri-profile 参数透传回归；既有 T6.4/T6.5 文档记录
 
 ## Requested Work
