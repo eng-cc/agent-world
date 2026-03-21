@@ -20,7 +20,7 @@
 - `scripts/s10-five-node-game-soak.sh`
 - `scripts/p2p-longrun-soak.sh`
 - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
-- `crates/oasis7/src/bin/world_chain_runtime.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
 - `testing-manual.md`
 - `doc/testing/prd.md`
 - `doc/testing/project.md`

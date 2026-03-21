@@ -1142,7 +1142,7 @@ fn parse_u64(raw: &str, flag: &str) -> Result<u64, String> {
 
 fn print_help() {
     println!(
-        "Usage: world_openclaw_parity_bench [options]\n\n\
+        "Usage: oasis7_openclaw_parity_bench [options]\n\n\
 Run one parity benchmark sample for builtin or OpenClaw(Local HTTP) and emit\n\
 raw jsonl + single-sample summary json following the parity benchmark contract.\n\n\
 Options:\n\

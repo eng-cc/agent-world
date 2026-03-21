@@ -9,7 +9,7 @@
 - Problem Statement: 当前启动器浏览器仅覆盖 `overview/transactions/transaction(action_id)`，缺少区块分页、`tx_hash` 视图、统一搜索与重启可保留的索引，不满足“公共主链浏览器”最小可观测能力。
 - Proposed Solution: 在 runtime 增加持久化 explorer 索引与 P0 查询接口（blocks/block/txs/tx/search），控制面代理透传，并在 native/web 共用启动器面板补齐区块列表、交易哈希详情、搜索与分页交互。
 - Success Criteria:
-  - SC-1: `world_chain_runtime` 提供 `blocks/block/txs/tx/search` 五类 explorer P0 查询接口。
+  - SC-1: `oasis7_chain_runtime` 提供 `blocks/block/txs/tx/search` 五类 explorer P0 查询接口。
   - SC-2: 交易详情支持 `tx_hash` 查询并返回 receipt-like 字段（`status/block_height/block_hash/action_count/timestamps`）。
   - SC-3: 区块列表、交易列表均支持分页参数，排序稳定且可重复翻页。
   - SC-4: explorer 索引在 runtime 重启后可恢复（至少保留最近窗口数据）。
@@ -47,7 +47,7 @@
 | Explorer 持久化索引 | `index_version`、`last_synced_height`、`blocks[]`、`txs[]` | runtime 启动加载；每次同步后写盘 | `cold_start -> loaded -> syncing -> persisted` | 仅保留最近窗口（如 5k tx / 2k blocks） | 本地文件可写 |
 | 启动器浏览器 P0 面板 | `tab(blocks/txs/search)`、`page_cursor`、`filters`、`detail_card` | 切换 Tab、翻页、搜索、详情跳转 | `closed/open` + 子状态机 | UI 与 web/native 文案与字段一致 | 链就绪可操作 |
 - Acceptance Criteria:
-  - AC-1: `world_chain_runtime` 支持 `GET /v1/chain/explorer/blocks`、`/block`、`/txs`、`/tx`、`/search`。
+  - AC-1: `oasis7_chain_runtime` 支持 `GET /v1/chain/explorer/blocks`、`/block`、`/txs`、`/tx`、`/search`。
   - AC-2: `oasis7_web_launcher` 提供对应 `/api/chain/explorer/*` 代理并保留结构化错误语义。
   - AC-3: 区块与交易接口支持分页参数 `limit/cursor`，默认 `limit=50`，`limit` 上限可控（<=200）。
   - AC-4: `tx` 详情支持 `tx_hash` 查询，返回 receipt-like 结果；`not_found` 保持结构化错误。
@@ -69,10 +69,10 @@
   - 控制面层: `oasis7_web_launcher` 透传 explorer P0 查询到 runtime，保持统一错误封装。
   - 客户端层: 启动器 explorer 窗口扩展为 Blocks/Txs/Search 三视图，并增加分页与详情联动。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_chain_runtime.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/explorer_p0_api.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api_tests.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/explorer_p0_api.rs`
   - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
   - `crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs`
   - `crates/oasis7_client_launcher/src/app_process.rs`
@@ -112,7 +112,7 @@
   - PRD-WORLD_SIMULATOR-025 -> TASK-WORLD_SIMULATOR-057/058/059 -> `test_tier_required`。
   - 计划验证命令:
     - `./scripts/doc-governance-check.sh`
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_chain_runtime transfer_submit_api::tests:: -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`

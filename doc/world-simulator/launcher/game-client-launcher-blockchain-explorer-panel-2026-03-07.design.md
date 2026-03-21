@@ -7,7 +7,7 @@
 定义启动器内“区块链浏览器”面板的跨端统一结构：由 runtime 提供 explorer 查询 RPC，经 `oasis7_web_launcher` 代理后，由 native/web 共用 UI 展示链总览、交易列表与交易详情。
 
 ## 2. 设计结构
-- 运行时查询层：`world_chain_runtime` 暴露 overview、transactions、transaction 三类只读 explorer RPC。
+- 运行时查询层：`oasis7_chain_runtime` 暴露 overview、transactions、transaction 三类只读 explorer RPC。
 - 控制面代理层：`oasis7_web_launcher` 将 explorer RPC 统一代理到 `/api/chain/explorer/*`，保留结构化错误语义。
 - 启动器展示层：`oasis7_client_launcher` 提供 explorer window，复用现有生命周期状态枚举与轮询机制。
 - 交互状态层：overview、filters、transactions、`selected_transaction` 分别维护 `idle/loading/ready/failed` 状态。

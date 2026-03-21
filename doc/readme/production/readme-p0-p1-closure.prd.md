@@ -16,7 +16,7 @@
 
 ## 范围
 - P0：`oasis7_node` 共识 commit/gossip/replication 链路增加执行哈希绑定字段并签名。
-- P1-A：`world_viewer_live` 增加默认启用的“共识执行高度门控”运行模式。
+- P1-A：`oasis7_viewer_live` 增加默认启用的“共识执行高度门控”运行模式。
 - P1-B：`oasis7::runtime` 新增世界内模块部署/安装动作，打通提案-影子-批准-应用闭环。
 
 不在本次范围：
@@ -30,9 +30,9 @@
     - `execution_state_root: Option<String>`
   - commit 签名载荷增加上述字段。
   - `ReplicatedCommitPayload` 新增上述字段并入 `consensus/commits/*.json`。
-- `world_viewer_live`:
+- `oasis7_viewer_live`:
   - `ViewerLiveServerConfig` 增加可选高度门控输入（按共识/执行高度限制本地 step）。
-  - `world_viewer_live` 启动参数新增是否强制门控相关开关（默认强制）。
+  - `oasis7_viewer_live` 启动参数新增是否强制门控相关开关（默认强制）。
 - `runtime::Action`:
   - 新增 `DeployModuleArtifact`（注册 wasm 工件）。
   - 新增 `InstallModuleFromArtifact`（基于 artifact 构建 ModuleChangeSet 并执行治理闭环）。

@@ -11,7 +11,7 @@
 - 总结论: `pass_after_fix`
 
 ## 输入
-- 运行命令: `env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_chain_runtime -- --node-id t72-node --world-id t72-world --storage-profile release_default --status-bind 127.0.0.1:5221 --execution-world-dir .tmp/runtime_t72_sample/execution-world --execution-records-dir .tmp/runtime_t72_sample/execution-records --storage-root .tmp/runtime_t72_sample/storage-root --execution-bridge-state .tmp/runtime_t72_sample/execution-bridge-state.json`
+- 运行命令: `env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_chain_runtime -- --node-id t72-node --world-id t72-world --storage-profile release_default --status-bind 127.0.0.1:5221 --execution-world-dir .tmp/runtime_t72_sample/execution-world --execution-records-dir .tmp/runtime_t72_sample/execution-records --storage-root .tmp/runtime_t72_sample/storage-root --execution-bridge-state .tmp/runtime_t72_sample/execution-bridge-state.json`
 - 状态样本: `.tmp/runtime_t72_sample/artifacts/status.json`、`.tmp/runtime_t72_sample/artifacts/status-after-feedback.json`、`.tmp/runtime_t72_probe_20260310-235637/artifacts/status-round-1.json`
 - gate 摘要: `.tmp/world_runtime_storage_gate/20260310-234544/summary.md`（fresh sample） / `.tmp/world_runtime_storage_gate/20260310-234829/summary.md`（feedback 注入后）
 
@@ -25,9 +25,9 @@
 - `orphan_blob_count=0`、`last_gc_result=success`、`degraded_reason=null`。
 
 ## 当前结论
-- 本轮真实 `world_chain_runtime` 样本已成功接入 `scripts/world-runtime-storage-gate.sh`。
+- 本轮真实 `oasis7_chain_runtime` 样本已成功接入 `scripts/world-runtime-storage-gate.sh`。
 - 先前把失败简单解释为“`release_default` 样本尚未达到 `64`”是不充分的；扩展实测显示 `checkpoint_count` 会在 `height=32` 左右出现。
-- 根因已收敛为：`/v1/chain/status.storage.effective_budget` 报告的是 `release_default.execution_checkpoint_interval=64`，但 `world_chain_runtime` 实际执行桥接仍在使用硬编码 `32/4` 默认值。
+- 根因已收敛为：`/v1/chain/status.storage.effective_budget` 报告的是 `release_default.execution_checkpoint_interval=64`，但 `oasis7_chain_runtime` 实际执行桥接仍在使用硬编码 `32/4` 默认值。
 - 因此 T7.2 当前阻塞不再是“需要把样本推进到 64”，而是“需要把 execution bridge retention/checkpoint cadence 真正绑定到 storage profile 后再复跑 gate”。
 
 ## 后续动作
@@ -35,15 +35,15 @@
 - 由 `qa_engineer` 在修复后复跑真实 runtime 样本与 `scripts/world-runtime-storage-gate.sh`，确认 `release_default` 在 `<64` 不再提前出现 checkpoint，且 `height=64` 时生成首个 checkpoint。
 
 ## 根因判断
-- `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs` 中 `maybe_persist_execution_checkpoint_for_record(...)` 明确要求 `record.height % checkpoint_interval_heights == 0` 才会落盘 checkpoint。
-- 读码与扩展实测共同证明：生产 `world_chain_runtime` 的 execution bridge 没有吃到 `StorageProfileConfig`，仍落回硬编码 `EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS=32`、`EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS=32`、`EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_KEEP_LATEST=4`。
+- `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs` 中 `maybe_persist_execution_checkpoint_for_record(...)` 明确要求 `record.height % checkpoint_interval_heights == 0` 才会落盘 checkpoint。
+- 读码与扩展实测共同证明：生产 `oasis7_chain_runtime` 的 execution bridge 没有吃到 `StorageProfileConfig`，仍落回硬编码 `EXECUTION_BRIDGE_DEFAULT_HOT_WINDOW_HEIGHTS=32`、`EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_INTERVAL_HEIGHTS=32`、`EXECUTION_BRIDGE_DEFAULT_CHECKPOINT_KEEP_LATEST=4`。
 - 这解释了为何 status `effective_budget` 声称 `release_default.execution_checkpoint_interval=64`，但真实样本在 `height=32` 左右已经出现 checkpoint。
 - 同时确认不存在可外部触发的显式 `save/flush/checkpoint` API；可推进 commit 的公开入口仍只有 `POST /v1/chain/feedback/submit` 与 `POST /v1/chain/transfer/submit`。
 
 
 ## QA 复验（修复后）
 - 执行角色: `qa_engineer`
-- 真实样本命令: `env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_chain_runtime -- --node-id t72-qa-posfast --world-id t72-world --node-tick-ms 5 --pos-slot-duration-ms 20 --pos-ticks-per-slot 1 --pos-proposal-tick-phase 0 --storage-profile release_default --status-bind 127.0.0.1:5226 --execution-world-dir .tmp/runtime_t72_qa_posfast_20260311-002402/execution-world --execution-records-dir .tmp/runtime_t72_qa_posfast_20260311-002402/execution-records --storage-root .tmp/runtime_t72_qa_posfast_20260311-002402/storage-root --execution-bridge-state .tmp/runtime_t72_qa_posfast_20260311-002402/execution-bridge-state.json`
+- 真实样本命令: `env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_chain_runtime -- --node-id t72-qa-posfast --world-id t72-world --node-tick-ms 5 --pos-slot-duration-ms 20 --pos-ticks-per-slot 1 --pos-proposal-tick-phase 0 --storage-profile release_default --status-bind 127.0.0.1:5226 --execution-world-dir .tmp/runtime_t72_qa_posfast_20260311-002402/execution-world --execution-records-dir .tmp/runtime_t72_qa_posfast_20260311-002402/execution-records --storage-root .tmp/runtime_t72_qa_posfast_20260311-002402/storage-root --execution-bridge-state .tmp/runtime_t72_qa_posfast_20260311-002402/execution-bridge-state.json`
 - `pre64` 状态样本: `.tmp/runtime_t72_qa_posfast_20260311-002402/artifacts/status-pre64.json`
 - `post64` 状态样本: `.tmp/runtime_t72_qa_posfast_20260311-002402/artifacts/status-post64.json`
 - `pre64` gate 摘要: `.tmp/runtime_t72_qa_posfast_20260311-002402/gate-pre64/20260311-002427/summary.md`

@@ -9,7 +9,7 @@ usage() {
 Usage: ./scripts/p2p-longrun-soak.sh [options]
 
 Status:
-  active (2026-02-28): this script runs p2p soak topologies via world_chain_runtime.
+  active (2026-02-28): this script runs p2p soak topologies via oasis7_chain_runtime.
 
 Options:
   --profile <name>                 soak_smoke | soak_endurance | soak_release (default: soak_smoke)
@@ -549,12 +549,12 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 if [[ "$prewarm" -eq 1 ]] && [[ "$dry_run" -eq 0 ]]; then
-  run env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_chain_runtime
+  run env -u RUSTC_WRAPPER cargo build -p oasis7 --bin oasis7_chain_runtime
 fi
 
-chain_bin="$repo_root/target/debug/world_chain_runtime"
+chain_bin="$repo_root/target/debug/oasis7_chain_runtime"
 if [[ "$dry_run" -eq 0 ]] && [[ ! -x "$chain_bin" ]]; then
-  echo "world_chain_runtime binary not found: $chain_bin" >&2
+  echo "oasis7_chain_runtime binary not found: $chain_bin" >&2
   echo "run with prewarm enabled or build it manually first" >&2
   exit 1
 fi
@@ -659,7 +659,7 @@ jq -n \
     },
     dry_run: ($dry_run == 1),
     compatibility_notes: [
-      "--scenario/--llm are accepted but no longer affect world_chain_runtime topology",
+      "--scenario/--llm are accepted but no longer affect oasis7_chain_runtime topology",
       "node_tick_ms is worker poll/fallback interval; PoS slot timing is configured by pos_config.*"
     ]
   }' > "$run_config_json"

@@ -23,7 +23,7 @@
 ### Out of Scope
 - 不接入远端反馈 API（HTTP 上报/鉴权/重试）。
 - 不实现附件上传（截图、崩溃 dump）。
-- 不改动 `oasis7_game_launcher` 或 `world_viewer_live` 协议。
+- 不改动 `oasis7_game_launcher` 或 `oasis7_viewer_live` 协议。
 
 ## 3. AI System Requirements (If Applicable)
 - N/A: 本专题不新增 AI 专属要求。

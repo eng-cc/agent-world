@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 - 为 `oasis7_viewer` 增加一条可执行的浏览器运行路径（`wasm32-unknown-unknown`），让 Viewer 支持在浏览器中启动与渲染。
-- 保持现有桌面运行方式不受影响：桌面仍支持在线 TCP 连接 `world_viewer_live`。
+- 保持现有桌面运行方式不受影响：桌面仍支持在线 TCP 连接 `oasis7_viewer_live`。
 - 建立最小闭环：`wasm32` 编译可通过、可通过统一脚本启动本地 Web 调试服务、文档可直接指引使用。
 - 将 Web 路径设为 Viewer 闭环默认路径，闭环证据统一走 `agent-browser` 产物（截图 + console）。
 
@@ -51,7 +51,7 @@
 - Web（`wasm32`）：
   - 入口直接走 UI 模式。
   - 默认连接 `ws://127.0.0.1:5011`，可通过 URL 参数 `?ws=` 或 `?addr=` 覆盖。
-  - 依赖 `world_viewer_live --web-bind <addr>` 启动 WebSocket bridge。
+  - 依赖 `oasis7_viewer_live --web-bind <addr>` 启动 WebSocket bridge。
   - 不编译 TCP 连接链路（`TcpStream` 相关代码通过 `cfg` 隔离）。
 
 ### 3) `oasis7` wasm 兼容点

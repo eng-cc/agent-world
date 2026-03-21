@@ -149,7 +149,7 @@
 
 ### 关键端到端链路（E2E Chains）
 1. 玩家交互链路:
-`Launcher/Viewer -> world_viewer_live/world_chain_runtime -> world-runtime -> event/journal -> UI反馈`
+`Launcher/Viewer -> oasis7_viewer_live/oasis7_chain_runtime -> world-runtime -> event/journal -> UI反馈`
 2. 世界执行链路:
 `Action/Intent -> Rule Validation -> Resource/State Transition -> Event -> Snapshot/Replay`
 3. 模块扩展链路:

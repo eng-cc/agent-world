@@ -7,12 +7,12 @@
 
 
 ## 1. Executive Summary
-- Problem Statement: 多个运行脚本仍依赖 `world_viewer_live` 旧节点参数链路（`--node-*`/`--topology`/`--reward-runtime-*`），在新启动架构下已失效且错误提示不清晰。
+- Problem Statement: 多个运行脚本仍依赖 `oasis7_viewer_live` 旧节点参数链路（`--node-*`/`--topology`/`--reward-runtime-*`），在新启动架构下已失效且错误提示不清晰。
 - Proposed Solution: 将日常脚本迁移到 `oasis7_game_launcher`，并对尚未重构完成的长跑脚本提供显式阻断与迁移指引，统一启动口径。
 - Success Criteria:
   - SC-1: `run-game-test.sh` 与 `viewer-release-qa-loop.sh` 迁移到 `oasis7_game_launcher` 调用链路。
   - SC-2: `s10-five-node-game-soak.sh` 与 `p2p-longrun-soak.sh` 在旧参数路径下启动前明确失败并给出迁移方向。
-  - SC-3: 文档与手册口径同步到“单机优先 `oasis7_game_launcher`、多节点建议 `world_chain_runtime`”。
+  - SC-3: 文档与手册口径同步到“单机优先 `oasis7_game_launcher`、多节点建议 `oasis7_chain_runtime`”。
   - SC-4: 迁移后脚本失败信息可定位，不再出现隐式参数失效。
   - SC-5: Web 发行验收链路可显式固定 viewer 静态资源目录，避免协议升级后误加载陈旧资产导致解码失败。
 
@@ -33,7 +33,7 @@
 - Critical User Flows:
   1. Flow-LAUNCH-001: `执行 run-game-test/viewer-release-qa-loop -> oasis7_game_launcher 启动 -> 输出兼容日志`
   2. Flow-LAUNCH-002: `执行长跑脚本 -> 命中旧参数链路 -> 显式阻断并输出迁移提示`
-  3. Flow-LAUNCH-003: `查阅 testing-manual -> 按新口径选择 oasis7_game_launcher 或 world_chain_runtime`
+  3. Flow-LAUNCH-003: `查阅 testing-manual -> 按新口径选择 oasis7_game_launcher 或 oasis7_chain_runtime`
   4. Flow-LAUNCH-004: `执行 viewer-release-qa-loop -> 传入/继承 viewer-static-dir -> oasis7_game_launcher 显式锁定静态目录 -> 避免陈旧 dist 触发协议解码错误`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
@@ -51,8 +51,8 @@
   - AC-5: 文档与任务状态可在项目文档/devlog 追溯。
   - AC-6: `viewer-release-qa-loop.sh` 支持 `--viewer-static-dir` 并传递到 `oasis7_game_launcher`；当 `OASIS7_GAME_STATIC_DIR` 配置有效目录时可覆盖默认 `web`。
 - Non-Goals:
-  - 不在本轮重写 S10/P2P 为完整 `world_chain_runtime` 多节点闭环。
-  - 不恢复 `world_viewer_live` 内嵌节点参数兼容。
+  - 不在本轮重写 S10/P2P 为完整 `oasis7_chain_runtime` 多节点闭环。
+  - 不恢复 `oasis7_viewer_live` 内嵌节点参数兼容。
   - 不扩展本任务之外的新脚本编排框架。
 
 ## 3. AI System Requirements (If Applicable)
@@ -60,20 +60,20 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 启动入口分层为“单机场景 `oasis7_game_launcher` + 多节点场景 `world_chain_runtime`”，脚本按场景选择入口并对失效链路 fail-fast。
+- Architecture Overview: 启动入口分层为“单机场景 `oasis7_game_launcher` + 多节点场景 `oasis7_chain_runtime`”，脚本按场景选择入口并对失效链路 fail-fast。
 - Integration Points:
   - `scripts/run-game-test.sh`
   - `scripts/viewer-release-qa-loop.sh`
   - `scripts/s10-five-node-game-soak.sh`
   - `scripts/p2p-longrun-soak.sh`
   - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
   - `OASIS7_GAME_STATIC_DIR`
   - `testing-manual.md`
 - Edge Cases & Error Handling:
-  - 脚本仍传入 `world_viewer_live --node-*`：立即失败并提示替代入口。
+  - 脚本仍传入 `oasis7_viewer_live --node-*`：立即失败并提示替代入口。
   - 自动化依赖旧日志进程名：尽量保留日志产物命名兼容并在文档标注差异。
-  - 长跑流程临时不可执行：阻断信息必须给出下一步迁移方向（`world_chain_runtime` 多节点编排）。
+  - 长跑流程临时不可执行：阻断信息必须给出下一步迁移方向（`oasis7_chain_runtime` 多节点编排）。
   - 参数组合错误：由脚本前置校验输出可定位错误文本。
   - 默认 `web/` 为陈旧构建且协议已升级：脚本必须允许显式切换新构建目录，launcher 必须在默认模式下支持环境覆盖，避免 `unknown variant` 类解码错误。
   - 环境变量指向不存在目录：launcher 立即失败并提示变量名与路径，避免静默回退导致误判。
@@ -109,7 +109,7 @@
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
-| DEC-LAUNCH-001 | 日常脚本统一迁移 `oasis7_game_launcher` | 继续分散在 `world_viewer_live` 旧参数链路 | 统一入口更易维护且与当前架构一致。 |
+| DEC-LAUNCH-001 | 日常脚本统一迁移 `oasis7_game_launcher` | 继续分散在 `oasis7_viewer_live` 旧参数链路 | 统一入口更易维护且与当前架构一致。 |
 | DEC-LAUNCH-002 | 长跑脚本先显式阻断并提示迁移 | 继续尝试兼容失效参数 | fail-fast 能避免误用和隐式错误。 |
 | DEC-LAUNCH-003 | 手册同步标注替代入口 | 仅改脚本不改文档 | 文档不更新会放大执行偏差风险。 |
 | DEC-LAUNCH-004 | 在 QA 脚本与 launcher 双侧提供静态目录显式覆盖能力 | 仅依赖默认 `web` 目录 + 人工清理缓存 | 双侧覆盖可同时满足本地开发与打包分发场景，并降低协议错配概率。 |

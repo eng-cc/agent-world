@@ -17,7 +17,7 @@
 ### S3 测试与回归
 - [x] 更新 `simulator/tests/init.rs` 的场景断言
 - [x] 运行 `env -u RUSTC_WRAPPER cargo test -p oasis7 simulator::tests::init -- --nocapture`
-- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p oasis7 --test world_init_demo -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p oasis7 --test oasis7_init_demo -- --nocapture`
 
 ### S4 文档回写
 - [x] 更新 `doc/world-simulator/scenario/scenario-files.prd.md` 场景矩阵描述

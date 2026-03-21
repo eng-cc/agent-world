@@ -25,11 +25,11 @@
   - `crates/oasis7/src/runtime/state.rs`
   - `crates/oasis7/src/runtime/events.rs`
 - Live bridge：
-  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
-  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - 测试：
   - `crates/oasis7/src/runtime/tests/*`
-  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs` 内测试
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs` 内测试
 
 ## 状态
 - 当前阶段：已完成（T0~T4 全部完成）

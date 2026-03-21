@@ -68,9 +68,9 @@
   - 控制面层: `oasis7_web_launcher` 新增 P1 路由 remap 到 runtime。
   - 客户端层: 扩展 explorer 窗口状态机与请求层，新增四个视图并复用统一事件通道。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_chain_runtime/explorer_p0_api.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/explorer_p0_api.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api_tests.rs`
   - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
   - `crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs`
   - `crates/oasis7_client_launcher/src/app_process.rs`
@@ -107,7 +107,7 @@
   - PRD-WORLD_SIMULATOR-026 -> TASK-WORLD_SIMULATOR-060/061/062 -> `test_tier_required`。
   - 计划验证命令:
     - `./scripts/doc-governance-check.sh`
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime transfer_submit_api::tests:: -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_chain_runtime transfer_submit_api::tests:: -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`

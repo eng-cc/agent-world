@@ -9,11 +9,11 @@ usage() {
 Usage: ./scripts/world-pure-api-parity-smoke.sh [options] [run-game-test options...]
 
 Validate the pure API gameplay path against the live TCP protocol using
-`world_pure_api_client`.
+`oasis7_pure_api_client`.
 
 Default flow:
 1. bootstrap a fresh stack via ./scripts/run-game-test.sh
-2. build the local `world_pure_api_client` binary
+2. build the local `oasis7_pure_api_client` binary
 3. capture initial player_gameplay snapshot
 4. submit canonical `gameplay_action` to build the first smelter
 5. advance until the smelter is ready, then submit the first iron-ingot recipe
@@ -193,8 +193,8 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-env -u RUSTC_WRAPPER cargo build -q -p oasis7 --bin world_pure_api_client
-client_bin="$repo_root/target/debug/world_pure_api_client"
+env -u RUSTC_WRAPPER cargo build -q -p oasis7 --bin oasis7_pure_api_client
+client_bin="$repo_root/target/debug/oasis7_pure_api_client"
 [[ -x "$client_bin" ]] || {
   echo "error: expected pure API client binary at $client_bin" >&2
   exit 1
@@ -422,7 +422,7 @@ summary = {
     "recovery_status": (recovery_ack or {}).get("ack", {}).get("status"),
     "recovery_snapshot_present": recovery_snapshot is not None,
     "notes": [
-        "This smoke validates the pure API player path via world_pure_api_client, not browser UI rendering.",
+        "This smoke validates the pure API player path via oasis7_pure_api_client, not browser UI rendering.",
         "Parity_verified still requires separate UI/API matrix review and broader long-run sampling.",
     ],
 }

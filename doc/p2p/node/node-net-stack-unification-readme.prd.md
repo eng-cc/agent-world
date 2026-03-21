@@ -6,7 +6,7 @@
 审计轮次: 5
 ## 1. Executive Summary
 - Problem Statement: 收口此前评估中的“网络栈分裂”问题：将 `oasis7_node` 的 replication libp2p 实现从独立 swarm 线程迁移为复用 `oasis7_net::Libp2pNetwork`。
-- Proposed Solution: 保持 `world_viewer_live` 现有接线和配置不变，不改变上层对 `Libp2pReplicationNetwork` 的调用方式。
+- Proposed Solution: 保持 `oasis7_viewer_live` 现有接线和配置不变，不改变上层对 `Libp2pReplicationNetwork` 的调用方式。
 - Success Criteria:
   - SC-1: 保持 node replication 现有关键语义不回退：
   - SC-2: 多 peer 轮换请求；

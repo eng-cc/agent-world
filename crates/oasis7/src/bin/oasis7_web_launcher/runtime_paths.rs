@@ -30,11 +30,11 @@ pub(super) fn resolve_world_chain_runtime_binary() -> PathBuf {
 
     if let Ok(current_exe) = env::current_exe() {
         if let Some(bin_dir) = current_exe.parent() {
-            return bin_dir.join(binary_name("world_chain_runtime"));
+            return bin_dir.join(binary_name("oasis7_chain_runtime"));
         }
     }
 
-    PathBuf::from(binary_name("world_chain_runtime"))
+    PathBuf::from(binary_name("oasis7_chain_runtime"))
 }
 
 pub(super) fn resolve_static_dir_path(default_viewer_static_dir: &str) -> PathBuf {

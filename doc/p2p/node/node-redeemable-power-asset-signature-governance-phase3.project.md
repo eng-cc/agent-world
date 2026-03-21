@@ -14,7 +14,7 @@
 - [x] SGC-1 (PRD-P2P-MIG-097)：完成三期项目管理文档拆解。
 - [x] SGC-2 (PRD-P2P-MIG-097)：落地 `mintsig:v2`（ed25519）签名/验签与治理策略结构。
 - [x] SGC-3 (PRD-P2P-MIG-097)：实现签名版兑换动作与治理门禁（策略要求时拒绝无签名兑换）。
-- [x] SGC-4 (PRD-P2P-MIG-097)：接线 `world_viewer_live` reward runtime（真实私钥结算 + 签名兑换）。
+- [x] SGC-4 (PRD-P2P-MIG-097)：接线 `oasis7_viewer_live` reward runtime（真实私钥结算 + 签名兑换）。
 - [x] SGC-5 (PRD-P2P-MIG-097)：补齐 `test_tier_required` 回归、回写文档状态与 devlog 收口。
 
 ## 依赖
@@ -24,7 +24,7 @@
 - `crates/oasis7/src/runtime/world/event_processing.rs`
 - `crates/oasis7/src/runtime/events.rs`
 - `crates/oasis7/src/runtime/tests/reward_asset.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - `doc/devlog/2026-02-17.md`
 
 ## 状态

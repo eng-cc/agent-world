@@ -1,4 +1,4 @@
-# oasis7: 基于 world_chain_runtime 的长跑脚本可用化（2026-02-28）
+# oasis7: 基于 oasis7_chain_runtime 的长跑脚本可用化（2026-02-28）
 
 - 对应设计文档: `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.design.md`
 - 对应项目管理文档: `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.project.md`
@@ -6,10 +6,10 @@
 审计轮次: 4
 
 ## 1. Executive Summary
-- Problem Statement: 长跑脚本依赖已下线的 `world_viewer_live --node-*` 链路，导致脚本无法稳定执行，自动化门禁与产物输出被阻断。
-- Proposed Solution: 将 S10 与 P2P 长跑脚本统一迁移到 `world_chain_runtime` 多节点编排，改用 `/v1/chain/status` 与 `/v1/chain/balances` 采样，并保留既有产物与失败定位契约。
+- Problem Statement: 长跑脚本依赖已下线的 `oasis7_viewer_live --node-*` 链路，导致脚本无法稳定执行，自动化门禁与产物输出被阻断。
+- Proposed Solution: 将 S10 与 P2P 长跑脚本统一迁移到 `oasis7_chain_runtime` 多节点编排，改用 `/v1/chain/status` 与 `/v1/chain/balances` 采样，并保留既有产物与失败定位契约。
 - Success Criteria:
-  - SC-1: `scripts/s10-five-node-game-soak.sh` 与 `scripts/p2p-longrun-soak.sh` 均可基于 `world_chain_runtime` 正常运行。
+  - SC-1: `scripts/s10-five-node-game-soak.sh` 与 `scripts/p2p-longrun-soak.sh` 均可基于 `oasis7_chain_runtime` 正常运行。
   - SC-2: 脚本持续输出 `run_config.json`、`timeline.csv`、`summary.json`、`summary.md`（失败时含 `failures.md`）。
   - SC-3: 核心门禁覆盖共识推进、连接健康、reward mint 记录与高度滞后。
   - SC-4: P2P chaos 注入能力在新链路下继续可用。
@@ -24,11 +24,11 @@
   - 发布候选验证：执行长跑脚本并审阅 summary 与失败报告。
   - 故障复盘：根据 timeline 与 failures 快速定位异常节点。
 - User Stories:
-  - PRD-TESTING-LONGRUN-SOAK-001: As a 测试维护者, I want longrun scripts to run on `world_chain_runtime`, so that soak regression is executable again.
+  - PRD-TESTING-LONGRUN-SOAK-001: As a 测试维护者, I want longrun scripts to run on `oasis7_chain_runtime`, so that soak regression is executable again.
   - PRD-TESTING-LONGRUN-SOAK-002: As a 发布负责人, I want stable status/balances sampling and summary artifacts, so that gate decisions remain auditable.
   - PRD-TESTING-LONGRUN-SOAK-003: As a 脚本维护者, I want chaos injection and runtime controls preserved, so that legacy automation contracts keep working.
 - Critical User Flows:
-  1. Flow-SOAK-001: `启动多实例 world_chain_runtime -> 建立 validator/gossip 拓扑 -> 进入采样循环`
+  1. Flow-SOAK-001: `启动多实例 oasis7_chain_runtime -> 建立 validator/gossip 拓扑 -> 进入采样循环`
   2. Flow-SOAK-002: `定时调用 /v1/chain/status 与 /v1/chain/balances -> 汇总 timeline/summary -> 生成门禁结论`
   3. Flow-SOAK-003: `P2P 脚本注入 chaos -> 记录恢复与失败信息 -> 输出 failures.md`
 - Functional Specification Matrix:
@@ -39,13 +39,13 @@
 | 产物契约保持 | `run_config.json/timeline.csv/summary.json/summary.md/failures.md` | 每次 run 输出固定结构产物 | `generated -> archived` | 失败时必须附 `failures.md` 诊断 | 自动化流水线直接消费 |
 | chaos 复用 | 故障注入配置与恢复窗口 | 在 P2P longrun 中执行注入并观测恢复 | `stable -> injected -> recovered/degraded` | 注入后需经过观测窗口再判定门禁 | 测试维护者可开关/调参 |
 - Acceptance Criteria:
-  - AC-1: 两个脚本均完成 `world_chain_runtime` 链路改造并可执行。
+  - AC-1: 两个脚本均完成 `oasis7_chain_runtime` 链路改造并可执行。
   - AC-2: status/balances 采样字段满足 summary 生成与门禁判断最小集合。
   - AC-3: 产物文件名与核心语义兼容既有消费方。
   - AC-4: 旧链路弃用说明与兼容行为在脚本帮助/文档中可追溯。
   - AC-5: 回归验证、项目状态与任务日志完成收口。
 - Non-Goals:
-  - 不恢复 `world_viewer_live` 内嵌节点路径。
+  - 不恢复 `oasis7_viewer_live` 内嵌节点路径。
   - 不追求旧脚本全部细分字段的 1:1 恢复。
   - 不在本轮新增新的长跑质量指标体系。
 
@@ -54,11 +54,11 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 以 `world_chain_runtime` 作为统一节点进程，脚本通过 HTTP 状态端点采样运行健康并汇总产物，替代旧 viewer 内嵌节点路径。
+- Architecture Overview: 以 `oasis7_chain_runtime` 作为统一节点进程，脚本通过 HTTP 状态端点采样运行健康并汇总产物，替代旧 viewer 内嵌节点路径。
 - Integration Points:
   - `scripts/s10-five-node-game-soak.sh`
   - `scripts/p2p-longrun-soak.sh`
-  - `crates/oasis7/src/bin/world_chain_runtime.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
   - `testing-manual.md`
   - `doc/testing/longrun/chain-runtime-soak-script-reactivation-2026-02-28.project.md`
 - Edge Cases & Error Handling:
@@ -76,7 +76,7 @@
 ## 5. Risks & Roadmap
 - Phased Rollout:
   - MVP (SOAKREACT-1): 完成专题设计与项目文档建档。
-  - v1.1 (SOAKREACT-2): S10 脚本迁移到 `world_chain_runtime` 五节点启动链路。
+  - v1.1 (SOAKREACT-2): S10 脚本迁移到 `oasis7_chain_runtime` 五节点启动链路。
   - v2.0 (SOAKREACT-3): P2P 脚本迁移并恢复 chaos 注入能力。
   - v2.1 (SOAKREACT-4): 完成回归、手册口径对齐与文档收口。
   - v2.2 (SOAKREACT-5): 按 strict schema 人工迁移并统一 `.prd` 命名。
@@ -95,7 +95,7 @@
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
-| DEC-SOAK-001 | 统一切换到 `world_chain_runtime` 启动链路 | 延续 `world_viewer_live --node-*` 旧路径 | 旧路径已下线，无法支撑可执行长跑。 |
+| DEC-SOAK-001 | 统一切换到 `oasis7_chain_runtime` 启动链路 | 延续 `oasis7_viewer_live --node-*` 旧路径 | 旧路径已下线，无法支撑可执行长跑。 |
 | DEC-SOAK-002 | 以 status/balances HTTP 采样重建门禁与报表 | 依赖旧 epoch 文件接口 | 统一运行时接口更稳定且可维护。 |
 | DEC-SOAK-003 | 优先保证核心门禁可用，缺失字段标 `unavailable` | 强制恢复全部历史字段 | 控制变更复杂度，先恢复可执行与可判定能力。 |
 

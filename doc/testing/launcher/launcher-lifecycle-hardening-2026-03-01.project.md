@@ -17,8 +17,8 @@
 - doc/testing/launcher/launcher-lifecycle-hardening-2026-03-01.prd.md
 - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
 - `crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/distfs_probe_runtime.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs（`#[cfg(test)]`）`
 - `crates/oasis7_client_launcher/src/main.rs`
 - `doc/testing/prd.md`
 - `doc/testing/project.md`

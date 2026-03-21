@@ -47,7 +47,7 @@
   - AC-4: `oasis7_client_launcher` 与 `oasis7_game_launcher` 地址规则一致。
   - AC-5: 定向单测与文档收口完成，`--all-targets` 构建噪音下降。
 - Non-Goals:
-  - 不改动 `world_chain_runtime` 业务协议。
+  - 不改动 `oasis7_chain_runtime` 业务协议。
   - 不引入新的分布式编排框架。
   - 不放宽 IPv6 输入规范到歧义格式。
 
@@ -61,8 +61,8 @@
   - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
   - `crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs`
   - `crates/oasis7_client_launcher/src/main.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
-  - `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/distfs_probe_runtime.rs`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs（`#[cfg(test)]`）`
 - Edge Cases & Error Handling:
   - 静态 HTTP 端口占用：视为启动失败并触发子进程回滚。
   - 子进程短暂启动后立即退出：ready 轮询中立即失败，避免误报成功。
@@ -70,7 +70,7 @@
   - IPv6 裸地址 `::1:port`：直接报错并提示 bracket 格式。
   - 测试环境信号处理干扰：采用一次性安装并避免测试主动发送终止信号。
 - Non-Functional Requirements:
-  - NFR-LIFECYCLE-1: 启动失败后无残留 `world_viewer_live`/`world_chain_runtime` 进程。
+  - NFR-LIFECYCLE-1: 启动失败后无残留 `oasis7_viewer_live`/`oasis7_chain_runtime` 进程。
   - NFR-LIFECYCLE-2: 就绪判定误报窗口最小化，ready 状态可审计。
   - NFR-LIFECYCLE-3: CLI 与 GUI 地址规则一致，错误提示可操作。
   - NFR-LIFECYCLE-4: 测试组织优化后 `--all-targets` 构建噪音降低。

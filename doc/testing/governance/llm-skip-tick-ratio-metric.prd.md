@@ -10,7 +10,7 @@
 - Problem Statement: 当前 LLM 运行链路缺少“跳过 LLM 调用 tick 占比”这一统一指标，无法量化 `execute_until` 等机制带来的调用节省效果。
 - Proposed Solution: 在 demo、report 与长跑汇总脚本中统一输出 `llm_skipped_ticks` 与 `llm_skipped_tick_ratio_ppm`，并通过稳定口径与单测保障可消费性。
 - Success Criteria:
-  - SC-1: `world_llm_agent_demo` 能输出跳过计数与百万分比占比指标。
+  - SC-1: `oasis7_llm_agent_demo` 能输出跳过计数与百万分比占比指标。
   - SC-2: `scripts/llm-longrun-stress.sh` 在单场景与聚合输出中包含该指标。
   - SC-3: `report.json` 持久化包含新增字段，自动脚本可直接消费。
   - SC-4: 指标计算口径固定为 `llm_skipped_ticks / active_ticks` 并有测试覆盖。
@@ -23,7 +23,7 @@
 - User Scenarios & Frequency:
   - 长跑压测执行：每次 `llm-longrun-stress` 汇总时读取该指标。
   - 回归测试：每次改动 LLM 调度路径时验证指标口径稳定。
-  - 日常调试：运行 `world_llm_agent_demo` 时查看实时指标输出。
+  - 日常调试：运行 `oasis7_llm_agent_demo` 时查看实时指标输出。
 - User Stories:
   - PRD-TESTING-GOV-LLMSKIP-001: As a 测试维护者, I want skipped-tick metrics emitted in demo and reports, so that I can track how often LLM calls are skipped.
   - PRD-TESTING-GOV-LLMSKIP-002: As a 脚本维护者, I want stress summaries and aggregated outputs to include the same metric fields, so that automation remains stable.
@@ -55,10 +55,10 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 在 `world_llm_agent_demo` 运行期采样 trace，统一写入 `TraceCounts`，由 stress 脚本从 report/log 读取并输出到场景级与聚合级报表。
+- Architecture Overview: 在 `oasis7_llm_agent_demo` 运行期采样 trace，统一写入 `TraceCounts`，由 stress 脚本从 report/log 读取并输出到场景级与聚合级报表。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_llm_agent_demo.rs`
-  - `crates/oasis7/src/bin/world_llm_agent_demo/tests.rs`
+  - `crates/oasis7/src/bin/oasis7_llm_agent_demo.rs`
+  - `crates/oasis7/src/bin/oasis7_llm_agent_demo/tests.rs`
   - `scripts/llm-longrun-stress.sh`
 - Edge Cases & Error Handling:
   - `active_ticks = 0`：占比计算回退为 0，避免除零。

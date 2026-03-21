@@ -9,7 +9,7 @@ print_help() {
 Usage: ./scripts/llm-longrun-stress.sh [options]
 
 Options:
-  --scenario <name>            Scenario for world_llm_agent_demo (repeatable)
+  --scenario <name>            Scenario for oasis7_llm_agent_demo (repeatable)
   --scenarios <a,b,c>          Comma-separated scenario list
   --jobs <n>                   Max parallel scenarios in multi-scenario mode (default: 1)
   --ticks <n>                  Number of ticks to run (default: 240)
@@ -71,7 +71,7 @@ Notes:
   - state dir 参数仅支持单场景模式（便于构建/复用同一阶段基线）
 
 Output:
-  - report json: detailed run metrics emitted by world_llm_agent_demo
+  - report json: detailed run metrics emitted by oasis7_llm_agent_demo
   - run log: cargo run stdout/stderr output (includes LLM I/O by default)
   - summary: flattened key metrics for quick comparison
 USAGE
@@ -760,7 +760,7 @@ run_scenario_to_log() {
     cmd+=("OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=$llm_execute_until_auto_reenter_ticks")
   fi
   cmd+=(
-    cargo run -p oasis7 --bin world_llm_agent_demo --
+    cargo run -p oasis7 --bin oasis7_llm_agent_demo --
     "$scenario_name"
     --ticks "$ticks"
     --report-json "$scenario_report_path"
@@ -1316,7 +1316,7 @@ for scenario in "${scenarios[@]}"; do
       cmd+=("OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS=$llm_execute_until_auto_reenter_ticks")
     fi
     cmd+=(
-      cargo run -p oasis7 --bin world_llm_agent_demo --
+      cargo run -p oasis7 --bin oasis7_llm_agent_demo --
       "$scenario"
       --ticks "$ticks"
       --report-json "$scenario_report_json"

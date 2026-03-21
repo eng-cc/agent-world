@@ -11,13 +11,13 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] DPH3-1 (PRD-P2P-MIG-069)：完成设计文档与项目管理文档。
 - [x] DPH3-2 (PRD-P2P-MIG-069)：实现 DistFS 挑战 probe 接口与单元测试。
-- [x] DPH3-3 (PRD-P2P-MIG-069)：将 probe 结果接入 `world_viewer_live` reward runtime，并补齐单元测试。
+- [x] DPH3-3 (PRD-P2P-MIG-069)：将 probe 结果接入 `oasis7_viewer_live` reward runtime，并补齐单元测试。
 - [x] DPH3-4 (PRD-P2P-MIG-069)：执行回归测试，回写文档状态与 devlog。
 
 ## 依赖
 - `crates/oasis7_distfs/src/challenge.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs（`#[cfg(test)]`）`
 - `doc/p2p/distfs/distfs-production-hardening-phase3.prd.md`
 
 ## 状态

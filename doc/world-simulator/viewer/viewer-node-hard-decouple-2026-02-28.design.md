@@ -4,18 +4,18 @@
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-node-hard-decouple-2026-02-28.project.md`
 
 ## 1. 设计定位
-定义 `world_viewer_live` 与节点运行时的硬解耦方案：把 viewer 入口收敛成纯 viewer 进程，不再注入 consensus runtime、gate 和 node 参数。
+定义 `oasis7_viewer_live` 与节点运行时的硬解耦方案：把 viewer 入口收敛成纯 viewer 进程，不再注入 consensus runtime、gate 和 node 参数。
 
 ## 2. 设计结构
-- 入口收敛层：`world_viewer_live` 改为纯 viewer 入口。
+- 入口收敛层：`oasis7_viewer_live` 改为纯 viewer 入口。
 - 参数清理层：删除内嵌节点参数与启动链路，CLI 对旧参数给出显式报错。
 - 依赖分离层：viewer 仅依赖 `ViewerLiveServer` / `ViewerWebBridge`，不再持有节点侧运行时。
-- 迁移提示层：引导用户改用 `world_chain_runtime` / `oasis7_game_launcher`。
+- 迁移提示层：引导用户改用 `oasis7_chain_runtime` / `oasis7_game_launcher`。
 
 ## 3. 关键接口 / 入口
-- `world_viewer_live`
+- `oasis7_viewer_live`
 - `ViewerLiveServer` / `ViewerWebBridge`
-- `world_chain_runtime`
+- `oasis7_chain_runtime`
 - `oasis7_game_launcher`
 
 ## 4. 约束与边界

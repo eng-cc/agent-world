@@ -8,7 +8,7 @@
 - 详细技术设计文档: `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.design.md`
 
 ## 1. Executive Summary
-- Problem Statement: 当前 `world_viewer_live` / `world_chain_runtime` 的默认运行态持久化在短时本地闭环中也会产生明显的磁盘膨胀：一次约 `2102` 高度的运行样本中，`output/chain-runtime/viewer-live-node/store` 约 `1.18 GiB`、`reward-runtime-execution-world/.distfs-state/blobs` 约 `635 MiB`，而当前最新执行世界实际只引用约 `1.55 MiB` 的 sidecar blob。执行桥接按高度保留全量 `snapshot_ref`、执行世界 sidecar 缺少引用回收、`snapshot.json` 中 `tick_consensus_records` 持续增长，导致本地调试、重复启动与长跑验证的磁盘成本过高。
+- Problem Statement: 当前 `oasis7_viewer_live` / `oasis7_chain_runtime` 的默认运行态持久化在短时本地闭环中也会产生明显的磁盘膨胀：一次约 `2102` 高度的运行样本中，`output/chain-runtime/viewer-live-node/store` 约 `1.18 GiB`、`reward-runtime-execution-world/.distfs-state/blobs` 约 `635 MiB`，而当前最新执行世界实际只引用约 `1.55 MiB` 的 sidecar blob。执行桥接按高度保留全量 `snapshot_ref`、执行世界 sidecar 缺少引用回收、`snapshot.json` 中 `tick_consensus_records` 持续增长，导致本地调试、重复启动与长跑验证的磁盘成本过高。
 - Proposed Solution: 为 runtime 引入“canonical replay log + checkpoint + 分层保留 + 引用治理 + 指标可观测”方案：把运行态数据拆分为当前可恢复 head、热历史窗口、稀疏检查点、权威变更日志、冷元数据与可回收孤儿 blob 六类数据，分别实施 retention / compaction / GC；同时对 `tick_consensus_records` 做热冷分层，明确“日志为真、快照为缓存”的回放契约，在控制默认磁盘占用的同时保证可追溯与可回放。
 - Success Criteria:
   - SC-1: 默认 `dev_local` / launcher profile 在 `llm_bootstrap` 场景连续运行到 `2500` committed heights 后，`output/chain-runtime/<node_id>/store` 稳态占用 `<= 256 MiB`。
@@ -57,13 +57,13 @@
 | Metrics / status 输出 | `bytes_by_dir`, `blob_counts`, `ref_count`, `pin_count`, `orphan_blob_count`, `last_gc_at_ms`, `last_gc_result`, `last_gc_error`, `degraded_reason`, `storage_profile`, `effective_budget`, `replay_summary` | status API / state file 输出指标；异常时给出原因，launcher / 脚本无需扫描内部目录即可判断预算与回放能力 | `collected -> published` | 字节统计按目录聚合；GC 结果按时间覆盖 latest 并写审计历史；`replay_summary.mode` 仅允许 `latest_only` / `full_log_only` / `checkpoint_plus_log` | status 只读；配置修改受启动权限控制 |
 | Replication hot/cold retention 对齐 | `max_hot_commit_messages`, `cold_index`, `archive_bytes` | 超出热窗口后迁移到冷索引/对象存储，并更新 metrics | `hot -> cold-indexed` | 热窗口按最新高度回推的连续高度范围定义，不再按“最近 N 个现存文件”解释；冷索引统一走 `<namespace>.cold-index/index.json` 元数据协议，并以 `from_key/to_key + first/last_content_hash + entry_count` 表示 cold range anchor；cold-index scan 与按高度 seek 必须共享同一边界语义；rollout 期间若 canonical/legacy 任一缺失，读路径会回填另一侧别名 | 自动执行；策略由 profile 决定 |
 - Acceptance Criteria:
-  - AC-1 (PRD-WORLD_RUNTIME-013): `world_viewer_live` / `world_chain_runtime` 默认开发 profile 在 `2500` heights 样本下，`output/chain-runtime/<node_id>/store <= 256 MiB`，且 CAS sweep 后不存在“record 仍引用、blob 已删除”的 dangling refs。
+  - AC-1 (PRD-WORLD_RUNTIME-013): `oasis7_viewer_live` / `oasis7_chain_runtime` 默认开发 profile 在 `2500` heights 样本下，`output/chain-runtime/<node_id>/store <= 256 MiB`，且 CAS sweep 后不存在“record 仍引用、blob 已删除”的 dangling refs。
   - AC-2 (PRD-WORLD_RUNTIME-013): `reward-runtime-execution-world/.distfs-state/blobs` 经过 successful save 后仅保留 latest + rollback-safe generation 的引用集合；测试中孤儿 blob 计数为 `0`。
   - AC-3 (PRD-WORLD_RUNTIME-014): 在 execution-bridge retention 与 sidecar GC 生效后，latest-state restart 恢复成功，恢复后 `execution_state_root`、`journal_len`、`module_registry` 与 GC 前一致。
   - AC-4 (PRD-WORLD_RUNTIME-014): 任意 GC 中断、部分写入或 pin set 构建失败都不得删除 latest generation；系统必须进入 `degraded` 并保留恢复所需数据。
   - AC-5 (PRD-WORLD_RUNTIME-014): 对 retention policy 明确保留的任意目标高度 `H`，系统必须能从最近 checkpoint + canonical replay log 重建出与 `execution_records/H` 一致的 `execution_state_root`。
   - AC-6 (PRD-WORLD_RUNTIME-015): status / metrics 输出必须暴露 `storage_profile`、`effective_budget`、`bytes_by_dir`、`retained_heights`、`checkpoint_count`、`replay_summary`、`last_gc_result`、`last_gc_error`、`degraded_reason`，并可被 launcher 或脚本直接采样，无需额外扫描内部目录。
-  - AC-6.1 (PRD-WORLD_RUNTIME-015): `world_chain_runtime`、`oasis7_game_launcher`、`oasis7_web_launcher` 与 launcher UI 必须暴露同名 profile 枚举输入，并沿进程边界无损透传到链运行时。bundle 入口 `run-game.sh`、`run-web-launcher.sh`、`run-chain-runtime.sh` 必须共享同一 `OASIS7_CHAIN_STORAGE_PROFILE` 覆盖通道，且未设置时继承各自二进制默认值，不在 shell 中重复硬编码默认 profile。
+  - AC-6.1 (PRD-WORLD_RUNTIME-015): `oasis7_chain_runtime`、`oasis7_game_launcher`、`oasis7_web_launcher` 与 launcher UI 必须暴露同名 profile 枚举输入，并沿进程边界无损透传到链运行时。bundle 入口 `run-game.sh`、`run-web-launcher.sh`、`run-chain-runtime.sh` 必须共享同一 `OASIS7_CHAIN_STORAGE_PROFILE` 覆盖通道，且未设置时继承各自二进制默认值，不在 shell 中重复硬编码默认 profile。
   - AC-7 (PRD-WORLD_RUNTIME-015): `snapshot.json` 在 `2500` heights 样本下 `<= 512 KiB`；旧 `tick_consensus_records` 通过 archive index 可按区间读取并通过链路校验。
   - AC-8 (PRD-WORLD_RUNTIME-013/014/015): required/full 测试矩阵中必须包含 footprint 上限、restart recovery、GC fail-safe、profile 切换、archive 读取与 retained-height replay 回归。
 - Non-Goals:
@@ -91,9 +91,9 @@
     - `Cold Metadata`: 小体积索引/记录，允许长期保留。
     - `Orphan / Unpinned Data`: 不再被任一有效 generation / retention class 引用的数据，允许 GC。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_viewer_live.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime.rs`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
   - `crates/oasis7/src/runtime/world/persistence.rs`
   - `crates/oasis7/src/runtime/snapshot.rs`
   - `crates/oasis7_node/src/replication.rs`

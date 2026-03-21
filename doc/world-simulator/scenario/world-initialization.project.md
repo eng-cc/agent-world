@@ -17,9 +17,9 @@
 - [x] I4 增加设施参数校验与错误分支
 - [x] I4 补充电力设施初始化测试
 - [x] I5 提供场景模板（WorldScenario）
-- [x] I5 提供示例工具（world_init_demo）
+- [x] I5 提供示例工具（oasis7_init_demo）
 - [x] I6 扩展场景模板（resource_bootstrap 初始库存）
-- [x] I7 README 补充示例工具说明（world_init_demo）
+- [x] I7 README 补充示例工具说明（oasis7_init_demo）
 - [x] I8 扩展场景模板（twin_region_bootstrap 多区域）
 - [x] I9 补充文档使用示例与 demo 帮助输出
 - [x] I10 demo 输出地点资源摘要
@@ -36,7 +36,7 @@
 - [x] I21 demo 增加 summary-only 开关
 - [x] I22 场景稳定性测试（关键字段校验）
 - [x] I23 文档补充小行星带碎片种子策略
-- [x] I24 增加 world_init_demo summary-only 冒烟测试
+- [x] I24 增加 oasis7_init_demo summary-only 冒烟测试
 - [x] I25 增加 asteroid_fragment_bootstrap 冒烟测试
 - [x] I26 增加 asteroid_fragment_twin_region_bootstrap 冒烟测试
 - [x] I27 增加 asteroid_fragment_triad_region_bootstrap 冒烟测试

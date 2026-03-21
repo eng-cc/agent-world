@@ -8,7 +8,7 @@
 - Problem Statement: 收口 P1-1：将 Node 共识消息（proposal/attestation/commit）从“仅 UDP gossip”升级为“libp2p pubsub 主路径”，保留 UDP 兼容兜底。
 - Proposed Solution: 收口 P1-2：将 libp2p request/response 从“单 peer + 无 peer 本地 handler 回退”升级为“多 peer 轮换重试 + 可控本地回退策略”。
 - Success Criteria:
-  - SC-1: 保持现有 `world_viewer_live` 生产默认拓扑（triad/triad_distributed）可用，并保证 required-tier 回归稳定。
+  - SC-1: 保持现有 `oasis7_viewer_live` 生产默认拓扑（triad/triad_distributed）可用，并保证 required-tier 回归稳定。
 
 ## 2. User Experience & Functionality
 - User Personas: 协议维护者、任务执行者、质量复核者。

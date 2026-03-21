@@ -1,18 +1,18 @@
-# world_viewer_live 发行锁定启动（P2P）项目管理文档（2026-02-23）（项目管理文档）
+# oasis7_viewer_live 发行锁定启动（P2P）项目管理文档（2026-02-23）（项目管理文档）
 
 - 对应设计文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.design.md`
 - 对应需求文档: `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md`
 
 审计轮次: 5
 > 状态更新（2026-03-08）:
-> - 对应功能已从 `world_viewer_live` 下线（`--release-config` 不再支持）。
-> - 本项目文档转为历史归档，后续控制面变更归并到 `world_chain_runtime` 路径任务。
+> - 对应功能已从 `oasis7_viewer_live` 下线（`--release-config` 不再支持）。
+> - 本项目文档转为历史归档，后续控制面变更归并到 `oasis7_chain_runtime` 路径任务。
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-P2P-MIG-115)：完成设计文档与项目管理文档建档。
 - [x] T1 (PRD-P2P-MIG-115)：实现 `--release-config` 锁定参数加载与启动接线（含 TOML `locked_args` 解析）。
 - [x] T2 (PRD-P2P-MIG-115)：实现发行锁定模式 CLI 白名单约束，并补参数解析测试（成功/拒绝/覆盖）。
-- [x] T3 (PRD-P2P-MIG-115)：补发行配置样例与手册说明，执行 `world_viewer_live` 定向回归并回写文档/devlog 状态。
+- [x] T3 (PRD-P2P-MIG-115)：补发行配置样例与手册说明，执行 `oasis7_viewer_live` 定向回归并回写文档/devlog 状态。
 
 ## 依赖
 - doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md

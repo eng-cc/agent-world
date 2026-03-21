@@ -14,8 +14,8 @@
 - doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md
 - `crates/oasis7_node/src/lib.rs`
 - `crates/oasis7_node/src/pos_state_store.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/reward_runtime_worker.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/reward_runtime_worker.rs`
 - `doc/devlog/2026-02-17.md`
 
 ## 状态

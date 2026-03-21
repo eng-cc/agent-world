@@ -1,10 +1,10 @@
-# world_viewer_live LLM 默认开启（P2P 发行基线）设计文档（2026-02-23）设计
+# oasis7_viewer_live LLM 默认开启（P2P 发行基线）设计文档（2026-02-23）设计
 
 - 对应需求文档: `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.prd.md`
 - 对应项目管理文档: `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.project.md`
 
 ## 1. 设计定位
-定义 `world_viewer_live` 在 P2P 发行基线下默认开启 LLM 的设计，统一默认行为、回退策略与发行口径。
+定义 `oasis7_viewer_live` 在 P2P 发行基线下默认开启 LLM 的设计，统一默认行为、回退策略与发行口径。
 
 ## 2. 设计结构
 - 默认开关层：把 LLM 默认开启纳入 viewer live 启动配置。

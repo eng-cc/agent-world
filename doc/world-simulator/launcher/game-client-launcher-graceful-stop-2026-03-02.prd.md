@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 - 在桌面启动器点击“停止”或直接关闭窗口时，优先让 `oasis7_game_launcher` 走优雅退出路径。
-- 提升“启动器退出后残留子进程”问题的可控性，尽量确保 `world_viewer_live` 与 `world_chain_runtime` 被一并清理。
+- 提升“启动器退出后残留子进程”问题的可控性，尽量确保 `oasis7_viewer_live` 与 `oasis7_chain_runtime` 被一并清理。
 
 ## 2. User Experience & Functionality
 - 改造 `crates/oasis7_client_launcher` 的停止流程：

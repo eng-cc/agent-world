@@ -23,7 +23,7 @@ Options:
   --preset-file <path>     preset env file (default: industrial_v3_default.env)
   --inspect <list>         entity source list: agent,location,asset,power_plant,all (default: all)
   --variants <list>        default,matte,glossy,all (default: all)
-  --scenario <name>        world_viewer_live scenario (default: llm_bootstrap)
+  --scenario <name>        oasis7_viewer_live scenario (default: llm_bootstrap)
   --base-port <port>       start port per capture (default: 6123)
   --viewer-wait <sec>      viewer wait before capture (default: 8)
   --render-profile <name>  debug,balanced,cinematic (default: cinematic)

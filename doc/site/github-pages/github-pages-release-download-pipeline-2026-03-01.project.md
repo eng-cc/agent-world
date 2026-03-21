@@ -81,9 +81,9 @@
 - [x] 本地回归该用例的精确重跑，并在回写 `project/devlog` 后继续通过新 tag 观察 `Release Packages` 是否彻底放行。
 
 ### T3I Release gate execution bridge signer allowlist 热修
-- [x] 复盘 `Release Packages` run `23055068064`，确认 `v0.0.8` 的新阻断点为 `world_chain_runtime` 单测 `node_runtime_execution_driver_commit_routes_modules_via_step_with_modules`；其前置 `InstallModuleFromArtifact` 实际被拒，因为 binary unit test 环境不会自动注入 `test.module.release.signer` 到 `World::new()` 的 `node_identity_bindings`。
-- [x] 调整 `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`：在该测试里显式 `bind_node_identity(TEST_MODULE_ARTIFACT_SIGNER_NODE_ID, ...)`，并补充 `ModuleInstalled` / `module_tick_schedule` 前置断言，确保断言真正覆盖“commit 走 `step_with_modules` 并冒泡模块失败”。
-- [x] 本地回归 `world_chain_runtime` 定向用例，并与相邻 execution bridge 持久化用例一起校验通过；继续通过新 tag 观察 `Release Packages` 是否越过 `release-gate`。
+- [x] 复盘 `Release Packages` run `23055068064`，确认 `v0.0.8` 的新阻断点为 `oasis7_chain_runtime` 单测 `node_runtime_execution_driver_commit_routes_modules_via_step_with_modules`；其前置 `InstallModuleFromArtifact` 实际被拒，因为 binary unit test 环境不会自动注入 `test.module.release.signer` 到 `World::new()` 的 `node_identity_bindings`。
+- [x] 调整 `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`：在该测试里显式 `bind_node_identity(TEST_MODULE_ARTIFACT_SIGNER_NODE_ID, ...)`，并补充 `ModuleInstalled` / `module_tick_schedule` 前置断言，确保断言真正覆盖“commit 走 `step_with_modules` 并冒泡模块失败”。
+- [x] 本地回归 `oasis7_chain_runtime` 定向用例，并与相邻 execution bridge 持久化用例一起校验通过；继续通过新 tag 观察 `Release Packages` 是否越过 `release-gate`。
 
 ### T3J Release gate m5 economic overlay hash token 热修
 - [x] 复盘 `Release Packages` run `23056942631`，确认 `v0.0.9` 的新阻断点在 `sync_m5`：`m5.gameplay.economic.overlay` 的 `linux-x86_64` canonical hash 已漂移到 `797e76900aa04297700c8ca5512ba9b00c6f8c4e83845d8ff473bd2adb0e6676`，而仓库清单仍写旧值 `36645c1c3fd590c4212691ba1ae0a881ef12171a9d375ee8693127e610968274`。
@@ -113,14 +113,14 @@
 - [x] 本地校验 workflow 语法、`release-gate.sh` dry-run 组合与文档回写后，再进入下一轮远端 release tag 验证。
 
 ### T3N Release gate soak 预热依赖回补（2026-03-14）
-- [x] 复盘 `Release Packages` run `23080174183` 新架构首轮结果，确认 `release-gate-soak` 在 1 秒内失败并非 soak 逻辑本身回归，而是拆分后仍沿用 `--no-prewarm`，导致 `s9` 失去来自 `ci_full` 的 `target/debug/world_chain_runtime` 预热前置。
-- [x] 更新 `.github/workflows/release-packages.yml`：在 `release_gate_soak` 中新增 `env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_chain_runtime` 预热步骤，使 soak 子门在独立 job 中重新自洽，同时保持 `release-gate.sh` 现有参数与 release 语义不变。
+- [x] 复盘 `Release Packages` run `23080174183` 新架构首轮结果，确认 `release-gate-soak` 在 1 秒内失败并非 soak 逻辑本身回归，而是拆分后仍沿用 `--no-prewarm`，导致 `s9` 失去来自 `ci_full` 的 `target/debug/oasis7_chain_runtime` 预热前置。
+- [x] 更新 `.github/workflows/release-packages.yml`：在 `release_gate_soak` 中新增 `env -u RUSTC_WRAPPER cargo build -p oasis7 --bin oasis7_chain_runtime` 预热步骤，使 soak 子门在独立 job 中重新自洽，同时保持 `release-gate.sh` 现有参数与 release 语义不变。
 - [x] 本地回归 workflow 语法与 soak job 关键片段，确认 `Prewarm soak runtime binary` 已位于 `Run soak release gate` 之前。
 - [ ] 推送修复并打新 tag，继续观察并行 gate 是否能全部进入 aggregate `release_gate`。
 
 ### T3O Release gate web sibling binary 预热回补（2026-03-14）
-- [x] 复盘 `Release Packages` run `23080255868`，确认 `release-gate-web` 已越过 `trunk` 安装，但 `web_strict` 在 `oasis7_game_launcher` 启动阶段因独立 job 缺少 `target/debug/world_viewer_live` 而失败；失败签名为 `failed to locate \`world_viewer_live\` binary; build it first or set OASIS7_WORLD_VIEWER_LIVE_BIN`。
-- [x] 调整 `scripts/viewer-release-qa-loop.sh`：在启动 `oasis7_game_launcher` 前显式执行 `env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live --bin world_chain_runtime`，把原先依赖其他步骤隐式生成 sibling binaries 的前置条件收回到脚本内部。
+- [x] 复盘 `Release Packages` run `23080255868`，确认 `release-gate-web` 已越过 `trunk` 安装，但 `web_strict` 在 `oasis7_game_launcher` 启动阶段因独立 job 缺少 `target/debug/oasis7_viewer_live` 而失败；失败签名为 `failed to locate \`oasis7_viewer_live\` binary; build it first or set OASIS7_WORLD_VIEWER_LIVE_BIN`。
+- [x] 调整 `scripts/viewer-release-qa-loop.sh`：在启动 `oasis7_game_launcher` 前显式执行 `env -u RUSTC_WRAPPER cargo build -p oasis7 --bin oasis7_viewer_live --bin oasis7_chain_runtime`，把原先依赖其他步骤隐式生成 sibling binaries 的前置条件收回到脚本内部。
 - [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，并确认预热命令已位于 `cargo run -p oasis7 --bin oasis7_game_launcher` 之前。
 - [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否越过 launcher 启动阶段，并进一步验证 aggregate `release_gate` 与后续打包链路。
 

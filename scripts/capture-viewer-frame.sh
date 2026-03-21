@@ -9,7 +9,7 @@ usage() {
 Usage: ./scripts/capture-viewer-frame.sh [options]
 
 Options:
-  --scenario <name>       world_viewer_live scenario (default: llm_bootstrap)
+  --scenario <name>       oasis7_viewer_live scenario (default: llm_bootstrap)
   --addr <host:port>      bind/viewer address (default: 127.0.0.1:5023)
   --display <display>     Xvfb display id for Linux mode (default: :100)
   --width <px>            virtual screen width (default: 1280)
@@ -23,7 +23,7 @@ Options:
   --auto-select-target <target>
                           viewer auto-select target (e.g. first_agent, agent:agent-0)
   --automation-steps <s>  viewer automation steps (e.g. mode=3d;select=agent:agent-0)
-  --llm                   enable --llm on world_viewer_live
+  --llm                   enable --llm on oasis7_viewer_live
   --no-prewarm            skip prewarm cargo build step
   --keep-tmp              do not clear .tmp at start
   -h, --help              show help
@@ -31,7 +31,7 @@ Options:
 Behavior:
   - Linux: uses Xvfb + xwininfo + ffmpeg
   - macOS: uses Bevy internal screenshot (no system screen-recording permission)
-  - default prewarm: builds `world_viewer_live` + `oasis7_viewer` first to reduce
+  - default prewarm: builds `oasis7_viewer_live` + `oasis7_viewer` first to reduce
     run-time compile wait and screenshot timeout risk
 
 Output:
@@ -266,7 +266,7 @@ resolve_capture_max_wait() {
 }
 
 prewarm_viewer_binaries() {
-  run env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live
+  run env -u RUSTC_WRAPPER cargo build -p oasis7 --bin oasis7_viewer_live
   run env -u RUSTC_WRAPPER cargo build -p oasis7_viewer
 }
 
@@ -552,7 +552,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-server_cmd=(env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- "$scenario" --bind "$addr")
+server_cmd=(env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_viewer_live -- "$scenario" --bind "$addr")
 if [[ $enable_llm -eq 1 ]]; then
   server_cmd+=(--llm)
 fi

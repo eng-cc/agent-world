@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 - Problem Statement: `Decision Provider` 标准层已经明确了“外部 provider 可参与 Agent 决策，但不得替代 runtime 权威”的边界；但若要回答“安装在用户机器上的 `OpenClaw` 怎么玩这个游戏”，还缺一份面向真实用户安装场景的接入方案，尤其是本地发现、握手、配置、玩家-agent 绑定、决策接口、失败恢复与最小可玩范围。
-- Proposed Solution: 首期采用“`OpenClaw` 本地进程 + `localhost HTTP/JSON`”方案。`OpenClaw` 在用户机器上以本地服务形式运行，仅监听 `127.0.0.1`；world-simulator 侧通过 `OpenClawAdapter` 调用其本地 HTTP API，发送结构化 `DecisionRequest`，接收结构化 `DecisionResponse`。运行时仍由本地 runtime/kernel 权威执行动作、校验规则并产出 trace。Launcher / Viewer 仅负责配置、发现与可观测性展示。 在真实用户机缺少原生 world-simulator provider 时，允许通过 `world_openclaw_local_bridge` 这一 loopback-only 兼容桥，把已安装的 `OpenClaw Gateway/CLI` 转译成 `/v1/provider/info`、`/v1/provider/health`、`/v1/world-simulator/decision`、`/v1/world-simulator/feedback` 四个端点，作为 `experimental` 的首期可跑实现。
+- Proposed Solution: 首期采用“`OpenClaw` 本地进程 + `localhost HTTP/JSON`”方案。`OpenClaw` 在用户机器上以本地服务形式运行，仅监听 `127.0.0.1`；world-simulator 侧通过 `OpenClawAdapter` 调用其本地 HTTP API，发送结构化 `DecisionRequest`，接收结构化 `DecisionResponse`。运行时仍由本地 runtime/kernel 权威执行动作、校验规则并产出 trace。Launcher / Viewer 仅负责配置、发现与可观测性展示。 在真实用户机缺少原生 world-simulator provider 时，允许通过 `oasis7_openclaw_local_bridge` 这一 loopback-only 兼容桥，把已安装的 `OpenClaw Gateway/CLI` 转译成 `/v1/provider/info`、`/v1/provider/health`、`/v1/world-simulator/decision`、`/v1/world-simulator/feedback` 四个端点，作为 `experimental` 的首期可跑实现。
 - Success Criteria:
   - SC-1: 用户在本机安装并启动 `OpenClaw` 后，可在 launcher 中发现并选择 `OpenClaw(Local HTTP)` 作为 agent provider。
   - SC-2: 首期 `test_tier_required` 依赖 `localhost HTTP/JSON` 完成单一低频 NPC 的 `wait` / `wait_ticks` / `move_agent` / `speak_to_nearby` / `inspect_target` / `simple_interact` 决策闭环；其中后三者先以 lightweight event 语义落地，并继续受 parity 门禁约束。
@@ -108,7 +108,7 @@
     - `openclaw_agent_profile`
   - profile 约定：首期 `P0` / parity / experimental 试点默认使用 `oasis7_p0_low_freq_npc`；旧别名 `oasis7_p0_low_freq_npc` 已移除。若 provider 不识别当前默认 profile，必须返回结构化 `unsupported_agent_profile`，禁止静默改用通用玩法。
   - 发现逻辑：优先读取显式配置；若未配置且开启 auto-discover，则探测默认地址。
-  - 产品主链路：`oasis7_client_launcher -> oasis7_game_launcher -> world_viewer_live` 现已透传 `agent_provider_mode/openclaw_*` 参数，并通过子进程环境把 OpenClaw 设置送入 runtime live sidecar。
+  - 产品主链路：`oasis7_client_launcher -> oasis7_game_launcher -> oasis7_viewer_live` 现已透传 `agent_provider_mode/openclaw_*` 参数，并通过子进程环境把 OpenClaw 设置送入 runtime live sidecar。
 - DecisionRequest Shape:
   - 顶层字段：`request_id/agent_id/world_time/provider_session_id?/provider_config_ref?/agent_profile?/timeout_ms`
   - `observation`: 当前可见世界状态摘要、附近实体、最近事件、目标与资源摘要。
@@ -144,7 +144,7 @@
   - `openclaw_gateway_unreachable`: 本地兼容桥无法通过 `openclaw agent` / Gateway 拿到响应时，provider health 需暴露最近错误，launcher / parity bench 必须明确提示“OpenClaw Gateway 未就绪”。
   - `bundle_cache_path_unexpanded`: `oasis7` 的 bundle-first 下载辅助必须先展开当前用户 `~`，再落缓存与返回 `bundle_dir`；若解析后的 bundle 缺少 `run-game.sh`，`doctor` 必须输出解析后的绝对路径，避免把产物误写到 repo-local `~/...`。
   - `repo_bootstrap_unavailable`: `oasis7 doctor` 必须把 bundle-first no-`cargo` 可玩性（bundle + bridge 是否就绪）与 repo-backed bridge/bootstrap 能力（repo root + `cargo`）分开汇报；缺少 `cargo` 或 repo root 时，若 bundle-first reuse path 仍可用，不得把其伪装成通用阻断。`play` 若落到 repo-backed bridge/bootstrap 依赖，必须输出可执行指引：安装 `cargo` / 提供 `--repo-root`，或改走 `--reuse-bridge --skip-agent-setup`。
-  - `play_wrapper_orphan_subtree`: `oasis7-run.sh play` 被中断或 wrapper 退出时，必须尽最大努力终止其启动的 launcher 子树；不能出现 wrapper 已退但 `oasis7_game_launcher` / `world_chain_runtime` / `world_viewer_live` 继续常驻并占端口的假停止状态。
+  - `play_wrapper_orphan_subtree`: `oasis7-run.sh play` 被中断或 wrapper 退出时，必须尽最大努力终止其启动的 launcher 子树；不能出现 wrapper 已退但 `oasis7_game_launcher` / `oasis7_chain_runtime` / `oasis7_viewer_live` 继续常驻并占端口的假停止状态。
   - `bundle_download_observability_gap`: `oasis7` 的 bundle-first 下载辅助必须输出可见阶段日志（至少覆盖 asset download / checksum / extract / bundle ready）；当 stderr 非 TTY 且下载耗时较长时，必须持续输出周期性 heartbeat，避免首轮下载被误判为卡死。
   - `bridge_model_output_invalid`: 兼容桥若拿到非 JSON、缺字段或超出 phase-1 白名单的输出，必须在 provider 侧记录结构化 diagnostics/trace；若当前 profile/fixture 已明确给出低风险可达动作（如 `P0-001` 巡游移动），允许通过 profile guardrail 把无效输出重路由到最近可达的合法动作，否则才降级为 `Wait`。
   - `session_cross_talk`: 兼容桥必须使用 `provider_config_ref + agent_profile + agent_id` 派生 OpenClaw session scope，防止不同 benchmark run / runtime live 进程复用同一 session 造成旧世界状态串线。
@@ -155,7 +155,7 @@
   - NFR-4: 首期 provider 错误不得使 runtime tick 卡死；超时后必须回落为可继续推进的状态。
   - NFR-5: mock local HTTP provider 必须可用于 CI / required regression。
   - NFR-6: `DecisionRequest.agent_profile` 必须可经 `ProviderBackedAgentBehavior -> OpenClawAdapter -> local HTTP` 完整透传，并体现在 parity summary / trace 归档中。
-  - NFR-7: `world_openclaw_local_bridge` 只能绑定 `127.0.0.1`，且必须支持显式端口/agent/profile 配置，默认地址保持 `127.0.0.1:5841`。
+  - NFR-7: `oasis7_openclaw_local_bridge` 只能绑定 `127.0.0.1`，且必须支持显式端口/agent/profile 配置，默认地址保持 `127.0.0.1:5841`。
   - NFR-8: 兼容桥必须把 `OpenClaw` 原始文本输出保存在 `trace_payload.transcript/output_summary`，并把 parse/repair 结果反映到 `schema_repair_count` 与最近错误。
   - NFR-9: 兼容桥派生的 OpenClaw session id 必须带上 `provider_config_ref` 作用域，至少要把 benchmark run / runtime live 进程彼此隔离，避免 `loc-2` 之类的历史上下文泄漏到新的世界样本。
   - NFR-10: 仓库必须提供可复用的轻量 OpenClaw runtime agent bootstrap（workspace 模板 + setup 脚本），用于把 world-simulator 决策路径与用户日常聊天/运营 workspace 隔离，降低 system prompt 体积与 session 污染风险。
@@ -165,7 +165,7 @@
   - 仅接受 loopback 地址；launcher 对 base URL 做 host allowlist 校验。
   - 不向 provider 暴露私钥、完整 auth proof 或内部存储路径。
   - `openclaw_auth_token` 如启用，只存本地配置，不回显在 viewer / logs。
-- 若 OpenClaw 玩法链路沿用产品默认 `oasis7_game_launcher` 启动栈并拉起 `world_chain_runtime`，则所选 chain profile 下的 node private key 必须按高敏资产处理：禁止提交到仓库、回显到诊断日志/截图/issue，并要求操作者优先使用临时 profile 或明确的资产归属 profile。
+- 若 OpenClaw 玩法链路沿用产品默认 `oasis7_game_launcher` 启动栈并拉起 `oasis7_chain_runtime`，则所选 chain profile 下的 node private key 必须按高敏资产处理：禁止提交到仓库、回显到诊断日志/截图/issue，并要求操作者优先使用临时 profile 或明确的资产归属 profile。
   - 用户必须显式开启 `OpenClaw(Local HTTP)` 模式，默认仍使用内置 provider。
 
 ## 5. Risks & Roadmap
@@ -174,7 +174,7 @@
   - M2: 落地 provider config、discovery/health-check 与 mock local HTTP contract tests。
   - M3: 实现 `OpenClawAdapter` request/response/feedback 映射。
   - M4: 在 launcher / viewer 加入 provider 状态、错误与 trace 摘要面板。
-  - M5: 补齐 `world_openclaw_local_bridge`，先把已安装 `OpenClaw Gateway/CLI` 转成 world-simulator 兼容 provider，再执行单低频 NPC 实机试点并决定是否扩展动作集。
+  - M5: 补齐 `oasis7_openclaw_local_bridge`，先把已安装 `OpenClaw Gateway/CLI` 转成 world-simulator 兼容 provider，再执行单低频 NPC 实机试点并决定是否扩展动作集。
 - Technical Risks:
   - 风险-1: 本地 `OpenClaw` 的实际接口与假定协议不完全一致，需要 adapter 额外归一化。
   - 风险-2: 用户机上本地端口冲突、杀毒软件、权限限制可能导致 provider 探测失败。

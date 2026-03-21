@@ -446,7 +446,7 @@ fn print_help() {
 Options:\n\
   --listen-bind <host:port>       web console listen bind (default: {DEFAULT_LISTEN_BIND})\n\
   --launcher-bin <path>           oasis7_game_launcher binary path\n\
-  --chain-runtime-bin <path>      world_chain_runtime binary path\n\
+  --chain-runtime-bin <path>      oasis7_chain_runtime binary path\n\
   --console-static-dir <path>     launcher web static directory (default: ../web-launcher)\n\
   --scenario <name>               default scenario for web form\n\
   --live-bind <host:port>         default --live-bind for oasis7_game_launcher\n\

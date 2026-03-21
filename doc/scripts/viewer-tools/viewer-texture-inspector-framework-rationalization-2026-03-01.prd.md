@@ -20,7 +20,7 @@
   - 补充对应回归验证（Rust 定向测试 + shell 语法检查 + 关键路径 smoke）。
 - **范围外**
   - 不修改渲染管线（Bevy shader / render graph）。
-  - 不修改业务协议（world_viewer_live）。
+  - 不修改业务协议（oasis7_viewer_live）。
   - 不引入新的实体资产格式。
 
 ## 接口 / 数据

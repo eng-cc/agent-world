@@ -17,7 +17,7 @@
   - 产出跨场景聚合 `report.json` 与 `summary.txt`（总量、均值、峰值、阈值判定）。
   - 更新 README 与项目管理文档，给出多场景运行示例。
 - Out of Scope：
-  - 不修改 `world_llm_agent_demo` 的业务逻辑与 trace 数据结构。
+  - 不修改 `oasis7_llm_agent_demo` 的业务逻辑与 trace 数据结构。
   - 不新增世界场景文件，仅复用已有 scenario。
   - 不引入新的评测服务端或数据库存储。
 

@@ -22,7 +22,7 @@
     - `save_to_dir` 默认追加 DistFS 分段写入（snapshot manifest + journal segments）。
     - `load_from_dir` 优先使用 DistFS 元数据恢复，失败后回退 JSON。
     - 新增持久化回归测试，覆盖 DistFS 恢复主路径与 JSON 兜底路径。
-  - `crates/oasis7/src/bin/world_viewer_live*`
+  - `crates/oasis7/src/bin/oasis7_viewer_live*`
     - 新增生产默认拓扑（local triad）配置项。
     - 在默认配置下启动 sequencer/storage/observer 三节点，互联 gossip，viewer 绑定主节点门控。
     - 增加 CLI 解析与拓扑构建测试。
@@ -63,9 +63,9 @@
 
 ### 3) 去中心化默认拓扑（live）
 - 文件
-  - `crates/oasis7/src/bin/world_viewer_live.rs`
-  - `crates/oasis7/src/bin/world_viewer_live.rs`
-  - `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs（`#[cfg(test)]`）`
 - 拓扑模式
   - `single`（兼容旧行为）
   - `triad`（默认，sequencer/storage/observer）

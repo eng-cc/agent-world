@@ -25,7 +25,7 @@
   - 在非 power 场景下为 power 实体增加构图补偿（hero/closeup 的 `pan` + `zoom` 组合），减少贴脸与偏边裁切。
   - 将镜头参数与裁切参数写入每组 `meta.txt`，便于复盘。
 - **范围外**
-  - 不改动 `world_viewer_live` 协议与运行时数据结构。
+  - 不改动 `oasis7_viewer_live` 协议与运行时数据结构。
   - 不改动 viewer 渲染核心（材质/光照/后处理）实现。
   - 不引入新的 E2E 测试框架，仅补脚本级验证闭环。
 

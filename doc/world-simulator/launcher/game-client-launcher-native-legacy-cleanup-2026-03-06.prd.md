@@ -53,7 +53,7 @@
 ## 4. Technical Specifications
 - Architecture Overview:
   - 清理范围限定在 `oasis7_client_launcher` native 遗留资产。
-  - 不触碰 `oasis7_web_launcher` 与 `world_chain_runtime` 业务协议。
+  - 不触碰 `oasis7_web_launcher` 与 `oasis7_chain_runtime` 业务协议。
   - 通过现有测试矩阵证明“代码清理 != 行为变更”。
 - Integration Points:
   - `crates/oasis7_client_launcher/src/main.rs`

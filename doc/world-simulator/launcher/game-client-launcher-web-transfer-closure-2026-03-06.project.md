@@ -18,7 +18,7 @@
 - `crates/oasis7_client_launcher/src/main.rs`
 - `crates/oasis7_client_launcher/src/app_process_web.rs`
 - `crates/oasis7_client_launcher/src/transfer_window.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api.rs`
 - `testing-manual.md`
 
 ## 状态

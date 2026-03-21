@@ -37,7 +37,7 @@
 ### 目录结构（拟）
 - `crates/oasis7_viewer/`：Bevy UI 客户端
 - `crates/oasis7/src/viewer/`：网络协议 + 数据服务（server）
-- `crates/oasis7/src/bin/world_viewer_server.rs`：启动数据服务（可选）
+- `crates/oasis7/src/bin/oasis7_viewer_server.rs`：启动数据服务（可选）
 
 ### 协议形态
 - **传输层**：TCP（localhost 默认），单连接、JSON 行（NDJSON）
@@ -73,9 +73,9 @@
 
 ### 快速运行（离线回放）
 1) 生成 demo 数据：  
-`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data`
+`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_viewer_demo -- twin_region_bootstrap --out .data/world_viewer_data`
 2) 启动 viewer server：  
-`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_server -- .data/world_viewer_data 127.0.0.1:5010`
+`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_viewer_server -- .data/world_viewer_data 127.0.0.1:5010`
 3) 启动 UI：  
 `env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5010`
 
@@ -84,15 +84,15 @@
 - 在线模式直接从 `WorldKernel` 推送事件。
 - 支持两种决策驱动：
   - 默认 `script`（内置 demo script）
-  - 可选 `llm`（`world_viewer_live --llm`，通过 `LlmAgentBehavior` 决策）
+  - 可选 `llm`（`oasis7_viewer_live --llm`，通过 `LlmAgentBehavior` 决策）
 - 默认单连接、事件驱动，不保证多客户端一致性。
 - `Seek` 支持任意 tick：`seek` 到历史 tick 会触发 reset + replay，到未来 tick 会在当前状态继续推进。
 
 #### 快速运行（在线模式）
 1) 启动 live server（脚本驱动，默认）：  
-`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010`
+`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_viewer_live -- twin_region_bootstrap --bind 127.0.0.1:5010`
 2) 启动 live server（LLM 驱动）：  
-`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5010`
+`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_viewer_live -- llm_bootstrap --llm --bind 127.0.0.1:5010`
 3) 启动 UI：  
 `env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5010`
 

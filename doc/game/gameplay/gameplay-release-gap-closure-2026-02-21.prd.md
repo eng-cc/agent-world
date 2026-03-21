@@ -26,7 +26,7 @@
 - 增加“中途切换 prompt”能力：支持 long-run 场景下阶段性目标收敛。
 - 扩展 `scripts/llm-longrun-stress.sh` gate 口径：新增 gameplay 覆盖 profile，并与 release gate 对齐。
 - 扩展 `llm_bootstrap` 为多 Agent（5 Agent）场景，提升提案/投票/合约交互触发面。
-- 在 `world_llm_agent_demo` 引入 runtime gameplay bridge：对 simulator 中 runtime-only 的 gameplay/economic 动作，接入 runtime `World` 执行路径，减少“非预期拒绝”并形成更闭环的压测链路。
+- 在 `oasis7_llm_agent_demo` 引入 runtime gameplay bridge：对 simulator 中 runtime-only 的 gameplay/economic 动作，接入 runtime `World` 执行路径，减少“非预期拒绝”并形成更闭环的压测链路。
 - 增加“阶段基线世界”状态落盘/加载能力：支持先跑工业建基线，再从同一状态继续治理/危机测试，降低随机起步噪声。
 - 补齐 LLM 经济治理动作 schema + parser + 测试：
   - `open_economic_contract`
@@ -42,7 +42,7 @@
 ## 接口/数据
 
 ### LLM Prompt 控制
-- 新增运行期 prompt 切换输入（world_llm_agent_demo / stress 脚本透传）：
+- 新增运行期 prompt 切换输入（oasis7_llm_agent_demo / stress 脚本透传）：
   - 切换触发 tick。
   - 切换后的 `system_prompt` / `short_term_goal` / `long_term_goal`。
 - 新增多阶段切换输入（用于千 tick 级长周期）：
@@ -89,13 +89,13 @@
 - gate 输出中明确 profile 与缺失动作统计。
 
 ### Runtime Gameplay Bridge（demo/stress）
-- `world_llm_agent_demo` 支持启用 runtime gameplay bridge：
+- `oasis7_llm_agent_demo` 支持启用 runtime gameplay bridge：
   - 当动作属于 gameplay/economic 且 simulator 内核为 runtime-only 拒绝域时，通过 runtime `World` 执行并回传结果到 LLM 行为循环。
   - 保持 simulator 观察链路不变，避免对既有工业动作闭环造成破坏。
 - `scripts/llm-longrun-stress.sh` 增加对应透传参数与默认策略，确保长稳测试可复现实战化交互。
 
 ### Runtime Gameplay Preset Fixture Profile（新增）
-- `world_llm_agent_demo` 新增 `--runtime-gameplay-preset <none|civic_hotspot_v1>`：
+- `oasis7_llm_agent_demo` 新增 `--runtime-gameplay-preset <none|civic_hotspot_v1>`：
   - `none`：不注入预设事件（默认）。
   - `civic_hotspot_v1`：在 runtime bridge 启动后注入一组可续跑的 gameplay 事件句柄：
     - 待投票治理提案：`preset.governance.civic_hotspot_v1`；
@@ -106,7 +106,7 @@
 - 目标：将“预设世界事件”标准化为可复用 profile，在保持工业基线不变的前提下，为治理/韧性测试提供稳定入口。
 
 ### Coverage Bootstrap Profile（新增）
-- `world_llm_agent_demo` 新增 `--coverage-bootstrap-profile <none|industrial|gameplay|hybrid>`：
+- `oasis7_llm_agent_demo` 新增 `--coverage-bootstrap-profile <none|industrial|gameplay|hybrid>`：
   - `industrial`：在 LLM loop 前执行一次确定性的工业动作最小链（`harvest/mine/refine/build_factory/schedule_recipe`）。
   - `gameplay`：在 LLM loop 前通过 runtime bridge 执行一次确定性的治理/危机/成长动作链（`open_proposal/cast_vote/resolve_crisis/grant_meta`）。
   - `hybrid`：顺序执行 `industrial + gameplay` 两条链路。
@@ -119,7 +119,7 @@
 - 目标：将 parse 噪声阈值与长跑长度对齐，避免长周期 run 因少量解析噪声误判失败。
 
 ### Baseline State IO（demo/stress）
-- `world_llm_agent_demo` 支持：
+- `oasis7_llm_agent_demo` 支持：
   - `--save-state-dir <path>`：将当前 simulator kernel 状态落盘（`snapshot.json` + `journal.json`）。
   - `--load-state-dir <path>`：从已落盘状态加载并继续运行 LLM 闭环。
 - `scripts/llm-longrun-stress.sh` 支持 state dir 透传，形成两阶段脚本链路：

@@ -21,7 +21,7 @@
 ## 依赖
 - doc/testing/ci/ci-test-coverage.prd.md
 - `ViewerServer` / `ViewerServerConfig`
-- `world_viewer_demo` 回放数据
+- `oasis7_viewer_demo` 回放数据
 - CI workflow 配置
 - `doc/testing/prd.md`
 - `doc/testing/project.md`

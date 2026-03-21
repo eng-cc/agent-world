@@ -6,10 +6,10 @@
 审计轮次: 4
 
 ## 1. Executive Summary
-- Problem Statement: `world_chain_runtime` 默认开启 `feedback_p2p` 时，若未预先挂载 replication network，会在启动阶段直接报错 `InvalidConfig("feedback_p2p requires replication network")`，导致单机链路不可用。
-- Proposed Solution: 在 `world_chain_runtime` 内部提供默认 replication network 自动挂载，并将启动时序调整为“先挂载 network handle，再执行 runtime.start()”，同时启用无 peers 的本地 fallback。
+- Problem Statement: `oasis7_chain_runtime` 默认开启 `feedback_p2p` 时，若未预先挂载 replication network，会在启动阶段直接报错 `InvalidConfig("feedback_p2p requires replication network")`，导致单机链路不可用。
+- Proposed Solution: 在 `oasis7_chain_runtime` 内部提供默认 replication network 自动挂载，并将启动时序调整为“先挂载 network handle，再执行 runtime.start()”，同时启用无 peers 的本地 fallback。
 - Success Criteria:
-  - SC-1: 默认配置下 `world_chain_runtime` 可成功启动，不再因缺少 replication network 中断。
+  - SC-1: 默认配置下 `oasis7_chain_runtime` 可成功启动，不再因缺少 replication network 中断。
   - SC-2: 默认挂载使用 loopback + ephemeral 端口（`/ip4/127.0.0.1/tcp/0`），不破坏现有 CLI/HTTP 接口。
   - SC-3: `allow_local_handler_fallback_when_no_peers=true` 生效，单机可完成 feedback announce/fetch 闭环。
   - SC-4: 定向测试覆盖默认网络配置与启动烟测路径，结果可复现。
@@ -39,7 +39,7 @@
 | 启动时序修复 | `NodeRuntime::new` 与 `runtime.start` 中间挂载句柄 | 启动前完成 network 依赖注入 | `dependency-missing -> dependency-ready` | 固定顺序，避免 nondeterministic 初始化失败 | 核心 runtime 路径受控 |
 | 回归验证收口 | 单测、check、启动烟测命令结果 | 执行并记录验证证据 | `planned -> passed/failed` | 先单测/静态检查，再烟测 | QA/维护者审阅 |
 - Acceptance Criteria:
-  - AC-1: `feedback_p2p` 默认启用时，`world_chain_runtime` 不再出现 `requires replication network` 启动错误。
+  - AC-1: `feedback_p2p` 默认启用时，`oasis7_chain_runtime` 不再出现 `requires replication network` 启动错误。
   - AC-2: 默认 network 配置使用 loopback + ephemeral 监听地址并有测试覆盖。
   - AC-3: 无 peer 场景可完成本地 fallback，不阻塞 feedback 闭环。
   - AC-4: 启动顺序修复不引入 CLI 参数和 HTTP 接口变更。
@@ -54,10 +54,10 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 通过在 `world_chain_runtime` 启动阶段注入默认 replication network handle，修复 `feedback_p2p` 对 network 依赖未满足导致的启动失败，并保持外部接口稳定。
+- Architecture Overview: 通过在 `oasis7_chain_runtime` 启动阶段注入默认 replication network handle，修复 `feedback_p2p` 对 network 依赖未满足导致的启动失败，并保持外部接口稳定。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_chain_runtime.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/world_chain_runtime_tests.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/world_chain_runtime_tests.rs`
   - `doc/testing/longrun/chain-runtime-feedback-replication-network-autowire-2026-03-02.project.md`
   - `doc/devlog/2026-03-02.md`
 - Edge Cases & Error Handling:

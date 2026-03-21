@@ -108,7 +108,7 @@ impl World {
   - **SGC-M0**：设计文档与项目管理文档完成。
   - **SGC-M1**：`mintsig:v2` 签名/验签与治理策略落地。
   - **SGC-M2**：签名版兑换动作与策略门禁落地。
-  - **SGC-M3**：`world_viewer_live` reward runtime 接入真实私钥签名闭环。
+  - **SGC-M3**：`oasis7_viewer_live` reward runtime 接入真实私钥签名闭环。
   - **SGC-M4**：`test_tier_required` 回归、文档状态回写与 devlog 收口。
 - Technical Risks:
   - 私钥输入为 hex 字符串，若运维流程泄露会带来密钥风险；三期只做最小闭环，不引入 HSM。

@@ -6,32 +6,32 @@
 审计轮次: 6
 
 ## 1. Executive Summary
-- 将 P2P 节点/链运行时从游戏进程层（`world_viewer_live`）中拆出，改为独立进程承载。
+- 将 P2P 节点/链运行时从游戏进程层（`oasis7_viewer_live`）中拆出，改为独立进程承载。
 - `oasis7_game_launcher` 默认一键拉起“游戏服务 + 链运行时 + Web 静态服务”，实现对外统一发行入口。
 - 在 launcher 链路中提供链配置能力，并暴露可观测接口（含 token 余额视图）。
 
 ## 2. User Experience & Functionality
-- 新增独立二进制：`world_chain_runtime`（归属 `oasis7` crate）。
-- `world_chain_runtime` 负责：
+- 新增独立二进制：`oasis7_chain_runtime`（归属 `oasis7` crate）。
+- `oasis7_chain_runtime` 负责：
   - 启动/停止 NodeRuntime；
   - 维护执行世界（execution world）落盘路径；
   - 暴露 HTTP 状态接口（health/status/balances）。
 - `oasis7_game_launcher` 负责：
-  - 启动并托管 `world_chain_runtime` 子进程（默认启用）；
-  - 启动 `world_viewer_live` 纯观察服务（不再承载内嵌节点控制面）；
+  - 启动并托管 `oasis7_chain_runtime` 子进程（默认启用）；
+  - 启动 `oasis7_viewer_live` 纯观察服务（不再承载内嵌节点控制面）；
   - 透传链配置参数并输出链状态入口 URL。
-- 更新发行打包脚本：将 `world_chain_runtime` 纳入 bundle。
+- 更新发行打包脚本：将 `oasis7_chain_runtime` 纳入 bundle。
 
 ## 非目标
 - 本轮不实现复杂钱包 UI、助记词管理、链上转账签名流程。
-- 本轮不让 `world_viewer_live` 接收 `--node-*`/`--triad-*` 控制面参数（节点控制面统一由 `world_chain_runtime` 承载）。
+- 本轮不让 `oasis7_viewer_live` 接收 `--node-*`/`--triad-*` 控制面参数（节点控制面统一由 `oasis7_chain_runtime` 承载）。
 - 本轮不覆盖跨机器大规模集群编排（先覆盖单机发行链路）。
 
 ## 3. AI System Requirements (If Applicable)
 - N/A: 本专题不新增 AI 专属要求。
 
 ## 4. Technical Specifications
-### 1) `world_chain_runtime` CLI（新增）
+### 1) `oasis7_chain_runtime` CLI（新增）
 - `--node-id <id>`：默认 `viewer-live-node`。
 - `--world-id <id>`：默认 `live-llm_bootstrap`。
 - `--status-bind <host:port>`：默认 `127.0.0.1:5121`。
@@ -49,7 +49,7 @@
 - `--execution-world-dir <path>`：默认 `output/chain-runtime/execution-world`。
 - `--no-openapi`：可选（当前仅纯 JSON HTTP）。
 
-### 2) `world_chain_runtime` HTTP 接口（新增）
+### 2) `oasis7_chain_runtime` HTTP 接口（新增）
 - `GET /healthz`：存活探针。
 - `GET /v1/chain/status`：节点运行状态、共识高度、错误信息。
 - `GET /v1/chain/balances`：从 execution world 读取
@@ -75,10 +75,10 @@
 ### 4) 关键链路
 - 桌面入口：`run-client.sh -> oasis7_client_launcher -> oasis7_game_launcher`。
 - CLI 入口：`run-game.sh -> oasis7_game_launcher`。
-- 启动器编排：`oasis7_game_launcher -> world_chain_runtime + world_viewer_live + static_http`。
+- 启动器编排：`oasis7_game_launcher -> oasis7_chain_runtime + oasis7_viewer_live + static_http`。
 
 ## 5. Risks & Roadmap
-- M1：`world_chain_runtime` 落地（节点主循环 + status/balances API）。
+- M1：`oasis7_chain_runtime` 落地（节点主循环 + status/balances API）。
 - M2：`oasis7_game_launcher` 完成链子进程托管，viewer 进程收敛为纯观察服务。
 - M3：发行打包与桌面启动器参数透传完成。
 - M4：回归测试、文档收口、发布口径验证。

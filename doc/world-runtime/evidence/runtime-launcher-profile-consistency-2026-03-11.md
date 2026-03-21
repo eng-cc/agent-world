@@ -29,9 +29,9 @@
 ## 动态核对
 - `OASIS7_CHAIN_STORAGE_PROFILE=soak_forensics bash -x ./run-game.sh --help`：trace 显示最终执行 `oasis7_game_launcher ... --chain-storage-profile soak_forensics --help`。
 - `OASIS7_CHAIN_STORAGE_PROFILE=release_default bash -x ./run-web-launcher.sh --help`：trace 显示最终执行 `oasis7_web_launcher --chain-storage-profile release_default --help`。
-- `OASIS7_CHAIN_STORAGE_PROFILE=dev_local bash -x ./run-chain-runtime.sh --help`：trace 显示最终执行 `world_chain_runtime --storage-profile dev_local --help`。
+- `OASIS7_CHAIN_STORAGE_PROFILE=dev_local bash -x ./run-chain-runtime.sh --help`：trace 显示最终执行 `oasis7_chain_runtime --storage-profile dev_local --help`。
 
 ## 结论
-- bundle wrapper、launcher CLI 与 `world_chain_runtime` 的 storage profile 枚举口径一致。
+- bundle wrapper、launcher CLI 与 `oasis7_chain_runtime` 的 storage profile 枚举口径一致。
 - `OASIS7_CHAIN_STORAGE_PROFILE` 在 bundle 入口层不会硬编码默认值，只会在显式设置时注入参数，符合 PRD/T6.4 约束。
 - T7.4 当前可视为已补齐 launcher / bundle / runtime 的 profile 一致性证据；下一步转入 T7.5 的最终文档收口。

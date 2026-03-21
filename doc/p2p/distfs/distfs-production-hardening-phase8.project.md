@@ -14,9 +14,9 @@
 - [x] DPH8-4 (PRD-P2P-MIG-074)：执行回归测试，回写文档状态与 devlog。
 
 ## 依赖
-- `crates/oasis7/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/distfs_probe_runtime.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs（`#[cfg(test)]`）`
 - `doc/p2p/distfs/distfs-production-hardening-phase8.prd.md`
 
 ## 状态

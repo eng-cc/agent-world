@@ -74,7 +74,7 @@
 - Evaluation Strategy: 通过语义动作成功率（`__AW_TEST__` 可用性）、门禁通过率和故障分级命中率评估闭环质量。
 
 ## 4. Technical Specifications
-- Architecture Overview: Web 闭环按 surface 分为两条路径：`world_viewer_live` / Viewer 页面由 agent-browser 负责页面驱动与证据采样；`oasis7_web_launcher` / launcher Web 控制面由 GUI Agent 负责产品动作驱动，再由页面校验状态与字段；发布脚本承载标准化验收与总结。
+- Architecture Overview: Web 闭环按 surface 分为两条路径：`oasis7_viewer_live` / Viewer 页面由 agent-browser 负责页面驱动与证据采样；`oasis7_web_launcher` / launcher Web 控制面由 GUI Agent 负责产品动作驱动，再由页面校验状态与字段；发布脚本承载标准化验收与总结。
 - Integration Points:
   - `testing-manual.md`
   - `scripts/run-viewer-web.sh`

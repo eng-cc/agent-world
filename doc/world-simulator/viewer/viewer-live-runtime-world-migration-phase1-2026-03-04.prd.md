@@ -6,10 +6,10 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- Problem Statement: `world_viewer_live` 当前主执行链路仍使用 `simulator::WorldKernel`，而 `runtime::World` 已承载核心玩法规则，导致 live 体验与规则层长期双轨。
-- Proposed Solution: 在不改 Viewer 协议的前提下新增 runtime 驱动 live server（Phase 1），让 `world_viewer_live` 可通过开关切换到 `runtime::World`，并通过兼容适配输出现有 `WorldSnapshot/WorldEvent`。
+- Problem Statement: `oasis7_viewer_live` 当前主执行链路仍使用 `simulator::WorldKernel`，而 `runtime::World` 已承载核心玩法规则，导致 live 体验与规则层长期双轨。
+- Proposed Solution: 在不改 Viewer 协议的前提下新增 runtime 驱动 live server（Phase 1），让 `oasis7_viewer_live` 可通过开关切换到 `runtime::World`，并通过兼容适配输出现有 `WorldSnapshot/WorldEvent`。
 - Success Criteria:
-  - SC-1: `world_viewer_live` 支持 `--runtime-world` 启动 runtime 驱动链路。
+  - SC-1: `oasis7_viewer_live` 支持 `--runtime-world` 启动 runtime 驱动链路。
   - SC-2: runtime 模式下 Viewer 仍消费现有协议（`WorldSnapshot/WorldEvent`）并保持基础交互可用。
   - SC-3: 至少完成 `AgentRegistered/AgentMoved/ResourceTransferred/ActionRejected` 四类事件适配。
   - SC-4: `test_tier_required` 命令通过并可追溯到 `PRD-WORLD_SIMULATOR-016`。
@@ -23,11 +23,11 @@
   - 日常本地联调：开发者以 `--runtime-world` 启动 live viewer 观察规则层行为。
   - 发布前回归：测试人员验证 simulator/runtime 两模式都可启动且基础控制可用。
 - User Stories:
-  - As a 玩法架构开发者, I want world_viewer_live to run on runtime/world, so that live behavior is aligned with production rule semantics.
+  - As a 玩法架构开发者, I want oasis7_viewer_live to run on runtime/world, so that live behavior is aligned with production rule semantics.
   - As a Viewer 开发者, I want runtime mode to keep protocol compatibility, so that front-end code does not need immediate rewrite.
 - Critical User Flows:
   1. Flow-VIEWER-RUNTIME-001（runtime 模式启动）:
-     `world_viewer_live --runtime-world -> 启动 ViewerLive RuntimeServer -> 客户端 Hello/Subscribe/RequestSnapshot`
+     `oasis7_viewer_live --runtime-world -> 启动 ViewerLive RuntimeServer -> 客户端 Hello/Subscribe/RequestSnapshot`
   2. Flow-VIEWER-RUNTIME-002（播放推进）:
      `Play/Step 控制 -> runtime::World 提交脚本动作并 step -> 产生日志事件 -> 适配为 simulator event -> 推送 Event/Snapshot`
   3. Flow-VIEWER-RUNTIME-003（兼容回退）:
@@ -40,11 +40,11 @@
 | 快照兼容适配 | runtime `WorldState` -> simulator `WorldSnapshot` | `RequestSnapshot` 或事件后更新快照 | `state_change -> snapshot_emit` | 快照时间戳跟随 runtime `state.time` | 只读推送 |
 - Acceptance Criteria:
   - AC-1: 新增 `crates/oasis7/src/viewer/runtime_live.rs`，实现 runtime 驱动 live server。
-  - AC-2: `world_viewer_live` 新增 `--runtime-world` 参数并正确接线。
+  - AC-2: `oasis7_viewer_live` 新增 `--runtime-world` 参数并正确接线。
   - AC-3: runtime 模式下 `ViewerRequest::Hello/Subscribe/RequestSnapshot/Control` 基础闭环可用。
   - AC-4: runtime 事件至少映射四类：`AgentRegistered`、`AgentMoved`、`ResourceTransferred`、`ActionRejected`。
   - AC-5: simulator 默认模式行为保持不变（未传 `--runtime-world`）。
-  - AC-6: 命令通过：`env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_viewer_live` 与 `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_viewer_live`。
+  - AC-6: 命令通过：`env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_viewer_live` 与 `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin oasis7_viewer_live`。
 - Non-Goals:
   - 不在 Phase 1 完成 runtime 全量事件 1:1 映射。
   - 不在 Phase 1 改造 `oasis7_viewer` 前端数据结构。
@@ -57,9 +57,9 @@
 - Architecture Overview:
   - 新增 runtime live server，内部维护 `runtime::World` 与脚本驱动器。
   - 通过兼容适配层将 runtime 状态/事件转换为 simulator 协议对象。
-  - `world_viewer_live` 通过 CLI 选择 runtime 或 simulator server 实例。
+  - `oasis7_viewer_live` 通过 CLI 选择 runtime 或 simulator server 实例。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
   - `crates/oasis7/src/viewer/mod.rs`
   - `crates/oasis7/src/viewer/runtime_live.rs`
   - `crates/oasis7/src/viewer/protocol.rs`

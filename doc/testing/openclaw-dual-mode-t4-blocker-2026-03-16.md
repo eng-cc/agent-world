@@ -54,8 +54,8 @@
 ### 3.1 代码修复点
 以下位置现在已经支持真实 `player_parity` lane：
 - `crates/oasis7/src/viewer/runtime_live/llm_sidecar.rs`：通过 `OASIS7_OPENCLAW_EXECUTION_MODE` 解析并透传 runtime live OpenClaw execution mode。
-- `crates/oasis7/src/bin/oasis7_game_launcher.rs`：新增 `--openclaw-execution-mode`，把 execution mode 透传给 `world_viewer_live`。
-- `crates/oasis7/src/bin/world_openclaw_parity_bench.rs`：新增 `--execution-mode`，真实 OpenClaw parity bench 不再固定为 `headless_agent`。
+- `crates/oasis7/src/bin/oasis7_game_launcher.rs`：新增 `--openclaw-execution-mode`，把 execution mode 透传给 `oasis7_viewer_live`。
+- `crates/oasis7/src/bin/oasis7_openclaw_parity_bench.rs`：新增 `--execution-mode`，真实 OpenClaw parity bench 不再固定为 `headless_agent`。
 - `scripts/openclaw-parity-p0.sh` 与 `.agents/skills/oasis7/scripts/oasis7-run.sh`：新增 execution mode 参数并贯通 smoke / play 操作路径。
 
 ### 3.2 对 T4 的当前影响

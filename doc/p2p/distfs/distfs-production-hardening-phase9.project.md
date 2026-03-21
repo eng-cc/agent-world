@@ -15,7 +15,7 @@
 
 ## 依赖
 - `crates/oasis7_distfs/src/challenge_scheduler.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs（`#[cfg(test)]`）`
 - `doc/p2p/distfs/distfs-production-hardening-phase9.prd.md`
 
 ## 状态

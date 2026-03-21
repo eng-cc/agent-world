@@ -7,7 +7,7 @@
 定义 Web Viewer 通过 WebSocket bridge 接入 live server 的协议、桥接生命周期与错误恢复策略。
 
 ## 2. 设计结构
-- 服务端层：`world_viewer_live --web-bind` 启动 bridge。
+- 服务端层：`oasis7_viewer_live --web-bind` 启动 bridge。
 - 协议层：WebSocket text frame 与 TCP line protocol 互转。
 - 客户端层：viewer wasm 接入 WebSocket 客户端与错误状态呈现。
 

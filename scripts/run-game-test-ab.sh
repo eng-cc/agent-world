@@ -560,7 +560,7 @@ ab_cmd "$SESSION" close >>"$AB_LOG" 2>&1 || true
 
 if [[ -n "$STACK_OUTPUT_DIR" && -d "$STACK_OUTPUT_DIR" ]]; then
   cp "$STACK_OUTPUT_DIR/session.meta" "$OUT_DIR/startup.session.meta" 2>/dev/null || true
-  cp "$STACK_OUTPUT_DIR/world_viewer_live.log" "$OUT_DIR/startup.world.initial.log" 2>/dev/null || true
+  cp "$STACK_OUTPUT_DIR/oasis7_viewer_live.log" "$OUT_DIR/startup.world.initial.log" 2>/dev/null || true
   cp "$STACK_OUTPUT_DIR/web_viewer.log" "$OUT_DIR/startup.web.initial.log" 2>/dev/null || true
 fi
 

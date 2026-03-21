@@ -1,15 +1,15 @@
-# world_viewer_live LLM 默认开启（P2P 发行基线）设计文档（2026-02-23）
+# oasis7_viewer_live LLM 默认开启（P2P 发行基线）设计文档（2026-02-23）
 
 - 对应设计文档: `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.design.md`
 - 对应项目管理文档: `doc/p2p/viewer-live/world-viewer-live-llm-default-on-2026-02-23.project.md`
 
 审计轮次: 5
 > 状态更新（2026-03-08）:
-> - `world_viewer_live` 已下线 `--release-config`/`--node-*` 控制面入口。
+> - `oasis7_viewer_live` 已下线 `--release-config`/`--node-*` 控制面入口。
 > - 本文仍适用于 `--llm/--no-llm` 行为语义，但不再包含 release-config 运行路径要求。
 
 ## 1. Executive Summary
-- Problem Statement: 将 `world_viewer_live` 的决策模式默认值从 Script 调整为 LLM，减少发行参数遗漏导致的节点行为偏差。
+- Problem Statement: 将 `oasis7_viewer_live` 的决策模式默认值从 Script 调整为 LLM，减少发行参数遗漏导致的节点行为偏差。
 - Proposed Solution: 在不破坏现有参数模型的前提下，保持 CLI 语义简单且可审计。
 - Success Criteria:
   - SC-1: 未显式写入 `--llm` 时，默认进入 LLM 决策。
@@ -17,23 +17,23 @@
 ## 2. User Experience & Functionality
 - User Personas: 协议维护者、任务执行者、质量复核者。
 - User Scenarios & Frequency: 每次专题改动前后执行需求核对、测试回归与状态回写。
-- User Stories: As a 维护者, I want world_viewer_live LLM 默认开启（P2P 发行基线）设计文档（2026-02-23） 的需求结构化, so that implementation is auditable.
+- User Stories: As a 维护者, I want oasis7_viewer_live LLM 默认开启（P2P 发行基线）设计文档（2026-02-23） 的需求结构化, so that implementation is auditable.
 - Critical User Flows: `阅读旧文档 -> 重写为 strict PRD -> 回写项目文档 -> 校验提交`。
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 动作行为 | 状态转换 | 计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: `crates/oasis7/src/bin/world_viewer_live.rs`
+  - AC-1: `crates/oasis7/src/bin/oasis7_viewer_live.rs`
   - AC-2: 调整 `CliOptions::default().llm_mode` 为 `true`。
   - AC-3: 更新 `--llm` 帮助文案，避免“默认关闭”误导。
-  - AC-4: `crates/oasis7/src/bin/world_viewer_live.rs`（`#[cfg(test)]`）
+  - AC-4: `crates/oasis7/src/bin/oasis7_viewer_live.rs`（`#[cfg(test)]`）
   - AC-5: 更新默认解析测试断言，覆盖“默认开启 LLM”。
   - AC-6: 文档
 - Non-Goals:
   - 不新增 `--no-llm` 反向开关。
   - 不调整 `WorldScenario` 默认值与场景集合。
-  - 不扩展链路控制面参数（由 `world_chain_runtime` 承担）。
+  - 不扩展链路控制面参数（由 `oasis7_chain_runtime` 承担）。
 
 ## 3. AI System Requirements (If Applicable)
 - Tool Requirements: 不适用（本专题不涉及 AI 模型能力改造）。
@@ -57,7 +57,7 @@
 
 ### 2) CLI 参数兼容性
 - `--llm` 参数继续保留（显式冗余开启，不影响结果）。
-- `world_viewer_live` 不再支持 `--release-config`，不再维护 `locked_args` 兼容路径。
+- `oasis7_viewer_live` 不再支持 `--release-config`，不再维护 `locked_args` 兼容路径。
 
 ## 5. Risks & Roadmap
 - Phased Rollout:
@@ -68,7 +68,7 @@
 - Technical Risks:
   - 行为变更风险：依赖 Script 默认行为的本地调试脚本将出现行为变化。
   - 可观测性风险：若文档未同步，运维可能误判当前决策模式。
-  - 回归风险：虽然改动点小，仍需确认 `world_viewer_live` 全量单测通过。
+  - 回归风险：虽然改动点小，仍需确认 `oasis7_viewer_live` 全量单测通过。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:

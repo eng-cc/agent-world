@@ -4,7 +4,7 @@
 
 - 上游 PRD: `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.md`
 - 上游项目管理: `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.project.md`
-- 适用范围: `world_viewer_live` / `world_chain_runtime` 默认运行链路下的 execution bridge、execution world sidecar、node-distfs 复制热数据与 footprint metrics。
+- 适用范围: `oasis7_viewer_live` / `oasis7_chain_runtime` 默认运行链路下的 execution bridge、execution world sidecar、node-distfs 复制热数据与 footprint metrics。
 
 ## 1. 设计目标
 - **Replayability-first**：体积治理不能破坏“可追溯、可回放”；必须明确 canonical replay source、checkpoint 语义与 GC 边界。
@@ -264,7 +264,7 @@ struct StorageReplaySummary {
 ### 6.8 Bundle Wrapper Profile Contract
 - `run-game.sh`、`run-web-launcher.sh`、`run-chain-runtime.sh` 只在 `OASIS7_CHAIN_STORAGE_PROFILE` 非空时注入对应 profile 参数。
 - 未设置 `OASIS7_CHAIN_STORAGE_PROFILE` 时，wrapper 必须继承底层二进制默认值，避免在 shell 中复制 `dev_local` 等默认常量。
-- `run-game.sh` / `run-web-launcher.sh` 必须显式指向 bundle 内 `world_chain_runtime` 二进制，保证 profile 覆盖不会落到外部 PATH 上的其他 runtime。
+- `run-game.sh` / `run-web-launcher.sh` 必须显式指向 bundle 内 `oasis7_chain_runtime` 二进制，保证 profile 覆盖不会落到外部 PATH 上的其他 runtime。
 
 ## 7. 写路径设计
 ### 7.1 Commit 落账顺序
@@ -436,7 +436,7 @@ struct StorageReplaySummary {
 - 回退不允许改变 canonical log 结构。
 
 ## 15. 代码落点建议
-- `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`
   - `ExecutionBridgeRecordV2`
   - checkpoint 写入逻辑
   - pin set 计算与 retention manager
@@ -445,7 +445,7 @@ struct StorageReplaySummary {
   - manifest-aware sweep
 - `crates/oasis7/src/runtime/snapshot.rs`
   - `tick_consensus_records` 热冷分层索引字段
-- `crates/oasis7/src/bin/world_chain_runtime.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
   - storage profile 配置与 metrics 发布
 - `crates/oasis7_node/src/replication.rs`
   - hot/cold commit mirror 与 storage profile 对齐

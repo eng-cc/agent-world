@@ -23,7 +23,7 @@
 - **范围外**
   - 不修改资产文件本身（贴图、模型内容）。
   - 不重写 viewer 渲染管线。
-  - 不改 world_viewer_live 协议。
+  - 不改 oasis7_viewer_live 协议。
 
 ## 接口 / 数据
 - Rust：`crates/oasis7_viewer/src/app_bootstrap.rs`

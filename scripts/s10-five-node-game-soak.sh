@@ -9,7 +9,7 @@ usage() {
 Usage: ./scripts/s10-five-node-game-soak.sh [options]
 
 Status:
-  active (2026-02-28): this script runs a five-node soak via world_chain_runtime.
+  active (2026-02-28): this script runs a five-node soak via oasis7_chain_runtime.
 
 Options:
   --duration-secs <n>              soak duration seconds (default: 1800)
@@ -367,12 +367,12 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 if [[ "$prewarm" -eq 1 ]] && [[ "$dry_run" -eq 0 ]]; then
-  run env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_chain_runtime
+  run env -u RUSTC_WRAPPER cargo build -p oasis7 --bin oasis7_chain_runtime
 fi
 
-chain_bin="$repo_root/target/debug/world_chain_runtime"
+chain_bin="$repo_root/target/debug/oasis7_chain_runtime"
 if [[ "$dry_run" -eq 0 ]] && [[ ! -x "$chain_bin" ]]; then
-  echo "world_chain_runtime binary not found: $chain_bin" >&2
+  echo "oasis7_chain_runtime binary not found: $chain_bin" >&2
   echo "run with prewarm enabled or build it manually first" >&2
   exit 1
 fi
@@ -552,7 +552,7 @@ jq -n \
     validators: $validators,
     nodes: $nodes,
     compatibility_notes: [
-      "--llm/--no-llm are accepted but no longer affect world_chain_runtime",
+      "--llm/--no-llm are accepted but no longer affect oasis7_chain_runtime",
       "node_tick_ms is worker poll/fallback interval; PoS slot timing is configured by pos_config.*"
     ]
   }' > "$run_config_json"

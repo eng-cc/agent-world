@@ -43,7 +43,7 @@
 - [x] 回写 `doc/devlog/2026-02-21.md`
 
 ### T6 千 tick 长周期演进（新增）
-- [x] `world_llm_agent_demo` 增加多阶段切换参数（`--prompt-switches-json`）并与单次切换参数做互斥校验
+- [x] `oasis7_llm_agent_demo` 增加多阶段切换参数（`--prompt-switches-json`）并与单次切换参数做互斥校验
 - [x] `llm-longrun-stress.sh` 支持透传 `--prompt-switches-json`
 - [x] `story_balanced` 在长周期（中长/超长）自动生成多阶段切换计划
 - [x] 更新 `testing-manual.md` 长周期示例与参数说明
@@ -51,13 +51,13 @@
 
 ### T7 llm_bootstrap 多 Agent + runtime gameplay bridge（新增）
 - [x] `llm_bootstrap` 场景从 1 Agent 扩展到 5 Agent（新增 4 个 Agent）
-- [x] `world_llm_agent_demo` 增加 runtime gameplay bridge（接管 runtime-only gameplay/economic 动作）
+- [x] `oasis7_llm_agent_demo` 增加 runtime gameplay bridge（接管 runtime-only gameplay/economic 动作）
 - [x] `llm-longrun-stress.sh` 增加 bridge 参数透传与默认策略
 - [x] 补齐 demo/bin 测试与脚本回归，验证 gameplay 动作拒绝率下降
 - [x] 更新 `testing-manual.md` 闭环测试建议（5 Agent + bridge）
 
 ### T8 阶段基线世界（落盘/加载）闭环（新增）
-- [x] `world_llm_agent_demo` 增加 baseline 状态落盘/加载参数（state dir）
+- [x] `oasis7_llm_agent_demo` 增加 baseline 状态落盘/加载参数（state dir）
 - [x] `llm-longrun-stress.sh` 增加 state dir 参数透传与 summary 输出
 - [x] 更新 `testing-manual.md` 两阶段测试剧本（工业建基线 -> 治理压测）
 - [x] 新增 `industrial_baseline` prompt pack 与 `--llm-execute-until-auto-reenter-ticks` 参数透传（长程基线专用）
@@ -78,7 +78,7 @@
 - [x] 更新 `testing-manual.md` 与 `doc/devlog/2026-02-21.md`
 
 ### T11 基线加载后离线治理续跑 smoke（新增）
-- [x] 在 `world_llm_agent_demo` 测试中新增 runtime bridge 续跑用例（基于 `fixtures/llm_baseline/state_01`）
+- [x] 在 `oasis7_llm_agent_demo` 测试中新增 runtime bridge 续跑用例（基于 `fixtures/llm_baseline/state_01`）
 - [x] 扩展 `scripts/llm-baseline-fixture-smoke.sh`：新增治理/经济动作链离线 smoke
 - [x] 更新设计/测试文档与 devlog
 
@@ -88,13 +88,13 @@
 - [x] 回归 `scripts/llm-baseline-fixture-smoke.sh` 并回写设计/测试文档与 devlog
 
 ### T13 runtime 预设世界事件 fixture profile（新增）
-- [x] `world_llm_agent_demo` 增加 `--runtime-gameplay-preset`（`none|civic_hotspot_v1`）并在 runtime bridge 内实现预设事件注入
+- [x] `oasis7_llm_agent_demo` 增加 `--runtime-gameplay-preset`（`none|civic_hotspot_v1`）并在 runtime bridge 内实现预设事件注入
 - [x] `llm-longrun-stress.sh` 增加 preset 参数透传，并为 `civic_operator/resilience_drill` 默认启用 `civic_hotspot_v1`
 - [x] 扩展 full-tier smoke：新增 `runtime_bridge_civic_hotspot_preset_seeds_followup_handles`
 - [x] 更新设计/测试文档与 devlog
 
 ### T14 release gate 三档稳定化（新增）
-- [x] `world_llm_agent_demo` 增加 `--coverage-bootstrap-profile`，在 LLM loop 前注入 deterministic industrial/gameplay/hybrid 覆盖链路
+- [x] `oasis7_llm_agent_demo` 增加 `--coverage-bootstrap-profile`，在 LLM loop 前注入 deterministic industrial/gameplay/hybrid 覆盖链路
 - [x] `llm-longrun-stress.sh` 接入 bootstrap 参数透传，并在 `--release-gate` 下默认对齐同名 profile
 - [x] `llm-longrun-stress.sh` 在未显式指定 `--max-parse-errors` 时启用随 ticks 的自适应阈值（`max(2, ceil(ticks/40))`）
 - [x] 补齐 demo/bin 测试并完成三档 120 tick 回归（industrial/gameplay/hybrid）稳定通过

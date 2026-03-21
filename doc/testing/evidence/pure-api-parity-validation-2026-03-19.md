@@ -22,19 +22,19 @@
   - `reconnect-sync --with-snapshot` 继续可恢复 `latest_snapshot + player_gameplay`。
 
 ## 后续修复跟进（2026-03-19）
-- `runtime_engineer` 已修复 `world_pure_api_client reconnect-sync --with-snapshot`，现在会显式补拉 `snapshot`，恢复结果可直接携带 `latest_snapshot + player_gameplay`。
+- `runtime_engineer` 已修复 `oasis7_pure_api_client reconnect-sync --with-snapshot`，现在会显式补拉 `snapshot`，恢复结果可直接携带 `latest_snapshot + player_gameplay`。
 - `viewer_engineer` 已把 Mission HUD / PostOnboarding 主卡改为优先消费 canonical `snapshot.player_gameplay`；只有缺少协议级玩家语义时才回退旧事件聚合逻辑。
 - 修复后追加 source required 回归：
   - `./scripts/world-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4283 --web-bind 127.0.0.1:5123 --live-bind 127.0.0.1:5133 --chain-status-bind 127.0.0.1:5243`
   - 产物：`output/playwright/playability/pure-api-required-20260319-135315/`
   - 新增检查 `recovery_snapshot_present / recovery_player_gameplay_present` 均已通过。
 - 定向验证：
-  - `env -u RUSTC_WRAPPER cargo test -q -p oasis7 --bin world_pure_api_client`
+  - `env -u RUSTC_WRAPPER cargo test -q -p oasis7 --bin oasis7_pure_api_client`
   - `env -u RUSTC_WRAPPER cargo test -q -p oasis7_viewer build_player_post_onboarding_snapshot_prefers_canonical_player_gameplay_snapshot`
   - `env -u RUSTC_WRAPPER cargo test -q -p oasis7_viewer build_player_post_onboarding_snapshot_uses_canonical_blocker_fields`
   - `env -u RUSTC_WRAPPER cargo check -q -p oasis7 -p oasis7_viewer`
-  - `env -u RUSTC_WRAPPER cargo build -q -p oasis7 --bin world_pure_api_client`
-  - `target/debug/world_pure_api_client --addr 127.0.0.1:5132 reconnect-sync --player-id player-api-smoke --with-snapshot`
+  - `env -u RUSTC_WRAPPER cargo build -q -p oasis7 --bin oasis7_pure_api_client`
+  - `target/debug/oasis7_pure_api_client --addr 127.0.0.1:5132 reconnect-sync --player-id player-api-smoke --with-snapshot`
 
 ## 执行命令
 - source required-tier 预跑:
@@ -96,7 +96,7 @@
 | 检查项 | Web/UI 当前状态 | Pure API 当前状态 | 结论 |
 | --- | --- | --- | --- |
 | 阶段 / 目标 / 进度 / 阻塞 / 下一步建议字段存在 | UI 的 Mission HUD / PostOnboarding 主卡已优先消费 `snapshot.player_gameplay` canonical 语义 | API 已由 `player_gameplay` canonical 字段直接提供 | `pass` |
-| 基础推进动作（snapshot / step / play） | 可用 | `world_pure_api_client` 与 `player_gameplay.available_actions` 已可用 | `pass` |
+| 基础推进动作（snapshot / step / play） | 可用 | `oasis7_pure_api_client` 与 `player_gameplay.available_actions` 已可用 | `pass` |
 | 最近控制反馈 | UI 可见 | `recent_feedback + control_completion_ack` 已可读 | `pass` |
 | 阶段承接（FirstSessionLoop -> PostOnboarding） | UI 已有 headed / no-UI 证据 | source 与 fresh bundle pure API 都已通过 | `pass` |
 | 恢复面（重连后直接恢复阶段语义） | UI 重连后可再次看到任务卡 | `reconnect-sync --with-snapshot` 现已直接返回 recovery ack + snapshot + `player_gameplay` | `pass` |

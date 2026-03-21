@@ -7,25 +7,25 @@
 
 ## 适用范围
 - 可视化客户端：`crates/oasis7_viewer`
-- 联调服务端：`crates/oasis7 --bin world_viewer_live`
+- 联调服务端：`crates/oasis7 --bin oasis7_viewer_live`
 - Web 闭环入口：`scripts/run-viewer-web.sh` + agent-browser CLI
 - native fallback 脚本：`scripts/capture-viewer-frame.sh`
 - 角色边界：Web 端定位为 Viewer（观察/调试/间接控制），不承担完整分布式节点职责；共识与复制由后端节点进程负责。
-- 边界说明：本手册仅适用于 Viewer 页面（`world_viewer_live` / Web Viewer），不适用于 `oasis7_web_launcher` / launcher Web 控制面；后者产品动作默认应走 GUI Agent，再用页面校验状态与字段。
+- 边界说明：本手册仅适用于 Viewer 页面（`oasis7_viewer_live` / Web Viewer），不适用于 `oasis7_web_launcher` / launcher Web 控制面；后者产品动作默认应走 GUI Agent，再用页面校验状态与字段。
 
 ## 快速开始
 
 ### 1）启动 live server（推荐）
 ```bash
-env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 ```
-`world_viewer_live` 默认使用内置脚本决策；如需 LLM 决策可显式传 `--llm`（需先配置 LLM key）。
+`oasis7_viewer_live` 默认使用内置脚本决策；如需 LLM 决策可显式传 `--llm`（需先配置 LLM key）。
 
 ```bash
-env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 ```
 
-`world_viewer_live` 现已统一为 runtime/world 链路（协议兼容输出 `WorldSnapshot/WorldEvent`），不再提供 simulator fallback 启动分支。  
+`oasis7_viewer_live` 现已统一为 runtime/world 链路（协议兼容输出 `WorldSnapshot/WorldEvent`），不再提供 simulator fallback 启动分支。
 传 `--llm` 可启用 prompt/chat 鉴权与控制闭环；`--no-llm` 下 prompt/chat 会返回 `llm_mode_required`。
 
 ### 2）启动 viewer
@@ -43,7 +43,7 @@ OASIS7_VIEWER_OFFLINE=1 env -u RUSTC_WRAPPER cargo run -p oasis7_viewer
 env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 ```
 - 打开浏览器访问：`http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`
-- Web 端通过 `world_viewer_live --web-bind` 提供的 WebSocket bridge 在线连接 live server（Viewer + 网关路径）。
+- Web 端通过 `oasis7_viewer_live --web-bind` 提供的 WebSocket bridge 在线连接 live server（Viewer + 网关路径）。
 - Web 端不直接运行 `oasis7_node` 的完整分布式协议栈（不承担 gossip/replication/共识职责）。
 - 首次运行前需安装：
   - `trunk`（`cargo install trunk`）
@@ -57,8 +57,8 @@ env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173
 
 ## 发行模式（P2P 推荐）
 
-`world_viewer_live` 当前为纯 Viewer live 服务，不再承载 `--release-config`、`--runtime-world` 与 `--node-*` 控制面参数。  
-P2P 发行建议使用 `world_chain_runtime`（可由 `oasis7_game_launcher` / `oasis7_web_launcher` / `oasis7_client_launcher` 托管）锁定链参数，Viewer 仅保留 `--bind`、`--web-bind`、`--llm/--no-llm`。
+`oasis7_viewer_live` 当前为纯 Viewer live 服务，不再承载 `--release-config`、`--runtime-world` 与 `--node-*` 控制面参数。
+P2P 发行建议使用 `oasis7_chain_runtime`（可由 `oasis7_game_launcher` / `oasis7_web_launcher` / `oasis7_client_launcher` 托管）锁定链参数，Viewer 仅保留 `--bind`、`--web-bind`、`--llm/--no-llm`。
 
 ## 常用交互
 - 鼠标拖拽：旋转/平移观察视角。
@@ -436,7 +436,7 @@ python3 scripts/generate-viewer-industrial-theme-assets.py --quality v1 --out-di
 ### 标准流程
 1) 启动 live server（终端 A）
 ```bash
-env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011
 ```
 
 2) 启动 Web Viewer（终端 B）
@@ -551,7 +551,7 @@ agent-browser close
 - Console 有 wasm 报错：先看 `output/playwright/viewer/state.json` 的 `lastError`；若命中 `copy_deferred_lighting_id_pipeline` / `CONTEXT_LOST_WEBGL` / `SwiftShader`，按图形链路失败处理。
 - 看不到细节：切换 3D，放大并移动视角；必要时使用 `F` 聚焦目标。
 - 自动聚焦无效：确认 target 存在，或先使用 `first_fragment` 排除 ID 输入问题。
-- 连接失败：检查 `world_viewer_live` 是否运行、端口与 viewer 地址是否一致。
+- 连接失败：检查 `oasis7_viewer_live` 是否运行、端口与 viewer 地址是否一致。
 
 ## 参考文档
 - `doc/world-simulator/viewer/viewer-location-fine-grained-rendering.prd.md`

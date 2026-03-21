@@ -6,7 +6,7 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 降低 `world_viewer_live` 在 LLM 模式下的空转决策循环。
+- 降低 `oasis7_viewer_live` 在 LLM 模式下的空转决策循环。
 - 将 LLM 决策推进从“纯定时轮询”收敛为“有触发才推进”的事件触发门控。
 - 保持现有 `play/step/chat/prompt_control` 交互能力不退化。
 

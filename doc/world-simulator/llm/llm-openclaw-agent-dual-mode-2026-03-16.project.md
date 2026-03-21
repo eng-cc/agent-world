@@ -12,7 +12,7 @@
 - [x] T1 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 牵头冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version 与禁止泄露的真值边界，并形成 supporting spec `openclaw-agent-dual-mode-contract-2026-03-16.md`。
 - [x] T2 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `runtime_engineer` 落地 mode metadata、统一 replay/summary 追踪字段，并确保所有模式共享权威动作校验。
 - [x] T3 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `viewer_engineer` 把 `debug_viewer` 明确收口为旁路订阅层，并补 mode/fallback 可观测性与 software-safe 对照入口。
-- [x] T3.5 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 接通真实 `player_parity` 执行 lane 到 runtime live / `oasis7_game_launcher` / `world_openclaw_parity_bench` / `oasis7`，并完成 `headless_agent` / `player_parity` 双 smoke 采证，解除 T4 代码阻断。
+- [x] T3.5 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 接通真实 `player_parity` 执行 lane 到 runtime live / `oasis7_game_launcher` / `oasis7_openclaw_parity_bench` / `oasis7`，并完成 `headless_agent` / `player_parity` 双 smoke 采证，解除 T4 代码阻断。
 - [x] T3.6 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `producer_system_designer` 重构 `oasis7` operator 入口说明，把 `headless_agent`、`player_parity`、`debug_viewer` 与 `software_safe` 的职责分层直接写到技能文档，避免只读 skill 的操作者把 Viewer 误解为 OpenClaw 主执行依赖。
 - [x] T3.7 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `producer_system_designer` 将 `oasis7` 中非关键的 UI/observer 说明拆到独立 reference，保持主 skill 优先暴露 `headless_agent` / `player_parity` 的执行路径。
 - [x] T4 (PRD-WORLD_SIMULATOR-040) [test_tier_full]: 由 `qa_engineer` / `producer_system_designer` 对同一 OpenClaw 场景执行 `player_parity` vs `headless_agent` 对照采证，形成默认模式与阻断结论。

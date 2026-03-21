@@ -15,7 +15,7 @@
 - [x] RPA-2 (PRD-P2P-MIG-098)：将 `NodePoints` epoch 结算结果接入链状态铸造记录（`NodeRewardMintRecord`）。
 - [x] RPA-3 (PRD-P2P-MIG-098)：实现 `RedeemPower` 动作闭环（余额扣减、Agent 电力增加、事件产出）。
 - [x] RPA-4 (PRD-P2P-MIG-098)：实现守恒与风控（储备池、每 epoch 额度、最小兑换单位、nonce 防重放）。
-- [x] RPA-5 (PRD-P2P-MIG-098)：接线运行时主链路（`world_viewer_live`/runtime 开关与配置）。
+- [x] RPA-5 (PRD-P2P-MIG-098)：接线运行时主链路（`oasis7_viewer_live`/runtime 开关与配置）。
 - [x] RPA-6 (PRD-P2P-MIG-098)：实现最小需求侧支付入口（系统订单池预算分配）并接入结算。
 - [x] RPA-7 (PRD-P2P-MIG-098)：实现身份签名治理最小收口（`node_id <-> public_key` 校验，拒绝未绑定提交）。
 - [x] RPA-8 (PRD-P2P-MIG-098)：增强 DistFS 证明语义字段并补齐 `test_tier_required`/`test_tier_full` 回归。
@@ -29,7 +29,7 @@
 - `crates/oasis7/src/runtime/events.rs`
 - `crates/oasis7_proto/src/distributed.rs`
 - `crates/oasis7_consensus/src/pos.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - `crates/oasis7_distfs/src/lib.rs`
 - `doc/devlog/2026-02-16.md`
 

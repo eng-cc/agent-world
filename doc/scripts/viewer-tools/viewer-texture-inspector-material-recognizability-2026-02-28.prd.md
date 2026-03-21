@@ -21,7 +21,7 @@
   - 增补脚本级 smoke 与视觉门禁验证流程。
 - **范围外**
   - 不在本阶段重写 viewer 渲染管线（PBR 模型保持不变）。
-  - 不在本阶段改 world_viewer_live 协议结构。
+  - 不在本阶段改 oasis7_viewer_live 协议结构。
   - 不在本阶段引入新的截图框架（沿用 agent-browser + capture-viewer-frame 链路）。
 
 ## 接口 / 数据

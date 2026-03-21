@@ -12,9 +12,9 @@ const DEFAULT_SCENARIO: &str = "llm_bootstrap";
 const DEFAULT_BIND: &str = "127.0.0.1:5023";
 const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
 const REMOVAL_HINT: &str =
-    "embedded node flags were removed from world_viewer_live; use world_chain_runtime (normally launched by oasis7_game_launcher)";
+    "embedded node flags were removed from oasis7_viewer_live; use oasis7_chain_runtime (normally launched by oasis7_game_launcher)";
 const RUNTIME_ALIAS_REMOVAL_HINT: &str =
-    "`--runtime-world` was removed; world_viewer_live is runtime/world only, start without this flag";
+    "`--runtime-world` was removed; oasis7_viewer_live is runtime/world only, start without this flag";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CliOptions {
@@ -52,7 +52,7 @@ fn main() {
     };
 
     if let Err(err) = run_viewer(options) {
-        eprintln!("world_viewer_live failed: {err}");
+        eprintln!("oasis7_viewer_live failed: {err}");
         process::exit(1);
     }
 }
@@ -121,7 +121,7 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
             }
             "--no-runtime-world" => {
                 return Err(
-                    "`--no-runtime-world` is no longer supported: world_viewer_live is runtime-only"
+                    "`--no-runtime-world` is no longer supported: oasis7_viewer_live is runtime-only"
                         .to_string(),
                 );
             }
@@ -188,7 +188,7 @@ fn parse_world_scenario(raw: &str) -> Result<WorldScenario, String> {
 
 fn print_help() {
     println!(
-        "Usage: world_viewer_live [scenario] [options]\n\n\
+        "Usage: oasis7_viewer_live [scenario] [options]\n\n\
 Starts pure viewer live server (no embedded chain/node runtime).\n\n\
 Options:\n\
   [scenario]                world scenario (default: {DEFAULT_SCENARIO})\n\
@@ -200,7 +200,7 @@ Options:\n\
   -h, --help                show help\n\n\
 Removed:\n\
   --release-config, --runtime-world, all --node-*, --topology, --triad-*, --reward-runtime-*, --no-node, --viewer-no-consensus-gate\n\
-  -> use world_chain_runtime (usually managed by oasis7_game_launcher)"
+  -> use oasis7_chain_runtime (usually managed by oasis7_game_launcher)"
     );
 }
 
@@ -253,14 +253,14 @@ mod tests {
     fn parse_options_rejects_legacy_node_flags() {
         let err = parse_options(["--no-node"].into_iter()).expect_err("legacy flag should fail");
         assert!(err.contains("no longer supported"));
-        assert!(err.contains("world_chain_runtime"));
+        assert!(err.contains("oasis7_chain_runtime"));
     }
 
     #[test]
     fn parse_options_rejects_legacy_node_prefix_flags() {
         let err = parse_options(["--node-id", "n1"].into_iter()).expect_err("node-id should fail");
         assert!(err.contains("no longer supported"));
-        assert!(err.contains("world_chain_runtime"));
+        assert!(err.contains("oasis7_chain_runtime"));
     }
 
     #[test]
@@ -287,7 +287,7 @@ mod tests {
     fn parse_options_rejects_release_config_flag() {
         let err = parse_options(["--release-config", "legacy.toml"].into_iter()).expect_err("flag");
         assert!(err.contains("no longer supported"));
-        assert!(err.contains("world_chain_runtime"));
+        assert!(err.contains("oasis7_chain_runtime"));
     }
 
     #[test]

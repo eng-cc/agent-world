@@ -7,16 +7,16 @@
 定义最小化 Viewer Demo 数据生成方案：通过一个确定性 CLI 生成 `snapshot.json` + `journal.json`，让新用户可以低摩擦完成“生成数据 -> 启动 server -> 打开 UI”的闭环。
 
 ## 2. 设计结构
-- CLI 入口层：`world_viewer_demo` 提供场景选择和输出目录参数。
+- CLI 入口层：`oasis7_viewer_demo` 提供场景选择和输出目录参数。
 - 演示脚本层：按确定性策略选择 agent/location 并生成至少一个事件。
-- 持久化输出层：产出 `snapshot.json` 与 `journal.json` 供 `world_viewer_server` 消费。
+- 持久化输出层：产出 `snapshot.json` 与 `journal.json` 供 `oasis7_viewer_server` 消费。
 - 文档引导层：README/quick start 给出最小端到端运行路径。
 
 ## 3. 关键接口 / 入口
-- `world_viewer_demo [scenario] [--out <dir>]`
+- `oasis7_viewer_demo [scenario] [--out <dir>]`
 - `snapshot.json`
 - `journal.json`
-- `world_viewer_server` / `oasis7_viewer`
+- `oasis7_viewer_server` / `oasis7_viewer`
 
 ## 4. 约束与边界
 - 这是离线 replay demo，不包含 live simulation server。

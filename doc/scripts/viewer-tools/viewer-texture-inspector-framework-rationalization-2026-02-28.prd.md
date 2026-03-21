@@ -20,7 +20,7 @@
 - **范围外**
   - 不在本轮重写 viewer 渲染管线或材质资产本身。
   - 不在本轮引入新的图像处理依赖（沿用 ffmpeg）。
-  - 不在本轮改 world_viewer_live 协议结构。
+  - 不在本轮改 oasis7_viewer_live 协议结构。
 
 ## 接口 / 数据
 - Rust：`crates/oasis7_viewer/src/internal_capture.rs`

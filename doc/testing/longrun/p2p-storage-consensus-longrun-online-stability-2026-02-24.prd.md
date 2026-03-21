@@ -57,13 +57,13 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 以 `p2p-longrun-soak.sh` 作为长跑编排入口，复用 `world_viewer_live` 分布式拓扑与 reward runtime 报表能力，聚合共识/存储/网络/不变量指标并执行门禁判定。
+- Architecture Overview: 以 `p2p-longrun-soak.sh` 作为长跑编排入口，复用 `oasis7_viewer_live` 分布式拓扑与 reward runtime 报表能力，聚合共识/存储/网络/不变量指标并执行门禁判定。
 - Integration Points:
   - `scripts/p2p-longrun-soak.sh`
   - `testing-manual.md`（S9）
   - `scripts/ci-tests.sh`
   - `scripts/viewer-owr4-stress.sh`
-  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
   - `crates/oasis7_node/src/types.rs`
   - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.project.md`
 - Edge Cases & Error Handling:
@@ -105,7 +105,7 @@
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
 | DEC-S9SOAK-001 | 引入 `soak_*` 分档策略 | 所有长跑统一单档执行 | 控制执行成本并覆盖不同验证场景。 |
-| DEC-S9SOAK-002 | 复用 `world_viewer_live` 现有报表能力 | 新建独立报表链路 | 降低实现成本并保持口径连续性。 |
+| DEC-S9SOAK-002 | 复用 `oasis7_viewer_live` 现有报表能力 | 新建独立报表链路 | 降低实现成本并保持口径连续性。 |
 | DEC-S9SOAK-003 | chaos 注入与门禁判定联动，记录时间线 | 仅看最终状态不记录注入细节 | 提升故障复盘与审计可解释性。 |
 | DEC-S9SOAK-004 | `insufficient_data` 在 smoke 告警、在 endurance/release 失败 | 所有档位统一失败 | 平衡快速回归效率与发布风险控制。 |
 

@@ -24,7 +24,7 @@
   - AC-2: 在 `oasis7_node` 引入可注入的执行驱动接口（commit 后触发）。
   - AC-3: `NodeConsensusSnapshot` 增加 execution 相关字段（执行高度、执行块哈希、执行状态根）。
   - AC-4: 运行时重启后恢复 execution 快照字段。
-  - AC-5: **PRG-B2：world_viewer_live 内生执行接线**
+  - AC-5: **PRG-B2：oasis7_viewer_live 内生执行接线**
   - AC-6: 新增 `NodeRuntimeExecutionDriver`，将现有 execution bridge 的步进/落盘逻辑封装为节点执行驱动。
 - Non-Goals:
   - DistFS challenge-response 跨节点请求/应答协议化（PRG-M5）。
@@ -93,7 +93,7 @@ PosNodeStateSnapshot {
 - Phased Rollout:
   - **PRG-BM0**：完成 Phase B 设计文档与项目管理文档。
   - **PRG-BM1**：`oasis7_node` 执行 hook + 快照/持久化扩展。
-  - **PRG-BM2**：`world_viewer_live` execution driver 接入 NodeRuntime。
+  - **PRG-BM2**：`oasis7_viewer_live` execution driver 接入 NodeRuntime。
   - **PRG-BM3**：测试回归、文档与 devlog 收口。
 - Technical Risks:
   - 节点线程内执行耗时若过长，可能影响共识 tick 周期；需保持执行驱动幂等且轻量。

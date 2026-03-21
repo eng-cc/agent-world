@@ -6,7 +6,7 @@
 审计轮次: 6
 
 ## 1. Executive Summary
-- Problem Statement: 当前 `world_chain_runtime` 的 `explorer-index.json` 持久化路径受 `execution_world_dir` 影响；当启动链路依赖默认工作目录且 cwd 偏离时，运行时文件可能落到源码目录。
+- Problem Statement: 当前 `oasis7_chain_runtime` 的 `explorer-index.json` 持久化路径受 `execution_world_dir` 影响；当启动链路依赖默认工作目录且 cwd 偏离时，运行时文件可能落到源码目录。
 - Proposed Solution: 在 `oasis7_game_launcher` 与 `oasis7_web_launcher` 构造 runtime 启动参数时，显式传递 `--execution-world-dir`，统一收敛到 `output/chain-runtime/<node_id>/reward-runtime-execution-world`。
 - Success Criteria:
   - SC-1: 启动器托管 runtime 时，参数中稳定包含 `--execution-world-dir`。
@@ -24,9 +24,9 @@
   - PRD-WORLD_SIMULATOR-033: As a 启动器维护者, I want launcher to pass an explicit execution world output path to chain runtime, so that runtime-generated explorer index files always stay under `output/`.
 - Critical User Flows:
   1. Flow-LAUNCHER-033-001（CLI 启动链路）:
-     `oasis7_game_launcher 解析链参数 -> 构建 world_chain_runtime args -> 附带 --execution-world-dir -> runtime 写 explorer-index.json 到 output/...`
+     `oasis7_game_launcher 解析链参数 -> 构建 oasis7_chain_runtime args -> 附带 --execution-world-dir -> runtime 写 explorer-index.json 到 output/...`
   2. Flow-LAUNCHER-033-002（Web 控制面链路）:
-     `oasis7_web_launcher 接收 /api/chain/start -> 构建 world_chain_runtime args -> 附带 --execution-world-dir -> runtime 写 explorer-index.json 到 output/...`
+     `oasis7_web_launcher 接收 /api/chain/start -> 构建 oasis7_chain_runtime args -> 附带 --execution-world-dir -> runtime 写 explorer-index.json 到 output/...`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -37,7 +37,7 @@
   - AC-3: 既有链参数（`--node-id`、`--status-bind`、`--storage-profile`、PoS 参数）保持兼容，不得回归。
   - AC-4: 定向测试覆盖两个参数构建函数，且通过 `test_tier_required` 回归。
 - Non-Goals:
-  - 不在本任务内改造 `world_chain_runtime` 的默认路径解析逻辑。
+  - 不在本任务内改造 `oasis7_chain_runtime` 的默认路径解析逻辑。
   - 不在本任务内新增用户可配置的 execution world 路径字段。
   - 不改动 explorer 业务语义与持久化内容结构。
 

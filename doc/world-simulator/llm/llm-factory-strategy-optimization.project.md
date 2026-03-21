@@ -16,7 +16,7 @@
 - [x] LFO1.3 增加/更新 prompt 断言测试（拒绝原因驱动动作切换）
 
 ### LFO2 动作触发率统计（TODO-2）
-- [x] LFO2.1 扩展 `world_llm_agent_demo` report 结构（`action_kind_counts` 等）
+- [x] LFO2.1 扩展 `oasis7_llm_agent_demo` report 结构（`action_kind_counts` 等）
 - [x] LFO2.2 在运行汇总阶段写入 `first_action_tick` 等关键字段
 - [x] LFO2.3 增加 report JSON 结构回归测试
 
@@ -242,7 +242,7 @@
 - `crates/oasis7/src/simulator/llm_agent/decision_flow.rs`
 - `crates/oasis7/src/simulator/llm_agent/tests.rs`
 - `crates/oasis7/src/simulator/llm_agent/tests_part2.rs`
-- `crates/oasis7/src/bin/world_llm_agent_demo.rs`
+- `crates/oasis7/src/bin/oasis7_llm_agent_demo.rs`
 - `crates/oasis7/src/simulator/tests/kernel.rs`
 
 ## 状态

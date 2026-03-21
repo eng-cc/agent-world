@@ -13,7 +13,7 @@
 
 ### WLB2 后端 bridge
 - [x] WLB2.1 实现 WebSocket <-> TCP line protocol 双向桥接
-- [x] WLB2.2 `world_viewer_live` 增加 `--web-bind` 参数并接入 bridge 生命周期
+- [x] WLB2.2 `oasis7_viewer_live` 增加 `--web-bind` 参数并接入 bridge 生命周期
 - [x] WLB2.3 补充测试并通过 `test_tier_required` 最小回归
 
 ### WLB3 Web Viewer 接入
@@ -37,7 +37,7 @@
 ## 依赖
 - `doc/world-simulator/viewer/viewer-websocket-http-bridge.design.md`
 - `crates/oasis7/src/viewer/live.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - `crates/oasis7_viewer/src/main.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 - `AGENTS.md`

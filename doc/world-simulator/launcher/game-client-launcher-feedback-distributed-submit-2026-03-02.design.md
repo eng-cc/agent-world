@@ -7,7 +7,7 @@
 定义启动器反馈从“仅本地落盘”升级为“分布式提交优先、失败回落本地保存”的双路径闭环，使反馈先进入链运行时与 DistFS/P2P 网络，再以本地 JSON 作为兜底。
 
 ## 2. 设计结构
-- 远端提交流层：`world_chain_runtime` 提供 `POST /v1/chain/feedback/submit`，封装并签名 `FeedbackCreateRequest`。
+- 远端提交流层：`oasis7_chain_runtime` 提供 `POST /v1/chain/feedback/submit`，封装并签名 `FeedbackCreateRequest`。
 - 启动器代理层：桌面启动器优先调用远端接口提交反馈。
 - 本地回落层：远端失败时自动生成本地 JSON 包，并保留远端错误签名。
 - 状态反馈层：UI 区分“已提交到分布式网络”和“已本地保存回落”两类结果。

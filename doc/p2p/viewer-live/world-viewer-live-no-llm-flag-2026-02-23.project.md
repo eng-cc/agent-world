@@ -1,4 +1,4 @@
-# world_viewer_live `--no-llm` 关闭开关项目管理文档（2026-02-23）（项目管理文档）
+# oasis7_viewer_live `--no-llm` 关闭开关项目管理文档（2026-02-23）（项目管理文档）
 
 - 对应设计文档: `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.design.md`
 - 对应需求文档: `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md`
@@ -7,7 +7,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-P2P-MIG-114)：完成设计文档与项目管理文档建档。
 - [x] T1 (PRD-P2P-MIG-114)：实现 `--no-llm` 参数解析、CLI 帮助文案更新，并补参数测试。
-- [x] T2 (PRD-P2P-MIG-114)：更新 Viewer 手册，执行 `world_viewer_live` 定向回归。
+- [x] T2 (PRD-P2P-MIG-114)：更新 Viewer 手册，执行 `oasis7_viewer_live` 定向回归。
 - [x] T3 (PRD-P2P-MIG-114)：回写设计/项目文档状态与 devlog，完成收口。
 
 ## 依赖

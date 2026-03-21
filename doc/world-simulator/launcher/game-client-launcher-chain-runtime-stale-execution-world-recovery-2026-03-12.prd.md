@@ -6,7 +6,7 @@
 审计轮次: 6
 
 ## 1. Executive Summary
-- Problem Statement: 当前启动器默认使用固定 `chain_node_id=viewer-live-node` 与稳定 `execution_world_dir`；当目录下残留旧执行世界且状态根不匹配时，`world_chain_runtime` 会直接以 `DistributedValidationFailed` 退出，导致 launcher 只看到“链不可达”，用户缺少明确恢复路径。
+- Problem Statement: 当前启动器默认使用固定 `chain_node_id=viewer-live-node` 与稳定 `execution_world_dir`；当目录下残留旧执行世界且状态根不匹配时，`oasis7_chain_runtime` 会直接以 `DistributedValidationFailed` 退出，导致 launcher 只看到“链不可达”，用户缺少明确恢复路径。
 - Proposed Solution: 在 launcher / Web 控制面增加 stale execution world 识别与恢复策略，针对默认 node id 冲突场景输出结构化错误、可操作恢复建议，并支持显式使用 fresh node id 或受控重置执行世界目录完成恢复。同时把 launcher 产品默认链配置从固定 `viewer-live-node` 收敛为自动生成 fresh `chain_node_id`；仅在用户显式填写时保留自定义值，从源头降低默认入口命中旧目录的概率。
 - Success Criteria:
   - SC-1: 默认 launcher 链启动在遇到 stale execution world 冲突时，不再只暴露泛化 `unreachable`，而是能识别为可恢复的 `stale_execution_world` 类问题。
@@ -27,7 +27,7 @@
   - PRD-WORLD_SIMULATOR-034: As a 启动器用户, I want launcher to detect and help recover from stale chain execution-world conflicts, so that I can restart the chain without reading raw runtime logs or manually changing node IDs.
 - Critical User Flows:
   1. Flow-LAUNCHER-034-001（默认链启动命中 stale 目录）:
-     `点击启动区块链 -> world_chain_runtime 返回 DistributedValidationFailed/latest state root mismatch -> launcher 识别为 stale_execution_world -> UI/GUI Agent 返回结构化恢复建议`
+     `点击启动区块链 -> oasis7_chain_runtime 返回 DistributedValidationFailed/latest state root mismatch -> launcher 识别为 stale_execution_world -> UI/GUI Agent 返回结构化恢复建议`
   2. Flow-LAUNCHER-034-002（fresh node id 恢复）:
      `用户/GUI Agent 选择使用 fresh node id -> launcher 重新拼装链配置 -> chain_status 进入 ready -> explorer overview 可查询`
   3. Flow-LAUNCHER-034-003（受控清理恢复）:
@@ -57,7 +57,7 @@
 
 ## 4. Technical Specifications
 - Architecture Overview:
-  - 识别层：launcher 捕获 `world_chain_runtime` stderr / 退出原因并归类 stale execution world。
+  - 识别层：launcher 捕获 `oasis7_chain_runtime` stderr / 退出原因并归类 stale execution world。
   - 恢复层：launcher 配置层支持 fresh node id 或受控目录重置恢复模式。
   - 表现层：GUI Agent / Web 控制面 / launcher UI 使用统一错误码和恢复建议。
 - Integration Points:

@@ -26,7 +26,7 @@
     - 新增共识动作载荷类型与动作根（action root）计算。
     - 提案/提交/签名/复制链路携带动作序列与 action root。
     - 执行 hook 上下文携带已提交动作序列。
-  - Viewer live 执行桥（`world_viewer_live`）
+  - Viewer live 执行桥（`oasis7_viewer_live`）
     - execution hook 改为“按提交动作解码并注入 runtime action，再 step”。
   - 测试
     - `test_tier_required`：覆盖 compile 成功/拒绝、动作根签名覆盖、执行 hook 动作透传、计费扣减/拒绝。

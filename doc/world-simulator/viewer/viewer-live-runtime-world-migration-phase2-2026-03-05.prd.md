@@ -6,10 +6,10 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- Problem Statement: Phase 1 下 `world_viewer_live --runtime-world` 仅支持脚本驱动，`PromptControl` 与 `AgentChat` 直接返回 `unsupported_in_runtime_live_phase1`，导致 runtime 与 simulator 在 LLM 体验上断裂。
+- Problem Statement: Phase 1 下 `oasis7_viewer_live --runtime-world` 仅支持脚本驱动，`PromptControl` 与 `AgentChat` 直接返回 `unsupported_in_runtime_live_phase1`，导致 runtime 与 simulator 在 LLM 体验上断裂。
 - Proposed Solution: 在保持 `WorldSnapshot/WorldEvent` 协议兼容前提下，runtime live 增加 llm 模式分支，打通 `--runtime-world --llm`、prompt/chat 鉴权与配置生效链路，并对 runtime 可映射动作先行桥接。
 - Success Criteria:
-  - SC-1: `world_viewer_live --runtime-world --llm` 可正常启动，不再被 CLI 预检拒绝。
+  - SC-1: `oasis7_viewer_live --runtime-world --llm` 可正常启动，不再被 CLI 预检拒绝。
   - SC-2: runtime live 在 llm 模式下支持 `PromptControl`（preview/apply/rollback）与 `AgentChat` 请求闭环，且错误码与 simulator live 语义对齐。
   - SC-3: runtime live 在 script 模式下对 prompt/chat 明确返回 `llm_mode_required`，避免静默失败。
   - SC-4: prompt/chat 鉴权签名校验、nonce anti-replay、agent-player 绑定校验可用。
@@ -31,7 +31,7 @@
   - As a Viewer 开发者, I want runtime llm mode to keep protocol compatibility, so that front-end interaction remains unchanged.
 - Critical User Flows:
   1. Flow-VIEWER-RUNTIME-LLM-001（runtime llm 启动）:
-     `world_viewer_live --runtime-world --llm -> 启动 runtime live llm server -> Hello/Subscribe/RequestSnapshot`
+     `oasis7_viewer_live --runtime-world --llm -> 启动 runtime live llm server -> Hello/Subscribe/RequestSnapshot`
   2. Flow-VIEWER-RUNTIME-LLM-002（prompt apply）:
      `PromptControl::Apply(含签名) -> 校验签名/nonce/绑定/版本 -> 更新 profile -> 回写 snapshot model -> 返回 PromptControlAck`
   3. Flow-VIEWER-RUNTIME-LLM-003（agent chat）:
@@ -46,14 +46,14 @@
 | AgentChat（runtime） | `agent_id/player_id/public_key/auth/message` | 消息入队并返回 accepted ack | `chat_pending -> llm_decision_pending -> consumed` | 消息长度按字符计数返回 | 必须通过 auth 签名、nonce anti-replay 与 agent-player 绑定 |
 | LLM 决策动作桥接 | simulator action -> runtime action（子集） | 可映射动作提交 runtime；不可映射动作输出拒绝事件 | `decision -> mapped_action/rejected` | 优先执行可映射动作；失败保留错误上下文 | 不新增远程写接口，仅本地受控链路 |
 - Acceptance Criteria:
-  - AC-1: `world_viewer_live` 不再拒绝 `--runtime-world --llm` 组合参数。
+  - AC-1: `oasis7_viewer_live` 不再拒绝 `--runtime-world --llm` 组合参数。
   - AC-2: `ViewerRuntimeLiveServerConfig` 支持 llm/script 决策模式，并在 runtime live 中生效。
   - AC-3: runtime live 在 llm 模式下 `PromptControl` 与 `AgentChat` 不再返回 `unsupported_in_runtime_live_phase1`。
   - AC-4: runtime live 在 script 模式下 `PromptControl` 与 `AgentChat` 返回 `llm_mode_required`。
   - AC-5: runtime live prompt/chat 使用签名校验与 nonce anti-replay；校验失败返回结构化错误码。
   - AC-6: Apply/Rollback 后 snapshot 中可观察到 prompt profile / player 绑定 / nonce 状态更新。
   - AC-7: llm 决策推进 runtime 时，可映射动作成功执行；不可映射动作返回可诊断拒绝。
-  - AC-8: 命令通过：`env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_viewer_live` 与 `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin world_viewer_live`。
+  - AC-8: 命令通过：`env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_viewer_live` 与 `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin oasis7_viewer_live`。
 - Non-Goals:
   - 不在 Phase 2 完成 simulator action 到 runtime action 的全量 1:1 映射。
   - 不在 Phase 2 改造 viewer 前端协议或 UI 结构。
@@ -75,11 +75,11 @@
   - 控制面仍由 runtime::World 对外输出兼容快照/事件；llm sidecar 负责 prompt/chat 与决策产出。
   - 决策执行采用“可映射动作直接落 runtime，不可映射动作结构化拒绝”的渐进桥接策略。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
   - `crates/oasis7/src/viewer/runtime_live.rs`
   - `crates/oasis7/src/viewer/auth.rs`
   - `crates/oasis7/src/viewer/protocol.rs`
-  - `crates/oasis7/src/bin/world_llm_agent_demo/runtime_bridge.rs`
+  - `crates/oasis7/src/bin/oasis7_llm_agent_demo/runtime_bridge.rs`
   - `doc/world-simulator/viewer/viewer-manual.md`
 - Edge Cases & Error Handling:
   - 缺失 auth proof：返回 `auth_proof_required`。

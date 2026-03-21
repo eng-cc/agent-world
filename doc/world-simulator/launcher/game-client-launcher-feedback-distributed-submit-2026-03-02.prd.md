@@ -12,7 +12,7 @@
 
 ## 2. User Experience & Functionality
 ### In Scope
-- `crates/oasis7/src/bin/world_chain_runtime.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
   - 启用 `feedback_p2p` 配置（默认参数）。
   - 新增 `POST /v1/chain/feedback/submit` 接口。
   - 接口接收启动器反馈载荷，服务端构造并签名 `FeedbackCreateRequest`，调用 `NodeRuntime::submit_feedback`。
@@ -65,12 +65,12 @@
   - 缓解：两端新增对应单元测试并固定字段名。
 
 ## 完成态（2026-03-02）
-- `world_chain_runtime` 已默认启用 `feedback_p2p`，并新增 `POST /v1/chain/feedback/submit`。
+- `oasis7_chain_runtime` 已默认启用 `feedback_p2p`，并新增 `POST /v1/chain/feedback/submit`。
 - 新接口会在服务端完成请求校验、构造并签名 `FeedbackCreateRequest`，然后调用 `NodeRuntime::submit_feedback`，反馈进入 DistFS 并触发 P2P announce 流程。
 - 启动器反馈提交已升级为“分布式提交优先 + 本地落盘回落”：
   - 分布式成功：UI 显示“已提交到分布式网络”并展示 `feedback_id/event_id`。
   - 分布式失败：自动本地保存 JSON，并在日志中记录回落原因。
-- 相关单元测试已补齐并通过，`main.rs` 与 `world_chain_runtime.rs` 均维持在 1200 行以内。
+- 相关单元测试已补齐并通过，`main.rs` 与 `oasis7_chain_runtime.rs` 均维持在 1200 行以内。
 
 ## 6. Validation & Decision Record
 - 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

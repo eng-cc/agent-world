@@ -24,7 +24,7 @@
 - [x] M5：新增/更新测试（内置截图配置解析与触发条件）
 - [x] M5：验证脚本在 macOS 下可产出有效 `window.png` 并可用于 UI 评审
 - [x] M6：新增 `--auto-focus-*` 参数，支持截图闭环自动聚焦目标
-- [x] M7：默认预热编译（`world_viewer_live` + `oasis7_viewer`）减少运行时构建阻塞
+- [x] M7：默认预热编译（`oasis7_viewer_live` + `oasis7_viewer`）减少运行时构建阻塞
 - [x] M7：新增 `--capture-max-wait`，支持覆盖 macOS 内置截图最大等待秒数
 - [x] M7：当 `OASIS7_VIEWER_SHOW_FRAGMENT_ELEMENTS=1` 时自动提高默认最大等待
 - [x] M7：截图超时时输出 `viewer.log` tail，提升闭环排障效率
@@ -38,7 +38,7 @@
 ## 依赖
 - Linux：`Xvfb`、`ffmpeg`、`xwininfo`
 - macOS：无需系统录屏权限（使用 viewer 进程内截图）
-- Rust/Cargo（`world_viewer_live` + `oasis7_viewer`）
+- Rust/Cargo（`oasis7_viewer_live` + `oasis7_viewer`）
 
 ## 状态
 - 当前阶段：M9（策略切换完成，脚本定位为 native fallback）

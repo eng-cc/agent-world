@@ -235,7 +235,7 @@ jq -e '.proof_cid | startswith(\"sha256:\")' \"\$run_dir/proof/proof_payload.jso
       cmd=(
         env -u RUSTC_WRAPPER cargo test -p oasis7
         module_release_attestation_submit
-        --bin world_chain_runtime
+        --bin oasis7_chain_runtime
         -- --nocapture
       )
       ;;

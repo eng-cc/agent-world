@@ -58,5 +58,5 @@
   - GitHub-hosted `macos-14` runner 当前不提供 Docker daemon，而 canonical build 已变为 Docker-only path；因此 workflow 已临时收敛为 Linux-only gate，跨宿主对账继续通过导入外部 Docker-capable macOS summary 的方式完成。
   - builtin wasm fallback materializer 现已把临时输出目录收敛到仓库内 `.tmp/`，避免与 Docker-only wrapper 的 workspace-root 约束冲突；同时 canonical builder receipt 默认复用受控 `builder_image_digest`，避免 CI 本地 image id 漂移直接打穿 identity manifest 对账。
   - `compile_module_artifact_from_source` 现已完成 production gate：`ReleaseSecurityPolicy` 新增 `allow_runtime_source_compile`，production 默认关闭该路径并要求改走 external Docker builder + deploy binary；dev/test 保留该 action 以支撑现有回归。
-  - `world_chain_runtime` 现已把 `release_default` storage profile 绑定到 hardened `ReleaseSecurityPolicy`，并通过 `/v1/chain/status` 输出 effective policy；`NodeRuntimeExecutionDriver::new_with_storage_profile` 会在装载 execution world 时同步应用该 policy。
+  - `oasis7_chain_runtime` 现已把 `release_default` storage profile 绑定到 hardened `ReleaseSecurityPolicy`，并通过 `/v1/chain/status` 输出 effective policy；`NodeRuntimeExecutionDriver::new_with_storage_profile` 会在装载 execution world 时同步应用该 policy。
   - `scripts/module-release-node-acceptance.sh` 现已新增 `required_release_policy` 步骤，并在 `.tmp/module_release_node_acceptance/20260318-134705/summary.json` 留下 production policy binding/status 证据。

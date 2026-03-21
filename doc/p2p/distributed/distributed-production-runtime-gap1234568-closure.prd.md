@@ -82,7 +82,7 @@
   - 拒绝本次提交复制并返回共识错误。
 
 ### 5) 运行默认
-- `world_viewer_live` 默认：
+- `oasis7_viewer_live` 默认：
   - `node_auto_attest_all_validators=false`
   - 默认构建启用分布式网络 feature（见里程碑）。
 

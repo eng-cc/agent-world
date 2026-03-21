@@ -69,7 +69,7 @@
   - AC-13 (PRD-WORLD_RUNTIME-018): `proposal -> attestation` 证明落盘必须包含 `signer_node_id/platform/build_manifest_hash/source_hash/wasm_hash/proof_cid`，并强校验 `wasm_hash == release request manifest.wasm_hash`，冲突重复证明拒绝。
   - AC-14 (PRD-WORLD_RUNTIME-018): `ModuleReleaseApply` 必须按当前 epoch 快照 signer 集做 attestation 阈值聚合，且仅快照内 signer 计入阈值；阈值不足不得激活 release manifest。
   - AC-15 (PRD-WORLD_RUNTIME-018): 发布运行手册必须定义并可执行分诊“证明冲突、attestation 阈值不足、manifest 不可达/回滚/漂移”三类阻断场景，并明确主 CI 仅做开发回归与对账，不承担生产发布写入/激活。
-  - AC-16 (PRD-WORLD_RUNTIME-018): `world_chain_runtime` 必须提供 node-side `ModuleReleaseSubmitAttestation` 提交入口，使发布节点能够直接提交 attestation action 到共识队列，而不是依赖 CI 或手工改状态。
+  - AC-16 (PRD-WORLD_RUNTIME-018): `oasis7_chain_runtime` 必须提供 node-side `ModuleReleaseSubmitAttestation` 提交入口，使发布节点能够直接提交 attestation action 到共识队列，而不是依赖 CI 或手工改状态。
   - AC-17 (PRD-WORLD_RUNTIME-018): proof payload 打包脚本必须能输出可归档目录与稳定 `proof_cid`，并把 `request_id/signer_node_id/platform/build_manifest_hash/source_hash/wasm_hash/builder_image_digest/container_platform/canonicalizer_version` 与 release evidence 摘要绑定到同一 payload。
 - Non-Goals:
   - 不在本期引入全新加密算法（继续以 ed25519 为主）。

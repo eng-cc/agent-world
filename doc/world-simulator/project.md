@@ -6,7 +6,7 @@
 - [x] TASK-WORLD_SIMULATOR-003 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 固化 Web-first 闭环与 LLM 链路的测试证据模板。
 - [x] TASK-WORLD_SIMULATOR-004 (PRD-WORLD_SIMULATOR-003) [test_tier_required]: 建立 simulator 体验质量趋势跟踪。
 - [x] TASK-WORLD_SIMULATOR-005 (PRD-WORLD_SIMULATOR-004/005) [test_tier_required]: 完成“启动器链上转账”PRD 条款建模与验收标准冻结（接口、安全、测试口径）。
-- [x] TASK-WORLD_SIMULATOR-006 (PRD-WORLD_SIMULATOR-004) [test_tier_required]: `world_chain_runtime` 新增转账提交接口（含请求校验、结构化响应、单元测试）。
+- [x] TASK-WORLD_SIMULATOR-006 (PRD-WORLD_SIMULATOR-004) [test_tier_required]: `oasis7_chain_runtime` 新增转账提交接口（含请求校验、结构化响应、单元测试）。
 - [x] TASK-WORLD_SIMULATOR-007 (PRD-WORLD_SIMULATOR-005) [test_tier_required]: runtime 新增主 token 账户转账动作/事件/状态更新（含 nonce anti-replay、余额约束、回归测试）。
 - [x] TASK-WORLD_SIMULATOR-008 (PRD-WORLD_SIMULATOR-004) [test_tier_required]: `oasis7_client_launcher` 新增转账 UI 与提交流程（含输入校验、状态提示、错误展示）。
 - [x] TASK-WORLD_SIMULATOR-009 (PRD-WORLD_SIMULATOR-004/005) [test_tier_required]: 完成启动器-链运行时转账闭环测试（`test_tier_required`）与测试证据沉淀。
@@ -37,11 +37,11 @@
 - [x] TASK-WORLD_SIMULATOR-034 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: 升级 `oasis7_web_launcher` 为游戏/区块链独立编排控制面，新增链独立启停 API 与状态快照。
 - [x] TASK-WORLD_SIMULATOR-035 (PRD-WORLD_SIMULATOR-015) [test_tier_required]: `oasis7_client_launcher` native 改为客户端-服务端分离并复用同一 API 控制链路，恢复 web 端链启停与状态对齐并完成 agent-browser 回归。
 - [x] TASK-WORLD_SIMULATOR-036 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 完成“viewer live runtime/world 接管 Phase 1”PRD 建模与任务拆解。
-- [x] TASK-WORLD_SIMULATOR-037 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 落地 `world_viewer_live --runtime-world`、runtime live 兼容适配与 required 回归收口。
+- [x] TASK-WORLD_SIMULATOR-037 (PRD-WORLD_SIMULATOR-016) [test_tier_required]: 落地 `oasis7_viewer_live --runtime-world`、runtime live 兼容适配与 required 回归收口。
 - [x] TASK-WORLD_SIMULATOR-038 (PRD-WORLD_SIMULATOR-017) [test_tier_required]: 完成“viewer live runtime/world 接管 Phase 2（LLM/chat/prompt）”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-039 (PRD-WORLD_SIMULATOR-017) [test_tier_required]: 落地 runtime live `LLM/chat/prompt` 控制打通、CLI 接线与 required 回归收口。
 - [x] TASK-WORLD_SIMULATOR-040 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 完成“viewer live runtime/world 接管 Phase 3（action 映射覆盖 + 旧分支移除）”PRD 建模与任务拆解。
-- [x] TASK-WORLD_SIMULATOR-041 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 落地 runtime live action 映射覆盖扩展、等价回归测试与 `world_viewer_live` runtime-only 分支收敛。
+- [x] TASK-WORLD_SIMULATOR-041 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 落地 runtime live action 映射覆盖扩展、等价回归测试与 `oasis7_viewer_live` runtime-only 分支收敛。
 - [x] TASK-WORLD_SIMULATOR-042 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 完成“viewer live runtime/world 真 LLM 全量接管（LLM 决策 + 100% 事件/快照 + hard-fail）”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-043 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 移除启发式 sidecar，落地真实 LLM driver + shadow WorldKernel，并接入硬失败语义。
 - [x] TASK-WORLD_SIMULATOR-044 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: 补齐 runtime 事件/快照 100% 映射、扩展 viewer 协议并输出 DecisionTrace。
@@ -55,7 +55,7 @@
 - [x] TASK-WORLD_SIMULATOR-052 (PRD-WORLD_SIMULATOR-023) [test_tier_required]: 完成“启动器转账产品级体验与跨端同层前端一致性”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-053 (PRD-WORLD_SIMULATOR-023) [test_tier_required + test_tier_full]: 落地转账产品级能力（runtime accounts/status/history 查询 + 提交生命周期状态 + native/web 共享转账前端）并完成跨端回归与证据归档。
 - [x] TASK-WORLD_SIMULATOR-054 (PRD-WORLD_SIMULATOR-024) [test_tier_required]: 完成“启动器区块链浏览器面板”PRD 建模与任务拆解。
-- [x] TASK-WORLD_SIMULATOR-055 (PRD-WORLD_SIMULATOR-024) [test_tier_required]: 落地 `world_chain_runtime` explorer RPC 与 `oasis7_web_launcher` 代理接口，并补齐契约测试。
+- [x] TASK-WORLD_SIMULATOR-055 (PRD-WORLD_SIMULATOR-024) [test_tier_required]: 落地 `oasis7_chain_runtime` explorer RPC 与 `oasis7_web_launcher` 代理接口，并补齐契约测试。
 - [x] TASK-WORLD_SIMULATOR-056 (PRD-WORLD_SIMULATOR-024) [test_tier_required]: 落地启动器“区块链浏览器”面板（native/web 同源）并完成跨端回归。
 - [x] TASK-WORLD_SIMULATOR-057 (PRD-WORLD_SIMULATOR-025) [test_tier_required]: 完成“启动器区块链浏览器公共主链视角 P0”PRD 建模与任务拆解。
 - [x] TASK-WORLD_SIMULATOR-058 (PRD-WORLD_SIMULATOR-025) [test_tier_required]: 落地 runtime explorer P0 API（blocks/block/txs/tx/search）与持久化索引，并补齐 runtime/控制面契约测试。
@@ -122,8 +122,8 @@
 - [x] TASK-WORLD_SIMULATOR-121 (PRD-WORLD_SIMULATOR-036/037) [test_tier_required]: 在 simulator 落地 `OpenClawAdapter`，把本地 HTTP contract 绑定到 `DecisionProvider`，并补齐 `wait` / `wait_ticks` / `move_agent` / `speak_to_nearby` / `inspect_target` / `simple_interact` 六类 phase-1 白名单动作。
 - [x] TASK-WORLD_SIMULATOR-122 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 在 launcher / viewer 落地 OpenClaw provider 状态、最近延迟、最近动作 / trace 摘要展示，并补齐调试筛选入口。
 - [x] TASK-WORLD_SIMULATOR-123 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 冻结 `OpenClaw` 首期专用玩法 profile `oasis7_p0_low_freq_npc`，并把 `DecisionRequest.agent_profile`、parity bench 与批处理脚本接通到本地 HTTP provider。
-- [x] TASK-WORLD_SIMULATOR-124 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 打通 `oasis7_client_launcher -> oasis7_game_launcher -> world_viewer_live` 的 OpenClaw 参数透传，让产品主链路可把 `openclaw_agent_profile` 与本地 HTTP 配置送到 runtime live sidecar。
-- [x] TASK-WORLD_SIMULATOR-125 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 新增 `world_openclaw_local_bridge`，把本机已安装的 `OpenClaw Gateway/CLI` 转成 loopback-only world-simulator provider（`127.0.0.1:5841`），并完成真实 OpenClaw 主链路 / parity 冒烟。
+- [x] TASK-WORLD_SIMULATOR-124 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 打通 `oasis7_client_launcher -> oasis7_game_launcher -> oasis7_viewer_live` 的 OpenClaw 参数透传，让产品主链路可把 `openclaw_agent_profile` 与本地 HTTP 配置送到 runtime live sidecar。
+- [x] TASK-WORLD_SIMULATOR-125 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 新增 `oasis7_openclaw_local_bridge`，把本机已安装的 `OpenClaw Gateway/CLI` 转成 loopback-only world-simulator provider（`127.0.0.1:5841`），并完成真实 OpenClaw 主链路 / parity 冒烟。
 - [x] TASK-WORLD_SIMULATOR-126 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 OpenClaw bridge / parity 主链路补 `provider_config_ref` session scope、`P0-001` 巡游 guardrail 与 scenario memory hint，消除 session cross-talk、当前 location 误判与无效 patrol wait，跑通真实 `P0-001` smoke。
 - [x] TASK-WORLD_SIMULATOR-127 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 OpenClaw 增加 repo-owned 轻量 runtime agent bootstrap（`oasis7_openclaw_agent` workspace + setup 脚本），并把本地 bridge 决策调用切到 `gateway call agent --expect-final` / `sessionKey` 官方 RPC 形态，补齐真实轻量 agent probe。
 - [x] TASK-WORLD_SIMULATOR-128 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 把 OpenClaw bridge 的 `sessionKey` 改成 `subagent:` 形态，显式触发 OpenClaw minimal prompt mode，并补齐真实 direct probe / parity 采证。
@@ -134,8 +134,8 @@
 - [x] TASK-WORLD_SIMULATOR-133 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 `oasis7` 增加 GitHub Release bundle-first 下载入口与 `--bundle-dir/--repo-root` 路径策略，避免把真实试玩工作流绑死在 skill 相对路径上。
 - [x] TASK-WORLD_SIMULATOR-134 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 修复 `oasis7-run.sh` 对默认 `--download-dir ~/.cache/oasis7/releases` 的当前用户 `~` 展开，避免 bundle-first 下载产物误写到 repo-local `~/...`，并补路径回归脚本。
 - [x] TASK-WORLD_SIMULATOR-135 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 收口 `oasis7` 的 bundle-first / repo-bootstrap operator 契约，让 `doctor` 分开汇报 no-`cargo` bundle-play readiness 与 repo-backed bootstrap 能力，并为 `play` 补齐缺少 `cargo` / repo root 时的可执行指引。
-- [x] TASK-WORLD_SIMULATOR-136 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 修复 `oasis7-run.sh play` 在 wrapper 被终止后可能残留 `oasis7_game_launcher` / `world_chain_runtime` / `world_viewer_live` 的问题；为 play launcher 子树增加进程组级清理，并补 shutdown 回归脚本。
-- [x] TASK-WORLD_SIMULATOR-137 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 为 `oasis7` 补齐 chain node 公私钥资产说明，明确 OpenClaw real-play 默认仍可能启动 `world_chain_runtime`，并把 node private key 的存储/共享/录屏/日志禁令写成 operator contract。
+- [x] TASK-WORLD_SIMULATOR-136 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 修复 `oasis7-run.sh play` 在 wrapper 被终止后可能残留 `oasis7_game_launcher` / `oasis7_chain_runtime` / `oasis7_viewer_live` 的问题；为 play launcher 子树增加进程组级清理，并补 shutdown 回归脚本。
+- [x] TASK-WORLD_SIMULATOR-137 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 为 `oasis7` 补齐 chain node 公私钥资产说明，明确 OpenClaw real-play 默认仍可能启动 `oasis7_chain_runtime`，并把 node private key 的存储/共享/录屏/日志禁令写成 operator contract。
 - [x] TASK-WORLD_SIMULATOR-138 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 为 `oasis7-run.sh download` 增加 bundle-first 下载阶段日志、交互式进度条与非 TTY heartbeat，并补 bundle 下载可观测性回归脚本。
 - [x] TASK-WORLD_SIMULATOR-159 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 修复 `oasis7-run.sh download` 在 bundle 检测失败时仍可能把宿主 `/.` 误拷进缓存的问题；为 `detected_bundle` 增加显式失败保护、归档存在性校验与“无 extracted `run-game.sh`”负向回归。
 - [x] TASK-WORLD_SIMULATOR-160 (PRD-WORLD_SIMULATOR-039/040) [test_tier_required]: 重构 `oasis7` operator 口径，明确 `headless_agent` / `player_parity` / `debug_viewer` 属于 OpenClaw execution lane，`software_safe` 属于玩家访问模式；Viewer 仅用于观战、体验与弱图形观察，并写清当前 OpenClaw real-play 下 `agent_chat` / `prompt_control` 的 observer-only 边界。
@@ -360,7 +360,7 @@
     - `.agents/skills/oasis7/references/failure-signatures.md`
     - `.agents/skills/oasis7/scripts/oasis7-run.sh`
     - `.agents/skills/oasis7/scripts/oasis7-run-bootstrap-test.sh`
-    - `crates/oasis7/src/bin/world_openclaw_local_bridge.rs`
+    - `crates/oasis7/src/bin/oasis7_openclaw_local_bridge.rs`
   - 验收命令 (`test_tier_required`):
     - `bash .agents/skills/oasis7/scripts/oasis7-run-bootstrap-test.sh`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 local_session_id_from_session_key_hashes_invalid_chars -- --nocapture`
@@ -390,11 +390,11 @@
     - `rg -n "run_oasis7_|run_oasis7_" scripts/ci-tests.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-182 (PRD-WORLD_SIMULATOR-003/005) [test_tier_required]: 将 `world_chain_runtime` 转账提交测试的系统临时目录默认前缀切到 `oasis7_*`，收口链运行时转账测试产物里残留的旧 `oasis7_*` 内部命名。
+- [x] TASK-WORLD_SIMULATOR-182 (PRD-WORLD_SIMULATOR-003/005) [test_tier_required]: 将 `oasis7_chain_runtime` 转账提交测试的系统临时目录默认前缀切到 `oasis7_*`，收口链运行时转账测试产物里残留的旧 `oasis7_*` 内部命名。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+    - `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api_tests.rs`
   - 验收命令 (`test_tier_required`):
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 transfer_submit_handler_returns_invalid_request_for_bad_payload -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 transfer_status_and_history_endpoint_report_confirmed_record -- --nocapture`
@@ -418,8 +418,8 @@
     - `crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs`
     - `crates/oasis7/src/viewer/runtime_live/llm_sidecar.rs`
     - `crates/oasis7/src/viewer/runtime_live/tests.rs`
-    - `crates/oasis7/src/bin/world_openclaw_parity_bench.rs`
-    - `crates/oasis7/src/bin/world_openclaw_local_bridge.rs`
+    - `crates/oasis7/src/bin/oasis7_openclaw_parity_bench.rs`
+    - `crates/oasis7/src/bin/oasis7_openclaw_local_bridge.rs`
     - `crates/oasis7_client_launcher/src/main.rs`
     - `crates/oasis7_client_launcher/src/main_tests.rs`
     - `crates/oasis7/src/simulator/tests/decision_provider.rs`
@@ -480,9 +480,9 @@
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
     - `crates/oasis7/src/bin/oasis7_game_launcher/oasis7_game_launcher_tests.rs`
-    - `crates/oasis7/src/bin/world_chain_runtime/storage_metrics.rs`
-    - `crates/oasis7/src/bin/world_chain_runtime/reward_runtime_worker.rs`
-    - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
+    - `crates/oasis7/src/bin/oasis7_chain_runtime/storage_metrics.rs`
+    - `crates/oasis7/src/bin/oasis7_chain_runtime/reward_runtime_worker.rs`
+    - `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`
     - `crates/oasis7/src/runtime/builtin_wasm_materializer.rs`
     - `crates/oasis7/src/runtime/segmenter.rs`
     - `crates/oasis7/src/runtime/node_points_runtime.rs`
@@ -510,11 +510,11 @@
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 kernel_persist_and_restore -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-187 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `world_openclaw_parity_bench` 自定义 OpenClaw profile 参数解析样例切到 `oasis7_p1_memory_loop`，收口 bench 测试里残留的旧 `oasis7_*` profile 命名。
+- [x] TASK-WORLD_SIMULATOR-187 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_openclaw_parity_bench` 自定义 OpenClaw profile 参数解析样例切到 `oasis7_p1_memory_loop`，收口 bench 测试里残留的旧 `oasis7_*` profile 命名。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
-    - `crates/oasis7/src/bin/world_openclaw_parity_bench.rs`
+    - `crates/oasis7/src/bin/oasis7_openclaw_parity_bench.rs`
   - 验收命令 (`test_tier_required`):
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 parse_options_accepts_custom_openclaw_agent_profile -- --nocapture`
     - `./scripts/doc-governance-check.sh`
@@ -528,9 +528,9 @@
     - `crates/oasis7/src/runtime/tests/mod.rs`
     - `crates/oasis7/src/runtime/tests/governance.rs`
     - `crates/oasis7/src/runtime/tests/module_action_loop_split_part1.rs`
-    - `crates/oasis7/src/bin/world_chain_runtime.rs`
-    - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
-    - `crates/oasis7/src/bin/world_chain_runtime/world_chain_runtime_tests.rs`
+    - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
+    - `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`
+    - `crates/oasis7/src/bin/oasis7_chain_runtime/world_chain_runtime_tests.rs`
   - 验收命令 (`test_tier_required`):
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 governance_flow_applies_manifest -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 governance_finality_epoch_snapshot_rotation_rejects_stale_signers_and_accepts_rotated_set -- --nocapture`
@@ -548,7 +548,7 @@
     - `crates/oasis7/src/bin/oasis7_web_launcher/runtime_paths.rs`
     - `crates/oasis7/src/bin/oasis7_web_launcher/control_plane.rs`
     - `crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs`
-    - `crates/oasis7/src/bin/world_viewer_demo.rs`
+    - `crates/oasis7/src/bin/oasis7_viewer_demo.rs`
   - 验收命令 (`test_tier_required`):
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_game_launcher viewer_dev_dist_candidates_prefer_oasis7_name_before_legacy_name -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher viewer_dev_dist_candidates_prefer_oasis7_name_before_legacy_name -- --nocapture`
@@ -622,11 +622,11 @@
     - `crates/oasis7_client_launcher/src/self_guided.rs`
     - `crates/oasis7_client_launcher/src/llm_settings_web.rs`
     - `crates/oasis7_viewer/src/right_panel_module_visibility.rs`
-    - `crates/oasis7/src/bin/world_openclaw_local_bridge.rs`
+    - `crates/oasis7/src/bin/oasis7_openclaw_local_bridge.rs`
   - 验收命令 (`test_tier_required`):
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7_viewer load_visibility_supports_compat_old_brand_default_path -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_openclaw_local_bridge validate_profile_accepts_oasis7_and_rejects_removed_old_brand_profile -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_openclaw_local_bridge validate_profile_accepts_oasis7_and_rejects_removed_old_brand_profile -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-196 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_viewer` 的 auth/bootstrap、viewer env alias、automation 与 perf probe 兼容常量命名切到 `compat` 语义，收口 Viewer 源码级模块名/变量名里残留的旧品牌 viewer 维护口径。
@@ -748,12 +748,12 @@
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-206 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7` 运行时 material ledger 迁移 helper、execution bridge 兼容扫描 helper 与 module registry fallback 局部变量命名切到 `compat` 或准确中性语义，收口源码内部残留的 `legacy_*` 口径。
-  - 产物文件: `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/oasis7/src/runtime/state.rs`, `crates/oasis7/src/runtime/world/resources.rs`, `crates/oasis7/src/runtime/world/module_runtime.rs`, `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
+  - 产物文件: `doc/world-simulator/prd.md`, `doc/world-simulator/project.md`, `crates/oasis7/src/runtime/state.rs`, `crates/oasis7/src/runtime/world/resources.rs`, `crates/oasis7/src/runtime/world/module_runtime.rs`, `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`
   - 验收命令 (`test_tier_required`):
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 --lib new_world_migrates_legacy_world_materials_into_material_ledgers -- --nocapture`
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 --lib schedule_recipe_reads_and_writes_site_material_ledger -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime execution_bridge_record_legacy_payload_defaults_latest_state_ref -- --nocapture`
-    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime execution_bridge_retention_maintenance_skips_aggressive_sweep_for_legacy_records -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_chain_runtime execution_bridge_record_legacy_payload_defaults_latest_state_ref -- --nocapture`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_chain_runtime execution_bridge_retention_maintenance_skips_aggressive_sweep_for_legacy_records -- --nocapture`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-WORLD_SIMULATOR-207 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_node` commit cold index 旧文件名 alias 的 helper、局部变量与定向测试命名切到 `compat` 语义，收口 node replication 源码内部残留的 `legacy_*` 口径。
@@ -805,9 +805,9 @@
 - [x] TASK-WORLD_SIMULATOR-230 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `scripts/{build-wasm-module.sh,ci-m1-wasm-summary.sh,sync-m1-builtin-wasm-artifacts.sh}` 中旧品牌 wasm 脚本 compat alias，收口 deterministic wasm build / summary / sync 当前入口到 `OASIS7_WASM_*`，并删掉旧品牌 operator 文案。
 - [x] TASK-WORLD_SIMULATOR-231 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `scripts/{capture-viewer-frame.sh,viewer-texture-inspector-lib.sh,viewer-texture-inspector.sh,build-game-launcher-bundle.sh}` 中旧品牌 viewer/profile 的脚本 compat alias，收口 Viewer 调试脚本与 bundle wrapper 当前入口到 `OASIS7_VIEWER_*` / `OASIS7_CHAIN_STORAGE_PROFILE`，并删掉旧品牌 operator 文案。
 - [x] TASK-WORLD_SIMULATOR-232 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `tools/wasm_build_suite/src/lib.rs` 与相关测试中的旧品牌 wasm compat alias，收口 wasm build suite library 当前入口到 `OASIS7_WASM_*`，并把 compat 测试改为断言旧 alias 已失效。
-- [x] TASK-WORLD_SIMULATOR-233 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7/src/bin/world_openclaw_local_bridge.rs` 与相关测试中的旧 profile alias `oasis7_p0_low_freq_npc`，收口 OpenClaw local bridge 当前入口到 `oasis7_p0_low_freq_npc`，并把 compat 测试改为断言旧 alias 已失效。
+- [x] TASK-WORLD_SIMULATOR-233 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7/src/bin/oasis7_openclaw_local_bridge.rs` 与相关测试中的旧 profile alias `oasis7_p0_low_freq_npc`，收口 OpenClaw local bridge 当前入口到 `oasis7_p0_low_freq_npc`，并把 compat 测试改为断言旧 alias 已失效。
 - [x] TASK-WORLD_SIMULATOR-234 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `crates/oasis7_viewer/src/{viewer_env.rs,perf_probe.rs}`、`crates/oasis7_client_launcher/src/self_guided.rs` 等源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。
-- [x] TASK-WORLD_SIMULATOR-235 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `tools/wasm_build_suite/src/lib.rs`、`crates/oasis7/src/{viewer/runtime_live/tests.rs,runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent/tests_split_part1.rs,bin/world_openclaw_local_bridge.rs}` 等源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。
+- [x] TASK-WORLD_SIMULATOR-235 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `tools/wasm_build_suite/src/lib.rs`、`crates/oasis7/src/{viewer/runtime_live/tests.rs,runtime/module_source_compiler.rs,runtime/builtin_wasm_materializer.rs,simulator/llm_agent/tests_split_part1.rs,bin/oasis7_openclaw_local_bridge.rs}` 等源码内嵌负向测试中的旧品牌 helper / fixture 命名，保留必要旧 alias 字面量仅作为“已移除 alias”的负向输入。
 - [x] TASK-WORLD_SIMULATOR-236 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `.agents/roles/{wasm_platform_engineer,viewer_engineer}.md`、`doc/core/project.md` 与 `doc/world-runtime/{prd.md,project.md}` 中仍把 `oasis7*` / `OASIS7_*` 写成当前 owner/path/env 说明的活跃文档口径，统一到 `oasis7*` / `OASIS7_*`。
 - [x] TASK-WORLD_SIMULATOR-237 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `doc/world-simulator/viewer/**` 中仍把旧品牌 viewer crate/path/env 写成当前真值的活跃专题口径，统一到 `oasis7_viewer`、`OASIS7_VIEWER_*` 与 `.oasis7_viewer`。
 - [x] TASK-WORLD_SIMULATOR-238 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口一组活跃 launcher 专题中仍把旧品牌 launcher package/env/command 写成当前真值的口径，统一到 `oasis7_client_launcher`、`OASIS7_CLIENT_LAUNCHER_LANG` 与 `cargo -p oasis7_client_launcher`。
@@ -874,11 +874,11 @@
 - [x] TASK-WORLD_SIMULATOR-149 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 冻结 `player_parity` / `headless_agent` 的 observation/action contract、schema version、模式元数据与禁止泄露真值边界，并形成 supporting spec。
 - [x] TASK-WORLD_SIMULATOR-150 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `runtime_engineer` 为 OpenClaw 双轨模式落地 mode/schema/environment/fixture/replay 元数据透传、summary 聚合与 runtime live/headless traceability。
 - [x] TASK-WORLD_SIMULATOR-151 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `viewer_engineer` 为 software-safe / runtime live 补齐 `debug_viewer` 旁路订阅标识、headless lane 元数据展示与 OpenClaw observer-only 对照入口。
-- [x] TASK-WORLD_SIMULATOR-152 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 接通真实 `player_parity` 执行 lane 到 runtime live / `oasis7_game_launcher` / `world_openclaw_parity_bench` / `oasis7`，并完成 `headless_agent` / `player_parity` 双 smoke 采证。
+- [x] TASK-WORLD_SIMULATOR-152 (PRD-WORLD_SIMULATOR-040) [test_tier_required]: 由 `agent_engineer` 接通真实 `player_parity` 执行 lane 到 runtime live / `oasis7_game_launcher` / `oasis7_openclaw_parity_bench` / `oasis7`，并完成 `headless_agent` / `player_parity` 双 smoke 采证。
 - [x] TASK-WORLD_SIMULATOR-153 (PRD-WORLD_SIMULATOR-040) [test_tier_full]: 由 `qa_engineer` / `producer_system_designer` 基于真实 `player_parity` vs `headless_agent` 双样本完成 T4 对照采证，冻结默认模式与阻断结论。
 - [x] TASK-WORLD_SIMULATOR-154 (PRD-WORLD_SIMULATOR-038) [test_tier_full]: 由 `qa_engineer` / `producer_system_designer` 基于真实 builtin/OpenClaw `P0-001` 双样本完成 T4 parity 结论，给出 `failed / keep experimental` 放行口径与后续修复项。
 - [x] TASK-WORLD_SIMULATOR-155 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 由 `agent_engineer` 修复 builtin parity `P0-001` 巡游基线退化（为 parity bench 补 builtin patrol guardrail），并将 parity bench / 批处理脚本默认 connect-timeout 对齐到 `15000ms`，输出 `fix2` 复验证据。
-- [x] TASK-WORLD_SIMULATOR-156 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 由 `agent_engineer` 为 `world_openclaw_local_bridge` 增加 gateway timeout -> `openclaw agent --local` fallback 与稳定 `session_id`，修复真实 `OpenClaw(Local HTTP)` 连续 timeout，并输出 `fix3` 复验证据。
+- [x] TASK-WORLD_SIMULATOR-156 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 由 `agent_engineer` 为 `oasis7_openclaw_local_bridge` 增加 gateway timeout -> `openclaw agent --local` fallback 与稳定 `session_id`，修复真实 `OpenClaw(Local HTTP)` 连续 timeout，并输出 `fix3` 复验证据。
 - [x] TASK-WORLD_SIMULATOR-157 (PRD-WORLD_SIMULATOR-038) [test_tier_required]: 由 `producer_system_designer` 冻结 parity 分层 latency gate（行为等价 hard gate + `latency_class`），并基于 `fix3` 证据回写 `behavior_parity_pass / latency_class B / keep experimental` 口径。
 - [x] TASK-WORLD_SIMULATOR-110 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 为 `oasis7_viewer` 的 Web runtime fatal hook 增加“已知图形 fatal 仅自动 reload 一次”的恢复路径，收敛首开必须手动 reopen 的摩擦。
 - [x] TASK-WORLD_SIMULATOR-111 (PRD-WORLD_SIMULATOR-035) [test_tier_required]: 修复 `__AW_TEST__` runtime fatal 快照即时落盘，并复验 Viewer 首开不再以假性 `connecting` 掩盖图形 fatal。
@@ -908,7 +908,7 @@
 ## 专题任务映射（2026-03-05 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260305-001 (PRD-WORLD_SIMULATOR-017) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase2-2026-03-05.project.md`
 - [x] SUBTASK-WORLD_SIMULATOR-20260305-002 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-migration-phase3-2026-03-05.project.md`
-- [x] SUBTASK-WORLD_SIMULATOR-20260305-003 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: `crates/oasis7/src/viewer/runtime_live/control_plane.rs` + `crates/oasis7/src/bin/world_viewer_live.rs`
+- [x] SUBTASK-WORLD_SIMULATOR-20260305-003 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: `crates/oasis7/src/viewer/runtime_live/control_plane.rs` + `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - [x] SUBTASK-WORLD_SIMULATOR-20260305-004 (PRD-WORLD_SIMULATOR-019) [test_tier_required]: `doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.project.md`
 ## 专题任务映射（2026-03-06 批次）
 - [x] SUBTASK-WORLD_SIMULATOR-20260306-001 (PRD-WORLD_SIMULATOR-001/002/003) [test_tier_required]: `doc/world-simulator/kernel/power-storage-complete-removal-2026-03-06.project.md`（文档建档）
@@ -970,12 +970,12 @@
 - `doc/world-simulator/launcher/game-client-launcher-i18n-required-config-2026-03-02.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md`
 - `.agents/skills/prd/check.md`
-- `crates/oasis7/src/bin/world_chain_runtime.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
 - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
 - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
 - `crates/oasis7/src/bin/oasis7_web_launcher/gui_agent_api.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api_tests.rs`
 - `crates/oasis7_launcher_ui/src/lib.rs`
 - `crates/oasis7_client_launcher/src/main.rs`
 - `crates/oasis7_client_launcher/src/main_app_shell.rs`

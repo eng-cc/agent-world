@@ -5,7 +5,7 @@ print_help() {
   cat <<'USAGE'
 Usage: ./scripts/llm-switch-coverage-diff.sh --log <run.log> --switch-tick <n> [--out <path>]
 
-Compute action coverage before/after a prompt switch tick from world_llm_agent_demo run log.
+Compute action coverage before/after a prompt switch tick from oasis7_llm_agent_demo run log.
 
 Options:
   --log <path>          Path to run log file (required)

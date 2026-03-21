@@ -19,7 +19,7 @@
 - `crates/oasis7_client_launcher/src/llm_settings_web.rs`
 - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
 - `crates/oasis7/src/bin/oasis7_web_launcher/control_plane.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/feedback_submit_api.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/feedback_submit_api.rs`
 - `testing-manual.md`
 
 ## 状态

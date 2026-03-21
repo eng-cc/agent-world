@@ -64,9 +64,9 @@
       <section id="quickstart" class="section" data-reveal>
         <h2>快速开始</h2>
         <h3>1) 启动 live server（推荐）</h3>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
-        <p>`world_viewer_live` 默认使用脚本决策；如需 LLM 决策可显式传 `--llm`（需先配置 key）。</p>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
+        <p>`oasis7_viewer_live` 默认使用脚本决策；如需 LLM 决策可显式传 `--llm`（需先配置 key）。</p>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_viewer_live -- llm_bootstrap --no-llm --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
 
         <h3>2) 启动 viewer</h3>
         <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7_viewer -- 127.0.0.1:5023</code></pre>
@@ -79,8 +79,8 @@
         <p>访问：`http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011`。</p>
 
         <h3>5) 发行模式（P2P 推荐）</h3>
-        <p>`world_viewer_live` 当前为纯 Viewer live 服务，不再承载 `--release-config`、`--runtime-world` 与 `--node-*` 控制面参数。</p>
-        <p>P2P 发行建议使用 `world_chain_runtime`（可由 `oasis7_game_launcher` / `oasis7_web_launcher` / `oasis7_client_launcher` 托管）锁定链参数，Viewer 仅保留 `--bind`、`--web-bind`、`--llm/--no-llm`。</p>
+        <p>`oasis7_viewer_live` 当前为纯 Viewer live 服务，不再承载 `--release-config`、`--runtime-world` 与 `--node-*` 控制面参数。</p>
+        <p>P2P 发行建议使用 `oasis7_chain_runtime`（可由 `oasis7_game_launcher` / `oasis7_web_launcher` / `oasis7_client_launcher` 托管）锁定链参数，Viewer 仅保留 `--bind`、`--web-bind`、`--llm/--no-llm`。</p>
       </section>
 
       <section class="section" data-reveal>
@@ -135,7 +135,7 @@
 
         <h3>标准流程</h3>
         <p>终端 A：启动 live server。</p>
-        <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
+        <pre><code>env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_viewer_live -- llm_bootstrap --bind 127.0.0.1:5023 --web-bind 127.0.0.1:5011</code></pre>
         <p>终端 B：启动 Web Viewer。</p>
         <pre><code>env -u NO_COLOR ./scripts/run-viewer-web.sh --address 127.0.0.1 --port 4173</code></pre>
         <p>终端 C：执行 agent-browser 闭环采样。</p>
@@ -247,7 +247,7 @@ window.__AW_TEST__.getState();</code></pre>
           <li>Console 出现 wasm 报错：先修复运行时错误，再判断视觉问题。</li>
           <li>看不到细节：切换 3D，放大并移动视角，或按 `F` 聚焦。</li>
           <li>自动聚焦无效：先用 `first_fragment` 排除目标 ID 输入问题。</li>
-          <li>连接失败：检查 `world_viewer_live` 运行状态与端口一致性。</li>
+          <li>连接失败：检查 `oasis7_viewer_live` 运行状态与端口一致性。</li>
         </ul>
       </section>
 

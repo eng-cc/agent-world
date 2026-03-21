@@ -22,29 +22,29 @@ use oasis7_proto::storage_profile::{StorageProfile, StorageProfileConfig};
 use ed25519_dalek::SigningKey;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-#[path = "world_chain_runtime/balances_api.rs"]
+#[path = "oasis7_chain_runtime/balances_api.rs"]
 mod balances_api;
-#[path = "world_chain_runtime/distfs_probe_runtime.rs"]
+#[path = "oasis7_chain_runtime/distfs_probe_runtime.rs"]
 mod distfs_probe_runtime;
 #[cfg(not(test))]
 #[allow(dead_code)]
-#[path = "world_chain_runtime/execution_bridge.rs"]
+#[path = "oasis7_chain_runtime/execution_bridge.rs"]
 mod execution_bridge;
-#[path = "world_chain_runtime/explorer_p0_api.rs"]
+#[path = "oasis7_chain_runtime/explorer_p0_api.rs"]
 mod explorer_p0_api;
-#[path = "world_chain_runtime/feedback_submit_api.rs"]
+#[path = "oasis7_chain_runtime/feedback_submit_api.rs"]
 mod feedback_submit_api;
-#[path = "world_chain_runtime/module_release_attestation_submit_api.rs"]
+#[path = "oasis7_chain_runtime/module_release_attestation_submit_api.rs"]
 mod module_release_attestation_submit_api;
-#[path = "world_chain_runtime/node_keypair_config.rs"]
+#[path = "oasis7_chain_runtime/node_keypair_config.rs"]
 mod node_keypair_config;
-#[path = "world_chain_runtime/reward_runtime_settlement.rs"]
+#[path = "oasis7_chain_runtime/reward_runtime_settlement.rs"]
 mod reward_runtime_settlement;
-#[path = "world_chain_runtime/reward_runtime_worker.rs"]
+#[path = "oasis7_chain_runtime/reward_runtime_worker.rs"]
 mod reward_runtime_worker;
-#[path = "world_chain_runtime/storage_metrics.rs"]
+#[path = "oasis7_chain_runtime/storage_metrics.rs"]
 mod storage_metrics;
-#[path = "world_chain_runtime/transfer_submit_api.rs"]
+#[path = "oasis7_chain_runtime/transfer_submit_api.rs"]
 mod transfer_submit_api;
 use balances_api::build_chain_balances_payload;
 #[cfg(test)]
@@ -305,7 +305,7 @@ fn main() {
     };
 
     if let Err(err) = run_chain_runtime(options) {
-        eprintln!("world_chain_runtime failed: {err}");
+        eprintln!("oasis7_chain_runtime failed: {err}");
         process::exit(1);
     }
 }
@@ -467,7 +467,7 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
         feedback_submit_signer,
     )?;
 
-    println!("world_chain_runtime ready.");
+    println!("oasis7_chain_runtime ready.");
     println!("- node_id: {}", options.node_id);
     println!("- world_id: {}", options.world_id);
     println!("- storage_profile: {}", options.storage_profile.as_str());
@@ -1338,7 +1338,7 @@ fn build_validator_signer_public_keys(
 
 fn print_help() {
     println!(
-        "Usage: world_chain_runtime [options]\n\n\
+        "Usage: oasis7_chain_runtime [options]\n\n\
 Starts standalone chain/node runtime with status HTTP endpoints.\n\n\
 Options:\n\
   --node-id <id>                    node identifier (default: {DEFAULT_NODE_ID})\n\
@@ -1413,9 +1413,9 @@ fn now_unix_ms() -> i64 {
 }
 
 #[cfg(test)]
-#[path = "world_chain_runtime/execution_bridge_real_tests.rs"]
+#[path = "oasis7_chain_runtime/execution_bridge_real_tests.rs"]
 mod execution_bridge_real_tests;
 
 #[cfg(test)]
-#[path = "world_chain_runtime/world_chain_runtime_tests.rs"]
+#[path = "oasis7_chain_runtime/world_chain_runtime_tests.rs"]
 mod tests;

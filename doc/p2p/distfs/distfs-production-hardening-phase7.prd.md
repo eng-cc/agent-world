@@ -9,9 +9,9 @@
 
 ## 1. Executive Summary
 - Problem Statement: 在 DistFS 自适应挑战调度中引入按失败原因分级退避（reason-aware backoff），提高失败处理精度。
-- Proposed Solution: 将自适应调度参数治理化到 `world_viewer_live` CLI，支持运行时调优而无需改代码。
+- Proposed Solution: 将自适应调度参数治理化到 `oasis7_viewer_live` CLI，支持运行时调优而无需改代码。
 - Success Criteria:
-  - SC-1: 在不突破单文件行数约束的前提下继续模块化 `world_viewer_live`。
+  - SC-1: 在不突破单文件行数约束的前提下继续模块化 `oasis7_viewer_live`。
 
 ## 2. User Experience & Functionality
 - User Personas: 协议维护者、任务执行者、质量复核者。

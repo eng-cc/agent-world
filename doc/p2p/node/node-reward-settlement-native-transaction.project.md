@@ -9,7 +9,7 @@
 - [x] NSTX-1 (PRD-P2P-MIG-101)：完成项目管理文档拆解。
 - [x] NSTX-2 (PRD-P2P-MIG-101)：新增结算原生交易 Action/DomainEvent，并接入状态应用与预算扣减语义。
 - [x] NSTX-3 (PRD-P2P-MIG-101)：在 `event_processing` 增加结算交易签名/守恒/预算校验。
-- [x] NSTX-4 (PRD-P2P-MIG-101)：切换 `world_viewer_live` reward runtime 到原生交易路径并补测试。
+- [x] NSTX-4 (PRD-P2P-MIG-101)：切换 `oasis7_viewer_live` reward runtime 到原生交易路径并补测试。
 - [x] NSTX-5 (PRD-P2P-MIG-101)：执行 `test_tier_required` 回归，回写文档状态与 devlog 收口。
 
 ## 依赖
@@ -17,9 +17,9 @@
 - `crates/oasis7/src/runtime/events.rs`
 - `crates/oasis7/src/runtime/world/event_processing.rs`
 - `crates/oasis7/src/runtime/state.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - `crates/oasis7/src/runtime/tests/reward_asset.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs（`#[cfg(test)]`）`
 
 ## 状态
 - 当前阶段：NSTX-0~NSTX-5 全部完成；奖励结算已切换为网络共识主路径原生交易。

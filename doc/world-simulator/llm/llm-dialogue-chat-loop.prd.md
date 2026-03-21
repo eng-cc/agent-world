@@ -11,7 +11,7 @@
   - 动作被拒绝后，把拒绝原因作为会话反馈提供给 LLM。
   - 工具调用后，把工具结果作为会话反馈提供给 LLM。
 - 在 viewer 右侧新增玩家与 Agent 的 Chat 面板，支持玩家向指定 Agent 发送消息并可视化消息流。
-- 保持现有 `world_viewer_live --llm` 与 web 闭环链路可用。
+- 保持现有 `oasis7_viewer_live --llm` 与 web 闭环链路可用。
 
 ## 2. User Experience & Functionality
 

@@ -9,7 +9,7 @@
 - [x] T0 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 完成专题 PRD 建模、验收冻结与模块文档树回写。
 - [x] T1 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 扩展 `simulator_action_to_runtime` 覆盖并补齐关键动作映射（含模块工件动作）。
 - [x] T2 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 新增 action 映射等价回归与拒绝语义回归测试。
-- [x] T3 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 删除 `world_viewer_live` simulator 启动分支，更新手册并完成 required 回归收口。
+- [x] T3 (PRD-WORLD_SIMULATOR-018) [test_tier_required]: 删除 `oasis7_viewer_live` simulator 启动分支，更新手册并完成 required 回归收口。
 
 ## 依赖
 - `doc/world-simulator/prd.md`
@@ -17,7 +17,7 @@
 - `doc/world-simulator/prd.index.md`
 - `crates/oasis7/src/viewer/runtime_live/control_plane.rs`
 - `crates/oasis7/src/viewer/runtime_live.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - `doc/world-simulator/viewer/viewer-manual.md`
 
 ## 状态

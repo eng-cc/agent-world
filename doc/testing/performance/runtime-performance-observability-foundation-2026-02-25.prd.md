@@ -12,7 +12,7 @@
   - SC-1: 四阶段 wall time 采集接入 runner 核心路径与外部 action 补录路径。
   - SC-2: 统计快照包含 `avg/p50/p95/p99/min/max`、样本计数、over-budget 比例。
   - SC-3: 输出 `health` 与 `bottleneck` 诊断结论且规则稳定可测试。
-  - SC-4: `RunnerMetrics`、`world_llm_agent_demo`、`world_viewer_live`、`llm-longrun-stress.sh` 链路可消费 runtime perf。
+  - SC-4: `RunnerMetrics`、`oasis7_llm_agent_demo`、`oasis7_viewer_live`、`llm-longrun-stress.sh` 链路可消费 runtime perf。
   - SC-5: 不依赖外部监控基础设施，保持低侵入与序列化兼容。
 
 ## 2. User Experience & Functionality
@@ -59,7 +59,7 @@
 - Architecture Overview: 在 simulator runner 增加轻量 wall-time 采集器，分阶段写入窗口统计与累计计数，派生 `RuntimePerfSnapshot` 后通过 `RunnerMetrics` 对外传播，并被 demo/viewer/longrun 脚本统一消费。
 - Integration Points:
   - `crates/oasis7/src/simulator/runner.rs`
-  - `crates/oasis7/src/bin/world_llm_agent_demo/*`
+  - `crates/oasis7/src/bin/oasis7_llm_agent_demo/*`
   - `crates/oasis7/src/viewer/live_*`
   - `scripts/llm-longrun-stress.sh`
   - `testing-manual.md`

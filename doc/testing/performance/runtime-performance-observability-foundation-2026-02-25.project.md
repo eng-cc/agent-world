@@ -9,7 +9,7 @@
 - [x] RPOF-1 (PRD-TESTING-PERF-RPOF-001): 完成基础设计与项目管理建档。
 - [x] RPOF-2 (PRD-TESTING-PERF-RPOF-001/002): 实现 runtime perf 模块（采集、统计、分析）与 health/bottleneck 规则。
 - [x] RPOF-3 (PRD-TESTING-PERF-RPOF-001/002): 接入 `AgentRunner` 与 `RunnerMetrics`，覆盖 `tick/tick_decide_only/notify_action_result` 与外部 action 补录。
-- [x] RPOF-4 (PRD-TESTING-PERF-RPOF-002/003): 打通 `world_llm_agent_demo`、`world_viewer_live` 输出链路。
+- [x] RPOF-4 (PRD-TESTING-PERF-RPOF-002/003): 打通 `oasis7_llm_agent_demo`、`oasis7_viewer_live` 输出链路。
 - [x] RPOF-5 (PRD-TESTING-PERF-RPOF-003): 扩展 `scripts/llm-longrun-stress.sh` 汇总 runtime perf 字段。
 - [x] RPOF-6 (PRD-TESTING-PERF-RPOF-001/002/003): 完成单测、脚本回归与 `cargo check` 收口。
 - [x] RPOF-7 (PRD-TESTING-PERF-RPOF-003): 回写文档状态与 devlog。
@@ -18,7 +18,7 @@
 ## 依赖
 - doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md
 - `crates/oasis7/src/simulator/runner.rs`
-- `crates/oasis7/src/bin/world_llm_agent_demo/*`
+- `crates/oasis7/src/bin/oasis7_llm_agent_demo/*`
 - `crates/oasis7/src/viewer/live_*`
 - `scripts/llm-longrun-stress.sh`
 - `testing-manual.md`

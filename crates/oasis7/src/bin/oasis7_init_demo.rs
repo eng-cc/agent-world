@@ -8,7 +8,7 @@ use std::path::Path;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if matches!(args.get(1).map(|s| s.as_str()), Some("--help") | Some("-h")) {
-        println!("Usage: world_init_demo [scenario]");
+        println!("Usage: oasis7_init_demo [scenario]");
         println!("Options:");
         println!("  --summary-only  Only print counts (omit per-location/agent details)");
         println!("  --scenario-file Load scenario spec from JSON file");

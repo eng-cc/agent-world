@@ -21,7 +21,7 @@
 - 地点生成表达 `location_generator`：由 `seed` 决定地点数量与命名。
 - 场景文件覆盖所有现有场景：minimal/two_bases/.../asteroid_fragment_detail_bootstrap/asteroid_fragment_triad_region_bootstrap。
 - 单元测试验证场景文件可加载与稳定性。
-- `world_init_demo` 支持 `--scenario-file` 从 JSON 文件加载场景。
+- `oasis7_init_demo` 支持 `--scenario-file` 从 JSON 文件加载场景。
 
 ### Out of Scope
 - 运行时从任意路径加载自定义场景文件（仅内置文件）。
@@ -58,7 +58,7 @@
 ### 加载策略
 - 场景文件通过 `include_str!` 嵌入编译产物，避免运行时 I/O。
 - `WorldInitConfig::from_scenario` 读取场景文件并生成初始化配置。
-- `world_init_demo --scenario-file` 走运行时加载路径，便于调试自定义场景文件。
+- `oasis7_init_demo --scenario-file` 走运行时加载路径，便于调试自定义场景文件。
 
 ## 5. Risks & Roadmap
 - **F1**：输出场景文件设计与项目管理文档。
@@ -104,7 +104,7 @@
 说明：
 - 自 2026-02-07 起，除 `power_bootstrap` 外，内置场景不再默认注入 `power_plants`；如需设施，需在场景 JSON 中显式声明。
 - `scenario_specs_match_ids` 定位于 `crates/oasis7/src/simulator/scenario.rs`，用于约束“枚举 ID 与 JSON ID 一致”。
-- 其余命名测试主要位于 `crates/oasis7/src/simulator/tests/init.rs` 与 `crates/oasis7/tests/world_init_demo.rs`。
+- 其余命名测试主要位于 `crates/oasis7/src/simulator/tests/init.rs` 与 `crates/oasis7/tests/oasis7_init_demo.rs`。
 - 场景矩阵应随测试变更同步更新，避免“文档保留但测试漂移”。
 
 ## 6. Validation & Decision Record

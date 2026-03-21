@@ -74,11 +74,11 @@ fn main() {
     println!("actions: {}", summary.actions);
     println!("events: {}", summary.events);
     println!("output_dir: {}", out_dir);
-    println!("next: run world_viewer_server and oasis7 Viewer to connect");
+    println!("next: run oasis7_viewer_server and oasis7 Viewer to connect");
 }
 
 fn print_help() {
-    println!("Usage: world_viewer_demo [scenario] [--out <dir>]");
+    println!("Usage: oasis7_viewer_demo [scenario] [--out <dir>]");
     println!("Options:");
     println!("  --out <dir>       Output directory (default: .data/world_viewer_data)");
     println!("  --scenario <name> Scenario name (default: twin_region_bootstrap)");

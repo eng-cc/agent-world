@@ -33,7 +33,7 @@
   - `crates/oasis7_node/src/replication.rs`
   - `crates/oasis7_node/src/execution_hook.rs`
 - Viewer execution bridge：
-  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`
 - 测试：
   - `crates/oasis7/src/runtime/tests/module_action_loop.rs`
   - `crates/oasis7/src/runtime/tests/modules.rs`

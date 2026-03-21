@@ -250,7 +250,7 @@ wait_for_tcp_listener_ready() {
 }
 
 tail_logs_on_error() {
-  echo "--- world_viewer_live.log (tail) ---" >&2
+  echo "--- oasis7_viewer_live.log (tail) ---" >&2
   tail -n 80 "$WORLD_LOG" >&2 || true
   if [[ -s "$WEB_LOG" ]]; then
     echo "--- web_viewer.log (tail) ---" >&2
@@ -294,7 +294,7 @@ else
   RESOLVED_VIEWER_STATIC_DIR=$(resolve_viewer_static_dir_for_web_closure "$ROOT_DIR" "$VIEWER_STATIC_DIR" "$OUTPUT_DIR")
 fi
 
-WORLD_LOG="$OUTPUT_DIR/world_viewer_live.log"
+WORLD_LOG="$OUTPUT_DIR/oasis7_viewer_live.log"
 WEB_LOG="$OUTPUT_DIR/web_viewer.log"
 META_FILE="$OUTPUT_DIR/session.meta"
 

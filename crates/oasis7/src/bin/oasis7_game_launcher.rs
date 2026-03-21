@@ -219,15 +219,15 @@ fn run_launcher(options: &CliOptions) -> Result<(), String> {
     let game_url = build_game_url(options);
     println!("Launcher stack is ready.");
     println!("- URL: {game_url}");
-    println!("- world_viewer_live pid: {}", world_child.id());
+    println!("- oasis7_viewer_live pid: {}", world_child.id());
     if let Some(chain_child) = chain_child.as_ref() {
-        println!("- world_chain_runtime pid: {}", chain_child.id());
+        println!("- oasis7_chain_runtime pid: {}", chain_child.id());
         println!(
             "- chain status: http://{}/v1/chain/status",
             options.chain_status_bind
         );
     } else {
-        println!("- world_chain_runtime: disabled");
+        println!("- oasis7_chain_runtime: disabled");
     }
     println!("- web static root: {}", viewer_static_dir.display());
     println!("Press Ctrl+C to stop.");
@@ -313,7 +313,7 @@ fn spawn_world_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, S
     }
     command.spawn().map_err(|err| {
         format!(
-            "failed to start world_viewer_live from `{}`: {err}",
+            "failed to start oasis7_viewer_live from `{}`: {err}",
             path.display()
         )
     })
@@ -350,7 +350,7 @@ fn spawn_world_chain_runtime(path: &Path, options: &CliOptions) -> Result<Child,
     }
     command.spawn().map_err(|err| {
         format!(
-            "failed to start world_chain_runtime from `{}`: {err}",
+            "failed to start oasis7_chain_runtime from `{}`: {err}",
             path.display()
         )
     })
@@ -789,16 +789,16 @@ fn monitor_world_chain_and_server(
         }
         if let Some(status) = world_child
             .try_wait()
-            .map_err(|err| format!("failed to query world_viewer_live status: {err}"))?
+            .map_err(|err| format!("failed to query oasis7_viewer_live status: {err}"))?
         {
-            return Err(format!("world_viewer_live exited unexpectedly: {status}"));
+            return Err(format!("oasis7_viewer_live exited unexpectedly: {status}"));
         }
         if let Some(chain_child) = chain_child.as_deref_mut() {
             if let Some(status) = chain_child
                 .try_wait()
-                .map_err(|err| format!("failed to query world_chain_runtime status: {err}"))?
+                .map_err(|err| format!("failed to query oasis7_chain_runtime status: {err}"))?
             {
-                return Err(format!("world_chain_runtime exited unexpectedly: {status}"));
+                return Err(format!("oasis7_chain_runtime exited unexpectedly: {status}"));
             }
         }
 
@@ -899,16 +899,16 @@ fn poll_startup_health(
     }
     if let Some(status) = world_child
         .try_wait()
-        .map_err(|err| format!("failed to query world_viewer_live status during startup: {err}"))?
+        .map_err(|err| format!("failed to query oasis7_viewer_live status during startup: {err}"))?
     {
-        return Err(format!("world_viewer_live exited during startup: {status}"));
+        return Err(format!("oasis7_viewer_live exited during startup: {status}"));
     }
     if let Some(chain_child) = chain_child {
         if let Some(status) = chain_child.try_wait().map_err(|err| {
-            format!("failed to query world_chain_runtime status during startup: {err}")
+            format!("failed to query oasis7_chain_runtime status during startup: {err}")
         })? {
             return Err(format!(
-                "world_chain_runtime exited during startup: {status}"
+                "oasis7_chain_runtime exited during startup: {status}"
             ));
         }
     }
@@ -1256,16 +1256,16 @@ fn resolve_world_viewer_live_binary() -> Result<PathBuf, String> {
     let mut candidates = Vec::new();
     if let Ok(current_exe) = env::current_exe() {
         if let Some(dir) = current_exe.parent() {
-            candidates.push(dir.join(binary_name("world_viewer_live")));
+            candidates.push(dir.join(binary_name("oasis7_viewer_live")));
             candidates.push(
                 dir.join("..")
-                    .join(binary_name("world_viewer_live"))
+                    .join(binary_name("oasis7_viewer_live"))
                     .to_path_buf(),
             );
         }
     }
 
-    if let Some(path_entry) = find_on_path(OsStr::new(&binary_name("world_viewer_live"))) {
+    if let Some(path_entry) = find_on_path(OsStr::new(&binary_name("oasis7_viewer_live"))) {
         candidates.push(path_entry);
     }
 
@@ -1276,7 +1276,7 @@ fn resolve_world_viewer_live_binary() -> Result<PathBuf, String> {
     }
 
     Err(format!(
-        "failed to locate `world_viewer_live` binary; build it first or set {WORLD_VIEWER_LIVE_BIN_ENV}"
+        "failed to locate `oasis7_viewer_live` binary; build it first or set {WORLD_VIEWER_LIVE_BIN_ENV}"
     ))
 }
 
@@ -1295,16 +1295,16 @@ fn resolve_world_chain_runtime_binary() -> Result<PathBuf, String> {
     let mut candidates = Vec::new();
     if let Ok(current_exe) = env::current_exe() {
         if let Some(dir) = current_exe.parent() {
-            candidates.push(dir.join(binary_name("world_chain_runtime")));
+            candidates.push(dir.join(binary_name("oasis7_chain_runtime")));
             candidates.push(
                 dir.join("..")
-                    .join(binary_name("world_chain_runtime"))
+                    .join(binary_name("oasis7_chain_runtime"))
                     .to_path_buf(),
             );
         }
     }
 
-    if let Some(path_entry) = find_on_path(OsStr::new(&binary_name("world_chain_runtime"))) {
+    if let Some(path_entry) = find_on_path(OsStr::new(&binary_name("oasis7_chain_runtime"))) {
         candidates.push(path_entry);
     }
 
@@ -1315,7 +1315,7 @@ fn resolve_world_chain_runtime_binary() -> Result<PathBuf, String> {
     }
 
     Err(format!(
-        "failed to locate `world_chain_runtime` binary; build it first or set {WORLD_CHAIN_RUNTIME_BIN_ENV}"
+        "failed to locate `oasis7_chain_runtime` binary; build it first or set {WORLD_CHAIN_RUNTIME_BIN_ENV}"
     ))
 }
 
@@ -1460,40 +1460,40 @@ fn print_help() {
     println!(
         "Usage: oasis7_game_launcher [options]\n\n\
 Start player stack with one command:\n\
-- start world_chain_runtime (default)\n\
-- start world_viewer_live\n\
+- start oasis7_chain_runtime (default)\n\
+- start oasis7_viewer_live\n\
 - start built-in static web server\n\
 - print URL and optionally open browser\n\n\
 Options:\n\
-  --scenario <name>            world_viewer_live scenario (default: {DEFAULT_SCENARIO})\n\
-  --live-bind <host:port>      world_viewer_live bind (default: {DEFAULT_LIVE_BIND})\n\
-  --web-bind <host:port>       world_viewer_live web bridge bind (default: {DEFAULT_WEB_BIND})\n\
+  --scenario <name>            oasis7_viewer_live scenario (default: {DEFAULT_SCENARIO})\n\
+  --live-bind <host:port>      oasis7_viewer_live bind (default: {DEFAULT_LIVE_BIND})\n\
+  --web-bind <host:port>       oasis7_viewer_live web bridge bind (default: {DEFAULT_WEB_BIND})\n\
   --viewer-host <host>         web viewer host (default: {DEFAULT_VIEWER_HOST})\n\
   --viewer-port <port>         web viewer port (default: {DEFAULT_VIEWER_PORT})\n\
   --viewer-static-dir <path>   prebuilt web asset dir (default: {DEFAULT_VIEWER_STATIC_DIR})\n\
-  --chain-enable               enable world_chain_runtime (default)\n\
-  --chain-disable              disable world_chain_runtime\n\
-  --chain-status-bind <addr>   world_chain_runtime status bind (default: {DEFAULT_CHAIN_STATUS_BIND})\n\
-  --chain-node-id <id>         world_chain_runtime node id (default: {DEFAULT_CHAIN_NODE_ID})\n\
-  --chain-storage-profile <name> world_chain_runtime storage profile (default: dev_local)\n\
-  --chain-world-id <id>        world_chain_runtime world id (default: live-<scenario>)\n\
-  --chain-node-role <role>     world_chain_runtime role (default: {DEFAULT_CHAIN_NODE_ROLE})\n\
-  --chain-node-tick-ms <n>     world_chain_runtime worker poll/fallback interval ms (default: {DEFAULT_CHAIN_NODE_TICK_MS})\n\
+  --chain-enable               enable oasis7_chain_runtime (default)\n\
+  --chain-disable              disable oasis7_chain_runtime\n\
+  --chain-status-bind <addr>   oasis7_chain_runtime status bind (default: {DEFAULT_CHAIN_STATUS_BIND})\n\
+  --chain-node-id <id>         oasis7_chain_runtime node id (default: {DEFAULT_CHAIN_NODE_ID})\n\
+  --chain-storage-profile <name> oasis7_chain_runtime storage profile (default: dev_local)\n\
+  --chain-world-id <id>        oasis7_chain_runtime world id (default: live-<scenario>)\n\
+  --chain-node-role <role>     oasis7_chain_runtime role (default: {DEFAULT_CHAIN_NODE_ROLE})\n\
+  --chain-node-tick-ms <n>     oasis7_chain_runtime worker poll/fallback interval ms (default: {DEFAULT_CHAIN_NODE_TICK_MS})\n\
   --chain-pos-slot-duration-ms <n>\n\
-                               world_chain_runtime PoS slot duration ms (default: {DEFAULT_CHAIN_POS_SLOT_DURATION_MS})\n\
+                               oasis7_chain_runtime PoS slot duration ms (default: {DEFAULT_CHAIN_POS_SLOT_DURATION_MS})\n\
   --chain-pos-ticks-per-slot <n>\n\
-                               world_chain_runtime PoS logical ticks per slot (default: {DEFAULT_CHAIN_POS_TICKS_PER_SLOT})\n\
+                               oasis7_chain_runtime PoS logical ticks per slot (default: {DEFAULT_CHAIN_POS_TICKS_PER_SLOT})\n\
   --chain-pos-proposal-tick-phase <n>\n\
-                               world_chain_runtime proposal phase in slot tick window (default: {DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE})\n\
+                               oasis7_chain_runtime proposal phase in slot tick window (default: {DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE})\n\
   --chain-pos-adaptive-tick-scheduler\n\
-                               enable world_chain_runtime adaptive tick scheduler\n\
+                               enable oasis7_chain_runtime adaptive tick scheduler\n\
   --chain-pos-no-adaptive-tick-scheduler\n\
-                               disable world_chain_runtime adaptive scheduler (default)\n\
+                               disable oasis7_chain_runtime adaptive scheduler (default)\n\
   --chain-pos-slot-clock-genesis-unix-ms <n>\n\
-                               world_chain_runtime fixed slot clock genesis unix ms (default: auto)\n\
+                               oasis7_chain_runtime fixed slot clock genesis unix ms (default: auto)\n\
   --chain-pos-max-past-slot-lag <n>\n\
-                               world_chain_runtime max accepted stale slot lag (default: {DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG})\n\
-  --chain-node-validator <v:s> world_chain_runtime validator (repeatable)\n\
+                               oasis7_chain_runtime max accepted stale slot lag (default: {DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG})\n\
+  --chain-node-validator <v:s> oasis7_chain_runtime validator (repeatable)\n\
   --with-llm                   enable llm mode\n\
   --agent-provider-mode <mode> agent provider: builtin_llm|openclaw_local_http\n\
   --openclaw-base-url <url>    OpenClaw local provider base URL (default: {DEFAULT_OPENCLAW_BASE_URL})\n\
@@ -1507,8 +1507,8 @@ Options:\n\
   --no-open-browser            do not auto open browser\n\
   -h, --help                   show help\n\n\
 Env:\n\
-  OASIS7_WORLD_VIEWER_LIVE_BIN        explicit path of world_viewer_live binary\n\
-  OASIS7_WORLD_CHAIN_RUNTIME_BIN      explicit path of world_chain_runtime binary\n\
+  OASIS7_WORLD_VIEWER_LIVE_BIN        explicit path of oasis7_viewer_live binary\n\
+  OASIS7_WORLD_CHAIN_RUNTIME_BIN      explicit path of oasis7_chain_runtime binary\n\
   OASIS7_GAME_STATIC_DIR              override default viewer static dir when --viewer-static-dir is omitted"
     );
 }

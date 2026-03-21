@@ -18,7 +18,7 @@
   - 将 `capture-viewer-frame` 流程标记为 fallback（legacy）。
 - 范围外：
   - 不移除现有 `scripts/capture-viewer-frame.sh` 实现。
-  - 不在本任务实现 Web 在线协议桥接（浏览器连 `world_viewer_live`）。
+  - 不在本任务实现 Web 在线协议桥接（浏览器连 `oasis7_viewer_live`）。
   - 不新增前端功能，仅调整流程规范与文档口径。
 
 ## 3. AI System Requirements (If Applicable)

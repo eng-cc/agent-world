@@ -21,14 +21,14 @@
 
 ## 范围
 - In scope
-  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
-  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
   - `crates/oasis7/src/runtime/world/persistence.rs`
   - `crates/oasis7/src/runtime/events.rs`
   - `crates/oasis7/src/runtime/state.rs`
   - `crates/oasis7/src/runtime/world/module_actions.rs`
   - `crates/oasis7/src/runtime/world/module_tick_runtime.rs`
-  - `crates/oasis7/src/runtime/tests/*` 与 `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs` 内测试
+  - `crates/oasis7/src/runtime/tests/*` 与 `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs` 内测试
 - Out of scope
   - 大规模重写 `oasis7_wasm_abi` 协议结构（尽量通过 runtime 层扩展实现）。
   - 浏览器 wasm32 节点网络能力增强。

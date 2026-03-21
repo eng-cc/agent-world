@@ -694,7 +694,7 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
 
 fn print_help() {
     println!(
-        "Usage: world_llm_agent_demo [scenario] [--ticks <n>] [--report-json <path>] [--print-llm-io] [--llm-io-max-chars <n>] [prompt overrides]"
+        "Usage: oasis7_llm_agent_demo [scenario] [--ticks <n>] [--report-json <path>] [--print-llm-io] [--llm-io-max-chars <n>] [prompt overrides]"
     );
     println!("Options:");
     println!("  --scenario <name>  Scenario name (default: llm_bootstrap)");

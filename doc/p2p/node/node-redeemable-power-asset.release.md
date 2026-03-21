@@ -5,7 +5,7 @@
 - 设计/项目文档：
   - `doc/p2p/node/node-redeemable-power-asset.prd.md`
   - `doc/p2p/node/node-redeemable-power-asset.project.md`
-- 代码主线：`crates/oasis7/src/runtime/*`、`crates/oasis7/src/bin/world_viewer_live.rs`
+- 代码主线：`crates/oasis7/src/runtime/*`、`crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - 协议语义扩展：`crates/oasis7_proto/src/distributed.rs`
 
 ## 交付摘要
@@ -13,7 +13,7 @@
 - RPA-2：完成 `NodePoints` 结算上链铸造记录（`NodeRewardMintRecord`）与幂等处理。
 - RPA-3：完成 `RedeemPower` 动作闭环（扣减 credits、增加 Agent 电力、事件产出）。
 - RPA-4：完成风控约束（每 epoch 额度、最小兑换单位、nonce 防重放、守恒校验）。
-- RPA-5：完成 `world_viewer_live` reward runtime 主链路接线与参数开关。
+- RPA-5：完成 `oasis7_viewer_live` reward runtime 主链路接线与参数开关。
 - RPA-6：完成最小需求侧支付入口（系统订单池预算）并接入结算铸造。
 - RPA-7：完成身份治理最小收口（`node_id <-> public_key` 绑定校验）。
 - RPA-8：完成 DistFS 证明语义字段增强与回归。
@@ -34,7 +34,7 @@
   - `node_redeem_nonces`
   - `system_order_pool_budgets`
   - `node_identity_bindings`
-- `world_viewer_live` 新增参数：
+- `oasis7_viewer_live` 新增参数：
   - `--reward-runtime-enable`
   - `--reward-runtime-auto-redeem`
   - `--reward-runtime-signer`
@@ -46,7 +46,7 @@
   - `--reward-initial-reserve-power-units`
 
 ## 兼容性说明
-- 默认行为保持兼容：未开启 `--reward-runtime-enable` 时，`world_viewer_live` 保持既有行为。
+- 默认行为保持兼容：未开启 `--reward-runtime-enable` 时，`oasis7_viewer_live` 保持既有行为。
 - 新增字段全部带 `serde(default)`，兼容旧快照反序列化。
 - 身份绑定策略已对结算/兑换提交启用：未绑定节点提交将被拒绝。
 
@@ -54,7 +54,7 @@
 - 结算/兑换闭环回归：
   - `env -u RUSTC_WRAPPER cargo test -p oasis7 reward_asset_ -- --nocapture`
 - viewer 启动链路与参数解析：
-  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_viewer_live -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_viewer_live -- --nocapture`
 - DistFS 语义相关回归：
   - `env -u RUSTC_WRAPPER cargo test -p oasis7 node_points_runtime:: -- --nocapture`
   - `env -u RUSTC_WRAPPER cargo test -p oasis7_proto distributed:: -- --nocapture`

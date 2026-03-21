@@ -9,7 +9,7 @@ fn world_init_demo_runs_summary_only() {
     let output = Command::new(bin)
         .args(["--summary-only", "minimal"])
         .output()
-        .expect("run world_init_demo");
+        .expect("run oasis7_init_demo");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -23,7 +23,7 @@ fn world_init_demo_runs_llm_bootstrap_summary() {
     let output = Command::new(bin)
         .args(["--summary-only", "llm_bootstrap"])
         .output()
-        .expect("run world_init_demo");
+        .expect("run oasis7_init_demo");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -37,7 +37,7 @@ fn world_init_demo_runs_asteroid_fragment_summary() {
     let output = Command::new(bin)
         .args(["--summary-only", "asteroid_fragment_bootstrap"])
         .output()
-        .expect("run world_init_demo");
+        .expect("run oasis7_init_demo");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -52,7 +52,7 @@ fn world_init_demo_runs_asteroid_fragment_detail_summary() {
     let output = Command::new(bin)
         .args(["--summary-only", "asteroid_fragment_detail_bootstrap"])
         .output()
-        .expect("run world_init_demo");
+        .expect("run oasis7_init_demo");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -67,7 +67,7 @@ fn world_init_demo_runs_asteroid_fragment_twin_summary() {
     let output = Command::new(bin)
         .args(["--summary-only", "asteroid_fragment_twin_region_bootstrap"])
         .output()
-        .expect("run world_init_demo");
+        .expect("run oasis7_init_demo");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -82,7 +82,7 @@ fn world_init_demo_runs_asteroid_fragment_triad_summary() {
     let output = Command::new(bin)
         .args(["--summary-only", "asteroid_fragment_triad_region_bootstrap"])
         .output()
-        .expect("run world_init_demo");
+        .expect("run oasis7_init_demo");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -97,7 +97,7 @@ fn world_init_demo_runs_triad_summary() {
     let output = Command::new(bin)
         .args(["--summary-only", "triad_region_bootstrap"])
         .output()
-        .expect("run world_init_demo");
+        .expect("run oasis7_init_demo");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -112,7 +112,7 @@ fn world_init_demo_runs_from_scenario_file() {
     let output = Command::new(bin)
         .args(["--summary-only", "--scenario-file", &scenario_path])
         .output()
-        .expect("run world_init_demo");
+        .expect("run oasis7_init_demo");
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);

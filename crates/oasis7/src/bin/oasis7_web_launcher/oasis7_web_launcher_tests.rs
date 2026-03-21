@@ -60,7 +60,7 @@ fn parse_options_accepts_overrides() {
             "--launcher-bin",
             "/tmp/oasis7_game_launcher",
             "--chain-runtime-bin",
-            "/tmp/world_chain_runtime",
+            "/tmp/oasis7_chain_runtime",
             "--console-static-dir",
             "/tmp/web-launcher-dist",
             "--scenario",
@@ -98,7 +98,7 @@ fn parse_options_accepts_overrides() {
 
     assert_eq!(options.listen_bind, "127.0.0.1:7510");
     assert_eq!(options.launcher_bin, "/tmp/oasis7_game_launcher");
-    assert_eq!(options.chain_runtime_bin, "/tmp/world_chain_runtime");
+    assert_eq!(options.chain_runtime_bin, "/tmp/oasis7_chain_runtime");
     assert_eq!(
         options.console_static_dir,
         PathBuf::from("/tmp/web-launcher-dist")
@@ -114,7 +114,7 @@ fn parse_options_accepts_overrides() {
     );
     assert_eq!(
         options.initial_config.chain_runtime_bin,
-        "/tmp/world_chain_runtime"
+        "/tmp/oasis7_chain_runtime"
     );
     assert_eq!(
         options.initial_config.chain_storage_profile,

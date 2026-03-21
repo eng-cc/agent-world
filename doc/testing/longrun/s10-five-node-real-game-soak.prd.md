@@ -48,7 +48,7 @@
   - AC-4: 真实短跑与长跑样本证明关键验签失败告警为 0。
   - AC-5: 文档迁移完成 strict schema + `.prd.md/.project.md` 命名。
 - Non-Goals:
-  - 不新增 `world_viewer_live` 内建五节点拓扑枚举。
+  - 不新增 `oasis7_viewer_live` 内建五节点拓扑枚举。
   - 不在本专题引入 S10 chaos 注入编排。
   - 不改共识算法、存储证明协议语义。
 
@@ -57,10 +57,10 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 基于 `world_viewer_live --topology single` 多进程编排 5 节点，脚本统一构建 validator/peer 配置、采集每节点状态报告，并在 S10 门禁中联合判定共识推进、网络追平、存储挑战、结算应用与资产一致性。
+- Architecture Overview: 基于 `oasis7_viewer_live --topology single` 多进程编排 5 节点，脚本统一构建 validator/peer 配置、采集每节点状态报告，并在 S10 门禁中联合判定共识推进、网络追平、存储挑战、结算应用与资产一致性。
 - Integration Points:
   - `scripts/s10-five-node-game-soak.sh`
-  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
   - `testing-manual.md`
   - `doc/testing/longrun/s10-five-node-real-game-soak.project.md`
 - Edge Cases & Error Handling:

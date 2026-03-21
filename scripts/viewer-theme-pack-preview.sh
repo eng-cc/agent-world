@@ -16,7 +16,7 @@ usage() {
 Usage: ./scripts/viewer-theme-pack-preview.sh [options]
 
 Options:
-  --scenario <name>        world_viewer_live scenario (default: llm_bootstrap)
+  --scenario <name>        oasis7_viewer_live scenario (default: llm_bootstrap)
   --theme-pack <name>      theme pack: industrial_v3,industrial_v2,industrial_v1 (default: industrial_v3)
   --base-port <port>       starting port for per-variant capture (default: 5423)
   --viewer-wait <sec>      viewer wait before capture (default: 10)

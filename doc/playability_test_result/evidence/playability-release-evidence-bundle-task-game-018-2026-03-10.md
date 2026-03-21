@@ -37,7 +37,7 @@
 | 截图 | `output/playwright/playability/manual-20260310-round009/mlf007-baseline-3d-mid.png` / `output/playwright/playability/manual-20260310-round009/mlf007-selected-3d-mid.png` / `output/playwright/playability/manual-20260310-round009/mlf007-selected-2d-marker.png` | baseline、3D 与 2D 关键对照图。 |
 | 录屏 | `output/playwright/playability/manual-20260310-round009/mlf008-visual-check.webm` | 3D/2D 视角切换短录屏。 |
 | console / semantic 结果 | `output/playwright/playability/manual-20260310-round009/console.log` / `output/playwright/playability/manual-20260310-round009/state-selected-3d-mid.json` / `output/playwright/playability/manual-20260310-round009/state-selected-2d.json` | `connectionStatus=connected`、`selectedKind=agent`、`errorCount=0`。 |
-| 启动日志 | `output/playwright/playability/startup-20260310-232143/world_viewer_live.log` / `output/playwright/playability/startup-20260310-232143/web_viewer.log` | 本轮 viewer 证据采集启动日志。 |
+| 启动日志 | `output/playwright/playability/startup-20260310-232143/oasis7_viewer_live.log` / `output/playwright/playability/startup-20260310-232143/web_viewer.log` | 本轮 viewer 证据采集启动日志。 |
 | testing 证据包 | `doc/testing/evidence/release-evidence-bundle-task-game-018-2026-03-10.md` | 对应统一测试证据包。 |
 
 ## 结论摘要

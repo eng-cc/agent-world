@@ -46,7 +46,7 @@
   - AC-5: 现有 native 启动器主流程保持可用，不引入回归。
 - Non-Goals:
   - 不在本轮统一 web/native 的所有附加弹窗能力（如反馈、转账、设置中心深度编辑）。
-  - 不在本轮改造 `oasis7_game_launcher` 与 `world_chain_runtime` 的底层进程协议。
+  - 不在本轮改造 `oasis7_game_launcher` 与 `oasis7_chain_runtime` 的底层进程协议。
 
 ## 3. AI System Requirements (If Applicable)
 - N/A: 本专题不新增 AI 专属需求。

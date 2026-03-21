@@ -1,10 +1,10 @@
-# world_viewer_live `--no-llm` 关闭开关设计文档（2026-02-23）设计
+# oasis7_viewer_live `--no-llm` 关闭开关设计文档（2026-02-23）设计
 
 - 对应需求文档: `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md`
 - 对应项目管理文档: `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.project.md`
 
 ## 1. 设计定位
-定义 `world_viewer_live --no-llm` 关闭开关设计，确保在发行基线下仍能显式关闭 LLM 路径并保持行为可预测。
+定义 `oasis7_viewer_live --no-llm` 关闭开关设计，确保在发行基线下仍能显式关闭 LLM 路径并保持行为可预测。
 
 ## 2. 设计结构
 - CLI 开关层：定义 `--no-llm` 的参数语义与优先级。

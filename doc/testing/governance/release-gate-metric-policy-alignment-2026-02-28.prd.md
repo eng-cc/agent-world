@@ -7,10 +7,10 @@
 
 
 ## 1. Executive Summary
-- Problem Statement: S9/S10 在 `world_chain_runtime` 路径下存在“闭环已运行但指标缺失”的门禁误判，导致发布风险评估失真。
+- Problem Statement: S9/S10 在 `oasis7_chain_runtime` 路径下存在“闭环已运行但指标缺失”的门禁误判，导致发布风险评估失真。
 - Proposed Solution: 让发布门禁直接消费 reward runtime 真实指标（mint/distfs/settlement/invariant），并同步脚本与手册口径，避免兼容字段导致的偏差。
 - Success Criteria:
-  - SC-1: `world_chain_runtime` 暴露 `reward_runtime` 指标快照并可被门禁脚本稳定读取。
+  - SC-1: `oasis7_chain_runtime` 暴露 `reward_runtime` 指标快照并可被门禁脚本稳定读取。
   - SC-2: S9/S10 脚本以真实 reward runtime 指标完成比例计算并保持产物结构兼容。
   - SC-3: chaos 场景下 `reward_asset_invariant_violation` 仅由 `reward_runtime.invariant_ok=false` 触发。
   - SC-4: 发布前回归包含 runtime 构建、S9/S10 复跑与文档收口，结果可追溯。
@@ -29,7 +29,7 @@
   - PRD-TESTING-GOV-RELEASE-002: As a 测试维护者, I want S9/S10 scripts to aggregate per-node metrics deterministically, so that chaos data windows do not cause false negatives.
   - PRD-TESTING-GOV-RELEASE-003: As a Runtime 维护者, I want `/v1/chain/status` to expose reward runtime snapshots, so that failures are diagnosable without guessing.
 - Critical User Flows:
-  1. Flow-REL-001: `启动 world_chain_runtime -> 开启 reward runtime worker -> 通过 /v1/chain/status 输出快照`
+  1. Flow-REL-001: `启动 oasis7_chain_runtime -> 开启 reward runtime worker -> 通过 /v1/chain/status 输出快照`
   2. Flow-REL-002: `执行 S9/S10 脚本 -> 聚合每节点 reward 指标 -> 生成 summary/failures 产物`
   3. Flow-REL-003: `门禁失败 -> 依据 invariant/distfs/settlement 指标定位原因 -> 修复后复跑`
 - Functional Specification Matrix:
@@ -40,7 +40,7 @@
 | S9/S10 指标聚合 | mint 样本、distfs/settlement 比率、失败分类 | 脚本执行后产出 `summary.json/md` 与 `failures.md` | `running -> summarized -> gated` | 每节点累计取最大值后聚合 | 测试维护者可更新脚本逻辑 |
 | invariant 门禁判定 | `reward_runtime.invariant_ok`、`last_error` | 仅在显式 invariant=false 时报违规 | `healthy -> violated` | 与 `running_false/http_failure` 解耦 | 发布门禁策略维护者控制阈值 |
 - Acceptance Criteria:
-  - AC-1: `world_chain_runtime` 支持并稳定解析 reward runtime 相关参数族。
+  - AC-1: `oasis7_chain_runtime` 支持并稳定解析 reward runtime 相关参数族。
   - AC-2: `/v1/chain/status` 返回 reward runtime 快照字段，门禁脚本可直接消费。
   - AC-3: `scripts/p2p-longrun-soak.sh` 与 `scripts/s10-five-node-game-soak.sh` 完成真实指标聚合改造。
   - AC-4: `run_config.json`、`summary.json`、`summary.md`、`failures.md` 路径与结构保持兼容。
@@ -55,10 +55,10 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 以 `world_chain_runtime` 的 reward runtime worker 为单一事实来源，脚本直接消费 status 快照并在 S9/S10 执行后生成兼容汇总产物。
+- Architecture Overview: 以 `oasis7_chain_runtime` 的 reward runtime worker 为单一事实来源，脚本直接消费 status 快照并在 S9/S10 执行后生成兼容汇总产物。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_chain_runtime.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/reward_runtime_worker.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/reward_runtime_worker.rs`
   - `scripts/p2p-longrun-soak.sh`
   - `scripts/s10-five-node-game-soak.sh`
   - `testing-manual.md`
@@ -67,7 +67,7 @@
 - Edge Cases & Error Handling:
   - `distfs_total_checks` 在短窗口为 0：标记为 `insufficient_data`，与比例超阈值分离处理。
   - chaos 注入导致 `running_false/http_failure`：不直接判为 invariant 违规。
-  - runtime 新参数未编译进二进制：启动即失败并提示先执行 `cargo build -p oasis7 --bin world_chain_runtime`。
+  - runtime 新参数未编译进二进制：启动即失败并提示先执行 `cargo build -p oasis7 --bin oasis7_chain_runtime`。
   - 部分节点指标缺失：聚合时按可用节点最大累计值计算并保留告警。
   - 状态接口不可达：脚本输出 HTTP 失败分类并终止门禁判定。
 - Non-Functional Requirements:

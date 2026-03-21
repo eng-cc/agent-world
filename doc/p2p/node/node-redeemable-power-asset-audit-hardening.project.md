@@ -14,7 +14,7 @@
 - [x] AHA-1 (PRD-P2P-MIG-096)：完成项目管理文档拆解。
 - [x] AHA-2 (PRD-P2P-MIG-096)：实现结算签名语义升级（`mintsig:v1`）与签名校验函数。
 - [x] AHA-3 (PRD-P2P-MIG-096)：实现资产不变量审计报告 API，并覆盖 `test_tier_required` 单测。
-- [x] AHA-4 (PRD-P2P-MIG-096)：`world_viewer_live` reward runtime 接入审计摘要输出。
+- [x] AHA-4 (PRD-P2P-MIG-096)：`oasis7_viewer_live` reward runtime 接入审计摘要输出。
 - [x] AHA-5 (PRD-P2P-MIG-096)：文档状态回写、devlog 收口、发布说明整理。
 
 ## 依赖
@@ -22,7 +22,7 @@
 - `crates/oasis7/src/runtime/reward_asset.rs`
 - `crates/oasis7/src/runtime/world/resources.rs`
 - `crates/oasis7/src/runtime/tests/reward_asset.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - `doc/devlog/2026-02-16.md`
 
 ## 状态

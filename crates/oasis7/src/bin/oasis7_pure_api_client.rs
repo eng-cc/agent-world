@@ -18,7 +18,7 @@ use rand_core::OsRng;
 use serde_json::{json, Value};
 
 const DEFAULT_ADDR: &str = "127.0.0.1:5023";
-const DEFAULT_CLIENT: &str = "world_pure_api_client";
+const DEFAULT_CLIENT: &str = "oasis7_pure_api_client";
 const DEFAULT_TIMEOUT_MS: u64 = 3_000;
 
 fn main() {
@@ -1337,7 +1337,7 @@ fn is_terminal_error(response: &ViewerResponse) -> bool {
 
 fn usage() -> String {
     format!(
-        "Usage: world_pure_api_client [global options] <command> [command options]\n\n\
+        "Usage: oasis7_pure_api_client [global options] <command> [command options]\n\n\
 Global options:\n\
   --addr <host:port>         Live viewer TCP address (default: {DEFAULT_ADDR})\n\
   --client <name>            Client name for hello handshake (default: {DEFAULT_CLIENT})\n\
@@ -1378,15 +1378,15 @@ Commands:\n\
   revoke-session --player-id <id> [--session-pubkey <hex>] --revoke-reason <text>\n\
     Revoke one player's session key.\n\n\
 Examples:\n\
-  world_pure_api_client snapshot --player-gameplay-only\n\
-  world_pure_api_client step --count 8 --events\n\
-  world_pure_api_client chat --agent-id agent-0 --player-id player-1 \\\n\
+  oasis7_pure_api_client snapshot --player-gameplay-only\n\
+  oasis7_pure_api_client step --count 8 --events\n\
+  oasis7_pure_api_client chat --agent-id agent-0 --player-id player-1 \\\n\
     --private-key-hex <hex> --message 'build the first stable line' --with-snapshot\n\
-  world_pure_api_client gameplay-action --action-id build_factory_smelter_mk1 \\\n\
+  oasis7_pure_api_client gameplay-action --action-id build_factory_smelter_mk1 \\\n\
     --target-agent-id runtime-agent-0 --player-id player-1 --private-key-hex <hex> --with-snapshot\n\
-  world_pure_api_client prompt-apply --agent-id agent-0 --player-id player-1 \\\n\
+  oasis7_pure_api_client prompt-apply --agent-id agent-0 --player-id player-1 \\\n\
     --private-key-hex <hex> --short-term-goal 'turn iron into output'\n\
-  world_pure_api_client reconnect-sync --player-id player-1 --session-pubkey <hex> --with-snapshot"
+  oasis7_pure_api_client reconnect-sync --player-id player-1 --session-pubkey <hex> --with-snapshot"
     )
 }
 

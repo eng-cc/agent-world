@@ -14,7 +14,7 @@
 
 ## 3. 关键接口 / 入口
 - viewer 协议消息结构
-- `world_viewer_server` / `world_viewer_live`
+- `oasis7_viewer_server` / `oasis7_viewer_live`
 - `oasis7_viewer`
 - offline/live/headless 模式入口
 

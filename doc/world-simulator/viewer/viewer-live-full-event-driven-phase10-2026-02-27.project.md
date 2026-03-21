@@ -26,7 +26,7 @@
 
 ### Phase 9
 - [x] T0 建档：设计文档 + 项目管理文档
-- [x] T1 代码收敛：删除 `world_viewer_live --tick-ms` 与 `CliOptions.tick_ms`
+- [x] T1 代码收敛：删除 `oasis7_viewer_live --tick-ms` 与 `CliOptions.tick_ms`
 - [x] T2 脚本收敛：删除所有脚本对 `--tick-ms` 的透传链路
 - [x] T3 文档收敛：更新活跃手册与脚本说明，移除 `--tick-ms` 示例
 - [x] T4 回归与结项：required 测试 + 阶段文档收口

@@ -29,7 +29,7 @@
 - [x] 更新任务日志
 - [x] 运行测试 `env -u RUSTC_WRAPPER cargo test -p oasis7`
 - [x] 在线模式：live viewer server（WorldKernel + demo script）
-- [x] 在线模式：CLI（world_viewer_live）与运行说明
+- [x] 在线模式：CLI（oasis7_viewer_live）与运行说明
 - [x] 在线模式：基础单元测试（script/step/reset）
 - [x] 在线模式：live viewer server 支持 LLM 决策驱动（--llm）
 - [x] 在线模式：前后端联合测试（独立 integration test + feature gate）

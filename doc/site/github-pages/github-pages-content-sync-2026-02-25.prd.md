@@ -5,7 +5,7 @@
 
 审计轮次: 5
 > 状态更新（2026-03-08）:
-> - `world_viewer_live` 已移除 `--release-config`、`--runtime-world` 与 `--node-*` legacy 控制面参数。
+> - `oasis7_viewer_live` 已移除 `--release-config`、`--runtime-world` 与 `--node-*` legacy 控制面参数。
 > - 本文中涉及 `--release-config` 的目标表述仅保留历史背景；当前口径以 viewer-manual 与模块主 PRD 为准。
 
 ## ROUND-002 主从口径
@@ -22,7 +22,7 @@
 - 范围内
   - 更新首页（`site/index.html`、`site/en/index.html`）中的近期更新与运行说明文案。
   - 更新手册静态页（`site/doc/cn|en/viewer-manual.html`）以匹配当前实现能力：
-    - `world_viewer_live` 默认 LLM、`--no-llm` 回退。
+    - `oasis7_viewer_live` 默认 LLM、`--no-llm` 回退。
     - legacy 控制面参数下线说明（`--release-config/--runtime-world/--node-*`）。
     - Web Test API `sendControl("step")` 语义。
     - 自动化 target 通用语法（`first:<kind>` / `<kind>:<id>`）。
@@ -38,7 +38,7 @@
   - `doc/world-simulator.project.md`
   - `doc/world-simulator/viewer/viewer-generic-focus-targets.prd.md`
   - `doc/world-simulator/viewer/viewer-web-test-api-step-control-2026-02-24.prd.md`
-  - `crates/oasis7/src/bin/world_viewer_live.rs`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
   - `crates/oasis7_viewer/src/web_test_api.rs`
   - `crates/oasis7_viewer/src/viewer_automation.rs`
 - 输出文件

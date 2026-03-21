@@ -20,7 +20,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
-  - AC-1: 在 `world_viewer_live` 节点启动路径增加：
+  - AC-1: 在 `oasis7_viewer_live` 节点启动路径增加：
   - AC-2: 读取 `config.toml` 的 `[node]` 区块。
   - AC-3: 若 `private_key/public_key` 缺失，自动生成 ed25519 密钥对。
   - AC-4: 将密钥字段写回 `config.toml`。

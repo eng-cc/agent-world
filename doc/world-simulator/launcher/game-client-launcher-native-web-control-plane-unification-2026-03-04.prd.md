@@ -46,12 +46,12 @@
 - Acceptance Criteria:
   - AC-1: `oasis7_web_launcher` 支持 `POST /api/chain/start`、`POST /api/chain/stop`，且与游戏启停互不耦合。
   - AC-2: `/api/state` 返回游戏与区块链独立状态字段，客户端不再用 `snapshot.running` 推断链状态。
-  - AC-3: `oasis7_client_launcher` native 不再直接拉起 `oasis7_game_launcher` / `world_chain_runtime`，改为通过 `oasis7_web_launcher` API 控制。
+  - AC-3: `oasis7_client_launcher` native 不再直接拉起 `oasis7_game_launcher` / `oasis7_chain_runtime`，改为通过 `oasis7_web_launcher` API 控制。
   - AC-4: wasm/web 启动器的“启动区块链/停止区块链”按钮恢复可操作，并与 native 同状态语义。
   - AC-5: native 与 web 在“自动拉起链 + 游戏/链独立启停 + 状态展示”行为上保持一致。
   - AC-6: `test_tier_required` 通过：`cargo test/check` + `agent-browser --headed` 闭环证据。
 - Non-Goals:
-  - 不改造 `world_chain_runtime` 转账/反馈协议本身。
+  - 不改造 `oasis7_chain_runtime` 转账/反馈协议本身。
   - 不在本轮扩展新的链上业务动作。
 
 ## 3. AI System Requirements (If Applicable)

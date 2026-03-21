@@ -103,7 +103,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | I-010 | viewer 行数收口文档声称“全部 <=1200”，但当前多个 viewer 源文件已超限。 | `doc/world-simulator/viewer/*` | medium |
 | I-011 | p2p 分布式文档仍含旧路径 `distributed_membership_sync/logic.rs`，phase7 验收主要锚定“旧路径删除”，缺少现状正向锚点。 | `doc/p2p/distributed/*` | medium |
 | I-012 | site 中 4 处 gameplay top-level design 外链指向不存在的 `.md`（应为 `.prd.md`），产生 404。 | `site/index.html`、`site/en/index.html`、`site/doc/cn/index.html`、`site/doc/en/index.html` | high |
-| I-013 | `game-test` 文档启动链路仍写 `world_viewer_live + run-viewer-web.sh`，与现有 `oasis7_game_launcher` 流程不一致。 | `doc/playability_test_result/game-test.prd.md` | high |
+| I-013 | `game-test` 文档启动链路仍写 `oasis7_viewer_live + run-viewer-web.sh`，与现有 `oasis7_game_launcher` 流程不一致。 | `doc/playability_test_result/game-test.prd.md` | high |
 | I-014 | 资源/计费口径在文档间不一致（`Compound/Hardware`、`Token Gas` 与实现 `Electricity/Data` 计费不一致）。 | `doc/readme/governance/*`、`doc/game/gameplay/*` | medium |
 | I-015 | `release.md` 类型文档未纳入 `prd.index` 树，可追溯性不足。 | `doc/p2p/*/*.release.md` | medium |
 | I-016 | `site/doc/*/viewer-manual.html` 外链仍指向历史 `.md` 路径（缺少 `/viewer/` 目录与 `.prd.md` 后缀），导致 GitHub 404。 | `site/doc/cn/viewer-manual.html`、`site/doc/en/viewer-manual.html` | high |

@@ -20,7 +20,7 @@
 - `scripts/p2p-longrun-soak.sh`
 - `scripts/ci-tests.sh`
 - `scripts/viewer-owr4-stress.sh`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - `crates/oasis7_node/src/types.rs`
 - `doc/testing/prd.md`
 - `doc/testing/project.md`

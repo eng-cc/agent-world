@@ -30,7 +30,7 @@
 - T1 依赖：
   - `crates/oasis7_node/src/lib.rs`
   - `crates/oasis7/src/viewer/live.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`
 - T2 依赖：
   - `crates/oasis7/src/simulator/types.rs`
   - `crates/oasis7/src/simulator/kernel/*`

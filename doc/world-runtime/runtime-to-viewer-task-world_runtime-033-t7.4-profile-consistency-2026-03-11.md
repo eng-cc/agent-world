@@ -13,12 +13,12 @@
 
 ## Objective
 - 目标描述：在已锁住 CLI 参数透传后，继续完成 launcher / bundle / Web 侧对三档 storage profile 的一致性验证。
-- 成功标准：bundle 入口、launcher 参数与最终 `world_chain_runtime --storage-profile` 口径一致，并沉淀正式证据。
+- 成功标准：bundle 入口、launcher 参数与最终 `oasis7_chain_runtime --storage-profile` 口径一致，并沉淀正式证据。
 - 非目标：不在本轮重做 runtime 内部 retention/GC 逻辑。
 
 ## Current State
 - 当前实现 / 文档状态：`runtime_engineer` 已新增 game/web launcher 的三档 profile 参数透传回归。
-- 已确认事实：`world_chain_runtime`、`oasis7_game_launcher`、`oasis7_web_launcher` 都支持 `dev_local/release_default/soak_forensics`；bundle wrapper 通过 `OASIS7_CHAIN_STORAGE_PROFILE` 覆盖。
+- 已确认事实：`oasis7_chain_runtime`、`oasis7_game_launcher`、`oasis7_web_launcher` 都支持 `dev_local/release_default/soak_forensics`；bundle wrapper 通过 `OASIS7_CHAIN_STORAGE_PROFILE` 覆盖。
 - 待确认假设：bundle / launcher 的实际运行产物与 CLI/单测口径一致。
 - 当前失败信号 / 用户反馈：暂无新增失败；当前缺的是 T7.4 的正式跨入口证据。
 

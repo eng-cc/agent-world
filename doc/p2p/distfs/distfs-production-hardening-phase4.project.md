@@ -11,13 +11,13 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] DPH4-1 (PRD-P2P-MIG-070)：完成设计文档与项目管理文档。
 - [x] DPH4-2 (PRD-P2P-MIG-070)：实现 DistFS 有状态挑战调度接口与单元测试。
-- [x] DPH4-3 (PRD-P2P-MIG-070)：接线 `world_viewer_live` DistFS probe 状态持久化与恢复，并补齐单元测试。
+- [x] DPH4-3 (PRD-P2P-MIG-070)：接线 `oasis7_viewer_live` DistFS probe 状态持久化与恢复，并补齐单元测试。
 - [x] DPH4-4 (PRD-P2P-MIG-070)：执行回归测试，回写文档状态与 devlog。
 
 ## 依赖
 - `crates/oasis7_distfs/src/challenge_scheduler.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs（`#[cfg(test)]`）`
 - `doc/p2p/distfs/distfs-production-hardening-phase4.prd.md`
 
 ## 状态

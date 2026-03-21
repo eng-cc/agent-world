@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | 录屏 | `output/playwright/playability/manual-20260310-round009/mlf008-visual-check.webm` | 在 3D/2D 与不同 zoom 间切换的短录屏。 |
 | console / semantic 状态 | `output/playwright/playability/manual-20260310-round009/console.log` / `output/playwright/playability/manual-20260310-round009/state-selected-3d-mid.json` / `output/playwright/playability/manual-20260310-round009/state-selected-2d.json` | `connectionStatus=connected`、`selectedKind=agent`、`errorCount=0`。 |
-| 启动日志 | `output/playwright/playability/startup-20260310-232143/world_viewer_live.log` / `output/playwright/playability/startup-20260310-232143/web_viewer.log` | 本轮手动截图所使用的启动栈日志。 |
+| 启动日志 | `output/playwright/playability/startup-20260310-232143/oasis7_viewer_live.log` / `output/playwright/playability/startup-20260310-232143/web_viewer.log` | 本轮手动截图所使用的启动栈日志。 |
 | playability 卡片 | `doc/playability_test_result/card_2026_03_06_12_43_31.md` | 仅作历史参考；本轮待补刷新卡片。 |
 
 ## 视觉评估结论

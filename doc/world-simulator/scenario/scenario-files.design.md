@@ -16,7 +16,7 @@
 - `crates/oasis7/scenarios/*.json`
 - `WorldInitConfig::from_scenario`
 - `WorldScenario::parse`
-- `world_init_demo --scenario-file`
+- `oasis7_init_demo --scenario-file`
 
 ## 4. 约束与边界
 - 内置场景文件需保持单一来源。

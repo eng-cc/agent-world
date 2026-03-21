@@ -62,7 +62,7 @@
   - `doc/world-simulator/viewer/viewer-open-world-sandbox-readiness.stress-report.template.md`
   - `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md`
 - 删除 legacy `--tick-ms` 拒绝断言测试，避免保留旧参数语义噪音：
-  - `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+  - `crates/oasis7/src/bin/oasis7_viewer_live.rs（`#[cfg(test)]`）`
 
 ### 验收证据
 - `env -u RUSTC_WRAPPER cargo fmt --all -- --check`
@@ -90,7 +90,7 @@
 - `crates/oasis7/src/viewer/live_split_part2.rs`
 - `crates/oasis7/src/viewer/live/tests.rs`
 - `crates/oasis7/src/viewer/mod.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 
 不在范围内：
 - 不改动 viewer 对外协议字段。
@@ -128,7 +128,7 @@
   - live backpressure 统计移除 playback pulse merge/drop 字段。
 - 调用侧已同步：
   - `viewer/mod.rs` 不再导出 `ViewerLiveScriptPacingMode`。
-  - `world_viewer_live` 不再向 live server 传递 tick-based pacing 配置。
+  - `oasis7_viewer_live` 不再向 live server 传递 tick-based pacing 配置。
 
 ##### 验收证据
 - 回归测试（test_tier_required）：
@@ -146,14 +146,14 @@
 ### Phase 9：移除 live tick 入口与脚本透传
 
 #### 1. Executive Summary
-- 彻底移除 `world_viewer_live` 与外围脚本中的旧 `--tick-ms` 入口，只保留 event-driven live 链路。
+- 彻底移除 `oasis7_viewer_live` 与外围脚本中的旧 `--tick-ms` 入口，只保留 event-driven live 链路。
 - 清理 viewer live 路径对“tick 驱动”参数的传递和使用，避免空跑配置继续暴露。
 - 保持 node/runtime 共识 tick 机制不变（不在本阶段改造范围内）。
 
 #### 2. User Experience & Functionality
-- `crates/oasis7/src/bin/world_viewer_live.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs`
-- `crates/oasis7/src/bin/world_viewer_live.rs（`#[cfg(test)]`）`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs（`#[cfg(test)]`）`
 - `crates/oasis7/tests/viewer_live_integration.rs`
 - `scripts/capture-viewer-frame.sh`
 - `scripts/viewer-theme-pack-preview.sh`
@@ -172,7 +172,7 @@
 - N/A: 本专题不新增 AI 专属要求。
 
 #### 4. Technical Specifications
-- 删除 CLI 参数：`world_viewer_live --tick-ms`。
+- 删除 CLI 参数：`oasis7_viewer_live --tick-ms`。
 - 删除 `CliOptions.tick_ms` 字段，reward runtime 轮询改为复用 `node_tick_ms`。
 - 删除脚本对 `--tick-ms` 的参数定义、校验与透传。
 - 文档示例命令改为不含 `--tick-ms`。
@@ -191,7 +191,7 @@
 #### Phase 9 完成态（T4）
 
 ##### 交付结果
-- `world_viewer_live` 已删除 live 旧 tick 入口：
+- `oasis7_viewer_live` 已删除 live 旧 tick 入口：
   - 移除 `--tick-ms` CLI 参数与 `CliOptions.tick_ms`。
   - reward runtime 轮询改为复用 `--node-tick-ms`（仅 poll/fallback 语义；PoS 节拍由 `--pos-slot-duration-ms/--pos-ticks-per-slot` 锚定）。
 - viewer live 外围脚本已全部移除 `--tick-ms` 参数链路：

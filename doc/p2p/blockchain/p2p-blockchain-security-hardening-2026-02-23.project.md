@@ -7,7 +7,7 @@
 ## 任务拆解（含 PRD-ID 映射）
 - [x] T0 (PRD-P2P-MIG-053)：完成设计文档与项目管理文档建档。
 - [x] T1 (PRD-P2P-MIG-053)：实现 replication guard 原子化语义，并补“失败不污染状态”测试。
-- [x] T2 (PRD-P2P-MIG-053)：实现 signed consensus 模式下 signer 绑定完整性强制，并完成 `world_viewer_live` signer 映射接线。
+- [x] T2 (PRD-P2P-MIG-053)：实现 signed consensus 模式下 signer 绑定完整性强制，并完成 `oasis7_viewer_live` signer 映射接线。
 - [x] T3 (PRD-P2P-MIG-053)：实现 replication 远端 writer allowlist 授权校验。
 - [x] T4 (PRD-P2P-MIG-053)：实现 fetch-commit/fetch-blob 请求签名鉴权（客户端签名 + 服务端验签）。
 - [x] T5 (PRD-P2P-MIG-053)：实现网络订阅有界缓存与 membership DHT 恢复默认策略收紧。

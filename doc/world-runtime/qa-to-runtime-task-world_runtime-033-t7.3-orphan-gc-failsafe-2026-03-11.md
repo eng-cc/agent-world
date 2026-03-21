@@ -32,7 +32,7 @@
   - Launcher/UI 侧展示改动。
 
 ## Inputs
-- 关键文件：`doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`、`crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`、`crates/oasis7/src/bin/world_chain_runtime/storage_metrics.rs`
+- 关键文件：`doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`、`crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`、`crates/oasis7/src/bin/oasis7_chain_runtime/storage_metrics.rs`
 - 关键样本：`.tmp/runtime_t72_qa_posfast_20260311-002402/artifacts/status-pre64.json`、`.tmp/runtime_t72_qa_posfast_20260311-002402/artifacts/status-post64.json`
 - 现有测试 / 证据：`node_runtime_execution_driver_uses_storage_profile_checkpoint_interval`、T7.2 QA gate 摘要
 

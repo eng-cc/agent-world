@@ -21,9 +21,9 @@
 - `crates/oasis7_client_launcher/src/transfer_window.rs`
 - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
 - `crates/oasis7/src/bin/oasis7_web_launcher/transfer_query_proxy.rs`
-- `crates/oasis7/src/bin/world_chain_runtime.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api_tests.rs`
 - `crates/oasis7/src/runtime/world/resources.rs`
 - `testing-manual.md`
 

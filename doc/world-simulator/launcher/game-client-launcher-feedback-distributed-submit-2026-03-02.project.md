@@ -14,7 +14,7 @@
 
 ## 依赖
 - doc/world-simulator/launcher/game-client-launcher-feedback-distributed-submit-2026-03-02.prd.md
-- `crates/oasis7/src/bin/world_chain_runtime.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
 - `crates/oasis7_client_launcher/src/main.rs`
 - `crates/oasis7_client_launcher/src/feedback_entry.rs`
 - `crates/oasis7_node` 既有 `submit_feedback` 能力

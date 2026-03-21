@@ -603,7 +603,7 @@ fn main() {
     let listener = TcpListener::bind(options.bind_addr.as_str())
         .unwrap_or_else(|err| panic!("bind {} failed: {err}", options.bind_addr));
     println!(
-        "world_openclaw_local_bridge listening on http://{} (agent={}, gateway_health={})",
+        "oasis7_openclaw_local_bridge listening on http://{} (agent={}, gateway_health={})",
         options.bind_addr, options.openclaw_agent_id, options.gateway_health_url
     );
     let invoker: Arc<dyn AgentInvoker> = Arc::new(OpenClawCliInvoker);
@@ -613,7 +613,7 @@ fn main() {
         let invoker = invoker.clone();
         std::thread::spawn(move || {
             if let Err(err) = handle_connection(&mut stream, &state, invoker.as_ref()) {
-                eprintln!("world_openclaw_local_bridge connection error: {err}");
+                eprintln!("oasis7_openclaw_local_bridge connection error: {err}");
             }
         });
     }
@@ -665,7 +665,7 @@ fn required_value<'a>(
 
 fn print_help() {
     eprintln!(
-        "Usage: world_openclaw_local_bridge [options]\n\n  --bind <host:port>            Loopback bind address (default: 127.0.0.1:5841)\n  --openclaw-bin <path>         OpenClaw CLI path (default: openclaw)\n  --openclaw-agent <id>         OpenClaw agent id (default: main)\n  --openclaw-thinking <level>   OpenClaw thinking level (default: off)\n  --gateway-health-url <url>    OpenClaw Gateway health URL\n  --auth-token <token>          Optional bearer token for bridge endpoints\n"
+        "Usage: oasis7_openclaw_local_bridge [options]\n\n  --bind <host:port>            Loopback bind address (default: 127.0.0.1:5841)\n  --openclaw-bin <path>         OpenClaw CLI path (default: openclaw)\n  --openclaw-agent <id>         OpenClaw agent id (default: main)\n  --openclaw-thinking <level>   OpenClaw thinking level (default: off)\n  --gateway-health-url <url>    OpenClaw Gateway health URL\n  --auth-token <token>          Optional bearer token for bridge endpoints\n"
     );
 }
 

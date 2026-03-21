@@ -188,7 +188,7 @@ fn build_chain_runtime_args_contains_chain_overrides_when_enabled() {
         chain_pos_slot_clock_genesis_unix_ms: "1700000000000".to_string(),
         chain_pos_max_past_slot_lag: "32".to_string(),
         chain_node_validators: "node-a:55,node-b:45".to_string(),
-        chain_runtime_bin: "/tmp/world_chain_runtime".to_string(),
+        chain_runtime_bin: "/tmp/oasis7_chain_runtime".to_string(),
         ..LaunchConfig::default()
     };
     let args = build_chain_runtime_args(&config).expect("args should build");

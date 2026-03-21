@@ -67,7 +67,7 @@
 - Architecture Overview:
   - 前端层：`oasis7_client_launcher` 提供单一 transfer panel 组件，native/wasm 通过平台适配层复用。
   - 控制面层：`oasis7_web_launcher` 统一提供转账提交、状态查询、历史查询、余额查询 API。
-  - 运行时层：`world_chain_runtime` 继续作为转账业务规则唯一来源，负责 nonce/余额/账户合法性校验与状态推进。
+  - 运行时层：`oasis7_chain_runtime` 继续作为转账业务规则唯一来源，负责 nonce/余额/账户合法性校验与状态推进。
 - Integration Points:
   - `crates/oasis7_client_launcher/src/main.rs`
   - `crates/oasis7_client_launcher/src/app_process.rs`
@@ -75,9 +75,9 @@
   - `crates/oasis7_client_launcher/src/transfer_window.rs`
   - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
   - `crates/oasis7/src/bin/oasis7_web_launcher/transfer_query_proxy.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
-  - `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api_tests.rs`
   - `crates/oasis7/src/runtime/world/resources.rs`
 - Edge Cases & Error Handling:
   - 链未就绪：入口禁用 + 诊断提示；禁止“点了再报错”的晚失败体验。

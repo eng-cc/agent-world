@@ -6,15 +6,15 @@
 审计轮次: 5
 
 ## 1. Executive Summary
-- 为 `oasis7_viewer` 的 Web 端补齐在线连接能力，使浏览器可以观察 `world_viewer_live` 的实时世界演化（含 `llm_bootstrap`）。
+- 为 `oasis7_viewer` 的 Web 端补齐在线连接能力，使浏览器可以观察 `oasis7_viewer_live` 的实时世界演化（含 `llm_bootstrap`）。
 - 在不破坏现有 TCP viewer 协议的前提下，增加一条浏览器可用的桥接通道（WebSocket over HTTP Upgrade）。
-- 建立最小在线闭环：`world_viewer_live --web-bind` 启动后，Web Viewer 能收到 `snapshot/event/metrics` 并可发送 `control/prompt_control`。
+- 建立最小在线闭环：`oasis7_viewer_live --web-bind` 启动后，Web Viewer 能收到 `snapshot/event/metrics` 并可发送 `control/prompt_control`。
 - 明确角色边界：Web 端是 Viewer + 网关接入客户端，不承担完整分布式节点职责。
 
 ## 2. User Experience & Functionality
 - 范围内：
   - 在 `oasis7` 增加 WebSocket bridge：`ws <-> tcp line protocol` 双向转发。
-  - `world_viewer_live` 增加 bridge 启停参数，支持同进程启动 bridge。
+  - `oasis7_viewer_live` 增加 bridge 启停参数，支持同进程启动 bridge。
   - `oasis7_viewer` wasm 路径接入 WebSocket 客户端，替代“固定 offline”。
   - 更新使用手册与闭环策略文档，补充 `llm_bootstrap + web` 命令。
 - 范围外：
@@ -28,7 +28,7 @@
 
 ## 4. Technical Specifications
 
-### 1) 服务端参数（`world_viewer_live`）
+### 1) 服务端参数（`oasis7_viewer_live`）
 - 新增：`--web-bind <addr>`
   - 例：`--web-bind 127.0.0.1:5011`
   - 含义：在同进程启动 WebSocket bridge，桥接到 `--bind` 指定的 TCP live 服务。
@@ -50,7 +50,7 @@
 
 ## 5. Risks & Roadmap
 - `WLB1`：文档建模（设计 + 项目管理 + 总项目入口）。
-- `WLB2`：后端 bridge 与 `world_viewer_live --web-bind` 落地。
+- `WLB2`：后端 bridge 与 `oasis7_viewer_live --web-bind` 落地。
 - `WLB3`：web viewer wasm WebSocket 接入并通过 wasm 编译回归。
 - `WLB4`：文档口径迁移 + Web 端闭环验证（agent-browser）+ 状态收口。
 

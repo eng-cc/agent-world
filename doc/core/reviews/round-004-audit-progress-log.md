@@ -468,7 +468,7 @@
 | 2026-03-06 12:12:23 +0800 | codex | `doc/testing/ci/ci-wasm32-target-install.project.md` | pass | - | workflow 与脚本依赖链可达，未发现 D4 命令可执行性问题。 |
 | 2026-03-06 12:12:51 +0800 | codex | `doc/testing/governance/llm-skip-tick-ratio-metric.prd.md` | pass | - | 指标定义、计算口径与脚本输出链路完整，未见执行命令风险。 |
 | 2026-03-06 12:13:13 +0800 | codex | `doc/testing/governance/llm-skip-tick-ratio-metric.project.md` | pass | - | 任务映射到指标实现链路完整，未发现 D4 新问题。 |
-| 2026-03-06 12:13:37 +0800 | codex | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.prd.md` | issue_open | I4-002 | 边界处理里给出 `cargo build -p oasis7 --bin world_chain_runtime`，未对齐仓库约定的 `env -u RUSTC_WRAPPER cargo ...` 可执行口径。 |
+| 2026-03-06 12:13:37 +0800 | codex | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.prd.md` | issue_open | I4-002 | 边界处理里给出 `cargo build -p oasis7 --bin oasis7_chain_runtime`，未对齐仓库约定的 `env -u RUSTC_WRAPPER cargo ...` 可执行口径。 |
 | 2026-03-06 12:14:03 +0800 | codex | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.project.md` | pass | - | 项目任务与回归产物链路清晰，未见新增命令可执行性问题。 |
 | 2026-03-06 12:14:29 +0800 | codex | `doc/testing/governance/wasm-build-determinism-guard.prd.md` | pass | - | 构建护栏规则与 `sync --check` 验证链定义清晰，未见命令可执行性问题。 |
 | 2026-03-06 12:14:55 +0800 | codex | `doc/testing/governance/wasm-build-determinism-guard.project.md` | pass | - | 项目任务与护栏落点可追溯，未见 D4 新增风险。 |
@@ -487,12 +487,12 @@
 | 2026-03-06 12:22:56 +0800 | codex | `doc/testing/longrun/p2p-longrun-endurance-chaos-template-2026-02-25.project.md` | pass | - | 模板落地与手册接线任务可追溯，未见 D4 新问题。 |
 | 2026-03-06 12:23:23 +0800 | codex | `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.prd.md` | pass | - | feedback 注入参数与统计产物口径完整，未发现 D4 命令可执行性问题。 |
 | 2026-03-06 12:23:55 +0800 | codex | `doc/testing/longrun/p2p-longrun-feedback-event-injection-2026-03-02.project.md` | pass | - | 项目任务覆盖注入执行与证据扩展，未见 D4 新问题。 |
-| 2026-03-06 12:24:26 +0800 | codex | `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md` | issue_open | I4-006 | 文档仍将 `world_viewer_live` 作为长跑架构核心，和后续 `world_chain_runtime` 迁移口径存在主入口冲突。 |
-| 2026-03-06 12:26:17 +0800 | codex | `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.project.md` | issue_open | I4-006 | 依赖仍大量指向 `world_viewer_live` 旧链路，与已迁移到 `world_chain_runtime` 的执行口径不一致。 |
+| 2026-03-06 12:24:26 +0800 | codex | `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.prd.md` | issue_open | I4-006 | 文档仍将 `oasis7_viewer_live` 作为长跑架构核心，和后续 `oasis7_chain_runtime` 迁移口径存在主入口冲突。 |
+| 2026-03-06 12:26:17 +0800 | codex | `doc/testing/longrun/p2p-storage-consensus-longrun-online-stability-2026-02-24.project.md` | issue_open | I4-006 | 依赖仍大量指向 `oasis7_viewer_live` 旧链路，与已迁移到 `oasis7_chain_runtime` 的执行口径不一致。 |
 | 2026-03-06 12:26:54 +0800 | codex | `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.prd.md` | pass | - | bootstrap 幂等逻辑与 S10 指标恢复口径清晰，未见命令可执行性问题。 |
 | 2026-03-06 12:27:56 +0800 | codex | `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.project.md` | pass | - | 项目任务与证据样本路径完整，未发现 D4 命令问题。 |
-| 2026-03-06 12:28:27 +0800 | codex | `doc/testing/longrun/s10-five-node-real-game-soak.prd.md` | issue_open | I4-006 | 文档架构仍以 `world_viewer_live` 为核心，但同分区后续专题已迁移到 `world_chain_runtime`，主入口口径冲突。 |
-| 2026-03-06 12:28:56 +0800 | codex | `doc/testing/longrun/s10-five-node-real-game-soak.project.md` | issue_open | I4-006 | 依赖仍绑定 `world_viewer_live` 路径，与 longrun 新口径 `world_chain_runtime` 并行冲突，易造成执行歧义。 |
+| 2026-03-06 12:28:27 +0800 | codex | `doc/testing/longrun/s10-five-node-real-game-soak.prd.md` | issue_open | I4-006 | 文档架构仍以 `oasis7_viewer_live` 为核心，但同分区后续专题已迁移到 `oasis7_chain_runtime`，主入口口径冲突。 |
+| 2026-03-06 12:28:56 +0800 | codex | `doc/testing/longrun/s10-five-node-real-game-soak.project.md` | issue_open | I4-006 | 依赖仍绑定 `oasis7_viewer_live` 路径，与 longrun 新口径 `oasis7_chain_runtime` 并行冲突，易造成执行歧义。 |
 | 2026-03-06 12:29:30 +0800 | codex | `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.prd.md` | pass | - | 性能采样与输出接线定义完整，未发现 D4 命令可执行性问题。 |
 | 2026-03-06 12:30:02 +0800 | codex | `doc/testing/performance/runtime-performance-observability-foundation-2026-02-25.project.md` | pass | - | 项目任务与性能观测接线完整，未发现 D4 新增问题。 |
 | 2026-03-06 12:30:29 +0800 | codex | `doc/testing/performance/runtime-performance-observability-llm-api-decoupling-2026-02-25.prd.md` | pass | - | decision/llm_api 拆分公式与边界处理规则完整，未见 D4 命令问题。 |

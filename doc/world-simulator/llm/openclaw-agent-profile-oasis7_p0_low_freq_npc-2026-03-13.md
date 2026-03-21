@@ -37,6 +37,6 @@
 - 若连续多个 tick 无法推进，应在 trace 中明确标记“当前 profile 被阻塞/信息不足”，供 parity 采证统计 `completion gap`。
 
 ## 6. 对标口径
-- `scripts/openclaw-parity-p0.sh` 与 `world_openclaw_parity_bench` 默认使用该 profile，确保 `P0` 对标样本具备可重复的玩法口径。
+- `scripts/openclaw-parity-p0.sh` 与 `oasis7_openclaw_parity_bench` 默认使用该 profile，确保 `P0` 对标样本具备可重复的玩法口径。
 - mock / required regression 也必须显式透传该 profile，防止 provider 侧因 profile 漏配导致“看似通了、实则玩法漂移”。
 - 若后续进入 `P1`/`P2`，应新增新的 profile 标识或版本，而不是复用本 profile 覆盖更高复杂度场景。

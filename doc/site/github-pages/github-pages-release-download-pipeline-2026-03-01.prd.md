@@ -42,7 +42,7 @@
   - `workflow_dispatch`
 - Release gate 拓扑：
   - `release-gate-runtime`：执行 `ci_full + sync_m1/m4/m5`
-  - `release-gate-web`：在 `xvfb` 下以 `--web-headed` 执行 `web_strict`，显式预装 `node + trunk`，并由 QA loop 自行预热 `world_viewer_live + world_chain_runtime`
+  - `release-gate-web`：在 `xvfb` 下以 `--web-headed` 执行 `web_strict`，显式预装 `node + trunk`，并由 QA loop 自行预热 `oasis7_viewer_live + oasis7_chain_runtime`
   - `release-gate-soak`：执行 `S9 + S10` soak
   - `release-gate`：聚合三个子门结果，作为 `build-web-dist` 的唯一前置依赖
 - 打包 runner 与目标三元组（release workflow）：
@@ -52,8 +52,8 @@
   - windows：`windows-2022` + `native`
 - 打包内容（每个平台）：
   - `bin/oasis7_game_launcher`
-  - `bin/world_viewer_live`
-  - `bin/world_chain_runtime`
+  - `bin/oasis7_viewer_live`
+  - `bin/oasis7_chain_runtime`
   - `bin/oasis7_client_launcher`
   - `web/`（viewer 静态资源）
   - `run-game.sh` / `run-client.sh`（Windows 额外提供 `.cmd`）

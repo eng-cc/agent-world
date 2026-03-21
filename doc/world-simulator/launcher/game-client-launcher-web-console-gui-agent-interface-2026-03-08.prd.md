@@ -55,7 +55,7 @@
 - Non-Goals:
   - 不在本轮引入鉴权/RBAC（继续沿用受信网络部署前提）。
   - 不重写现有 web 客户端 UI 交互层。
-  - 不改造 `world_viewer_live` WebSocket 协议。
+  - 不改造 `oasis7_viewer_live` WebSocket 协议。
 
 ## 3. AI System Requirements (If Applicable)
 - Tool Requirements: GUI Agent 仅需 HTTP JSON 能力；不要求浏览器 DOM 自动化。

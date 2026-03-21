@@ -109,7 +109,7 @@ impl World {
   - **AHA-M0**：设计文档与项目管理文档完成。
   - **AHA-M1**：结算签名语义升级与校验函数落地。
   - **AHA-M2**：账本不变量审计报告 API 与单测闭环。
-  - **AHA-M3**：`world_viewer_live` 报表接线与回归。
+  - **AHA-M3**：`oasis7_viewer_live` 报表接线与回归。
   - **AHA-M4**：文档/devlog/发布说明收口。
 - Technical Risks:
   - V1 签名语义仍为“可重算摘要”，并非真实私钥签名，安全强度受限于运行环境信任边界。

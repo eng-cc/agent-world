@@ -22,8 +22,8 @@
 - [x] pre-commit 增加 viewer wasm32 编译检查（`cargo check -p oasis7_viewer --target wasm32-unknown-unknown`，2026-02-15）
 - [x] 修复提交钩子 `fmt` 失败并恢复全链路通过（`cargo fmt --all` + 补齐 `selection_linking` 新事件分支，2026-02-16）
 - [x] 修复提交钩子 `fmt` 失败并恢复全链路通过（`cargo fmt --all` 修复 `node_points` / `node_points_runtime` 格式漂移，2026-02-16）
-- [x] 修复 CI `cargo fmt --check` 漂移并恢复门禁通过（`world_viewer_live*` / `oasis7_node*`，2026-02-17）
-- [x] 清理 required 门禁 warning（`world_viewer_live*` DistFS/Node 导入与测试辅助函数，2026-02-17）
+- [x] 修复 CI `cargo fmt --check` 漂移并恢复门禁通过（`oasis7_viewer_live*` / `oasis7_node*`，2026-02-17）
+- [x] 清理 required 门禁 warning（`oasis7_viewer_live*` DistFS/Node 导入与测试辅助函数，2026-02-17）
 - [x] required 门禁口径同步到当前实现：`doc-governance + fmt + required tier + consensus/distfs/viewer + viewer wasm check`（2026-03-04）
 
 ## 依赖

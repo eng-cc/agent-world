@@ -7,7 +7,7 @@
 定义 runtime/world 接管 live server 的第一阶段方案：在不改 Viewer 协议的前提下引入 runtime 驱动链路，并通过兼容适配继续输出 `WorldSnapshot/WorldEvent`。
 
 ## 2. 设计结构
-- 启动分流层：`world_viewer_live` 新增 `--runtime-world` 开关选择 runtime 驱动链路。
+- 启动分流层：`oasis7_viewer_live` 新增 `--runtime-world` 开关选择 runtime 驱动链路。
 - 协议兼容层：runtime 输出继续适配成现有 `WorldSnapshot/WorldEvent`。
 - 事件覆盖层：优先打通 `AgentRegistered/AgentMoved/ResourceTransferred/ActionRejected` 等关键事件。
 - 回归验收层：required 测试负责验证 runtime 模式下 Viewer 基础交互不退化。
@@ -16,7 +16,7 @@
 - `--runtime-world`
 - `runtime::World`
 - `WorldSnapshot` / `WorldEvent` 兼容适配
-- `world_viewer_live` 启动链路
+- `oasis7_viewer_live` 启动链路
 
 ## 4. 约束与边界
 - 不在 Phase 1 改 Viewer 协议和前端 UI。

@@ -21,7 +21,7 @@
   - LLM 工程师：需要可诊断 DecisionTrace 与硬失败语义，避免隐式降级掩盖问题。
   - 回归测试人员：需要 100% 事件/快照覆盖与可自动验证的回归基线。
 - User Scenarios & Frequency:
-  - 日常联调：使用 `world_viewer_live --runtime-world --llm` 验证 LLM 决策与 runtime 行为一致性。
+  - 日常联调：使用 `oasis7_viewer_live --runtime-world --llm` 验证 LLM 决策与 runtime 行为一致性。
   - 发布前回归：执行映射覆盖测试与 DecisionTrace 采证，确保无事件/快照缺口。
   - 故障排查：LLM 失败时通过 DecisionTrace 与结构化错误快速定位。
 - User Stories:

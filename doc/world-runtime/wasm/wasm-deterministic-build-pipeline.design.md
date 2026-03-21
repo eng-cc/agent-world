@@ -339,7 +339,7 @@ CI/report 只能提供开发期或候选期证据；真正进入 `ModuleReleaseS
 
 #### 5.9.2 主运行入口绑定点
 本轮设计要求至少覆盖以下入口：
-- `world_chain_runtime`
+- `oasis7_chain_runtime`
 - 任何由 launcher 拉起的 chain runtime 生产路径
 - runtime 相关 release / acceptance 脚本入口
 

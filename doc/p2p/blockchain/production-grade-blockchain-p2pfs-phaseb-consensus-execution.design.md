@@ -9,7 +9,7 @@
 ## 2. 设计结构
 - 节点执行驱动：在 commit 后触发执行上下文并返回 execution 结果。
 - 快照层：在共识快照与持久化快照中增加 execution 高度、块哈希与状态根。
-- 接线层：由 `world_viewer_live` 承接执行驱动并保留旧 bridge fallback。
+- 接线层：由 `oasis7_viewer_live` 承接执行驱动并保留旧 bridge fallback。
 
 ## 3. 关键接口 / 入口
 - `NodeExecutionCommitContext` / `NodeExecutionCommitResult`

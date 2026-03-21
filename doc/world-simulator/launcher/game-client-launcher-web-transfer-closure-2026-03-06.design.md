@@ -8,7 +8,7 @@
 
 ## 2. 设计结构
 - wasm 提交层：转账窗口收集字段并通过 web 控制面发起提交。
-- 控制面代理层：`/api/chain/transfer` 透传到 `world_chain_runtime` 的转账接口。
+- 控制面代理层：`/api/chain/transfer` 透传到 `oasis7_chain_runtime` 的转账接口。
 - 状态反馈层：成功返回 `action_id`，失败返回 `error_code/error`，并保留 in-flight 门控。
 - 链状态保护层：链未就绪或未启用时前置阻断，不进入无效提交。
 

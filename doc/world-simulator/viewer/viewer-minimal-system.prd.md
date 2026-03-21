@@ -13,9 +13,9 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- A new CLI binary `world_viewer_demo` in `crates/oasis7`.
+- A new CLI binary `oasis7_viewer_demo` in `crates/oasis7`.
 - Deterministic demo script that produces at least one event.
-- Output directory containing `snapshot.json` and `journal.json` for `world_viewer_server`.
+- Output directory containing `snapshot.json` and `journal.json` for `oasis7_viewer_server`.
 - Simple CLI flags: scenario selection and output directory.
 
 ### Out of Scope
@@ -29,7 +29,7 @@
 ## 4. Technical Specifications
 
 ### CLI (draft)
-- `world_viewer_demo [scenario] [--out <dir>]`
+- `oasis7_viewer_demo [scenario] [--out <dir>]`
 - Defaults:
   - `scenario = twin_region_bootstrap`
   - `out = .data/world_viewer_data`
@@ -48,7 +48,7 @@
 - The goal is to guarantee at least one event in the journal.
 
 ## 5. Risks & Roadmap
-- **M1**: Implement demo data generator + CLI (`world_viewer_demo`).
+- **M1**: Implement demo data generator + CLI (`oasis7_viewer_demo`).
 - **M2**: Add tests for demo action planning and persistence.
 - **M3**: Document the end-to-end run steps.
 

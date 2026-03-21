@@ -15,10 +15,10 @@
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
-- `crates/oasis7/src/bin/world_chain_runtime.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/explorer_p0_api.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/transfer_submit_api_tests.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/explorer_p0_api.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api_tests.rs`
 - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
 - `crates/oasis7/src/bin/oasis7_web_launcher/oasis7_web_launcher_tests.rs`
 - `crates/oasis7_client_launcher/src/app_process.rs`

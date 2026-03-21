@@ -21,7 +21,7 @@
 | 专题迁移 | 需求/任务/依赖/状态/测试层级 | 逐篇重写并校验 | `draft -> active -> done` | 以原文约束点映射为主线 | 维护者写入，复核者抽检 |
 - Acceptance Criteria:
   - AC-1: **ERCB-1：节点提交高度到执行状态桥接**
-  - AC-2: 在 `world_viewer_live` reward runtime 内引入执行桥接器：
+  - AC-2: 在 `oasis7_viewer_live` reward runtime 内引入执行桥接器：
   - AC-3: 监听 `NodeRuntime` 的 `committed_height` 变化；
   - AC-4: 对每个新提交高度驱动一次 `RuntimeWorld` 执行步进；
   - AC-5: 产出并落盘执行记录（execution block record），包含 `height/state_root/block_hash/journal_len`；

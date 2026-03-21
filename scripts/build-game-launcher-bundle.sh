@@ -18,8 +18,8 @@ Build a distributable launcher bundle:
 - bin/oasis7_client_launcher
 - bin/oasis7_game_launcher
 - bin/oasis7_web_launcher
-- bin/world_viewer_live
-- bin/world_chain_runtime
+- bin/oasis7_viewer_live
+- bin/oasis7_chain_runtime
 - web/ (prebuilt viewer static assets)
 - web-launcher/ (prebuilt launcher web static assets)
 - run-client.sh (desktop client launcher entry)
@@ -196,8 +196,8 @@ fi
 
 LAUNCHER_BIN_NAME="$(resolve_binary_name oasis7_game_launcher "$TARGET_TRIPLE")"
 WEB_LAUNCHER_BIN_NAME="$(resolve_binary_name oasis7_web_launcher "$TARGET_TRIPLE")"
-LIVE_BIN_NAME="$(resolve_binary_name world_viewer_live "$TARGET_TRIPLE")"
-CHAIN_BIN_NAME="$(resolve_binary_name world_chain_runtime "$TARGET_TRIPLE")"
+LIVE_BIN_NAME="$(resolve_binary_name oasis7_viewer_live "$TARGET_TRIPLE")"
+CHAIN_BIN_NAME="$(resolve_binary_name oasis7_chain_runtime "$TARGET_TRIPLE")"
 CLIENT_LAUNCHER_BIN_NAME="$(resolve_binary_name oasis7_client_launcher "$TARGET_TRIPLE")"
 TARGET_SUBDIR="$PROFILE"
 if [[ "$PROFILE" == "dev" ]]; then
@@ -223,8 +223,8 @@ BUNDLE_NATIVE_BUILD_ARGS=(
   -p oasis7_client_launcher
   --bin oasis7_game_launcher
   --bin oasis7_web_launcher
-  --bin world_viewer_live
-  --bin world_chain_runtime
+  --bin oasis7_viewer_live
+  --bin oasis7_chain_runtime
   --bin oasis7_client_launcher
 )
 if [[ "$PROFILE" == "release" ]]; then
@@ -242,8 +242,8 @@ CLIENT_LAUNCHER_SRC="$ROOT_DIR/target/$TARGET_OUTPUT_SUBDIR/$CLIENT_LAUNCHER_BIN
 if [[ "$DRY_RUN" != "1" ]]; then
   [[ -f "$LAUNCHER_SRC" ]] || { echo "error: launcher binary not found: $LAUNCHER_SRC" >&2; exit 1; }
   [[ -f "$WEB_LAUNCHER_SRC" ]] || { echo "error: web launcher binary not found: $WEB_LAUNCHER_SRC" >&2; exit 1; }
-  [[ -f "$LIVE_SRC" ]] || { echo "error: world_viewer_live binary not found: $LIVE_SRC" >&2; exit 1; }
-  [[ -f "$CHAIN_SRC" ]] || { echo "error: world_chain_runtime binary not found: $CHAIN_SRC" >&2; exit 1; }
+  [[ -f "$LIVE_SRC" ]] || { echo "error: oasis7_viewer_live binary not found: $LIVE_SRC" >&2; exit 1; }
+  [[ -f "$CHAIN_SRC" ]] || { echo "error: oasis7_chain_runtime binary not found: $CHAIN_SRC" >&2; exit 1; }
   [[ -f "$CLIENT_LAUNCHER_SRC" ]] || { echo "error: client launcher binary not found: $CLIENT_LAUNCHER_SRC" >&2; exit 1; }
 fi
 
@@ -380,8 +380,8 @@ Bundle layout:
 - bin/oasis7_client_launcher
 - bin/oasis7_game_launcher
 - bin/oasis7_web_launcher
-- bin/world_viewer_live
-- bin/world_chain_runtime
+- bin/oasis7_viewer_live
+- bin/oasis7_chain_runtime
 - web/
 - web-launcher/
 - .oasis7-bundle-manifest.json

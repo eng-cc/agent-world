@@ -24,7 +24,7 @@
   - AC-1: **PRH1-1：奖励采样状态持久化**
   - AC-2: 为 `NodePointsLedger` 增加可序列化快照结构。
   - AC-3: 为 `NodePointsRuntimeCollector` 增加快照导出/恢复能力。
-  - AC-4: 为 `world_viewer_live` reward runtime 增加状态文件落盘与启动恢复。
+  - AC-4: 为 `oasis7_viewer_live` reward runtime 增加状态文件落盘与启动恢复。
   - AC-5: **PRH1-2：兑换签名授权收口**
   - AC-6: 在 `RewardSignatureGovernancePolicy` 新增 `require_redeem_signer_match_node_id`。
 - Non-Goals:

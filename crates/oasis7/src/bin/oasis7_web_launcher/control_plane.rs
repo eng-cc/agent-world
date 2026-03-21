@@ -174,7 +174,7 @@ pub(super) fn poll_chain_process_state(state: &mut ServiceState) {
         Ok(Some(status)) => {
             state.chain_started_at = None;
             state.last_chain_probe_at = None;
-            let exit_line = format!("world_chain_runtime exited: {status}");
+            let exit_line = format!("oasis7_chain_runtime exited: {status}");
             state.append_log(exit_line.clone());
             if let Some(recovery) =
                 classify_stale_execution_world(state, recent_chain_logs.as_slice())
@@ -185,7 +185,7 @@ pub(super) fn poll_chain_process_state(state: &mut ServiceState) {
                 state.chain_runtime_status = ChainRuntimeStatus::StaleExecutionWorld(reason);
                 state.chain_recovery = Some(recovery);
                 state.append_log(format!(
-                    "world_chain_runtime stale execution world detected for node `{node_id}`; suggested fresh node id `{fresh_node_id}`"
+                    "oasis7_chain_runtime stale execution world detected for node `{node_id}`; suggested fresh node id `{fresh_node_id}`"
                 ));
             } else {
                 state.chain_runtime_status = ChainRuntimeStatus::Unreachable(exit_line);
@@ -637,7 +637,7 @@ pub(super) fn start_chain_process(
     }
 
     if state.chain_running.is_some() {
-        return Err("world_chain_runtime is already running".to_string());
+        return Err("oasis7_chain_runtime is already running".to_string());
     }
 
     let issues = validate_chain_config(&config);
@@ -682,7 +682,7 @@ pub(super) fn start_chain_process(
             state.chain_runtime_status = ChainRuntimeStatus::Starting;
             state.chain_recovery = None;
             state.append_log(format!(
-                "world_chain_runtime started (pid={pid}, bin={chain_runtime_bin})"
+                "oasis7_chain_runtime started (pid={pid}, bin={chain_runtime_bin})"
             ));
             state.mark_updated();
             Ok(())
@@ -741,7 +741,7 @@ pub(super) fn stop_chain_process(state: &mut ServiceState) -> Result<(), String>
         state.chain_started_at = None;
         state.last_chain_probe_at = None;
         state.chain_recovery = None;
-        state.append_log("world_chain_runtime stop requested but process is not running");
+        state.append_log("oasis7_chain_runtime stop requested but process is not running");
         state.mark_updated();
         return Ok(());
     };
@@ -756,14 +756,14 @@ pub(super) fn stop_chain_process(state: &mut ServiceState) -> Result<(), String>
                 ChainRuntimeStatus::Disabled
             };
             state.chain_recovery = None;
-            state.append_log("world_chain_runtime stopped");
+            state.append_log("oasis7_chain_runtime stopped");
             state.mark_updated();
             Ok(())
         }
         Err(err) => {
             state.chain_runtime_status = ChainRuntimeStatus::Unreachable(err.clone());
             state.chain_recovery = None;
-            state.append_log(format!("world_chain_runtime stop failed: {err}"));
+            state.append_log(format!("oasis7_chain_runtime stop failed: {err}"));
             state.mark_updated();
             Err(err)
         }
@@ -1184,7 +1184,7 @@ pub(super) fn finalize_chain_start_outcome(
             | ChainRuntimeStatus::StaleExecutionWorld(detail)
             | ChainRuntimeStatus::Unreachable(detail) => Err(detail.clone()),
             ChainRuntimeStatus::NotStarted if state.chain_running.is_none() => {
-                Err("world_chain_runtime did not remain running".to_string())
+                Err("oasis7_chain_runtime did not remain running".to_string())
             }
             ChainRuntimeStatus::NotStarted
             | ChainRuntimeStatus::Starting

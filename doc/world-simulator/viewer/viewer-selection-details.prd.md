@@ -22,7 +22,7 @@
   - 选中对象范围扩展到 Asset/PowerPlant/Chunk。
   - `viewer` 协议新增决策 trace 消息（用于 live 模式）。
   - `LlmAgentBehavior` 暴露最近一次决策 trace（输入/输出/解析错误）。
-  - `world_viewer_live` 在 LLM 驱动模式下推送决策 trace 给 viewer。
+  - `oasis7_viewer_live` 在 LLM 驱动模式下推送决策 trace 给 viewer。
   - 新增/更新单元测试，覆盖协议 round-trip、live trace 推送、详情文案渲染。
   - 右侧信息面板支持滚动条与滚轮滚动，避免长文本截断。
   - 事件列表对象联动补齐 `module_visual_entities`（WASM 模块可视实体）。

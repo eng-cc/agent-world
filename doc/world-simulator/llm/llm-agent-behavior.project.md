@@ -14,8 +14,8 @@
 - [x] LLM7 补充单元测试（配置、解析、失败降级）
 - [x] LLM8 更新 README 与 `config.example.toml`（配置说明）
 - [x] LLM9 回顾并更新设计文档/项目管理文档状态，补任务日志，运行测试
-- [x] LLM10 新增 `world_llm_agent_demo`（AgentRunner + LlmAgentBehavior）
-- [x] LLM11 在线 viewer 支持 `--llm` 决策驱动（`world_viewer_live`）
+- [x] LLM10 新增 `oasis7_llm_agent_demo`（AgentRunner + LlmAgentBehavior）
+- [x] LLM11 在线 viewer 支持 `--llm` 决策驱动（`oasis7_viewer_live`）
 - [x] LLM12 修复 LLM 端点调用失败（端点规范化 + 超时回退重试）
 - [x] LLM13 补充端点与超时回退重试测试
 

@@ -60,7 +60,7 @@
 - Integration Points:
   - `scripts/ci-tests.sh`
   - `.github/workflows/rust.yml`
-  - `world_viewer_demo`（`snapshot.json` / `journal.json`）
+  - `oasis7_viewer_demo`（`snapshot.json` / `journal.json`）
   - `viewer_offline_integration`
   - `oasis7_viewer` `egui_kittest` snapshot
 - Edge Cases & Error Handling:

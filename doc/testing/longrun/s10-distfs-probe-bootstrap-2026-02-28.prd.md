@@ -56,7 +56,7 @@
 ## 4. Technical Specifications
 - Architecture Overview: 在 `reward_runtime_worker.rs` 启动路径增加 DistFS probe seed bootstrap，作为预热步骤向本地存储注入最小样本，之后由现有 DistFS 检查链路按既有语义统计。
 - Integration Points:
-  - `crates/oasis7/src/bin/world_chain_runtime/reward_runtime_worker.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/reward_runtime_worker.rs`
   - `scripts/s10-five-node-game-soak.sh`
   - `testing-manual.md`
   - `doc/testing/longrun/s10-distfs-probe-bootstrap-2026-02-28.project.md`

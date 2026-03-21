@@ -12,7 +12,7 @@
 - 对应标准执行入口: `doc/readme/gap/readme-gap12-consensus-market-lifecycle-closure.project.md`
 
 ## 目标
-- 收口缺口 1：`world_viewer_live` 主链路从“本地 kernel 直接推进”切换到“先提交 node 共识，再仅回放已提交动作推进状态”。
+- 收口缺口 1：`oasis7_viewer_live` 主链路从“本地 kernel 直接推进”切换到“先提交 node 共识，再仅回放已提交动作推进状态”。
 - 收口缺口 2：补齐 LLM/Simulator 的模块市场/生命周期动作入口，支持上架/购买/下架/销毁/出价/撤单完整可执行闭环。
 - 保持现有接口兼容，避免破坏 runtime 既有流程与历史 payload。
 
@@ -23,7 +23,7 @@
   - `crates/oasis7/src/viewer/live.rs`
     - 增加 node 共识提交桥接能力，替换直接 `kernel.submit_action + step` 的推进方式。
     - LLM 驱动改为“决策提交”和“提交后回执驱动记忆更新”。
-  - `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`
+  - `crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`
     - 兼容带 envelope 的共识 payload，非 runtime action 不再导致桥接失败。
   - `crates/oasis7/src/simulator`
     - 扩展 `Action`、`WorldEventKind`、`WorldModel`、kernel 执行/replay，支持模块市场动作。

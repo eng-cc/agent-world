@@ -12,7 +12,7 @@
 
 ## 依赖
 - doc/p2p/node/node-keypair-config-bootstrap.prd.md
-- `crates/oasis7/src/bin/world_viewer_live.rs`
+- `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - `config.example.toml`
 - `crates/oasis7_node`
 

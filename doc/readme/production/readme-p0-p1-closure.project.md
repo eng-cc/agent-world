@@ -15,7 +15,7 @@
 
 ## 依赖
 - T1 为 T2/T3 的可信基线（执行哈希绑定）。
-- T2 依赖 `world_viewer_live` 与 node runtime 共享高度观测。
+- T2 依赖 `oasis7_viewer_live` 与 node runtime 共享高度观测。
 - T3 依赖 runtime 既有治理闭环（propose/shadow/approve/apply）。
 
 ## 状态

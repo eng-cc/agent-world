@@ -32,16 +32,16 @@ pub(crate) fn resolve_chain_runtime_binary_path() -> PathBuf {
 
     if let Ok(current_exe) = env::current_exe() {
         if let Some(bin_dir) = current_exe.parent() {
-            return bin_dir.join(binary_name("world_chain_runtime"));
+            return bin_dir.join(binary_name("oasis7_chain_runtime"));
         }
     }
 
-    PathBuf::from(binary_name("world_chain_runtime"))
+    PathBuf::from(binary_name("oasis7_chain_runtime"))
 }
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn resolve_chain_runtime_binary_path() -> PathBuf {
-    PathBuf::from(binary_name("world_chain_runtime"))
+    PathBuf::from(binary_name("oasis7_chain_runtime"))
 }
 
 #[cfg(not(target_arch = "wasm32"))]

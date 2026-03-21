@@ -11,7 +11,7 @@
 你就是游戏玩家，不能读其他的文档或代码（`agent-browser` 操作方法文档除外），直接通过 `agent-browser` 来实际玩游戏，并填写 `playability_test_card`，同时需要在测试过程中给 `agent-browser` 录屏，方便后续检查
 
 ## 一键启动（避免参数错误）
-统一使用脚本启动，不要手工拼接 `world_viewer_live` 与 `run-viewer-web.sh` 参数：
+统一使用脚本启动，不要手工拼接 `oasis7_viewer_live` 与 `run-viewer-web.sh` 参数：
 
 ```bash
 ./scripts/run-game-test.sh

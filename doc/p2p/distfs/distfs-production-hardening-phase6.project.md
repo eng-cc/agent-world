@@ -15,7 +15,7 @@
 
 ## 依赖
 - `crates/oasis7_distfs/src/challenge_scheduler.rs`
-- `crates/oasis7/src/bin/world_chain_runtime/distfs_probe_runtime.rs`
+- `crates/oasis7/src/bin/oasis7_chain_runtime/distfs_probe_runtime.rs`
 - `doc/p2p/distfs/distfs-production-hardening-phase6.prd.md`
 
 ## 状态

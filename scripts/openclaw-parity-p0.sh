@@ -148,7 +148,7 @@ run_sample() {
   local sample_dir="$OUT_DIR/samples/$provider/sample_$sample_index"
   mkdir -p "$sample_dir"
 
-  local cmd=(env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_openclaw_parity_bench --
+  local cmd=(env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_openclaw_parity_bench --
     --provider "$provider"
     --scenario "$SCENARIO"
     --scenario-id "$SCENARIO_ID"

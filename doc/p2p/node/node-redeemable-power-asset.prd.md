@@ -156,7 +156,7 @@ DomainEvent::PowerRedeemRejected {
   - **RPA-M2**：Node Points 结算上链铸造接线。
   - **RPA-M3**：`RedeemPower` 动作与事件闭环。
   - **RPA-M4**：守恒与风控（储备池、额度、nonce）。
-  - **RPA-M5**：运行时接线（含 `world_viewer_live` 开关）。
+  - **RPA-M5**：运行时接线（含 `oasis7_viewer_live` 开关）。
   - **RPA-M6**：最小需求侧支付入口与回归。
   - **RPA-M7**：身份签名治理最小收口。
   - **RPA-M8**：DistFS 证明字段增强与文档/devlog 收口。

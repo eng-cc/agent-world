@@ -14,7 +14,7 @@
 ## 2. User Experience & Functionality
 - In Scope:
   - 在 LLM prompt 组装中新增拒绝原因恢复规则模板（Recovery Policy），并将最近拒绝原因结构化透出给模型。
-  - 在 `world_llm_agent_demo` 报告增加动作级指标（`action_kind_counts` 等），用于量化建厂/排产触发率。
+  - 在 `oasis7_llm_agent_demo` 报告增加动作级指标（`action_kind_counts` 等），用于量化建厂/排产触发率。
   - 新增 deterministic mock-sequence 回归，覆盖“资源不足恢复 -> 建厂 -> 排产”成功链路。
   - 补充 `test_tier_required` 单测与最小在线复跑口径。
 - Out of Scope:
@@ -44,7 +44,7 @@
     - `last_action.reject_reason`
 
 ### 2) 报告动作触发率指标（TODO-2）
-- 位置：`crates/oasis7/src/bin/world_llm_agent_demo.rs`（及其 report 结构）
+- 位置：`crates/oasis7/src/bin/oasis7_llm_agent_demo.rs`（及其 report 结构）
 - 新增字段（JSON）：
   - `action_kind_counts: { "<action_kind>": <u64> }`
   - `action_kind_success_counts: { "<action_kind>": <u64> }`

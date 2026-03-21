@@ -24,7 +24,7 @@
 
 ## Scope
 - In Scope:
-  - 复跑真实 `world_chain_runtime --storage-profile release_default` 样本。
+  - 复跑真实 `oasis7_chain_runtime --storage-profile release_default` 样本。
   - 复跑 `scripts/world-runtime-storage-gate.sh` 并确认 checkpoint 生成高度。
   - 回写测试记录、失败签名或放行结论。
 - Out of Scope:
@@ -32,7 +32,7 @@
   - 扩展到 transfer/explorer/launcher 其他功能验收。
 
 ## Inputs
-- 关键文件：`crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`、`crates/oasis7/src/bin/world_chain_runtime.rs`、`doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`
+- 关键文件：`crates/oasis7/src/bin/oasis7_chain_runtime/execution_bridge.rs`、`crates/oasis7/src/bin/oasis7_chain_runtime.rs`、`doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`
 - 关键命令：`env -u RUSTC_WRAPPER cargo test -p oasis7 node_runtime_execution_driver_uses_storage_profile_checkpoint_interval -- --nocapture`、真实 runtime probe + gate 复跑命令
 - 上游依赖：`runtime_engineer` 已完成 profile 透传修复
 - 现有测试 / 证据：`doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`、`.tmp/runtime_t72_probe_20260310-235637/artifacts/*`
@@ -62,7 +62,7 @@
 
 ## Validation Plan
 - 测试层级：`test_tier_required`
-- 验证命令：定向 cargo test + `world_chain_runtime` 真实 probe + `scripts/world-runtime-storage-gate.sh`
+- 验证命令：定向 cargo test + `oasis7_chain_runtime` 真实 probe + `scripts/world-runtime-storage-gate.sh`
 - 预期结果：status `effective_budget` 与实际 checkpoint cadence 一致
 - 回归影响范围：`world-runtime` storage gate / replay evidence / release gate judgement
 

@@ -92,7 +92,7 @@ CliOptions {
 - Phased Rollout:
   - M0：设计与项目管理文档冻结。
   - M1：`oasis7_node` 执行校验策略与补洞执行一致性校验落地。
-  - M2：`world_viewer_live` leader/failover 策略与运行默认语义收口。
+  - M2：`oasis7_viewer_live` leader/failover 策略与运行默认语义收口。
   - M3：测试回归（required-tier 定向）与文档/devlog 收口。
 - Technical Risks:
   - 严格执行校验可能暴露历史“宽松路径”下未显化的问题，初期可能增加拒绝日志与排障成本。
