@@ -16,12 +16,27 @@ where
     D: Deserializer<'de>,
     V: Deserialize<'de>,
 {
-    let raw = BTreeMap::<String, V>::deserialize(deserializer)?;
+    #[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+    #[serde(untagged)]
+    enum NumericMapKey {
+        String(String),
+        U64(u64),
+        I64(i64),
+    }
+
+    let raw = BTreeMap::<NumericMapKey, V>::deserialize(deserializer)?;
     raw.into_iter()
         .map(|(key, value)| {
-            key.parse::<u64>()
-                .map(|parsed| (parsed, value))
-                .map_err(|err| D::Error::custom(format!("invalid numeric map key `{key}`: {err}")))
+            let parsed = match key {
+                NumericMapKey::String(key) => key.parse::<u64>().map_err(|err| {
+                    D::Error::custom(format!("invalid numeric map key `{key}`: {err}"))
+                })?,
+                NumericMapKey::U64(key) => key,
+                NumericMapKey::I64(key) => u64::try_from(key).map_err(|_| {
+                    D::Error::custom(format!("invalid numeric map key `{key}`: must be >= 0"))
+                })?,
+            };
+            Ok((parsed, value))
         })
         .collect()
 }
