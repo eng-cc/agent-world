@@ -639,7 +639,7 @@ fn llm_env_var_reads_oasis7_prefix() {
 }
 
 #[test]
-fn llm_env_var_ignores_removed_old_brand_prefix() {
+fn llm_env_var_rejects_removed_old_brand_prefix() {
     let _env_lock = llm_env_lock().lock().expect("env lock");
     let _primary_guard = EnvVarGuard::capture(ENV_LLM_MODEL);
     let _removed_old_brand_guard = EnvVarGuard::capture("AGENT_WORLD_LLM_MODEL");
@@ -650,7 +650,7 @@ fn llm_env_var_ignores_removed_old_brand_prefix() {
 }
 
 #[test]
-fn llm_config_from_env_for_agent_ignores_removed_old_brand_prefix() {
+fn llm_config_from_env_for_agent_rejects_removed_old_brand_prefix() {
     let _env_lock = llm_env_lock().lock().expect("env lock");
     let _model_guard = EnvVarGuard::capture(ENV_LLM_MODEL);
     let _base_url_guard = EnvVarGuard::capture(ENV_LLM_BASE_URL);

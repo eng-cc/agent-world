@@ -1097,7 +1097,7 @@ mod tests {
     }
 
     #[test]
-    fn wasm_env_value_or_default_prefers_oasis7_prefix() {
+    fn wasm_env_value_or_default_reads_oasis7_prefix() {
         let _primary = EnvVarGuard::capture(wasm_env_key("BUILD_STD"));
         let _removed_old_brand = EnvVarGuard::capture("AGENT_WORLD_WASM_BUILD_STD");
         env::set_var(wasm_env_key("BUILD_STD"), "1");
@@ -1107,7 +1107,7 @@ mod tests {
     }
 
     #[test]
-    fn wasm_env_value_or_default_ignores_removed_old_brand_prefix() {
+    fn wasm_env_value_or_default_rejects_removed_old_brand_prefix() {
         let _primary = EnvVarGuard::capture(wasm_env_key("BUILD_STD_COMPONENTS"));
         let _removed_old_brand =
             EnvVarGuard::capture("AGENT_WORLD_WASM_BUILD_STD_COMPONENTS");

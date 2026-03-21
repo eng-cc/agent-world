@@ -36,9 +36,10 @@ fn materializer_fetch_miss_falls_back_to_compile_and_caches_blob() {
     let expected_hash_refs: Vec<&str> = expected_hashes.iter().map(String::as_str).collect();
 
     let _fetcher_guard = EnvVarGuard::capture(FETCHER_ENV);
-    let _compat_old_brand_fetcher_guard = EnvVarGuard::capture("AGENT_WORLD_BUILTIN_WASM_FETCHER");
+    let _removed_old_brand_fetcher_guard =
+        EnvVarGuard::capture("AGENT_WORLD_BUILTIN_WASM_FETCHER");
     let _compiler_guard = EnvVarGuard::capture(COMPILER_ENV);
-    let _compat_old_brand_compiler_guard =
+    let _removed_old_brand_compiler_guard =
         EnvVarGuard::capture("AGENT_WORLD_BUILTIN_WASM_COMPILER");
     std::env::set_var(FETCHER_ENV, &fetcher);
     std::env::set_var(COMPILER_ENV, &compiler);

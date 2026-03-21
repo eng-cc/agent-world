@@ -378,7 +378,7 @@ mod tests {
     use std::sync::{Mutex, OnceLock};
 
     #[test]
-    fn module_source_env_non_empty_returns_oasis7_value() {
+    fn module_source_env_non_empty_reads_oasis7_value() {
         let _guard = module_source_env_lock().lock().expect("env lock");
         let key = module_source_env_key("COMPILER");
         let _env_guard = TestEnvGuard::capture(key.as_str());
@@ -391,7 +391,7 @@ mod tests {
     }
 
     #[test]
-    fn module_source_env_non_empty_ignores_removed_old_brand_value() {
+    fn module_source_env_non_empty_rejects_removed_old_brand_value() {
         let _guard = module_source_env_lock().lock().expect("env lock");
         let key = module_source_env_key("COMPILER");
         let _env_guard = TestEnvGuard::capture(key.as_str());

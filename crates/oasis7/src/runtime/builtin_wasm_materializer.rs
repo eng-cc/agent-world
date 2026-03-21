@@ -468,7 +468,7 @@ mod tests {
     }
 
     #[test]
-    fn builtin_wasm_env_non_empty_prefers_oasis7_prefix() {
+    fn builtin_wasm_env_non_empty_reads_oasis7_prefix() {
         let _env_lock = BUILTIN_WASM_ENV_LOCK.lock().expect("lock builtin wasm env");
         let primary_key = builtin_wasm_env_key("FETCHER");
         let _primary_guard = TestEnvGuard::capture(primary_key.as_str());
@@ -481,7 +481,7 @@ mod tests {
     }
 
     #[test]
-    fn builtin_wasm_env_non_empty_ignores_removed_old_brand_prefix() {
+    fn builtin_wasm_env_non_empty_rejects_removed_old_brand_prefix() {
         let _env_lock = BUILTIN_WASM_ENV_LOCK.lock().expect("lock builtin wasm env");
         let primary_key = builtin_wasm_env_key("FETCHER");
         let _primary_guard = TestEnvGuard::capture(primary_key.as_str());
