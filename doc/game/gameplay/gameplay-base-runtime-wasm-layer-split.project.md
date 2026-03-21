@@ -20,8 +20,8 @@
 - [x] 调整 `world/mod.rs` 模块组织，形成显式分层入口
 
 ### T2 回归与收口
-- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay:: -- --nocapture`
-- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::modules:: -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::gameplay:: -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::modules:: -- --nocapture`
 - [x] 回写项目文档状态与 `doc/devlog/2026-02-20.md`
 
 ## 依赖

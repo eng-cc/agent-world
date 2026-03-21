@@ -63,6 +63,17 @@
     - `rg -n "cargo test -p oasis7|crates/oasis7|crates/oasis7_viewer|crates/oasis7_proto" doc/game/gameplay/gameplay-post-onboarding-stage-2026-03-18.prd.md doc/game/gameplay/gameplay-pure-api-client-parity-2026-03-19.prd.md doc/game/gameplay/gameplay-pure-api-client-parity-2026-03-19.project.md doc/game/gameplay/gameplay-release-production-closure.project.md doc/game/gameplay/gameplay-micro-loop-feedback-visibility-2026-03-05.prd.md doc/game/gameplay/gameplay-top-level-design.project.md doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-GAME-027 (PRD-GAME-001/002/005) [test_tier_required]: 收口更早期 `gameplay` 活跃专题中遗漏的 runtime crate 路径与 `cargo -p` 命令，统一到 `oasis7` / `crates/oasis7*`。
+  - 产物文件:
+    - `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.md`
+    - `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.project.md`
+    - `doc/game/gameplay/gameplay-runtime-governance-closure.project.md`
+    - `doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.project.md`
+    - `doc/game/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "cargo test -p oasis7|cargo check -p oasis7|crates/oasis7/src/runtime" doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.md doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.project.md doc/game/gameplay/gameplay-runtime-governance-closure.project.md doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.project.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/game/design.md`
@@ -79,6 +90,7 @@
 - 更新日期: 2026-03-21
 - 当前状态: in_progress
 - 下一任务: `待新的 gameplay 闭环需求`
+- 最新完成: `TASK-GAME-027`（已完成更早期 `gameplay` 活跃专题中遗漏的 runtime crate 路径与 `cargo -p` 命令收口，统一切到 `oasis7` / `crates/oasis7*`。）
 - 最新完成: `TASK-GAME-026`（已完成其余活跃 `gameplay` 专题中当前源码锚点与 `cargo -p` 命令的 `oasis7` / `oasis7_viewer` / `oasis7_proto` 收口，未改动历史证据与 release gate 记录。）
 - 最新完成: `TASK-GAME-025`（已将 gameplay 专题中仍作为当前真值使用的实现锚点与 `cargo -p` 命令统一切换到 `oasis7` / `oasis7_viewer` / `crates/oasis7*` 口径）。
 - 最新完成: `TASK-GAME-024`（已将根 PRD / project 的当前真值命令与 pure API 客户端源码路径统一切换到 `oasis7` 口径）。

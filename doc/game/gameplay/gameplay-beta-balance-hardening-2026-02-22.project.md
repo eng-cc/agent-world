@@ -32,8 +32,8 @@
 - [x] 更新 `doc/devlog/2026-02-22.md`
 
 ## 依赖
-- `crates/agent_world/src/runtime/world/event_processing/*`
-- `crates/agent_world/src/runtime/tests/gameplay_protocol.rs`
+- `crates/oasis7/src/runtime/world/event_processing/*`
+- `crates/oasis7/src/runtime/tests/gameplay_protocol.rs`
 - `doc/game/gameplay/gameplay-war-politics-mvp-baseline.md`
 
 ## 状态

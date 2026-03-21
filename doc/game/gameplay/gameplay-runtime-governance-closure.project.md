@@ -31,8 +31,8 @@
 - [x] 新增 runtime 单测覆盖（合法/拒绝/冲突/就绪度）
 
 ### T4 回归与文档收口
-- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay:: -- --nocapture`
-- [x] 运行 `env -u RUSTC_WRAPPER cargo check -p agent_world --lib`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::gameplay:: -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo check -p oasis7 --lib`
 - [x] 回写任务状态、devlog 与结论
 
 ## 依赖

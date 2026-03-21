@@ -10,7 +10,7 @@
 - 本文仅维护增量。
 
 ## 目标
-- 将 `agent_world` runtime 的模块治理与执行架构拆分为两个明确边界：
+- 将 `oasis7` runtime 的模块治理与执行架构拆分为两个明确边界：
   - 基础层（Base Runtime Layer）：世界不变量、模块通用校验、资源/权限约束。
   - Gameplay 层（WASM Gameplay Layer）：仅承载 gameplay 角色模块的契约校验、槽位冲突治理、模式就绪度观测。
 - 保持现有行为语义与测试结果不变，优先做“架构分层重构”而非玩法规则扩展。
@@ -19,7 +19,7 @@
 ## 范围
 
 ### In Scope
-- `crates/agent_world/src/runtime/world` 内部重构：
+- `crates/oasis7/src/runtime/world` 内部重构：
   - 抽离基础层模块治理校验实现。
   - 抽离 gameplay 层校验与观测实现。
   - 明确基础层调用 gameplay 层的边界点。
