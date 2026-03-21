@@ -13,7 +13,7 @@
 - [x] T3：执行 power 场景回归矩阵并完成文档/日志结项
 
 ## 依赖
-- `crates/agent_world_viewer/src/internal_capture.rs`
+- `crates/oasis7_viewer/src/internal_capture.rs`
 - `scripts/viewer-texture-inspector.sh`
 - `scripts/capture-viewer-frame.sh`
 - `ffmpeg`

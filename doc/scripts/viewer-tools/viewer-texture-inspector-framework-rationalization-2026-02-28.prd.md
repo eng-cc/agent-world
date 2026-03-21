@@ -23,7 +23,7 @@
   - 不在本轮改 world_viewer_live 协议结构。
 
 ## 接口 / 数据
-- Rust：`crates/agent_world_viewer/src/internal_capture.rs`
+- Rust：`crates/oasis7_viewer/src/internal_capture.rs`
   - 扩展状态输出字段（示例）：
     - 选中语义：`selection_kind`、`selection_id`
     - 相机语义：`orbit_radius`、`camera_mode`

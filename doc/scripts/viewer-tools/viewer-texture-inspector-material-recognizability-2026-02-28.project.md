@@ -20,7 +20,7 @@
 ## 依赖
 - `scripts/capture-viewer-frame.sh`（现有截图与自动化链路）
 - `ffmpeg`（裁切与 SSIM）
-- `env -u RUSTC_WRAPPER cargo run -p agent_world_viewer`（viewer 启动约束）
+- `env -u RUSTC_WRAPPER cargo run -p oasis7_viewer`（viewer 启动约束）
 
 ## 状态
 - 当前阶段：已完成（T0~T5）

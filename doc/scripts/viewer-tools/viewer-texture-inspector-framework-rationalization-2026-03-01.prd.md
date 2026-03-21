@@ -25,7 +25,7 @@
 
 ## 接口 / 数据
 - Rust（内部模块拆分，不改外部调用接口）
-  - 新增内部解析模块文件：`crates/agent_world_viewer/src/viewer_3d_config_parsing.rs`。
+  - 新增内部解析模块文件：`crates/oasis7_viewer/src/viewer_3d_config_parsing.rs`。
   - `resolve_viewer_3d_config` / `resolve_viewer_external_*` 函数签名保持不变。
 - Shell
   - 保持现有 CLI 参数不变；

@@ -26,8 +26,8 @@
   - 不改 world_viewer_live 协议。
 
 ## 接口 / 数据
-- Rust：`crates/agent_world_viewer/src/app_bootstrap.rs`
-  - 新增启动环境变量：`AGENT_WORLD_VIEWER_PANEL_HIDDEN`（布尔）用于设置初始右侧面板可见性。
+- Rust：`crates/oasis7_viewer/src/app_bootstrap.rs`
+  - 新增启动环境变量：`OASIS7_VIEWER_PANEL_HIDDEN`（布尔）用于设置初始右侧面板可见性。
 - Shell：`scripts/viewer-texture-inspector.sh`
   - 新增参数（计划）：
     - `--resource-pack-file <path>`：加载实体资源包（env 风格 key-value）。
@@ -41,7 +41,7 @@
 
 ## 里程碑
 - **T0 建档**：设计文档 + 项目管理文档。
-- **T1 Viewer 启动层改造**：支持 `AGENT_WORLD_VIEWER_PANEL_HIDDEN` 并补测试。
+- **T1 Viewer 启动层改造**：支持 `OASIS7_VIEWER_PANEL_HIDDEN` 并补测试。
 - **T2 Inspector 系统优化落地**：构图候选策略 + 资源包 + 灯光预设。
 - **T3 回归与结项**：执行 power 回归，更新结论与日志。
 - **T4 构图稳定性修复**：设施尺度归一化 + direct_entity 隔离构图 + no-crop 策略。
@@ -75,7 +75,7 @@
   - 设施实体按 location 半径做尺度归一；`Transform` 与 `BaseScale` 同步更新。
   - `direct_entity` 预览下隐藏 location 网格干扰，但保留 location 半径与位置数据供设施缩放使用。
   - 语义 gate 与 closeup 元数据新增 `capture_auto_focus_target`，并在 direct_entity + `--crop-window auto` 时强制 `crop_window_effective=none`。
-  - 高亮开关与 Halo 联动：`AGENT_WORLD_VIEWER_HIGHLIGHT_SELECTED=0` 时不再绘制高亮圈。
+  - 高亮开关与 Halo 联动：`OASIS7_VIEWER_HIGHLIGHT_SELECTED=0` 时不再绘制高亮圈。
 - 证据（probe）：
   - `output/texture_inspector/probe_focus_radius_power_default_isolated_nocrop_20260301/power_plant/default/meta.txt`
     - `preview_mode_effective=direct_entity`
@@ -97,8 +97,8 @@
   - Rust 材质链路拆分完成：
     - `ViewerMaterialConfig` 新增 `materials.power_plant` / `materials.power_storage`，支持独立 `roughness/metallic/emissive_boost`。
     - 新增环境变量：
-      - `AGENT_WORLD_VIEWER_MATERIAL_POWER_PLANT_{ROUGHNESS,METALLIC,EMISSIVE_BOOST}`
-      - `AGENT_WORLD_VIEWER_MATERIAL_POWER_STORAGE_{ROUGHNESS,METALLIC,EMISSIVE_BOOST}`
+      - `OASIS7_VIEWER_MATERIAL_POWER_PLANT_{ROUGHNESS,METALLIC,EMISSIVE_BOOST}`
+      - `OASIS7_VIEWER_MATERIAL_POWER_STORAGE_{ROUGHNESS,METALLIC,EMISSIVE_BOOST}`
     - `main.rs` / `main_ui_runtime.rs` / `theme_runtime.rs` 已切换为 power 实体独立材质通道。
     - `viewer_3d_config_profile_tests.rs` 补充 env override 与 invalid fallback 单测覆盖。
   - Inspector 框架级构图修正完成（非阈值补丁）：

@@ -59,6 +59,11 @@
     - `rg -n "cargo run -p agent_world|crates/agent_world/src/bin/" .agents/skills/oasis7/SKILL.md .agents/skills/oasis7/references/real-play-config.md .agents/skills/oasis7/scripts/oasis7-run.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-SCRIPTS-012 (PRD-SCRIPTS-001/003) [test_tier_required]: 收口 `doc/scripts/viewer-tools/**` 活跃 texture-inspector 专题中遗漏的当前 viewer crate、环境变量与运行命令口径，统一到 `oasis7_viewer` / `OASIS7_VIEWER_*`。
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "oasis7_viewer|OASIS7_VIEWER_" doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.prd.md doc/scripts/viewer-tools/viewer-texture-inspector-visual-detail-system-optimization-2026-02-28.project.md doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-03-01.prd.md doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-03-01.project.md doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-02-28.prd.md doc/scripts/viewer-tools/viewer-texture-inspector-framework-rationalization-2026-02-28.project.md doc/scripts/viewer-tools/viewer-texture-inspector-material-recognizability-2026-02-28.project.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/scripts/design.md`
@@ -69,9 +74,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-20
+- 更新日期: 2026-03-21
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-SCRIPTS-012`（texture-inspector 活跃专题中遗漏的 viewer crate、环境变量与运行命令口径已统一切到 `oasis7_viewer` / `OASIS7_VIEWER_*`。）
 - 最新完成: `TASK-SCRIPTS-011`（repo-owned OpenClaw real-play helper 文档与脚本中的当前 cargo 运行命令和入口路径已统一切到 `oasis7` / `crates/oasis7*` 当前口径。）
 - 最新完成: `TASK-SCRIPTS-010`（`capture-viewer-frame` 活跃 fallback 文档中的 viewer crate 与环境变量命名已统一切到 `oasis7_viewer` / `OASIS7_VIEWER_*` 当前口径）。
 - 最新完成: `TASK-SCRIPTS-009`（pre-commit 活跃文档中的 viewer wasm 编译门禁与依赖说明已统一切到 `oasis7_viewer` 当前口径）。

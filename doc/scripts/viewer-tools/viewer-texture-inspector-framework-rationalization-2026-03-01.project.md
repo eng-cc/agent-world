@@ -12,8 +12,8 @@
 - [x] T2：Shell 构图策略结构化（power pose 统一解析入口）
 
 ## 依赖
-- `crates/agent_world_viewer/src/viewer_3d_config.rs`
-- `crates/agent_world_viewer/src/viewer_3d_config_profile_tests.rs`
+- `crates/oasis7_viewer/src/viewer_3d_config.rs`
+- `crates/oasis7_viewer/src/viewer_3d_config_profile_tests.rs`
 - `scripts/viewer-texture-inspector.sh`
 - `scripts/capture-viewer-frame.sh`
 
