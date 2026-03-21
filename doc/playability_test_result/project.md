@@ -34,6 +34,15 @@
   - 验收命令 (`test_tier_required`):
     - `test -f doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
     - `rg -n "首个制成品|停机恢复|首座工厂单元|test_tier_required 前置命令|收口规则" doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
+- [x] TASK-PLAYABILITY_TEST_RESULT-012 (PRD-PLAYABILITY_TEST_RESULT-001/002/003) [test_tier_required]: 收口专题卡组前置命令与 `game-test` 当前 viewer dist 路径的 `oasis7` 品牌口径。
+  - 产物文件:
+    - `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
+    - `doc/playability_test_result/game-test.project.md`
+    - `doc/playability_test_result/project.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "cargo test -p oasis7|cargo test -p oasis7_viewer|crates/oasis7_viewer/dist" doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md doc/playability_test_result/game-test.project.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/playability_test_result/prd.index.md
@@ -43,9 +52,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-15
+- 更新日期: 2026-03-21
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-PLAYABILITY_TEST_RESULT-012`（已将专题卡组前置命令与 `game-test` 当前 viewer dist 路径统一切到 `oasis7` / `oasis7_viewer` 口径。）
 - 最新完成: `TASK-PLAYABILITY_TEST_RESULT-011`（将前期工业引导专题卡组迁入 `topics/`，统一引用与根目录收口口径）。
 - 最新完成: `TASK-PLAYABILITY_TEST_RESULT-010`（新增前期工业引导 required-tier QA 卡组与手动回归链路）。
 - 最新完成: `TASK-PLAYABILITY_TEST_RESULT-009`（playability_test_result 根目录收口口径补入 design.md 并保留活跃卡片例外）。

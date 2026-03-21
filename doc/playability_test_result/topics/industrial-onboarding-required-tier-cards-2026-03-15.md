@@ -23,12 +23,12 @@
 
 ## `test_tier_required` 前置命令
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::economy:: -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world viewer::runtime_live::mapping -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world_viewer ui_text_industrial -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world_viewer feedback_tone_for_event_maps_warning_positive_and_info -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world_viewer push_feedback_toast_uses_runtime_industry_friendly_detail -- --nocapture
-env -u RUSTC_WRAPPER cargo test -p agent_world_viewer sync_agent_chatter_bubbles_formats_runtime_industry_feedback -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::economy:: -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 viewer::runtime_live::mapping -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7_viewer ui_text_industrial -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7_viewer feedback_tone_for_event_maps_warning_positive_and_info -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7_viewer push_feedback_toast_uses_runtime_industry_friendly_detail -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7_viewer sync_agent_chatter_bubbles_formats_runtime_industry_feedback -- --nocapture
 ```
 
 ## 启动与取证

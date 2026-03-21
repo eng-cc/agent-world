@@ -49,7 +49,7 @@
 ## 状态
 - 当前阶段：现行视图 + 历史归档模式下持续复测（2026-03-12，producer 默认链产品路径亲玩补样）
 - 当前风险：
-  - `run-game-test.sh` 依赖 `crates/agent_world_viewer/dist`，若 dist 目录未及时重建，可能出现协议枚举漂移导致 Web 端 decode error。
+  - `run-game-test.sh` 依赖 `crates/oasis7_viewer/dist`，若 dist 目录未及时重建，可能出现协议枚举漂移导致 Web 端 decode error。
   - LLM 前置配置缺失时，`run-game-test.sh` 仍可能启动失败（可用 `--no-llm` 回退）。
   - `agent-browser record start` 当前会为 Viewer Web 创建 fresh browser context，并把页面重置到冷启动；闭环脚本会立即 reopen 恢复连接，但 `playthrough.webm` 仅能作为 best-effort 片段，截图 / `__AW_TEST__` 状态 / 量化指标仍是主证据。
   - 默认链启用的 launcher 产品路径已在 fresh `chain_node_id` 下通过本轮 producer 样本，不再是当前主阻断；但若显式复用旧 node id，仍可能复现 `stale_execution_world`，需继续避免回归。
