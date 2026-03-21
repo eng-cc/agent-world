@@ -17,6 +17,20 @@ use super::{
 use oasis7::simulator::ProviderExecutionMode;
 use oasis7_proto::storage_profile::StorageProfile;
 
+const REMOVED_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT: &str = "__AGENT_WORLD_VIEWER_AUTH_ENV";
+const REMOVED_OLD_BRAND_VIEWER_AUTH_ENV_KEYS: [&str; 3] = [
+    "AGENT_WORLD_VIEWER_PLAYER_ID",
+    "AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY",
+    "AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY",
+];
+
+fn assert_removed_old_brand_viewer_auth_env_absent(text: &str) {
+    assert!(!text.contains(REMOVED_OLD_BRAND_VIEWER_AUTH_BOOTSTRAP_OBJECT));
+    for key in REMOVED_OLD_BRAND_VIEWER_AUTH_ENV_KEYS {
+        assert!(!text.contains(key));
+    }
+}
+
 #[test]
 fn parse_options_defaults() {
     let options = parse_options(std::iter::empty()).expect("parse should succeed");
@@ -405,10 +419,7 @@ fn sanitize_index_html_for_embedded_server_injects_viewer_auth_bootstrap() {
     assert!(sanitized.contains(VIEWER_PLAYER_ID_ENV));
     assert!(sanitized.contains(VIEWER_AUTH_PUBLIC_KEY_ENV));
     assert!(sanitized.contains(VIEWER_AUTH_PRIVATE_KEY_ENV));
-    assert!(!sanitized.contains("__AGENT_WORLD_VIEWER_AUTH_ENV"));
-    assert!(!sanitized.contains("AGENT_WORLD_VIEWER_PLAYER_ID"));
-    assert!(!sanitized.contains("AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY"));
-    assert!(!sanitized.contains("AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY"));
+    assert_removed_old_brand_viewer_auth_env_absent(&sanitized);
     assert!(sanitized.contains("viewer-player"));
     assert!(sanitized.contains("pub-hex"));
     assert!(sanitized.contains("priv-hex"));
@@ -429,7 +440,7 @@ fn sanitize_index_html_for_embedded_server_injects_viewer_auth_bootstrap_into_no
     );
     let sanitized = String::from_utf8(sanitized).expect("utf-8");
     assert!(sanitized.contains(VIEWER_AUTH_BOOTSTRAP_OBJECT));
-    assert!(!sanitized.contains("__AGENT_WORLD_VIEWER_AUTH_ENV"));
+    assert_removed_old_brand_viewer_auth_env_absent(&sanitized);
     assert!(sanitized.contains("viewer-player"));
     assert!(sanitized.contains("pub-hex"));
     assert!(sanitized.contains("priv-hex"));
@@ -448,10 +459,7 @@ fn build_viewer_auth_bootstrap_script_contains_expected_window_object() {
     assert!(script.contains(VIEWER_PLAYER_ID_ENV));
     assert!(script.contains(VIEWER_AUTH_PUBLIC_KEY_ENV));
     assert!(script.contains(VIEWER_AUTH_PRIVATE_KEY_ENV));
-    assert!(!script.contains("__AGENT_WORLD_VIEWER_AUTH_ENV"));
-    assert!(!script.contains("AGENT_WORLD_VIEWER_PLAYER_ID"));
-    assert!(!script.contains("AGENT_WORLD_VIEWER_AUTH_PUBLIC_KEY"));
-    assert!(!script.contains("AGENT_WORLD_VIEWER_AUTH_PRIVATE_KEY"));
+    assert_removed_old_brand_viewer_auth_env_absent(&script);
 }
 
 #[test]

@@ -181,7 +181,7 @@ fn parse_tool_call_view_reads_structured_payload() {
 }
 
 #[test]
-fn parse_tool_call_view_falls_back_to_compat_old_brand_text_format() {
+fn parse_tool_call_view_reads_removed_old_brand_text_format() {
     let tool_message = message(
         "agent-a",
         10,
@@ -389,7 +389,7 @@ fn resolve_viewer_auth_signer_from_rejects_removed_old_brand_key_names() {
     );
     env.insert(
         "AGENT_WORLD_VIEWER_PLAYER_ID".to_string(),
-        "legacy-viewer-player".to_string(),
+        "removed-old-brand-viewer-player".to_string(),
     );
 
     let err = resolve_viewer_auth_signer_from(|key| env.get(key).cloned())
@@ -434,7 +434,7 @@ fn attach_prompt_control_apply_auth_sets_updated_by_and_verifiable_proof() {
     let signer = test_signer(34);
     let mut request = oasis7::viewer::PromptControlApplyRequest {
         agent_id: "agent-a".to_string(),
-        player_id: "legacy-player".to_string(),
+        player_id: "removed-old-brand-player".to_string(),
         public_key: None,
         auth: None,
         expected_version: Some(3),

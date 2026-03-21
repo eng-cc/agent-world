@@ -282,7 +282,7 @@ mod tests {
 
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
-    fn load_launcher_ux_state_ignores_removed_old_brand_path() {
+    fn load_launcher_ux_state_rejects_removed_old_brand_path() {
         const REMOVED_OLD_BRAND_UX_STATE_PATH: &str = ".agent_world_launcher_ux_state.json";
 
         let _guard = UX_STATE_FS_LOCK.lock().expect("lock");

@@ -158,7 +158,7 @@ fn openclaw_settings_from_env_parses_profile_and_timeout() {
 }
 
 #[test]
-fn openclaw_settings_from_env_ignores_removed_old_brand_prefix() {
+fn openclaw_settings_from_env_rejects_removed_old_brand_prefix() {
     let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
     clear_runtime_openclaw_env();
     std::env::set_var(REMOVED_OLD_BRAND_PROVIDER_MODE_ENV, "openclaw_local_http");
@@ -944,7 +944,7 @@ fn runtime_agent_chat_echo_removed_old_brand_env_is_ignored() {
             player_id: Some("player-a".to_string()),
             public_key: None,
             auth: None,
-            message: "hello legacy runtime echo".to_string(),
+            message: "hello removed old brand runtime echo".to_string(),
             intent_tick: Some(10),
             intent_seq: Some(32),
         },
@@ -960,7 +960,7 @@ fn runtime_agent_chat_echo_removed_old_brand_env_is_ignored() {
     assert!(!events.iter().any(|event| matches!(
         &event.kind,
         crate::simulator::WorldEventKind::AgentSpoke { agent_id: event_agent_id, message, .. }
-            if event_agent_id == &agent_id && message == "[qa-echo] hello legacy runtime echo"
+            if event_agent_id == &agent_id && message == "[qa-echo] hello removed old brand runtime echo"
     )));
 }
 
