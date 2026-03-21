@@ -39,12 +39,12 @@
 
 ## 依赖
 - doc/world-simulator/scenario/chunked-fragment-generation.prd.md
-- `crates/agent_world/src/simulator/chunking.rs`
-- `crates/agent_world/src/simulator/asteroid_fragment.rs`
-- `crates/agent_world/src/simulator/init.rs`
-- `crates/agent_world/src/simulator/kernel/*`
-- `crates/agent_world/src/simulator/persist.rs`
-- `crates/agent_world/src/simulator/world_model.rs`
+- `crates/oasis7/src/simulator/chunking.rs`
+- `crates/oasis7/src/simulator/asteroid_fragment.rs`
+- `crates/oasis7/src/simulator/init.rs`
+- `crates/oasis7/src/simulator/kernel/*`
+- `crates/oasis7/src/simulator/persist.rs`
+- `crates/oasis7/src/simulator/world_model.rs`
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

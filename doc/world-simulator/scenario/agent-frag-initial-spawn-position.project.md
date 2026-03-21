@@ -12,9 +12,9 @@
 
 ## 依赖
 - doc/world-simulator/scenario/agent-frag-initial-spawn-position.prd.md
-- `crates/agent_world/src/simulator/init.rs`
-- `crates/agent_world/src/simulator/tests/mod.rs`
-- `crates/agent_world/src/simulator/tests/*`
+- `crates/oasis7/src/simulator/init.rs`
+- `crates/oasis7/src/simulator/tests/mod.rs`
+- `crates/oasis7/src/simulator/tests/*`
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

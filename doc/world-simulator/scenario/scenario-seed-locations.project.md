@@ -18,10 +18,10 @@
 
 ## 依赖
 - doc/world-simulator/scenario/scenario-seed-locations.prd.md
-- `crates/agent_world/src/simulator/scenario.rs`
-- `crates/agent_world/src/simulator/init.rs`
-- `crates/agent_world/src/simulator/tests/init.rs`
-- `crates/agent_world/scenarios/*.json`
+- `crates/oasis7/src/simulator/scenario.rs`
+- `crates/oasis7/src/simulator/init.rs`
+- `crates/oasis7/src/simulator/tests/init.rs`
+- `crates/oasis7/scenarios/*.json`
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

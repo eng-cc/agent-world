@@ -53,7 +53,7 @@
   - `asteroid_fragment_bootstrap`：小行星带碎片开启 + 原点 + 1 Agent + 发电设施与基础资源
   - `asteroid_fragment_twin_region_bootstrap`：小行星带碎片开启 + 双区域 + 双 Agent + 基础电力与资源
   - `asteroid_fragment_triad_region_bootstrap`：小行星带碎片开启 + 三区域 + 三 Agent + 基础电力与资源
-  - 场景定义文件：`crates/agent_world/scenarios/*.json`（编译期嵌入）
+  - 场景定义文件：`crates/oasis7/scenarios/*.json`（编译期嵌入）
 
 ### 场景使用建议
 - `minimal`：用于测试核心流程或最小单 Agent 回归。
@@ -127,9 +127,9 @@
 - `world_init_demo`：命令行示例，按场景生成世界并输出统计摘要。
 
 ### 使用示例
-- 运行示例工具：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- minimal`
-- 查看场景列表：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- --help`
-- 运行自定义场景文件：`env -u RUSTC_WRAPPER cargo run -p agent_world --bin world_init_demo -- --scenario-file path/to/scenario.json`
+- 运行示例工具：`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_init_demo -- minimal`
+- 查看场景列表：`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_init_demo -- --help`
+- 运行自定义场景文件：`env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_init_demo -- --scenario-file path/to/scenario.json`
 - 示例输出包含每个地点的资源摘要（electricity/hardware/data）。
 - 示例输出包含每个 Agent 的资源摘要（electricity/hardware/data）。
 - 示例输出包含估算的小行星带碎片数量（asteroid_fragment_fragments）。

@@ -16,8 +16,8 @@
 
 ### S3 测试与回归
 - [x] 更新 `simulator/tests/init.rs` 的场景断言
-- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world simulator::tests::init -- --nocapture`
-- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p agent_world --test world_init_demo -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p oasis7 simulator::tests::init -- --nocapture`
+- [x] 运行 `env -u RUSTC_WRAPPER cargo test -p oasis7 --test world_init_demo -- --nocapture`
 
 ### S4 文档回写
 - [x] 更新 `doc/world-simulator/scenario/scenario-files.prd.md` 场景矩阵描述
@@ -25,9 +25,9 @@
 - [x] 提交 git commit
 
 ## 依赖
-- `WorldScenario` 场景文件（`crates/agent_world/scenarios/*.json`）
+- `WorldScenario` 场景文件（`crates/oasis7/scenarios/*.json`）
 - `WorldInitConfig::from_scenario` + `build_world_model`
-- 场景稳定性测试（`crates/agent_world/src/simulator/tests/init.rs`）
+- 场景稳定性测试（`crates/oasis7/src/simulator/tests/init.rs`）
 
 ## 状态
 - 当前阶段：S4 完成

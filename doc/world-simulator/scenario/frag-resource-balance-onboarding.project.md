@@ -21,12 +21,12 @@
 
 ## 依赖
 - doc/world-simulator/scenario/frag-resource-balance-onboarding.prd.md
-- `crates/agent_world/src/simulator/world_model.rs`
-- `crates/agent_world/src/simulator/asteroid_fragment.rs`
-- `crates/agent_world/src/simulator/kernel/*`
-- `crates/agent_world/src/simulator/tests/asteroid_fragment.rs`
-- `crates/agent_world/src/simulator/tests/kernel.rs`
-- `crates/agent_world/src/simulator/tests/persist.rs`
+- `crates/oasis7/src/simulator/world_model.rs`
+- `crates/oasis7/src/simulator/asteroid_fragment.rs`
+- `crates/oasis7/src/simulator/kernel/*`
+- `crates/oasis7/src/simulator/tests/asteroid_fragment.rs`
+- `crates/oasis7/src/simulator/tests/kernel.rs`
+- `crates/oasis7/src/simulator/tests/persist.rs`
 - `doc/world-simulator.project.md`
 - `doc/devlog/`
 

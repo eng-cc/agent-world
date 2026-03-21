@@ -13,7 +13,7 @@
 - 测试矩阵层：维护场景到测试目标的映射与稳定性校验。
 
 ## 3. 关键接口 / 入口
-- `crates/agent_world/scenarios/*.json`
+- `crates/oasis7/scenarios/*.json`
 - `WorldInitConfig::from_scenario`
 - `WorldScenario::parse`
 - `world_init_demo --scenario-file`
