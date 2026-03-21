@@ -376,7 +376,7 @@ fn resolve_viewer_auth_signer_from_rejects_missing_private_key() {
 }
 
 #[test]
-fn resolve_viewer_auth_signer_from_ignores_removed_old_brand_key_names() {
+fn resolve_viewer_auth_signer_from_rejects_removed_old_brand_key_names() {
     let signer = test_signer(35);
     let mut env = std::collections::BTreeMap::<String, String>::new();
     env.insert(

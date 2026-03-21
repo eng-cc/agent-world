@@ -166,7 +166,7 @@ mod tests {
     }
 
     #[test]
-    fn perf_probe_config_from_env_ignores_removed_old_brand_keys() {
+    fn perf_probe_config_from_env_rejects_removed_old_brand_keys() {
         unsafe {
             std::env::remove_var(PERF_PROBE_ENV);
             std::env::remove_var(PERF_PROBE_INTERVAL_ENV);

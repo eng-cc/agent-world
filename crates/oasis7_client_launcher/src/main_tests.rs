@@ -263,7 +263,7 @@ fn parse_ui_language_supports_zh_and_en_aliases() {
 }
 
 #[test]
-fn read_named_env_value_with_ignores_removed_old_brand_key_names() {
+fn read_named_env_value_with_rejects_removed_old_brand_key_names() {
     let values = BTreeMap::from([("AGENT_WORLD_CLIENT_LAUNCHER_LANG", "en-US")]);
     let resolved = read_named_env_value_with(
         &|key| values.get(key).map(|value| value.to_string()),
@@ -273,7 +273,7 @@ fn read_named_env_value_with_ignores_removed_old_brand_key_names() {
 }
 
 #[test]
-fn ui_language_detect_from_values_prefers_current_launcher_key_and_falls_back_to_lang() {
+fn ui_language_detect_from_values_prefers_current_launcher_value_and_falls_back_to_lang() {
     assert_eq!(
         UiLanguage::detect_from_values(Some("en-US"), Some("zh-CN")),
         UiLanguage::EnUs
@@ -290,7 +290,7 @@ fn ui_language_detect_from_values_prefers_current_launcher_key_and_falls_back_to
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
-fn resolve_control_plane_env_with_ignores_removed_old_brand_key_names() {
+fn resolve_control_plane_env_with_rejects_removed_old_brand_key_names() {
     let values = BTreeMap::from([
         (
             "AGENT_WORLD_CLIENT_LAUNCHER_CONTROL_URL",

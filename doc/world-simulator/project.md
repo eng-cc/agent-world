@@ -852,6 +852,7 @@
 - [x] TASK-WORLD_SIMULATOR-277 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 `doc/world-simulator/llm/{llm-async-openai-responses,llm-lmso29-stability,llm-prompt-multi-step-orchestration}.prd.md` 中遗漏的当前 `cargo run/test/check -p` 命令口径，统一到 `cargo -p oasis7`。
 - [x] TASK-WORLD_SIMULATOR-278 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 移除 OpenClaw setup/bridge 源码中的 `OPENCLAW_AGENT_WORLD_*` env fallback 与 `agent_world_p0_low_freq_npc` profile alias，并同步回写 skill/world-simulator 现行文档为“旧 alias 已失效”。
 - [x] TASK-WORLD_SIMULATOR-279 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 runtime/tooling 已移除兼容层后的源码内嵌负向测试命名，统一 `module_source` / `builtin_wasm` / `llm_agent` / `wasm_build_suite` 到 `removed_old_brand` 语义，并明确旧 `AGENT_WORLD_*` 仅作为失效输入断言保留。
+- [x] TASK-WORLD_SIMULATOR-280 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 收口 viewer/client 已移除兼容层后的源码内嵌负向测试命名，统一 `viewer_env` / `perf_probe` / `viewer_3d_config` / `chat_auth` / `client launcher` 到 `rejects_removed_old_brand` 语义，并修正旧 `AGENT_WORLD_*` 失效断言。
 - [x] TASK-WORLD_SIMULATOR-203 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 viewer/OpenClaw 脚本中的旧品牌 env helper 与局部变量命名切到 `compat` 语义，收口脚本层里残留的 `legacy_key` / `viewer_legacy_env_key` / `promote_legacy_viewer_envs` 口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
@@ -939,7 +940,6 @@
 - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-panel-2026-03-07.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p0-2026-03-07.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-public-chain-p1-address-contract-assets-mempool-2026-03-08.prd.md`
-- `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-availability-ux-hardening-2026-03-08.project.md`
 - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-ui-ux-optimization-2026-03-08.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-blockchain-explorer-ui-ux-optimization-2026-03-08.project.md`
@@ -994,7 +994,7 @@
 - `testing-manual.md`
 ## 状态
 - 更新日期 / 当前状态 / 下一任务: 2026-03-21 / active / 无
-- 最新完成: `TASK-WORLD_SIMULATOR-279`（已收口 `module_source_compiler`、`builtin_wasm_materializer`、`llm_agent` 与 `wasm_build_suite` 中已移除兼容层对应的负向测试命名，统一到 `removed_old_brand` 语义，并将旧 `AGENT_WORLD_*` 保留范围收窄为“失效输入断言”。）
+- 最新完成: `TASK-WORLD_SIMULATOR-280`（已收口 `viewer_env`、`perf_probe`、`viewer_3d_config`、`egui_right_panel_chat` 与 `oasis7_client_launcher` 中已移除兼容层对应的负向测试命名，统一到 `rejects_removed_old_brand` 语义，并修正旧 `AGENT_WORLD_*` 的失效断言。）
 - 当前优先任务: `fix3` 已恢复 builtin/OpenClaw 的行为等价基线；继续压缩 OpenClaw absolute wait latency，争取把 `latency_class` 从 `B (experimental-only)` 收敛到 `A (default-candidate)` 后再讨论默认启用。
 - 当前阻断说明: `PRD-WORLD_SIMULATOR-040` 已完成 T4 对照采证并解除阻断；`PRD-WORLD_SIMULATOR-038` 在 `openclaw_builtin_parity_20260317_fix3` 中已恢复 `completion_rate=100%`、`timeout_rate=0%` 与 `move_agent=4`，且 `relative_wait_gap` 满足行为等价硬门禁，但 OpenClaw `median_extra_wait_ms=13957`、`p95_extra_wait_ms=14062` 仅达到 `latency_class B`，因此当前允许保持 `experimental` / 受限试点，仍不得默认启用。
 - 并行待办: 真实 `OpenClaw(Local HTTP)` 单 NPC 闭环试点（T5 / `experimental`） + 继续优化 OpenClaw absolute wait latency，并在达到 `latency_class A` 后重签 `PRD-WORLD_SIMULATOR-038` 的默认启用结论

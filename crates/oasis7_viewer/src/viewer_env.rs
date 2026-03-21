@@ -59,7 +59,7 @@ mod tests {
     }
 
     #[test]
-    fn resolve_viewer_env_with_ignores_removed_old_brand_key() {
+    fn resolve_viewer_env_with_rejects_removed_old_brand_key() {
         let values = HashMap::from([(REMOVED_OLD_BRAND_PANEL_MODE_KEY, "legacy")]);
         let resolved = resolve_viewer_env_with(
             &|key| values.get(key).map(|value| value.to_string()),
