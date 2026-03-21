@@ -146,7 +146,7 @@ Web 端默认定位为 Viewer/间接控制客户端，通过 `world_viewer_live 
 
 ## 仓库结构
 
-对外品牌与当前 workspace / crate 命名已统一为 `oasis7`；旧品牌前缀仅作为兼容 fallback、历史证据或迁移说明保留。
+对外品牌与当前 workspace / crate 命名已统一为 `oasis7`；仓库内的当前实现、脚本与入口均以 `oasis7` 为准。
 
 - `oasis7_proto` — 协议与共享数据模型
 - `oasis7_net` — 网络层

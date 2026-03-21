@@ -12,7 +12,7 @@ Use these exact values for a real local OpenClaw gameplay run:
 ## Process Ownership
 
 - `127.0.0.1:18789`: OpenClaw Gateway
-- `127.0.0.1:5841`: oasis7 local compatibility bridge
+- `127.0.0.1:5841`: oasis7 local bridge
 
 ## Execution Modes And Viewer Contract
 
@@ -141,7 +141,7 @@ bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
 Current boundary:
 
 - runtime agent installer is repo-backed: `scripts/setup-openclaw-oasis7-runtime.sh`
-- local compatibility bridge is repo-backed: `world_openclaw_local_bridge`
+- local bridge is repo-backed: `world_openclaw_local_bridge`
 - parity smoke is repo-backed: `scripts/openclaw-parity-p0.sh`
 
 So a downloaded game bundle is enough for real play. If bridge and runtime agent are already running, prefer `--reuse-bridge --skip-agent-setup` as the no-`cargo` path; only auto bridge bootstrap, runtime-agent install, source-tree launch, and `smoke` still need repo access + `cargo`.

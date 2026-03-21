@@ -89,7 +89,7 @@
 | 运行态存储治理 | `storage_profile`、snapshot/journal refs、GC 结果、目录字节数 | 启动时加载策略，运行时发布指标并执行 retention / GC | `configured -> active -> degraded/failed` | latest head 永远 pin；checkpoint 按高度排序；metrics 按目录聚合 | 仅运行时维护者 / 发布配置可放宽预算 |
 | 回放契约治理 | `canonical_log`、`checkpoint_anchor`、`retained_heights`、`execution_state_root` | 对保留范围内目标高度执行 replay 验证 | `requested -> replaying -> matched/mismatched` | 以 checkpoint + canonical log 为重建基准 | QA / 审计维护者可读取结果 |
 | WASM Docker 确定性构建与工件治理 | `builder_image_digest`、`source_hash`、`build_manifest_hash`、`wasm_hash`、`canonicalizer_version`、`canonical_token` | 统一 Docker canonical build、manifest/identity、DistFS 与 runtime binary-only 消费 | `source -> container-built -> canonicalized -> manifested -> verified/executed` | 发布级只允许一个 canonical hash；宿主差异不得进入发布 hash 空间 | `wasm_platform_engineer` 定义 builder image；CI 仅校验；生产发布不由 CI 写入 |
-| 历史标题治理 | 标题前缀、专题路径、兼容命名说明 | 将仍可读 runtime/module/governance/wasm/testing 专题标题切到 `oasis7 Runtime` | `legacy_title -> oasis7_runtime_title -> audited` | 先改主入口/治理/运行时专题，再改更深历史专题 | `producer_system_designer` 定口径，`runtime_engineer` 承接 |
+| 历史标题治理 | 标题前缀、专题路径、历史命名说明 | 将仍可读 runtime/module/governance/wasm/testing 专题标题切到 `oasis7 Runtime` | `legacy_title -> current_title -> audited` | 先改主入口/治理/运行时专题，再改更深历史专题 | `producer_system_designer` 定口径，`runtime_engineer` 承接 |
 - Acceptance Criteria:
   - AC-1: world-runtime PRD 覆盖内核、WASM、治理、安全四条主线。
   - AC-2: world-runtime project 文档任务映射 PRD-ID 并维护状态。

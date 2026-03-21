@@ -104,7 +104,7 @@ The runtime workspace is intentionally slim and is not meant for daily chat.
 
 ### 4. Start the bridge
 
-Run the local compatibility bridge that exposes world-simulator provider endpoints:
+Run the local bridge that exposes world-simulator provider endpoints:
 
 ```bash
 env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_openclaw_local_bridge -- --openclaw-agent oasis7_openclaw_agent
