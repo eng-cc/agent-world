@@ -131,7 +131,7 @@
 
 ### E14 对外发布演练与门禁稳定性修复（PRD-M4-E14）
 - [x] 实跑 `./scripts/release-gate.sh --quick`，覆盖 ci full + sync-m1/m4/m5 + Web strict + S9/S10
-- [x] 修复 builtin wasm materializer 测试环境污染（移除 `AGENT_WORLD_BUILTIN_WASM_DISTFS_ROOT` 设置）
+- [x] 修复 builtin wasm materializer 测试环境污染（移除旧品牌 builtin wasm distfs root 设置）
 - [x] 加固 `scripts/viewer-release-qa-loop.sh`：仅统计 Bevy/Rust 错误日志，忽略资源加载噪声
 - [x] 加固 `scripts/viewer-release-qa-loop.sh`：放宽 zoom gate 断言并增加截图重试/超时
 - [x] 加固 `scripts/viewer-release-qa-loop.sh`：`snapshotForAI` 超时不再阻断 gate

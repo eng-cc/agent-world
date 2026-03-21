@@ -119,7 +119,7 @@
 - [ ] 推送修复并打新 tag，继续观察并行 gate 是否能全部进入 aggregate `release_gate`。
 
 ### T3O Release gate web sibling binary 预热回补（2026-03-14）
-- [x] 复盘 `Release Packages` run `23080255868`，确认 `release-gate-web` 已越过 `trunk` 安装，但 `web_strict` 在 `world_game_launcher` 启动阶段因独立 job 缺少 `target/debug/world_viewer_live` 而失败；失败签名为 `failed to locate \`world_viewer_live\` binary; build it first or set AGENT_WORLD_WORLD_VIEWER_LIVE_BIN`。
+- [x] 复盘 `Release Packages` run `23080255868`，确认 `release-gate-web` 已越过 `trunk` 安装，但 `web_strict` 在 `world_game_launcher` 启动阶段因独立 job 缺少 `target/debug/world_viewer_live` 而失败；失败签名为 `failed to locate \`world_viewer_live\` binary; build it first or set OASIS7_WORLD_VIEWER_LIVE_BIN`。
 - [x] 调整 `scripts/viewer-release-qa-loop.sh`：在启动 `world_game_launcher` 前显式执行 `env -u RUSTC_WRAPPER cargo build -p oasis7 --bin world_viewer_live --bin world_chain_runtime`，把原先依赖其他步骤隐式生成 sibling binaries 的前置条件收回到脚本内部。
 - [x] 本地回归 `bash -n scripts/viewer-release-qa-loop.sh`，并确认预热命令已位于 `cargo run -p oasis7 --bin world_game_launcher` 之前。
 - [ ] 推送修复并打新 tag，继续观察 `release-gate-web` 是否越过 launcher 启动阶段，并进一步验证 aggregate `release_gate` 与后续打包链路。
