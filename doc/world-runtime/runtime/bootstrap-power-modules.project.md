@@ -14,7 +14,7 @@
 ### B2 模块实现
 - [x] 新增低效率辐射发电模块（`m1.power.radiation_harvest`，wasm 工件语义）
 - [x] 新增基础储能模块（`m1.power.storage`，含连续移动约束）
-- [x] 导出模块 ID/默认参数常量（`agent_world_builtin_wasm`），供治理安装与测试复用
+- [x] 导出模块 ID/默认参数常量（`oasis7_builtin_wasm`），供治理安装与测试复用
 - [x] 完成默认电力模块安装入口与测试闭环
 
 ### B3 运行时接入

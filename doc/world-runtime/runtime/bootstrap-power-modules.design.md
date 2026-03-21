@@ -14,7 +14,7 @@
 ## 3. 关键接口 / 入口
 - `World::install_m1_power_bootstrap_modules(actor)`
 - 模块 manifest、事件 `ModuleEmitted/ModuleStateUpdated`
-- `agent_world_builtin_wasm` 中的默认参数与模块 ID 常量
+- `oasis7_builtin_wasm` 中的默认参数与模块 ID 常量
 
 ## 4. 约束与边界
 - 内核只保证位置/资源/审计，供能语义由模块定义。

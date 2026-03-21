@@ -37,7 +37,7 @@
 - `doc/world-runtime/module/agent-default-modules.design.md`
 - 现有模块治理链路（`propose -> shadow -> approve -> apply`）
 - wasm-only 执行链路（`WasmExecutor`）与模块工件安装入口
-- `agent_world_builtin_wasm` 模块常量导出与模块清单结构
+- `oasis7_builtin_wasm` 模块常量导出与模块清单结构
 - Agent 资源账本与动作路由（pre_action/post_event）
 
 ## 状态
