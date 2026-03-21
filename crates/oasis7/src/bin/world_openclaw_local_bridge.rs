@@ -1448,7 +1448,7 @@ mod tests {
     #[test]
     fn local_session_id_from_session_key_hashes_invalid_chars() {
         let session_id = local_session_id_from_session_key(
-            "agent:oasis7_runtime:subagent:world-simulator:manual:agent-1",
+            "agent:oasis7_openclaw_agent:subagent:world-simulator:manual:agent-1",
         );
         assert!(session_id.starts_with("ws-"));
         assert!(session_id

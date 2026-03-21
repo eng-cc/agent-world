@@ -95,9 +95,9 @@ If you use `--download-dir ~/.cache/oasis7/releases`, the helper expands the cur
 
 Prefer the repo-owned lightweight runtime agent:
 
-- agent id: `oasis7_runtime`
+- agent id: `oasis7_openclaw_agent`
 - installer: `scripts/setup-openclaw-oasis7-runtime.sh`
-- workspace: `tools/openclaw/oasis7_runtime_workspace`
+- workspace: `tools/openclaw/oasis7_openclaw_workspace`
 
 ## Product Launch Command
 

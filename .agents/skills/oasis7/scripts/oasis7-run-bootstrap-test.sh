@@ -47,7 +47,7 @@ cat > "$fake_bin/openclaw" <<'OPENCLAW'
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ "$#" -ge 3 && "$1" == "agents" && "$2" == "list" && "$3" == "--json" ]]; then
-  printf '[{"id":"oasis7_runtime","workspace":"fake-workspace","model":"fake-model"}]\n'
+  printf '[{"id":"oasis7_openclaw_agent","workspace":"fake-workspace","model":"fake-model"}]\n'
   exit 0
 fi
 echo "unexpected openclaw invocation: $*" >&2

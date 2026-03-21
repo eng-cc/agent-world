@@ -66,7 +66,7 @@ Meaning:
 Check:
 
 1. lightweight runtime agent is installed and used
-2. bridge is started with `--openclaw-agent oasis7_runtime`
+2. bridge is started with `--openclaw-agent oasis7_openclaw_agent`
 3. parity artifact raw trace under `artifacts/openclaw_parity_*`
 4. latency may still be too high even when correctness is fine
 

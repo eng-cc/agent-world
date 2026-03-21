@@ -125,7 +125,7 @@
 - [x] TASK-WORLD_SIMULATOR-124 (PRD-WORLD_SIMULATOR-037) [test_tier_required]: 打通 `oasis7_client_launcher -> world_game_launcher -> world_viewer_live` 的 OpenClaw 参数透传，让产品主链路可把 `openclaw_agent_profile` 与本地 HTTP 配置送到 runtime live sidecar。
 - [x] TASK-WORLD_SIMULATOR-125 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 新增 `world_openclaw_local_bridge`，把本机已安装的 `OpenClaw Gateway/CLI` 转成 loopback-only world-simulator provider（`127.0.0.1:5841`），并完成真实 OpenClaw 主链路 / parity 冒烟。
 - [x] TASK-WORLD_SIMULATOR-126 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 OpenClaw bridge / parity 主链路补 `provider_config_ref` session scope、`P0-001` 巡游 guardrail 与 scenario memory hint，消除 session cross-talk、当前 location 误判与无效 patrol wait，跑通真实 `P0-001` smoke。
-- [x] TASK-WORLD_SIMULATOR-127 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 OpenClaw 增加 repo-owned 轻量 runtime agent bootstrap（`oasis7_runtime` workspace + setup 脚本），并把本地 bridge 决策调用切到 `gateway call agent --expect-final` / `sessionKey` 官方 RPC 形态，补齐真实轻量 agent probe。
+- [x] TASK-WORLD_SIMULATOR-127 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 OpenClaw 增加 repo-owned 轻量 runtime agent bootstrap（`oasis7_openclaw_agent` workspace + setup 脚本），并把本地 bridge 决策调用切到 `gateway call agent --expect-final` / `sessionKey` 官方 RPC 形态，补齐真实轻量 agent probe。
 - [x] TASK-WORLD_SIMULATOR-128 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 把 OpenClaw bridge 的 `sessionKey` 改成 `subagent:` 形态，显式触发 OpenClaw minimal prompt mode，并补齐真实 direct probe / parity 采证。
 - [x] TASK-WORLD_SIMULATOR-129 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 新增 repo skill `oasis7`，把 OpenClaw 真实试玩所需配置、轻量 runtime agent 安装、bridge 启动、launcher 启动与 parity smoke 收敛成可复用工作流。
 - [x] TASK-WORLD_SIMULATOR-130 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 为 `oasis7` 补充 `references/` 故障签名与 `scripts/oasis7-run.sh` 一键 real-play/smoke 封装，降低 OpenClaw 试玩/验收的重复操作成本。
@@ -349,7 +349,7 @@
     - `rg -n "OASIS7_VIEWER_" crates/oasis7_viewer/assets/themes --glob '*/presets/*.env'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-179 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 将 repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup/operator env 命名优先切到 `oasis7_runtime` / `OPENCLAW_OASIS7_*`，并保留旧 `oasis7_runtime` / `OASIS7_*` fallback，收口 runtime-agent bootstrap 链路里残留的旧品牌默认口径。
+- [x] TASK-WORLD_SIMULATOR-179 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 将 repo-owned OpenClaw lightweight runtime agent 的默认 agent id 与 setup/operator env 命名优先切到 `oasis7_openclaw_agent` / `OPENCLAW_OASIS7_*`，并清理旧 fallback，收口 runtime-agent bootstrap 链路里残留的旧品牌默认口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
@@ -433,7 +433,7 @@
     - `bash -n scripts/openclaw-parity-p0.sh`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_SIMULATOR-184 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 将 repo-owned OpenClaw runtime workspace 与 setup 主入口优先切到 `oasis7_runtime_workspace` / `setup-openclaw-oasis7-runtime.sh`，并保留旧 `oasis7_*` 路径作为兼容包装层，收口 runtime-agent operator 路径里残留的旧品牌默认口径。
+- [x] TASK-WORLD_SIMULATOR-184 (PRD-WORLD_SIMULATOR-037/038) [test_tier_required]: 将 repo-owned OpenClaw runtime workspace 与 setup 主入口优先切到 `oasis7_openclaw_workspace` / `setup-openclaw-oasis7-runtime.sh`，并保留旧 `oasis7_*` 路径作为兼容包装层，收口 runtime-agent operator 路径里残留的旧品牌默认口径。
   - 产物文件:
     - `doc/world-simulator/prd.md`
     - `doc/world-simulator/project.md`
@@ -443,7 +443,7 @@
     - `.agents/skills/oasis7/SKILL.md`
     - `.agents/skills/oasis7/references/real-play-config.md`
     - `.agents/skills/oasis7/scripts/oasis7-run.sh`
-    - `tools/openclaw/oasis7_runtime_workspace/*`
+    - `tools/openclaw/oasis7_openclaw_workspace/*`
   - 验收命令 (`test_tier_required`):
     - `bash -n scripts/setup-openclaw-oasis7-runtime.sh`
     - `bash -n scripts/setup-openclaw-oasis7-runtime.sh`
@@ -794,7 +794,7 @@
 - [x] TASK-WORLD_SIMULATOR-219 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `oasis7_builtin_wasm_modules` 目录与其下 `oasis7_builtin_wasm_*` crate name 直接切到 `oasis7_builtin_wasm_modules` / `oasis7_builtin_wasm_*`，并同步更新 builtin manifest map、模板、模块锁文件与构建脚本。
 - [x] TASK-WORLD_SIMULATOR-220 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `testing-manual.md`、`scripts/ci-tests.sh`、`scripts/viewer-release-qa-loop.sh` 与 Viewer HelloAck 默认 `server` 标识里的当前默认 `oasis7` 口径切到 `oasis7`，仅保留 compat payload / env fallback 的旧品牌样例。
 - [x] TASK-WORLD_SIMULATOR-221 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 README、站点首页、Viewer 手册与 `scenario_test_runner` 活跃入口中的当前默认 `oasis7*` crate/path/command/env/path 说明统一切到 `oasis7*` / `OASIS7_VIEWER_*` / `.oasis7_viewer`，并修复 `tools/scenario_test_runner` 对 `crates/oasis7` 的真实依赖路径。
-- [x] TASK-WORLD_SIMULATOR-222 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `tools/openclaw/oasis7_runtime_workspace/IDENTITY.md` 中仍残留的默认 runtime identity 名称 `oasis7_runtime` 对齐为 `oasis7_runtime`，避免与 `setup-openclaw-oasis7-runtime.sh` 当前默认 `AGENT_ID` 不一致。
+- [x] TASK-WORLD_SIMULATOR-222 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 对齐 `tools/openclaw/oasis7_openclaw_workspace/IDENTITY.md` 的默认 runtime identity 名称与 `setup-openclaw-oasis7-runtime.sh` 当前默认 `AGENT_ID`，避免 operator 侧口径分裂。
 - [x] TASK-WORLD_SIMULATOR-223 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `tools/wasm_build_suite/src/lib.rs` 中处理旧品牌 wasm fallback 的 helper / 常量 / 测试命名统一收口到 `compat_old_brand_*` 语义，保持兼容读取行为不变。
 - [x] TASK-WORLD_SIMULATOR-224 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 将 `crates/oasis7/src/simulator/llm_agent/tests_part3_module_lifecycle.rs` 中仍残留的测试名 `llm_oasis7_rules_guide_module_returns_stage_playbook` 对齐为 `oasis7` 语义，避免源码内部标识继续混用旧品牌前缀。
 - [x] TASK-WORLD_SIMULATOR-225 (PRD-WORLD_SIMULATOR-002/003) [test_tier_required]: 移除 `crates/oasis7_viewer/**` 中旧品牌 viewer env/path 的运行时 compat alias，使 Viewer 仅接受 `OASIS7_VIEWER_*` / `.oasis7_viewer` 当前入口，并同步删除对应 compat 测试。

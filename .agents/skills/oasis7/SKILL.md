@@ -96,8 +96,8 @@ scripts/setup-openclaw-oasis7-runtime.sh
 
 Defaults:
 
-- agent id: `oasis7_runtime`
-- workspace: `tools/openclaw/oasis7_runtime_workspace`
+- agent id: `oasis7_openclaw_agent`
+- workspace: `tools/openclaw/oasis7_openclaw_workspace`
 - model: `custom-right-codes/gpt-5.4`
 
 The runtime workspace is intentionally slim and is not meant for daily chat.
@@ -107,7 +107,7 @@ The runtime workspace is intentionally slim and is not meant for daily chat.
 Run the local compatibility bridge that exposes world-simulator provider endpoints:
 
 ```bash
-env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_openclaw_local_bridge -- --openclaw-agent oasis7_runtime
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_openclaw_local_bridge -- --openclaw-agent oasis7_openclaw_agent
 ```
 
 Expected local provider URL:
@@ -267,7 +267,7 @@ What it does:
 
 - `download`: downloads and extracts the GitHub Release bundle, then prints the usable bundle directory
 - `doctor`: checks command availability, Gateway health, bridge health, provider info, runtime agent presence, and optional `--bundle-dir` validity; add `--json` for machine-readable output
-- `play`: bootstrap `oasis7_runtime` unless you disable it, verify Gateway health, start the local bridge unless you pass `--reuse-bridge`, then run launcher from the bundle or source tree
+- `play`: bootstrap `oasis7_openclaw_agent` unless you disable it, verify Gateway health, start the local bridge unless you pass `--reuse-bridge`, then run launcher from the bundle or source tree
 - `smoke`: remains repo-backed because the parity harness lives under `scripts/openclaw-parity-p0.sh`
 
 ## Debug Checklist
@@ -298,7 +298,7 @@ Use these files as the source of truth:
 - Bridge entry: `crates/oasis7/src/bin/world_openclaw_local_bridge.rs`
 - Launcher entry: `crates/oasis7/src/bin/world_game_launcher.rs`
 - Runtime workspace installer: `scripts/setup-openclaw-oasis7-runtime.sh`
-- Runtime workspace policy: `tools/openclaw/oasis7_runtime_workspace/AGENTS.md`
+- Runtime workspace policy: `tools/openclaw/oasis7_openclaw_workspace/AGENTS.md`
 - Module tracker: `doc/world-simulator/project.md`
 - Daily log: `doc/devlog/2026-03-13.md`
 

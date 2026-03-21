@@ -14,8 +14,8 @@ openclaw_env_or_default() {
   fi
 }
 
-AGENT_ID="${1:-$(openclaw_env_or_default AGENT_ID oasis7_runtime)}"
-WORKSPACE_DIR="$(openclaw_env_or_default WORKSPACE "$ROOT_DIR/tools/openclaw/oasis7_runtime_workspace")"
+AGENT_ID="${1:-$(openclaw_env_or_default AGENT_ID oasis7_openclaw_agent)}"
+WORKSPACE_DIR="$(openclaw_env_or_default WORKSPACE "$ROOT_DIR/tools/openclaw/oasis7_openclaw_workspace")"
 MODEL_ID="$(openclaw_env_or_default MODEL custom-right-codes/gpt-5.4)"
 
 if ! command -v openclaw >/dev/null 2>&1; then
