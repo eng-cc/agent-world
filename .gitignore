@@ -33,8 +33,8 @@ config.toml
 # Local debug artifacts
 .tmp/
 .distfs/
-crates/agent_world/src/runtime/world/artifacts/m1_builtin_modules/*.wasm
-crates/agent_world/src/runtime/world/artifacts/m4_builtin_modules/*.wasm
+crates/oasis7/src/runtime/world/artifacts/m1_builtin_modules/*.wasm
+crates/oasis7/src/runtime/world/artifacts/m4_builtin_modules/*.wasm
 artifacts/owr4_baseline/
 # egui_kittest snapshot artifacts
 **/tests/snapshots/*.diff.png
@@ -42,5 +42,5 @@ artifacts/owr4_baseline/
 
 .playwright
 .playwright-cli
-crates/agent_world_viewer/dist
-tools/openclaw/agent_world_runtime_workspace/.openclaw/
+crates/oasis7_viewer/dist
+tools/openclaw/oasis7_runtime_workspace/.openclaw/
