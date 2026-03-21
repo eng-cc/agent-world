@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/world-simulator/viewer/viewer-visualization-3d.project.md`
 
 ## 1. 设计定位
-定义 Agent World 在 Bevy 中的 3D 可视化最小闭环：让 3D 场景承担空间态势直读，右侧面板承担语义与因果解释。
+定义 oasis7 在 Bevy 中的 3D 可视化最小闭环：让 3D 场景承担空间态势直读，右侧面板承担语义与因果解释。
 
 ## 2. 设计结构
 - 数据驱动层：复用 `WorldSnapshot` + `WorldEvent` 初始化并增量更新 3D 世界。

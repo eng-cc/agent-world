@@ -21,10 +21,10 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   RUST_TOOLCHAIN: 1.92.0
-  AGENT_WORLD_WASM_TOOLCHAIN: nightly-2025-12-11
-  AGENT_WORLD_WASM_TARGET: wasm32-unknown-unknown
-  AGENT_WORLD_WASM_BUILD_STD: "1"
-  AGENT_WORLD_WASM_BUILD_STD_COMPONENTS: std,panic_abort
+  OASIS7_WASM_TOOLCHAIN: nightly-2025-12-11
+  OASIS7_WASM_TARGET: wasm32-unknown-unknown
+  OASIS7_WASM_BUILD_STD: "1"
+  OASIS7_WASM_BUILD_STD_COMPONENTS: std,panic_abort
 
 jobs:
   collect-wasm-summaries:
@@ -49,8 +49,8 @@ jobs:
           rustup toolchain install "${RUST_TOOLCHAIN}" --profile default
           rustup target add wasm32-unknown-unknown --toolchain "${RUST_TOOLCHAIN}"
           rustup default "${RUST_TOOLCHAIN}"
-          rustup toolchain install "${AGENT_WORLD_WASM_TOOLCHAIN}" --profile minimal --component rust-src
-          rustup target add "${AGENT_WORLD_WASM_TARGET}" --toolchain "${AGENT_WORLD_WASM_TOOLCHAIN}"
+          rustup toolchain install "${OASIS7_WASM_TOOLCHAIN}" --profile minimal --component rust-src
+          rustup target add "${OASIS7_WASM_TARGET}" --toolchain "${OASIS7_WASM_TOOLCHAIN}"
       - name: Collect ${{ matrix.module_set }} summary on ${{ matrix.runner_label }}
         run: |
           ./scripts/ci-m1-wasm-summary.sh \

@@ -76,18 +76,18 @@
 - [x] 本地校验 workflow 结构与文档回写，继续观察新一轮 release tag 实跑表现。
 
 ### T3H Release gate UDP gossip flake 热修
-- [x] 复盘 `Release Packages` run `23053414184`，确认阻断点不是打包脚本，而是 `agent_world_node::tests::runtime_gossip_tracks_peer_committed_heads` 在 CI 高负载下 5 秒窗口内偶发未观测到 peer heads。
-- [x] 调整 `crates/agent_world_node/src/tests_split_part2.rs`：为 UDP gossip 双节点都启用 `with_auto_attest_all_validators(true)`，避免测试依赖跨节点 attestation 时序抖动；同时把等待窗口从 5s 提升到 8s，吸收 GitHub runner 高负载波动。
+- [x] 复盘 `Release Packages` run `23053414184`，确认阻断点不是打包脚本，而是 `oasis7_node::tests::runtime_gossip_tracks_peer_committed_heads` 在 CI 高负载下 5 秒窗口内偶发未观测到 peer heads。
+- [x] 调整 `crates/oasis7_node/src/tests_split_part2.rs`：为 UDP gossip 双节点都启用 `with_auto_attest_all_validators(true)`，避免测试依赖跨节点 attestation 时序抖动；同时把等待窗口从 5s 提升到 8s，吸收 GitHub runner 高负载波动。
 - [x] 本地回归该用例的精确重跑，并在回写 `project/devlog` 后继续通过新 tag 观察 `Release Packages` 是否彻底放行。
 
 ### T3I Release gate execution bridge signer allowlist 热修
 - [x] 复盘 `Release Packages` run `23055068064`，确认 `v0.0.8` 的新阻断点为 `world_chain_runtime` 单测 `node_runtime_execution_driver_commit_routes_modules_via_step_with_modules`；其前置 `InstallModuleFromArtifact` 实际被拒，因为 binary unit test 环境不会自动注入 `test.module.release.signer` 到 `World::new()` 的 `node_identity_bindings`。
-- [x] 调整 `crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`：在该测试里显式 `bind_node_identity(TEST_MODULE_ARTIFACT_SIGNER_NODE_ID, ...)`，并补充 `ModuleInstalled` / `module_tick_schedule` 前置断言，确保断言真正覆盖“commit 走 `step_with_modules` 并冒泡模块失败”。
+- [x] 调整 `crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`：在该测试里显式 `bind_node_identity(TEST_MODULE_ARTIFACT_SIGNER_NODE_ID, ...)`，并补充 `ModuleInstalled` / `module_tick_schedule` 前置断言，确保断言真正覆盖“commit 走 `step_with_modules` 并冒泡模块失败”。
 - [x] 本地回归 `world_chain_runtime` 定向用例，并与相邻 execution bridge 持久化用例一起校验通过；继续通过新 tag 观察 `Release Packages` 是否越过 `release-gate`。
 
 ### T3J Release gate m5 economic overlay hash token 热修
 - [x] 复盘 `Release Packages` run `23056942631`，确认 `v0.0.9` 的新阻断点在 `sync_m5`：`m5.gameplay.economic.overlay` 的 `linux-x86_64` canonical hash 已漂移到 `797e76900aa04297700c8ca5512ba9b00c6f8c4e83845d8ff473bd2adb0e6676`，而仓库清单仍写旧值 `36645c1c3fd590c4212691ba1ae0a881ef12171a9d375ee8693127e610968274`。
-- [x] 更新 `crates/agent_world/src/runtime/world/artifacts/m5_builtin_modules.sha256` 与 `crates/agent_world/src/runtime/world/artifacts/m5_builtin_modules.identity.json`：将 `m5.gameplay.economic.overlay` 的 `linux-x86_64` hash token 对齐到当前 canonical 产物；该模块现已与 `darwin-arm64` 共用同一 canonical hash。
+- [x] 更新 `crates/oasis7/src/runtime/world/artifacts/m5_builtin_modules.sha256` 与 `crates/oasis7/src/runtime/world/artifacts/m5_builtin_modules.identity.json`：将 `m5.gameplay.economic.overlay` 的 `linux-x86_64` hash token 对齐到当前 canonical 产物；该模块现已与 `darwin-arm64` 共用同一 canonical hash。
 - [ ] 本地回归 `./scripts/sync-m5-builtin-wasm-artifacts.sh --check`，并通过新 tag 继续观察 `Release Packages` 是否终于越过 `release-gate`。
 
 ### T3K Release gate agent-browser CLI fallback 热修
@@ -150,12 +150,12 @@
 
 ### T3T Release gate runtime agent chat env 串味修复（2026-03-14）
 - [x] 复盘 `Release Packages` run `23082322519`，确认 `release-gate-runtime` 唯一阻断为 `viewer::runtime_live::tests::runtime_authoritative_recovery_rotate_and_revoke_session_enforced_for_agent_chat`；失败签名显示预期 `session_revoked`，实际收到 `agent_provider_chat_unsupported`，说明并行单测期间 OpenClaw provider 环境变量串入了本应跑 LLM chat 路径的测试。
-- [x] 调整 `crates/agent_world/src/viewer/runtime_live/tests.rs`：新增 `lock_test_llm_env()`，复用 `runtime_openclaw_env_lock()` 与 `clear_runtime_openclaw_env()`，让 3 个 LLM agent chat / authoritative recovery 测试在设置 LLM env 前统一拿锁并清理 OpenClaw env，避免全局环境变量并发串味。
+- [x] 调整 `crates/oasis7/src/viewer/runtime_live/tests.rs`：新增 `lock_test_llm_env()`，复用 `runtime_openclaw_env_lock()` 与 `clear_runtime_openclaw_env()`，让 3 个 LLM agent chat / authoritative recovery 测试在设置 LLM env 前统一拿锁并清理 OpenClaw env，避免全局环境变量并发串味。
 - [x] 本地定向回归 `viewer::runtime_live::tests::runtime_agent_chat_replay_returns_idempotent_ack`、`viewer::runtime_live::tests::runtime_agent_chat_rejects_intent_seq_conflict_on_payload_change`、`viewer::runtime_live::tests::runtime_authoritative_recovery_rotate_and_revoke_session_enforced_for_agent_chat`，均已通过。
 - [ ] 推送修复并打新 tag，继续观察 `release-gate-runtime` 是否绿，并让 aggregate `release_gate` 真正放行到打包阶段。
 
 ### T3U Package-native 前端工具链自给自足（2026-03-14）
-- [x] 复盘 `Release Packages` run `23082925680`，确认 aggregate `release-gate` 首次放行后，`package-native (macos-14, macos-x64, agent-world-macos-x64.tar.gz, x86_64-apple-darwin)` 在 `Build launcher bundle` 失败；失败签名为 `error: required command not found: trunk`。
+- [x] 复盘 `Release Packages` run `23082925680`，确认 aggregate `release-gate` 首次放行后，`package-native (macos-14, macos-x64, oasis7-macos-x64.tar.gz, x86_64-apple-darwin)` 在 `Build launcher bundle` 失败；失败签名为 `error: required command not found: trunk`。
 - [x] 更新 `.github/workflows/release-packages.yml`：在 `package-native` 的工具链安装步骤中显式追加 `rustup target add wasm32-unknown-unknown`，并在缓存后新增 `Install trunk`，让 `scripts/build-game-launcher-bundle.sh` 为 `web-launcher/` 运行 `trunk build` 时不再依赖其他 job 的预装环境。
 - [x] 本地校验 workflow 关键片段，确认 `Install trunk` 位于 `Build launcher bundle` 之前，且 `shared-key` 已滚动到 `v2` 以避免复用旧缓存语义。
 - [x] 已推送修复并以 `v0.0.23` 触发远端验证；`Release Packages` run `23086016214` 已确认三平台 `package-native` 与 `publish-release` 全部通过。

@@ -34,7 +34,7 @@
   - SC-2: 新增脚本在合并前通过语法/参数最小校验。
   - SC-3: 脚本入口重复率下降并保留稳定主入口。
   - SC-4: 脚本任务 100% 映射到 PRD-SCRIPTS-ID。
-  - SC-5: scripts 治理专题标题统一使用 `oasis7` 品牌，不再在脚本治理入口中混用 `Agent World` 标题。
+  - SC-5: scripts 治理专题标题统一使用 `oasis7` 品牌，不再在脚本治理入口中混用 `oasis7` 标题。
   - SC-6: `doc/scripts/precommit/**` 等活跃脚本手册中的当前 crate 命令、依赖说明与 CI 帮助文案必须统一使用 `oasis7*` 口径；旧品牌包名仅允许保留在历史记录或外部原文引用中。
   - SC-7: `doc/scripts/viewer-tools/capture-viewer-frame.{prd,project}.md` 中当前 native fallback viewer 调试说明必须统一使用 `oasis7_viewer` / `OASIS7_VIEWER_*` 口径；旧品牌 viewer 包名与前缀仅允许保留在历史记录或外部原文引用中。
   - SC-8: repo-owned OpenClaw real-play helper 文档与脚本（`.agents/skills/oasis7/**`）中的当前 cargo 运行命令与入口路径必须统一使用 `oasis7` / `crates/oasis7*`；旧品牌包名与源码路径仅允许保留在兼容说明、历史证据或外部原文引用中。

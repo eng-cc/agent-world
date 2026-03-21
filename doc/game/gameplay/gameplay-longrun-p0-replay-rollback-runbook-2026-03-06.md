@@ -19,7 +19,7 @@
 
 ## 3. 演练命令（required-tier）
 ```bash
-env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_required runtime::tests::persistence::rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift -- --nocapture
+env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests::persistence::rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift -- --nocapture
 ```
 
 ## 4. 通过标准

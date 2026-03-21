@@ -119,7 +119,7 @@
   - AC-15: `world_viewer_live` 解析层移除 `--release-config` 与 `--node-*` 参数能力；定向测试覆盖“误传 legacy 参数 -> 启动失败 + 替代提示”路径。
   - AC-16: `world_viewer_live` 进一步移除 `--runtime-world` 兼容别名与旧 split CLI 路径，定向测试覆盖 `--release-config/--runtime-world/--node-*` 拒绝行为。
   - AC-17: 历史文档中 `world_viewer_live` 子目录旧路径完成迁移（对齐 `world_viewer_live.rs` 与 `world_chain_runtime/*` 现行布局），文档门禁通过。
-  - AC-18: `doc/p2p/**` 仍可读历史专题的首行标题必须统一使用 `oasis7 Runtime` 或 `oasis7` 品牌；旧 `Agent World*` 标题仅允许保留在正文历史上下文、证据原文与兼容说明中。
+  - AC-18: `doc/p2p/**` 仍可读历史专题的首行标题必须统一使用 `oasis7 Runtime` 或 `oasis7` 品牌；旧 `oasis7*` 标题仅允许保留在正文历史上下文、证据原文与兼容说明中。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。

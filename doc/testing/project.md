@@ -176,7 +176,7 @@
     - `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime_agent_chat_echo_env_enqueues_agent_spoke_virtual_event -- --nocapture`
     - `node --check crates/oasis7_viewer/software_safe.js`
     - `agent-browser` 手工链路：`open software_safe -> sendAgentChat -> runSteps -> getState().chatHistory` 观察 `source=event` 的 `AgentSpoke` 记录
-- [x] TASK-TESTING-059 (PRD-TESTING-004) [test_tier_required]: 对 `doc/testing/**` 的仍可读历史专题执行 title-only cleanup，将首行 `Agent World*` 公开标题统一切到 `oasis7*`，保留正文历史证据原文不动。
+- [x] TASK-TESTING-059 (PRD-TESTING-004) [test_tier_required]: 对 `doc/testing/**` 的仍可读历史专题执行 title-only cleanup，将首行 `oasis7*` 公开标题统一切到 `oasis7*`，保留正文历史证据原文不动。
 - [x] TASK-TESTING-060 (PRD-TESTING-004) [test_tier_required]: 清理 `doc/testing/launcher/**` 活跃专题里仍作为当前真值出现的旧品牌 crate/path/env/command，引文统一到 `oasis7*` / `OASIS7_*`。
   - 产物文件:
     - `doc/testing/prd.md`
@@ -189,7 +189,7 @@
     - `doc/testing/performance/*.md`
     - `doc/devlog/2026-03-19.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "^# Agent World|^# Agent World Runtime|^# Agent World Simulator|^# Agent World Viewer" doc/testing --glob '!third_party/**'`
+    - `rg -n "^# oasis7|^# oasis7 Runtime|^# oasis7 Simulator|^# oasis7 Viewer" doc/testing --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-TESTING-061 (PRD-TESTING-004) [test_tier_required]: 清理 `doc/testing/{longrun,governance,performance,ci,manual}` 活跃专题里已完成改名但文档仍残留的旧品牌 crate/path/env 当前真值。
@@ -211,7 +211,7 @@
 - 下一任务: 无（当前模块主项目无未完成任务）
 - 最新完成: `TASK-TESTING-061`（已清理 `doc/testing/{longrun,governance,performance,ci,manual}` 活跃专题中的旧品牌 crate/path/env 当前真值，统一到 `oasis7*` / `OASIS7_*`）。
 - 最新完成: `TASK-TESTING-060`（已清理 `doc/testing/launcher/**` 活跃专题中的旧品牌 crate/path/env/command 当前真值，统一到 `oasis7*` / `OASIS7_*`）。
-- 最新完成: `TASK-TESTING-059`（已完成 `doc/testing/**` 历史专题首行标题的 title-only cleanup，旧 `Agent World*` 公开标题已统一切到 `oasis7*`）。
+- 最新完成: `TASK-TESTING-059`（已完成 `doc/testing/**` 历史专题首行标题的 title-only cleanup，旧 `oasis7*` 公开标题已统一切到 `oasis7*`）。
 - 最新完成: `TASK-TESTING-058`（为 software-safe 消息流回归补 env-gated runtime echo 与 runtime 事件兼容解析，手工链路已能稳定观测 `AgentSpoke` 进入 `chatHistory`）。
 - 最新完成: `TASK-TESTING-057`（为 `renderMode=software_safe` 补专用 prompt/chat 回归方案与执行脚本，沉淀 `agent_spoke` 缺失签名与证据包）。
 - 最新完成: `TASK-TESTING-056`（基于 `runtime-core` 热点复盘重平衡 shard，把 `oasis7 --lib --bins` 从 `full-core` 挪到 `full-support`，降低最长 runtime shard）。

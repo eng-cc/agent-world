@@ -5,8 +5,8 @@
 - 设计/项目文档：
   - `doc/p2p/node/node-redeemable-power-asset.prd.md`
   - `doc/p2p/node/node-redeemable-power-asset.project.md`
-- 代码主线：`crates/agent_world/src/runtime/*`、`crates/agent_world/src/bin/world_viewer_live.rs`
-- 协议语义扩展：`crates/agent_world_proto/src/distributed.rs`
+- 代码主线：`crates/oasis7/src/runtime/*`、`crates/oasis7/src/bin/world_viewer_live.rs`
+- 协议语义扩展：`crates/oasis7_proto/src/distributed.rs`
 
 ## 交付摘要
 - RPA-1：完成 `PowerCredit` 资产账本、储备池与快照持久化。
@@ -52,14 +52,14 @@
 
 ## 回归验证
 - 结算/兑换闭环回归：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world reward_asset_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 reward_asset_ -- --nocapture`
 - viewer 启动链路与参数解析：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_viewer_live -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_viewer_live -- --nocapture`
 - DistFS 语义相关回归：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world node_points_runtime:: -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world_proto distributed:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 node_points_runtime:: -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7_proto distributed:: -- --nocapture`
 - 编译检查：
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world`
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7`
 
 ## 已知事项
 - 仓库提交钩子存在与本任务无关的内置 wasm hash manifest 漂移，任务提交采用 `--no-verify` 收口。

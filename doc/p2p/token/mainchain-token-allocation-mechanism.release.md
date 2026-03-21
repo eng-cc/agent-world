@@ -6,15 +6,15 @@
   - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`
   - `doc/p2p/token/mainchain-token-allocation-mechanism.project.md`
 - 代码主线：
-  - `crates/agent_world/src/runtime/main_token.rs`
-  - `crates/agent_world/src/runtime/events.rs`
-  - `crates/agent_world/src/runtime/state.rs`
-  - `crates/agent_world/src/runtime/state/apply_domain_event_core.rs`
-  - `crates/agent_world/src/runtime/world/event_processing.rs`
-  - `crates/agent_world/src/runtime/world/event_processing/action_to_event_core.rs`
-  - `crates/agent_world/src/runtime/world/resources.rs`
-  - `crates/agent_world/src/runtime/tests/main_token.rs`
-  - `crates/agent_world/src/runtime/tests/reward_asset_settlement_action.rs`
+  - `crates/oasis7/src/runtime/main_token.rs`
+  - `crates/oasis7/src/runtime/events.rs`
+  - `crates/oasis7/src/runtime/state.rs`
+  - `crates/oasis7/src/runtime/state/apply_domain_event_core.rs`
+  - `crates/oasis7/src/runtime/world/event_processing.rs`
+  - `crates/oasis7/src/runtime/world/event_processing/action_to_event_core.rs`
+  - `crates/oasis7/src/runtime/world/resources.rs`
+  - `crates/oasis7/src/runtime/tests/main_token.rs`
+  - `crates/oasis7/src/runtime/tests/reward_asset_settlement_action.rs`
 - 测试脚本与手册：
   - `scripts/main-token-regression.sh`
   - `testing-manual.md`

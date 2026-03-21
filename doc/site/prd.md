@@ -76,7 +76,7 @@
   - AC-3: 与 `site/doc` 与 GitHub Pages 相关设计文档口径一致。
   - AC-4: 发布前完成链接有效性与基础质量检查。
   - AC-5: 首页与文档入口页（`site/index.html`、`site/en/index.html`、`site/doc/cn/index.html`、`site/doc/en/index.html`）对“是否可玩”状态的表达必须一致且与真实状态相符。
-  - AC-6: `doc/site/github-pages/**` 仍可读历史专题的首行标题必须统一使用 `oasis7` 品牌；旧 `Agent World*` 标题仅允许保留在正文历史上下文与证据原文中。
+  - AC-6: `doc/site/github-pages/**` 仍可读历史专题的首行标题必须统一使用 `oasis7` 品牌；旧 `oasis7*` 标题仅允许保留在正文历史上下文与证据原文中。
   - AC-7: `doc/site/github-pages/**` 活跃专题中的当前 `cargo check -p` 命令、viewer crate 路径与 wasm 包名必须写为 `oasis7_viewer` / `crates/oasis7*`；旧品牌 viewer 包名与源码路径仅允许保留在历史证据或外部原文引用中。
 - Non-Goals:
   - 不在 site PRD 中定义 runtime/p2p 低层实现。
@@ -141,4 +141,4 @@
 | DEC-SITE-003 | 站点口径与 readme 联动维护 | 独立维护站点文案 | 可降低对外口径漂移。 |
 | DEC-SITE-004 | 对外“可玩状态”按真实产品状态保守表达（未可玩即明确预览） | 继续使用高承诺营销口径 | 可避免误导用户并降低信任风险。 |
 | DEC-SITE-005 | 站点先补“说明准备态”占位，再等待正式公告入口 | 直接在公开站点暗示正式发布已临近 | 站点公开承诺必须保持晚于内部正式沟通动作。 |
-| DEC-SITE-006 | 公开站点、GitHub Pages canonical 与 release 资产名统一为 `oasis7` | 保留旧 `agent-world` 外显名称仅改仓库 slug | 外部访问者最先接触的是站点与下载名，品牌必须先在这一层完全一致。 |
+| DEC-SITE-006 | 公开站点、GitHub Pages canonical 与 release 资产名统一为 `oasis7` | 保留旧 `oasis7` 外显名称仅改仓库 slug | 外部访问者最先接触的是站点与下载名，品牌必须先在这一层完全一致。 |

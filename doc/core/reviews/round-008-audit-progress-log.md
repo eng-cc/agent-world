@@ -248,7 +248,7 @@
 
 
 | 2026-03-10 11:05:00 +0800 | `producer_system_designer` | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap` | `backfill` | pass | I8-001/I8-002 | 已补齐 `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.design.md` 并回写 PRD/Project/README/index 互链 |
-| 2026-03-10 11:05:00 +0800 | `producer_system_designer` | `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus` | `backfill` | pass | I8-001/I8-002 | 已补齐 `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.design.md` 并回写 PRD/Project/README/index 互链 |
+| 2026-03-10 11:05:00 +0800 | `producer_system_designer` | `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus` | `backfill` | pass | I8-001/I8-002 | 已补齐 `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.design.md` 并回写 PRD/Project/README/index 互链 |
 | 2026-03-10 11:05:00 +0800 | `producer_system_designer` | `doc/p2p/distfs/distfs-builtin-wasm-storage` | `backfill` | pass | I8-001/I8-002 | 已补齐 `doc/p2p/distfs/distfs-builtin-wasm-storage.design.md` 并回写 PRD/Project/README/index 互链 |
 | 2026-03-10 11:05:00 +0800 | `producer_system_designer` | `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01` | `backfill` | pass | I8-001/I8-002 | 已补齐 `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.design.md` 并回写 PRD/Project/README/index 互链 |
 | 2026-03-10 11:05:00 +0800 | `producer_system_designer` | `doc/core/reviews/round-008-reviewed-files.md` | `backfill` | pass | I8-001/I8-002 | 已将 ROUND-008 统计推进到补齐 156 个专题、剩余 209 个缺口 |

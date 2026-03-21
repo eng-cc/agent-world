@@ -107,7 +107,7 @@
     - `pattern="$(printf 'cargo test -p agent_%sworld|crates/agent_%sworld' '' '')"; ! rg -n "$pattern" doc/world-runtime/project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_RUNTIME-050 (PRD-WORLD_RUNTIME-001/013/016/019) [test_tier_required]: 收口 `world-runtime runtime/module/governance` 活跃专题中仍把旧 `agent_world*` crate/path 写成当前实现载体的口径，统一到 `oasis7*` 与当前源码布局。
+- [x] TASK-WORLD_RUNTIME-050 (PRD-WORLD_RUNTIME-001/013/016/019) [test_tier_required]: 收口 `world-runtime runtime/module/governance` 活跃专题中仍把旧 `oasis7*` crate/path 写成当前实现载体的口径，统一到 `oasis7*` 与当前源码布局。
   - 产物文件:
     - `doc/world-runtime/runtime/runtime-infinite-sequence-rollover.project.md`
     - `doc/world-runtime/runtime/runtime-numeric-correctness-phase1.project.md`
@@ -128,7 +128,7 @@
     - `rg -n "oasis7(_consensus|_node|_net|_distfs|_proto|_wasm_executor)?|crates/oasis7|crates/oasis7_consensus|crates/oasis7_node|crates/oasis7_net|crates/oasis7_distfs|crates/oasis7_proto|crates/oasis7_wasm_executor" doc/world-runtime/runtime/runtime-infinite-sequence-rollover.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase1.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase2.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase6.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase6.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase7.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase7.project.md doc/world-runtime/runtime/runtime-numeric-correctness-phase8.prd.md doc/world-runtime/runtime/runtime-numeric-correctness-phase8.project.md doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.prd.md doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.design.md doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.project.md doc/world-runtime/module/online-module-release-legality-closure-2026-03-08.prd.md doc/world-runtime/governance/zero-trust-governance-receipt-hardening-2026-02-26.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-WORLD_RUNTIME-051 (PRD-WORLD_RUNTIME-001/010/011/012) [test_tier_required]: 收口 `world-runtime` 其余活跃 module/testing/governance 与 numeric-correctness 专题中仍把旧 `agent_world*` crate/path/command 写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-WORLD_RUNTIME-051 (PRD-WORLD_RUNTIME-001/010/011/012) [test_tier_required]: 收口 `world-runtime` 其余活跃 module/testing/governance 与 numeric-correctness 专题中仍把旧 `oasis7*` crate/path/command 写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/world-runtime/module/module-storage.project.md`
     - `doc/world-runtime/module/player-published-entities-2026-03-05.prd.md`
@@ -196,8 +196,8 @@
 - 当前状态: in_progress（OpenClaw/runtime live traceability 子切片已完成；WASM Docker builder image 与 wrapper 已落地，`TASK-WORLD_RUNTIME-043` 已完成 build receipt / canonical token / identity / CI summary / receipt-aware release gate / node-side proof flow 子切片，并先将 GitHub-hosted gate 收敛为 Linux-only；`TASK-WORLD_RUNTIME-044` 已完成 production source compile gate）
 - 下一任务: `TASK-WORLD_RUNTIME-043`
 - 最新完成: `TASK-WORLD_RUNTIME-052`（已完成 `world-runtime` 活跃专题中 builtin 模块命名、storage profile 覆盖 key 与 wasm operator env 当前入口口径的 `oasis7_builtin_wasm` / `OASIS7_CHAIN_STORAGE_PROFILE` / `OASIS7_WASM_*` / `OASIS7_BUILTIN_WASM_*` 收口。）
-- 最新完成: `TASK-WORLD_RUNTIME-051`（已完成 `world-runtime` 其余活跃 module/testing/governance 与 numeric-correctness 专题中旧 `agent_world*` crate/path/command 当前真值口径的 `oasis7*` 收口。）
-- 最新完成: `TASK-WORLD_RUNTIME-050`（已完成 `world-runtime runtime/module/governance` 活跃专题中旧 `agent_world*` crate/path 当前真值口径与已迁移源码路径的 `oasis7*` 收口。）
+- 最新完成: `TASK-WORLD_RUNTIME-051`（已完成 `world-runtime` 其余活跃 module/testing/governance 与 numeric-correctness 专题中旧 `oasis7*` crate/path/command 当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-WORLD_RUNTIME-050`（已完成 `world-runtime runtime/module/governance` 活跃专题中旧 `oasis7*` crate/path 当前真值口径与已迁移源码路径的 `oasis7*` 收口。）
 - 最新完成: `TASK-WORLD_RUNTIME-049`（world-runtime 模块主 `project.md` 中当前 cargo 回归命令与 crate 路径已统一切到 `oasis7` / `crates/oasis7*` 当前口径。）
 - 最新完成: `TASK-WORLD_RUNTIME-045`（world-runtime 模块仍可读专题标题统一切到 `oasis7 Runtime` 品牌，保留内部实现兼容名与历史证据正文不变）。
 - 最新完成: `TASK-WORLD_RUNTIME-046`（已将 WASM 构建、同步、CI summary 与 builder image 的 operator env key 收口到 `OASIS7_WASM_*` 当前入口；旧品牌 alias 已从 repo-owned 运行入口移除）。

@@ -79,7 +79,7 @@
 - [x] TASK-P2P-016-T2 [test_tier_required]: 执行文档门禁与旧路径 grep 清理校验（排除 `doc/devlog/**` 过程记录）。
 - [x] TASK-P2P-016-T3 [test_tier_required]: 回写主项目状态并关闭任务链。
 - [x] TASK-P2P-017 (PRD-P2P-001) [test_tier_required]: 同步 `doc/p2p/README.md` 与 `doc/p2p/prd.index.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
-- [x] TASK-P2P-018 (PRD-P2P-012) [test_tier_required]: 对 `doc/p2p/**` 的仍可读历史专题执行 title-only cleanup，将首行 `Agent World*` 公开标题统一切到 `oasis7*`，保留正文历史证据原文不动。
+- [x] TASK-P2P-018 (PRD-P2P-012) [test_tier_required]: 对 `doc/p2p/**` 的仍可读历史专题执行 title-only cleanup，将首行 `oasis7*` 公开标题统一切到 `oasis7*`，保留正文历史证据原文不动。
   - 产物文件:
     - `doc/p2p/prd.md`
     - `doc/p2p/project.md`
@@ -93,15 +93,15 @@
     - `doc/p2p/token/*.md`
     - `doc/devlog/2026-03-19.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "^# Agent World|^# Agent World Runtime|^# Agent World Simulator|^# Agent World Viewer" doc/p2p --glob '!third_party/**'`
+    - `rg -n "^# oasis7|^# oasis7 Runtime|^# oasis7 Simulator|^# oasis7 Viewer" doc/p2p --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-019 (PRD-P2P-007/008/009) [test_tier_required]: 收口 `doc/p2p/prd.md` 与 `doc/p2p/project.md` 主入口中仍把旧 `agent_world*` crate/path/command 写成当前控制面与验收真值的口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
-- [x] TASK-P2P-020 (PRD-P2P-001/004) [test_tier_required]: 收口 `p2p` 活跃 `consensus/network` 专题中仍把旧 `agent_world*` crate/path/command 写成当前实现载体的口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
+- [x] TASK-P2P-019 (PRD-P2P-007/008/009) [test_tier_required]: 收口 `doc/p2p/prd.md` 与 `doc/p2p/project.md` 主入口中仍把旧 `oasis7*` crate/path/command 写成当前控制面与验收真值的口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
+- [x] TASK-P2P-020 (PRD-P2P-001/004) [test_tier_required]: 收口 `p2p` 活跃 `consensus/network` 专题中仍把旧 `oasis7*` crate/path/command 写成当前实现载体的口径，统一到 `oasis7*` 与当前 `cargo -p oasis7*`。
   - 产物文件:
-    - `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`
-    - `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md`
-    - `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.design.md`
+    - `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.prd.md`
+    - `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.project.md`
+    - `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.design.md`
     - `doc/p2p/network/net-runtime-bridge-closure.prd.md`
     - `doc/p2p/network/net-runtime-bridge-closure.project.md`
     - `doc/p2p/network/net-runtime-bridge-closure.design.md`
@@ -111,10 +111,10 @@
     - `doc/p2p/network/readme-p1-network-production-hardening.design.md`
     - `doc/p2p/project.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "oasis7_(consensus|node|net|distfs|proto|viewer)|cargo (test|check) -p oasis7" doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.* doc/p2p/network/net-runtime-bridge-closure.* doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.project.md doc/p2p/network/readme-p1-network-production-hardening.*`
+    - `rg -n "oasis7_(consensus|node|net|distfs|proto|viewer)|cargo (test|check) -p oasis7" doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.* doc/p2p/network/net-runtime-bridge-closure.* doc/p2p/network/p2p-mobile-light-client-authoritative-state-2026-03-06.project.md doc/p2p/network/readme-p1-network-production-hardening.*`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-021 (PRD-P2P-005/006/007) [test_tier_required]: 收口 `observer` 主从专题与 `node-pos-*` 活跃文档中仍把旧 `agent_world_net` / `agent_world_node` / `agent_world_client_launcher` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-P2P-021 (PRD-P2P-005/006/007) [test_tier_required]: 收口 `observer` 主从专题与 `node-pos-*` 活跃文档中仍把旧 `oasis7_net` / `oasis7_node` / `oasis7_client_launcher` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.prd.md`
     - `doc/p2p/observer/observer-sync-mode-metrics-runtime-bridge.project.md`
@@ -137,7 +137,7 @@
     - `rg -n "oasis7_(net|node|client_launcher|launcher_ui)|crates/oasis7/" doc/p2p/observer/*.prd.md doc/p2p/observer/*.project.md doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.* doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.* doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.*`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-022 (PRD-P2P-001/005) [test_tier_required]: 收口 `distributed/token` 活跃专题中仍把旧 `agent_world*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-P2P-022 (PRD-P2P-001/005) [test_tier_required]: 收口 `distributed/token` 活跃专题中仍把旧 `oasis7*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`
     - `doc/p2p/distributed/distributed-hard-split-phase7.project.md`
@@ -152,7 +152,7 @@
     - `rg -n "oasis7_(net|consensus|distfs|proto|wasm_abi|node)|crates/oasis7/" doc/p2p/distributed/distributed-hard-split-phase7.* doc/p2p/distributed/distributed-pos-consensus.project.md doc/p2p/distributed/distributed-production-runtime-gap1234568-closure.prd.md doc/p2p/distributed/distributed-runtime.prd.md doc/p2p/token/mainchain-token-allocation-mechanism.project.md doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-023 (PRD-P2P-001) [test_tier_required]: 收口 `distfs` 活跃专题中仍把旧 `agent_world*` crate/path/command 写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-P2P-023 (PRD-P2P-001) [test_tier_required]: 收口 `distfs` 活跃专题中仍把旧 `oasis7*` crate/path/command 写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.prd.md`
     - `doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.project.md`
@@ -174,7 +174,7 @@
     - `rg -n "oasis7_(net|distfs|consensus|proto|node)|crates/oasis7/|cargo run -p oasis7_distfs" doc/p2p/distfs/distfs-heterogeneous-node-optimal-stability-2026-02-23.* doc/p2p/distfs/distfs-no-single-full-node-assumption-2026-02-23.* doc/p2p/distfs/distfs-self-healing-control-plane-2026-02-23.* doc/p2p/distfs/distfs-self-healing-runtime-polling-wiring-2026-02-23.* doc/p2p/distfs/distfs-path-index-observer-bootstrap.* doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.* doc/p2p/distfs/distfs-builtin-wasm-api-closure.*`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-024 (PRD-P2P-001) [test_tier_required]: 收口 `distfs` 其余活跃专题中仍把旧 `agent_world*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-P2P-024 (PRD-P2P-001) [test_tier_required]: 收口 `distfs` 其余活跃专题中仍把旧 `oasis7*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/p2p/distfs/distfs-runtime-path-index.prd.md`
     - `doc/p2p/distfs/distfs-runtime-path-index.project.md`
@@ -194,7 +194,7 @@
     - `rg -n "oasis7_(net|distfs)|crates/oasis7/" doc/p2p/distfs/distfs-runtime-path-index.* doc/p2p/distfs/distfs-self-healing-polling-loop-2026-02-23.* doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01.* doc/p2p/distfs/distfs-feedback-p2p-bridge-2026-03-01.* doc/p2p/distfs/distfs-builtin-wasm-storage.* doc/p2p/distfs/distfs-standard-file-io.*`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-025 (PRD-P2P-001) [test_tier_required]: 收口 `distfs production-hardening` 活跃专题中仍把旧 `agent_world*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-P2P-025 (PRD-P2P-001) [test_tier_required]: 收口 `distfs production-hardening` 活跃专题中仍把旧 `oasis7*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/p2p/distfs/distfs-production-hardening-phase1.prd.md`
     - `doc/p2p/distfs/distfs-production-hardening-phase1.project.md`
@@ -213,7 +213,7 @@
     - `rg -n "oasis7_(distfs|net|node|proto)|crates/oasis7/" doc/p2p/distfs/distfs-production-hardening-phase1.* doc/p2p/distfs/distfs-production-hardening-phase2.* doc/p2p/distfs/distfs-production-hardening-phase3.* doc/p2p/distfs/distfs-production-hardening-phase4.project.md doc/p2p/distfs/distfs-production-hardening-phase5.project.md doc/p2p/distfs/distfs-production-hardening-phase6.project.md doc/p2p/distfs/distfs-production-hardening-phase7.project.md doc/p2p/distfs/distfs-production-hardening-phase8.project.md doc/p2p/distfs/distfs-production-hardening-phase9.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-026 (PRD-P2P-001/003/005) [test_tier_required]: 收口 `blockchain` 活跃专题中仍把旧 `agent_world*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-P2P-026 (PRD-P2P-001/003/005) [test_tier_required]: 收口 `blockchain` 活跃专题中仍把旧 `oasis7*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.prd.md`
     - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.project.md`
@@ -235,7 +235,7 @@
     - `rg -n "oasis7_(consensus|distfs|node|proto)|crates/oasis7/" doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.* doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.* doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.project.md doc/p2p/blockchain/blockchain-p2pfs-hardening-phase2.* doc/p2p/blockchain/blockchain-p2pfs-hardening-phase3.* doc/p2p/blockchain/blockchain-p2pfs-hardening-phase4.project.md doc/p2p/blockchain/blockchain-p2pfs-hardening-phase5.project.md doc/p2p/blockchain/blockchain-p2pfs-hardening-phase6.project.md doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.project.md doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.project.md doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-027 (PRD-P2P-001/004) [test_tier_required]: 收口 `node/consensus` 活跃专题中仍把旧 `agent_world*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-P2P-027 (PRD-P2P-001/004) [test_tier_required]: 收口 `node/consensus` 活跃专题中仍把旧 `oasis7*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/p2p/node/node-net-stack-unification-readme.prd.md`
     - `doc/p2p/node/node-net-stack-unification-readme.project.md`
@@ -253,7 +253,7 @@
     - `rg -n "oasis7_(net|node|distfs|consensus|proto|viewer)|crates/oasis7/" doc/p2p/node/node-net-stack-unification-readme.* doc/p2p/node/node-redeemable-power-asset.project.md doc/p2p/node/node-redeemable-power-asset-signature-governance-phase3.project.md doc/p2p/node/node-reward-settlement-native-transaction.* doc/p2p/node/node-wasm32-libp2p-compile-guard.* doc/p2p/consensus/builtin-wasm-identity-consensus.*`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-028 (PRD-P2P-001/004) [test_tier_required]: 收口 `node` 活跃专题第二批中仍把旧 `agent_world*` crate/path 或旧 builtin wasm 环境变量写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-P2P-028 (PRD-P2P-001/004) [test_tier_required]: 收口 `node` 活跃专题第二批中仍把旧 `oasis7*` crate/path 或旧 builtin wasm 环境变量写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/p2p/node/node-reward-runtime-production-hardening-phase1.project.md`
     - `doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.prd.md`
@@ -268,7 +268,7 @@
     - `rg -n "oasis7_(node|distfs)|crates/oasis7/|OASIS7_BUILTIN_WASM_" doc/p2p/node/node-reward-runtime-production-hardening-phase1.project.md doc/p2p/node/node-execution-verification-reward-leader-failover-hardening.* doc/p2p/node/node-execution-reward-consensus-bridge.* doc/p2p/node/node-builtin-wasm-fetch-fallback-compile.* doc/p2p/node/node-redeemable-power-asset-audit-hardening.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-029 (PRD-P2P-001/004) [test_tier_required]: 收口 `node replication / contribution / reward` 活跃专题中仍把旧 `agent_world*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-P2P-029 (PRD-P2P-001/004) [test_tier_required]: 收口 `node replication / contribution / reward` 活跃专题中仍把旧 `oasis7*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/p2p/node/node-replication-libp2p-migration.prd.md`
     - `doc/p2p/node/node-replication-libp2p-migration.project.md`
@@ -289,7 +289,7 @@
     - `rg -n "oasis7_(node|net|distfs|consensus|proto)|crates/oasis7/" doc/p2p/node/node-replication-libp2p-migration.* doc/p2p/node/node-distfs-replication-network-closure.* doc/p2p/node/node-consensus-signer-binding-replication-hardening.* doc/p2p/node/node-uptime-base-reward.project.md doc/p2p/node/node-storage-system-reward-pool.project.md doc/p2p/node/node-contribution-points.* doc/p2p/node/node-contribution-points-runtime-closure.* doc/p2p/node/node-contribution-points-multi-node-closure-test.project.md doc/p2p/node/node-keypair-config-bootstrap.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-030 (PRD-P2P-001/004) [test_tier_required]: 收口 `viewer-live` 活跃专题中仍把旧 `agent_world*` crate/path 或 launcher 名称写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-P2P-030 (PRD-P2P-001/004) [test_tier_required]: 收口 `viewer-live` 活跃专题中仍把旧 `oasis7*` crate/path 或 launcher 名称写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/p2p/viewer-live/world-viewer-live-release-locked-launch-2026-02-23.prd.md`
     - `doc/p2p/viewer-live/world-viewer-live-no-llm-flag-2026-02-23.prd.md`
@@ -327,18 +327,18 @@
 - 更新日期: 2026-03-20
 - 当前状态: completed（ROUND-021）
 - 下一任务: 无（等待新需求）
-- 最新完成: `TASK-P2P-030`（已完成 `viewer-live` 活跃专题中旧 `agent_world*` crate/path 与 launcher 名称当前真值口径的 `oasis7*` 收口。）
-- 最新完成: `TASK-P2P-029`（已完成 `node replication / contribution / reward` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
-- 最新完成: `TASK-P2P-028`（已完成 `node` 活跃专题第二批中旧 `agent_world*` crate/path 与旧 builtin wasm 环境变量当前真值口径的 `oasis7*` 收口。）
-- 最新完成: `TASK-P2P-027`（已完成 `node/consensus` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
-- 最新完成: `TASK-P2P-026`（已完成 `blockchain` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
-- 最新完成: `TASK-P2P-025`（已完成 `distfs production-hardening` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
-- 最新完成: `TASK-P2P-024`（已完成 `distfs` 其余活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
-- 最新完成: `TASK-P2P-023`（已完成 `distfs` 活跃专题中旧 `agent_world*` crate/path/command 当前真值口径的 `oasis7*` 收口。）
-- 最新完成: `TASK-P2P-022`（已完成 `distributed/token` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-P2P-030`（已完成 `viewer-live` 活跃专题中旧 `oasis7*` crate/path 与 launcher 名称当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-P2P-029`（已完成 `node replication / contribution / reward` 活跃专题中旧 `oasis7*` crate/path 当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-P2P-028`（已完成 `node` 活跃专题第二批中旧 `oasis7*` crate/path 与旧 builtin wasm 环境变量当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-P2P-027`（已完成 `node/consensus` 活跃专题中旧 `oasis7*` crate/path 当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-P2P-026`（已完成 `blockchain` 活跃专题中旧 `oasis7*` crate/path 当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-P2P-025`（已完成 `distfs production-hardening` 活跃专题中旧 `oasis7*` crate/path 当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-P2P-024`（已完成 `distfs` 其余活跃专题中旧 `oasis7*` crate/path 当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-P2P-023`（已完成 `distfs` 活跃专题中旧 `oasis7*` crate/path/command 当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-P2P-022`（已完成 `distributed/token` 活跃专题中旧 `oasis7*` crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-021`（已完成 `observer` 主从专题与 `node-pos-*` 活跃文档中旧 crate/path 当前真值口径的 `oasis7*` 收口。）
-- 最新完成: `TASK-P2P-020`（已完成 `consensus/network` 活跃专题中旧 `agent_world*` crate/path/command 当前真值口径的 `oasis7*` 收口。）
-- 最新完成: `TASK-P2P-018~019`（已完成 `doc/p2p/**` 历史专题首行标题的 title-only cleanup，并收口主 `prd/project` 中仍把旧 `agent_world*` crate/path/command 写成当前控制面与验收真值的口径。）
+- 最新完成: `TASK-P2P-020`（已完成 `consensus/network` 活跃专题中旧 `oasis7*` crate/path/command 当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-P2P-018~019`（已完成 `doc/p2p/**` 历史专题首行标题的 title-only cleanup，并收口主 `prd/project` 中仍把旧 `oasis7*` crate/path/command 写成当前控制面与验收真值的口径。）
 - 最新完成: `TASK-P2P-017`（p2p 模块 README / PRD 索引入口同步）。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - 本轮新增: `TASK-P2P-006` 已完成，专题文档 `p2p-mobile-light-client-authoritative-state-2026-03-06` 已纳入索引和模块追踪映射。

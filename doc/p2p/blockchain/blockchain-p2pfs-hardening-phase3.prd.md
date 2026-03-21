@@ -13,7 +13,7 @@
 ## 2. User Experience & Functionality
 - User Personas: 协议维护者、任务执行者、质量复核者。
 - User Scenarios & Frequency: 每次专题改动前后执行需求核对、测试回归与状态回写。
-- User Stories: As a 维护者, I want Agent World Runtime：区块链 + P2P FS 硬改造（Phase 3）设计文档 的需求结构化, so that implementation is auditable.
+- User Stories: As a 维护者, I want oasis7 Runtime：区块链 + P2P FS 硬改造（Phase 3）设计文档 的需求结构化, so that implementation is auditable.
 - Critical User Flows: `阅读旧文档 -> 重写为 strict PRD -> 回写项目文档 -> 校验提交`。
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 动作行为 | 状态转换 | 计算规则 | 权限逻辑 |

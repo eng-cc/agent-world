@@ -249,7 +249,7 @@
 - `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8`
 - `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23`
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap`
-- `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus`
+- `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus`
 - `doc/p2p/distfs/distfs-builtin-wasm-storage`
 - `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01`
 - `doc/p2p/distfs/distfs-feedback-open-ledger-2026-03-01`

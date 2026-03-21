@@ -1,7 +1,7 @@
 # oasis7 Runtime：共识代码统一收敛到 oasis7_consensus（项目管理文档）
 
-- 对应设计文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.design.md`
-- 对应需求文档: `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`
+- 对应设计文档: `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.design.md`
+- 对应需求文档: `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.prd.md`
 
 审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
@@ -13,7 +13,7 @@
 - [x] CCG-5 (PRD-P2P-MIG-058)：完成 PoS 单链路收敛（`pos` 复用 `node_pos` 推进核心）、定向回归和文档/devlog 收口。
 
 ## 依赖
-- `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`
+- `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.prd.md`
 - `crates/oasis7_consensus/src/lib.rs`
 - `crates/oasis7_consensus/src/node_consensus_action.rs`
 - `crates/oasis7_consensus/src/node_consensus_message.rs`

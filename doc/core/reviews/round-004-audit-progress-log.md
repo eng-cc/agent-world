@@ -72,8 +72,8 @@
 | 2026-03-06 11:48:20  | codex | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.project.md` | issue_open | I4-003 | project 缺可执行命令片段 |
 | 2026-03-06 11:48:20  | codex | `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md` | issue_open | I4-001,I4-004,I4-006 | 追溯任务写为 T0~Tn 占位；PRD 缺验收命令段；PRD 含过程化迁移描述 |
 | 2026-03-06 11:48:20  | codex | `doc/p2p/consensus/builtin-wasm-identity-consensus.project.md` | issue_open | I4-003 | project 缺可执行命令片段 |
-| 2026-03-06 11:48:20  | codex | `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md` | issue_open | I4-001,I4-004,I4-006 | 追溯任务写为 T0~Tn 占位；PRD 缺验收命令段；PRD 含过程化迁移描述 |
-| 2026-03-06 11:48:20  | codex | `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md` | issue_open | I4-003 | project 缺可执行命令片段 |
+| 2026-03-06 11:48:20  | codex | `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.prd.md` | issue_open | I4-001,I4-004,I4-006 | 追溯任务写为 T0~Tn 占位；PRD 缺验收命令段；PRD 含过程化迁移描述 |
+| 2026-03-06 11:48:20  | codex | `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.project.md` | issue_open | I4-003 | project 缺可执行命令片段 |
 | 2026-03-06 11:48:20  | codex | `doc/p2p/distfs/distfs-builtin-wasm-api-closure.prd.md` | issue_open | I4-001,I4-004,I4-006 | 追溯任务写为 T0~Tn 占位；PRD 缺验收命令段；PRD 含过程化迁移描述 |
 | 2026-03-06 11:48:20  | codex | `doc/p2p/distfs/distfs-builtin-wasm-api-closure.project.md` | issue_open | I4-003 | project 缺可执行命令片段 |
 | 2026-03-06 11:48:20  | codex | `doc/p2p/distfs/distfs-builtin-wasm-storage.prd.md` | issue_open | I4-001,I4-004,I4-006 | 追溯任务写为 T0~Tn 占位；PRD 缺验收命令段；PRD 含过程化迁移描述 |
@@ -468,7 +468,7 @@
 | 2026-03-06 12:12:23 +0800 | codex | `doc/testing/ci/ci-wasm32-target-install.project.md` | pass | - | workflow 与脚本依赖链可达，未发现 D4 命令可执行性问题。 |
 | 2026-03-06 12:12:51 +0800 | codex | `doc/testing/governance/llm-skip-tick-ratio-metric.prd.md` | pass | - | 指标定义、计算口径与脚本输出链路完整，未见执行命令风险。 |
 | 2026-03-06 12:13:13 +0800 | codex | `doc/testing/governance/llm-skip-tick-ratio-metric.project.md` | pass | - | 任务映射到指标实现链路完整，未发现 D4 新问题。 |
-| 2026-03-06 12:13:37 +0800 | codex | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.prd.md` | issue_open | I4-002 | 边界处理里给出 `cargo build -p agent_world --bin world_chain_runtime`，未对齐仓库约定的 `env -u RUSTC_WRAPPER cargo ...` 可执行口径。 |
+| 2026-03-06 12:13:37 +0800 | codex | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.prd.md` | issue_open | I4-002 | 边界处理里给出 `cargo build -p oasis7 --bin world_chain_runtime`，未对齐仓库约定的 `env -u RUSTC_WRAPPER cargo ...` 可执行口径。 |
 | 2026-03-06 12:14:03 +0800 | codex | `doc/testing/governance/release-gate-metric-policy-alignment-2026-02-28.project.md` | pass | - | 项目任务与回归产物链路清晰，未见新增命令可执行性问题。 |
 | 2026-03-06 12:14:29 +0800 | codex | `doc/testing/governance/wasm-build-determinism-guard.prd.md` | pass | - | 构建护栏规则与 `sync --check` 验证链定义清晰，未见命令可执行性问题。 |
 | 2026-03-06 12:14:55 +0800 | codex | `doc/testing/governance/wasm-build-determinism-guard.project.md` | pass | - | 项目任务与护栏落点可追溯，未见 D4 新增风险。 |

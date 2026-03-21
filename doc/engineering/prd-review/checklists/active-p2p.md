@@ -34,8 +34,8 @@
 - [x] 2026-03-04 00:18:15 CST | doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/p2p/consensus/builtin-wasm-identity-consensus.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
-- [x] 2026-03-04 00:18:15 CST | doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
+- [x] 2026-03-04 00:18:15 CST | doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-builtin-wasm-api-closure.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-builtin-wasm-api-closure.project.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验
 - [x] 2026-03-04 00:18:15 CST | doc/p2p/distfs/distfs-builtin-wasm-storage.prd.md | 代码一致性: 已核对 | 重复性: 未发现需合并项 | 上下游对齐: 已核对 | 处理动作: 已完成全量审读与校验

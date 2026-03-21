@@ -35,10 +35,10 @@
 - [x] TASK-SCRIPTS-005 (PRD-SCRIPTS-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-SCRIPTS-006 (PRD-SCRIPTS-001) [test_tier_required]: 同步 `doc/scripts/README.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
 - [x] TASK-SCRIPTS-007 (PRD-SCRIPTS-001) [test_tier_required]: 修正 `doc/scripts/prd.index.md` 的 governance 表格格式，确保文件级索引在 Markdown 渲染中连续可读。
-- [x] TASK-SCRIPTS-008 (PRD-SCRIPTS-001) [test_tier_required]: 收口 `doc/scripts/**` 治理专题标题的 `oasis7` 品牌，避免脚本治理入口继续混用旧 `Agent World` 标题。
+- [x] TASK-SCRIPTS-008 (PRD-SCRIPTS-001) [test_tier_required]: 收口 `doc/scripts/**` 治理专题标题的 `oasis7` 品牌，避免脚本治理入口继续混用旧 `oasis7` 标题。
   - 验收命令 (`test_tier_required`):
     - `rg -n "^# oasis7" doc/scripts --glob '!third_party/**'`
-    - `rg -n "^# Agent World" doc/scripts --glob '!third_party/**'`
+    - `rg -n "^# oasis7" doc/scripts --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-SCRIPTS-009 (PRD-SCRIPTS-001) [test_tier_required]: 收口 `doc/scripts/precommit/pre-commit.{prd,project}.md` 中当前 viewer wasm 编译门禁与依赖说明的 crate 命名，统一使用 `oasis7_viewer` 口径。

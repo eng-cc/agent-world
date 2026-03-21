@@ -11,7 +11,7 @@
     "wasm_deterministic_guard": "1",
     "canonicalizer_version": "strip-custom-sections-v1",
     "container_platform": "linux-x86_64",
-    "builder_image_ref": "agent-world/wasm-builder:nightly-2025-12-11",
+    "builder_image_ref": "oasis7/wasm-builder:nightly-2025-12-11",
     "builder_image_digest": "sha256:08cb684c3ecc06e4e31e2dc9a4cfdb13bb140ea88619a47fb7a39c2fdab07e9a",
     "build_suite_version": "0.1.0",
     "canonical_platforms": [

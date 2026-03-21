@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/p2p/token/mainchain-token-allocation-mechanism.project.md`
 
 ## 1. 设计定位
-定义 Agent World 主链 Token 分配与发行机制主设计，统一总量、分配对象、发行节奏与治理约束。
+定义 oasis7 主链 Token 分配与发行机制主设计，统一总量、分配对象、发行节奏与治理约束。
 
 ## 2. 设计结构
 - 发行模型层：定义 token 总量、发行节奏与基础约束。

@@ -6,7 +6,7 @@
 审计轮次: 3
 
 ## 1. 设计定位
-本设计把 Agent World 的 WASM 发布级构建从“宿主机护栏 + keyed hash 对账”升级为“Docker canonical builder”。设计目标不是否定现有脚本和 build suite，而是把它们放进同一个 pinned 容器镜像里，让宿主平台不再参与发布 hash 的生成。
+本设计把 oasis7 的 WASM 发布级构建从“宿主机护栏 + keyed hash 对账”升级为“Docker canonical builder”。设计目标不是否定现有脚本和 build suite，而是把它们放进同一个 pinned 容器镜像里，让宿主平台不再参与发布 hash 的生成。
 
 ## 2. 现状盘点
 

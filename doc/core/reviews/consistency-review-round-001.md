@@ -94,8 +94,8 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 | I-001 | agent-browser wrapper 路径口径漂移：文档/脚本混用 `scripts/agent-browser`、`$REPO_ROOT/.codex/...`、`./.codex/...`，与当前执行口径不一致。 | `world-simulator/viewer`、`testing/manual`、`playability_test_result`、`site/doc`、`scripts/*` | high |
 | I-002 | 多份活跃文档仍引用旧文档路径（如 `scripts/viewer-tools/*.prd.md`、`scripts/precommit/*.prd.md`），当前有效入口应为 `doc/scripts/...`。 | `engineering`、`testing/ci`、`world-simulator/viewer`、`p2p/node` | high |
 | I-003 | `pre-commit` 文档对 `required` 套件定义与 `scripts/ci-tests.sh` 实现不一致（文档仍写 `sync-m1/m4/m5 --check`）。 | `doc/scripts/precommit/*`、`doc/testing/ci/*` | high |
-| I-004 | launcher 生命周期文档引用不存在的测试文件 `crates/agent_world/src/bin/world_game_launcher/tests.rs`。 | `doc/testing/launcher/*` | high |
-| I-005 | world-runtime 治理/审计事件模型与代码不一致（`ShadowReport` 字段、事件枚举、失败类型）。 | `doc/world-runtime/governance/*`、`crates/agent_world/src/runtime/*` | high |
+| I-004 | launcher 生命周期文档引用不存在的测试文件 `crates/oasis7/src/bin/world_game_launcher/tests.rs`。 | `doc/testing/launcher/*` | high |
+| I-005 | world-runtime 治理/审计事件模型与代码不一致（`ShadowReport` 字段、事件枚举、失败类型）。 | `doc/world-runtime/governance/*`、`crates/oasis7/src/runtime/*` | high |
 | I-006 | `audit-export.md` 的导出 API 描述（`limit/cursor` 分页）与实现 `save_audit_log(path, filter)` 不一致。 | `doc/world-runtime/governance/audit-export.md` | high |
 | I-007 | world-runtime 根 PRD 生命周期状态机仍写 `deprecated/blocked`，与当前 ABI action 集合不一致。 | `doc/world-runtime/prd.md` | high |
 | I-008 | world-simulator 旧 launcher 文档仍描述 native 直拉 game/chain；当前实现已切换到 `world_web_launcher` 控制面。 | `doc/world-simulator/launcher/*` | medium |
@@ -141,7 +141,7 @@ rg -n "审计轮次:[[:space:]]*[1-9][0-9]*" doc/*/prd*.md doc/*/**/*.prd*.md
 
 ## 整改验证快照（2026-03-05）
 - A-002：`rg -n "scripts/(precommit|viewer-tools)/.*\\.prd(\\.project)?\\.md" doc --glob '*.md' | grep -v 'doc/scripts/'` 无命中。
-- A-003：`test -f crates/agent_world/src/bin/world_game_launcher/world_game_launcher_tests.rs`；文档已补“最小验收命令”。
+- A-003：`test -f crates/oasis7/src/bin/world_game_launcher/world_game_launcher_tests.rs`；文档已补“最小验收命令”。
 - A-004：`doc/scripts/precommit/pre-commit.prd.md` 已与 `scripts/ci-tests.sh` required/full 行为对齐并补验收命令。
 - A-011：`readme-resource-model-layering` 与 `gameplay-engineering-architecture` 已统一为 `Electricity`/`Data` 计费口径。
 - A-013：`S_round001` 已按 `审计轮次: 1` 规则重生成，统计基线更新为 67 份。

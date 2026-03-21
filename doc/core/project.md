@@ -159,7 +159,7 @@
 - [x] TASK-CORE-027 (PRD-CORE-003) [test_tier_required]: 清理 `doc/README.md` 兼容跳转入口中的重复条目，保持工程总入口导航唯一且可读。
 - [x] TASK-CORE-028 (PRD-CORE-009) [test_tier_required]: 完成“三模式总契约（`standard_3d / software_safe / pure_api`）”专题 PRD / Design / Project 建模，并同步 core 主入口、索引、README 与 devlog。
 - [x] TASK-CORE-029 (PRD-CORE-009) [test_tier_required]: 对齐 `testing-manual`、`world-simulator`、`game` 与 `testing` 下游文档术语，明确 `standard_3d / software_safe / pure_api` 属于玩家访问模式，`player_parity / headless_agent / debug_viewer` 属于 execution lane。
-- [x] TASK-CORE-030 (PRD-CORE-008/009) [test_tier_required]: 收口 core 活跃专题标题、Viewer 活跃手册与实际 Viewer 窗口/Web 标题的 `oasis7` 品牌，明确旧 `agent_world*` / `world_*` 仅作 internal compatibility naming。
+- [x] TASK-CORE-030 (PRD-CORE-008/009) [test_tier_required]: 收口 core 活跃专题标题、Viewer 活跃手册与实际 Viewer 窗口/Web 标题的 `oasis7` 品牌，明确旧 `oasis7*` / `world_*` 仅作 internal compatibility naming。
   - 产物文件:
     - `doc/core/prd.md`
     - `doc/core/player-access-mode-contract-2026-03-19.{prd,design,project}.md`
@@ -192,7 +192,7 @@
     - `doc/world-runtime/**/*.md`
   - 验收命令 (`test_tier_required`):
     - `rg -n "^# oasis7|^# oasis7 Runtime" doc/engineering doc/scripts doc/world-runtime --glob '!third_party/**'`
-    - `rg -n "^# Agent World|^# Agent World Runtime" doc/engineering doc/scripts doc/world-runtime --glob '!third_party/**'`
+    - `rg -n "^# oasis7|^# oasis7 Runtime" doc/engineering doc/scripts doc/world-runtime --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-CORE-032 (PRD-CORE-003/008) [test_tier_required]: 收口 `core` 模块地图中的当前 crate 路径真值，确保跨模块设计入口统一引用 `oasis7*` crate / 目录。

@@ -80,7 +80,7 @@
   - 验收命令 (`test_tier_required`):
     - `rg -n "Short-form publish note|technical preview|not playable yet|GitHub issue or PR" doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.md`
     - `./scripts/doc-governance-check.sh`
-- [x] TASK-README-018 (PRD-README-014) [test_tier_required]: 统一根 README、测试手册与世界规则的公开品牌为 `oasis7`，并在根 README 显式说明内部 `agent_world*` / `world_*` 兼容命名仍保留。
+- [x] TASK-README-018 (PRD-README-014) [test_tier_required]: 统一根 README、测试手册与世界规则的公开品牌为 `oasis7`，并在根 README 显式说明内部 `oasis7*` / `world_*` 兼容命名仍保留。
   - 产物文件:
     - `README.md`
     - `testing-manual.md`
@@ -91,17 +91,17 @@
     - `rg -n "^# oasis7$|^# oasis7: 系统性应用测试手册|^# oasis7 Specification" README.md testing-manual.md world-rule.md`
     - `./scripts/readme-link-check.sh`
     - `./scripts/doc-governance-check.sh`
-- [x] TASK-README-019 (PRD-README-014) [test_tier_required]: 对 `doc/readme/governance/**` 的仍可读历史专题执行 title-only cleanup，将首行 `Agent World*` 公开标题统一切到 `oasis7*`，保留正文历史证据原文不动。
+- [x] TASK-README-019 (PRD-README-014) [test_tier_required]: 对 `doc/readme/governance/**` 的仍可读历史专题执行 title-only cleanup，将首行 `oasis7*` 公开标题统一切到 `oasis7*`，保留正文历史证据原文不动。
   - 产物文件:
     - `doc/readme/prd.md`
     - `doc/readme/project.md`
     - `doc/readme/governance/*.md`
     - `doc/devlog/2026-03-19.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "^# Agent World|^# Agent World Runtime|^# Agent World Simulator|^# Agent World Viewer" doc/readme --glob '!third_party/**'`
+    - `rg -n "^# oasis7|^# oasis7 Runtime|^# oasis7 Simulator|^# oasis7 Viewer" doc/readme --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-README-020 (PRD-README-014) [test_tier_required]: 收口 `doc/readme/governance/**` 中仍作为当前公开口径使用的项目名，将 Moltbook 方案、帖文草案与相关治理文档中的 `Agent World` 统一切到 `oasis7`，保留历史证据/外部原文引用边界。
+- [x] TASK-README-020 (PRD-README-014) [test_tier_required]: 收口 `doc/readme/governance/**` 中仍作为当前公开口径使用的项目名，将 Moltbook 方案、帖文草案与相关治理文档中的 `oasis7` 统一切到 `oasis7`，保留历史证据/外部原文引用边界。
   - 产物文件:
     - `doc/readme/prd.md`
     - `doc/readme/project.md`
@@ -110,10 +110,10 @@
     - `doc/readme/governance/liveops-to-producer-task-readme-014-moltbook-promotion-plan-2026-03-19.md`
     - `doc/readme/governance/readme-resource-model-layering.prd.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "Agent World" doc/readme/governance --glob '!third_party/**'`
+    - `rg -n "oasis7" doc/readme/governance --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-README-021 (PRD-README-014) [test_tier_required]: 收口 `doc/readme/gap/**` 与 `doc/readme/production/**` 活跃专题中仍把旧 `agent_world*` crate/path 写成当前实现载体的口径，统一到 `oasis7*` 与当前源码布局。
+- [x] TASK-README-021 (PRD-README-014) [test_tier_required]: 收口 `doc/readme/gap/**` 与 `doc/readme/production/**` 活跃专题中仍把旧 `oasis7*` crate/path 写成当前实现载体的口径，统一到 `oasis7*` 与当前源码布局。
   - 产物文件:
     - `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.prd.md`
     - `doc/readme/gap/readme-gap-distributed-prod-hardening-gap12345.project.md`
@@ -170,9 +170,9 @@
 - 下一任务: 无（当前模块主项目无未完成任务）
 - 最新完成: `TASK-README-023`（已补齐 `doc/readme/production/**` 活跃专题中遗漏的当前实现模块名口径，统一切到 `oasis7::runtime`。）
 - 最新完成: `TASK-README-022`（已补齐 `doc/readme/gap/**` 活跃专题中遗漏的当前环境变量口径，统一切到 `OASIS7_MODULE_SOURCE_COMPILER`。）
-- 最新完成: `TASK-README-021`（已完成 `doc/readme/gap/**` 与 `doc/readme/production/**` 活跃专题中旧 `agent_world*` crate/path 当前真值口径与已迁移源码路径的 `oasis7*` 收口。）
+- 最新完成: `TASK-README-021`（已完成 `doc/readme/gap/**` 与 `doc/readme/production/**` 活跃专题中旧 `oasis7*` crate/path 当前真值口径与已迁移源码路径的 `oasis7*` 收口。）
 - 最新完成: `TASK-README-018`（根 README / testing-manual / world-rule 已统一为 `oasis7` 品牌，并补 internal naming compatibility 说明）。
-- 最新完成: `TASK-README-019`（已完成 `doc/readme/governance/**` 历史专题首行标题的 title-only cleanup，旧 `Agent World*` 公开标题已统一切到 `oasis7*`）。
+- 最新完成: `TASK-README-019`（已完成 `doc/readme/governance/**` 历史专题首行标题的 title-only cleanup，旧 `oasis7*` 公开标题已统一切到 `oasis7*`）。
 - 最新完成: `TASK-README-020`（已完成 `doc/readme/governance/**` 当前公开口径中的项目名收口，Moltbook 方案与草案正文统一改写为 `oasis7`）。
 - 最新完成: `TASK-README-011`（readme 模块 README 目录索引同步）。
 - 最新完成: `TASK-README-012`（readme 模块 completed 状态摘要补齐）。

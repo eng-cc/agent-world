@@ -174,7 +174,7 @@
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.project.md`
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.project.md`
 - `doc/p2p/consensus/builtin-wasm-identity-consensus.project.md`
-- `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md`
+- `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.project.md`
 - `doc/p2p/distfs/builtin-wasm-distfs-api-closure.project.md`
 - `doc/p2p/distfs/builtin-wasm-distfs-storage.project.md`
 - `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.project.md`

@@ -184,8 +184,8 @@
 | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/p2p/consensus/builtin-wasm-identity-consensus.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
-| `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
+| `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/p2p/design.md` | `design` | `design` | no | no | done | done | done | `backfill` | `producer_system_designer` | `done` | B6-001 新增模块 design 入口 |
 | `doc/p2p/distfs/distfs-builtin-wasm-api-closure.prd.md` | `prd` | `prd` | 待判定 | 待判定 | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |
 | `doc/p2p/distfs/distfs-builtin-wasm-api-closure.project.md` | `project` | `project` | 待判定 | no | 待判定 | done | done | `keep` | `producer_system_designer` | `done` | ROUND-006 已完成最终收口 |

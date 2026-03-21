@@ -29,11 +29,11 @@
   - 产物：`output/playwright/playability/pure-api-required-20260319-135315/`
   - 新增检查 `recovery_snapshot_present / recovery_player_gameplay_present` 均已通过。
 - 定向验证：
-  - `env -u RUSTC_WRAPPER cargo test -q -p agent_world --bin world_pure_api_client`
-  - `env -u RUSTC_WRAPPER cargo test -q -p agent_world_viewer build_player_post_onboarding_snapshot_prefers_canonical_player_gameplay_snapshot`
-  - `env -u RUSTC_WRAPPER cargo test -q -p agent_world_viewer build_player_post_onboarding_snapshot_uses_canonical_blocker_fields`
-  - `env -u RUSTC_WRAPPER cargo check -q -p agent_world -p agent_world_viewer`
-  - `env -u RUSTC_WRAPPER cargo build -q -p agent_world --bin world_pure_api_client`
+  - `env -u RUSTC_WRAPPER cargo test -q -p oasis7 --bin world_pure_api_client`
+  - `env -u RUSTC_WRAPPER cargo test -q -p oasis7_viewer build_player_post_onboarding_snapshot_prefers_canonical_player_gameplay_snapshot`
+  - `env -u RUSTC_WRAPPER cargo test -q -p oasis7_viewer build_player_post_onboarding_snapshot_uses_canonical_blocker_fields`
+  - `env -u RUSTC_WRAPPER cargo check -q -p oasis7 -p oasis7_viewer`
+  - `env -u RUSTC_WRAPPER cargo build -q -p oasis7 --bin world_pure_api_client`
   - `target/debug/world_pure_api_client --addr 127.0.0.1:5132 reconnect-sync --player-id player-api-smoke --with-snapshot`
 
 ## 执行命令

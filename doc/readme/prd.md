@@ -78,8 +78,8 @@
   - AC-3: README 与 `world-rule.md`、`testing-manual.md`、模块 PRD 的链接链路可用。
   - AC-4: 口径更新有明确触发条件与同步时限。
   - AC-5: 渠道化推广方案必须显式绑定内部公开口径边界，不得把 generic marketing 文案直接外推到第三方平台。
-  - AC-6: `doc/readme/governance/**` 仍可读历史专题的首行标题必须统一使用 `oasis7` 品牌；旧 `Agent World*` 标题仅允许保留在正文历史上下文与证据原文中。
-  - AC-7: `doc/readme/governance/**` 中仍作为当前公开口径使用的项目名必须统一写为 `oasis7`；旧 `Agent World` 仅允许保留在历史证据、兼容说明或外部原文引用中。
+  - AC-6: `doc/readme/governance/**` 仍可读历史专题的首行标题必须统一使用 `oasis7` 品牌；旧 `oasis7*` 标题仅允许保留在正文历史上下文与证据原文中。
+  - AC-7: `doc/readme/governance/**` 中仍作为当前公开口径使用的项目名必须统一写为 `oasis7`；旧 `oasis7` 仅允许保留在历史证据、兼容说明或外部原文引用中。
 - Non-Goals:
   - 不在 readme PRD 中替代各模块详细设计。
   - 不在 readme PRD 中定义测试用例细节。

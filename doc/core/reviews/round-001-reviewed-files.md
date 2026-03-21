@@ -19,7 +19,7 @@
 - `doc/headless-runtime/prd.index.md`
 - `doc/headless-runtime/prd.md`
 - `doc/headless-runtime/project.md`
-- `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`
+- `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.prd.md`
 - `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.md`
 - `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.project.md`
 - `doc/p2p/distributed/distributed-hard-split-phase7.prd.md`

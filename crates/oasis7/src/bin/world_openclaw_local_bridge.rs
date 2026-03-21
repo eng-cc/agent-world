@@ -950,7 +950,7 @@ fn build_decision_prompt(request: &DecisionRequest, recent_feedback: &[String]) 
     });
     format!(
         concat!(
-            "You are controlling a low-frequency NPC in agent-world. ",
+            "You are controlling a low-frequency NPC in oasis7. ",
             "Return ONLY one minified JSON object with no markdown, no prose, and no code fences. ",
             "Respect the profile and only use actions from action_catalog. ",
             "For profile oasis7_p0_low_freq_npc, prefer legal forward progress over idle waiting. ",

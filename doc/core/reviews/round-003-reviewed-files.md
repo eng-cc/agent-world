@@ -103,8 +103,8 @@
 - `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.project.md`
 - `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md`
 - `doc/p2p/consensus/builtin-wasm-identity-consensus.project.md`
-- `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md`
-- `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md`
+- `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.prd.md`
+- `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.project.md`
 - `doc/p2p/distfs/distfs-builtin-wasm-api-closure.prd.md`
 - `doc/p2p/distfs/distfs-builtin-wasm-api-closure.project.md`
 - `doc/p2p/distfs/distfs-builtin-wasm-storage.prd.md`

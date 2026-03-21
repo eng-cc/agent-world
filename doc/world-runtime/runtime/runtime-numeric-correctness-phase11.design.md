@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/world-runtime/runtime/runtime-numeric-correctness-phase11.project.md`
 
 ## 1. 设计定位
-定义数值正确性硬化第 11 阶段设计，聚焦 `Agent World Runtime：Membership Replay 调度/冷却时间门控算术语义硬化（15 点清单第十一阶段）` 涉及的计数、时间、比率或状态转移边界，消除溢出、截断与顺序漂移风险。
+定义数值正确性硬化第 11 阶段设计，聚焦 `oasis7 Runtime：Membership Replay 调度/冷却时间门控算术语义硬化（15 点清单第十一阶段）` 涉及的计数、时间、比率或状态转移边界，消除溢出、截断与顺序漂移风险。
 
 ## 2. 设计结构
 - 问题收敛层：识别本阶段涉及的算术、计数器、时间源或状态转移边界。

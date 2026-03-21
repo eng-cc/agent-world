@@ -32,8 +32,8 @@
   - 扩展到 transfer/explorer/launcher 其他功能验收。
 
 ## Inputs
-- 关键文件：`crates/agent_world/src/bin/world_chain_runtime/execution_bridge.rs`、`crates/agent_world/src/bin/world_chain_runtime.rs`、`doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`
-- 关键命令：`env -u RUSTC_WRAPPER cargo test -p agent_world node_runtime_execution_driver_uses_storage_profile_checkpoint_interval -- --nocapture`、真实 runtime probe + gate 复跑命令
+- 关键文件：`crates/oasis7/src/bin/world_chain_runtime/execution_bridge.rs`、`crates/oasis7/src/bin/world_chain_runtime.rs`、`doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`
+- 关键命令：`env -u RUSTC_WRAPPER cargo test -p oasis7 node_runtime_execution_driver_uses_storage_profile_checkpoint_interval -- --nocapture`、真实 runtime probe + gate 复跑命令
 - 上游依赖：`runtime_engineer` 已完成 profile 透传修复
 - 现有测试 / 证据：`doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md`、`.tmp/runtime_t72_probe_20260310-235637/artifacts/*`
 

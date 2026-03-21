@@ -27,8 +27,8 @@
   - 再执行一次成功 `save_to_dir()`，验证 `sweep_sidecar_orphan_blobs(...)` 后 `orphan_blob_count = 0`、`last_gc_result = success`。
 
 ## 测试记录
-- `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime collect_storage_metrics_sidecar_orphan_recovers_after_successful_save -- --nocapture`
-- `env -u RUSTC_WRAPPER cargo test -p agent_world --bin world_chain_runtime collect_storage_metrics_reports_storage_snapshot -- --nocapture`
+- `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime collect_storage_metrics_sidecar_orphan_recovers_after_successful_save -- --nocapture`
+- `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin world_chain_runtime collect_storage_metrics_reports_storage_snapshot -- --nocapture`
 
 ## 结论
 - 当前没有证据表明 sidecar orphan 是稳定泄漏。

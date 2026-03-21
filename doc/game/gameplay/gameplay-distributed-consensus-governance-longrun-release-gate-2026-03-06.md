@@ -20,9 +20,9 @@
 ## 3. 证据与结果
 | 证据ID | 命令/来源 | 结果 | 关键结论 | 产物 |
 | --- | --- | --- | --- | --- |
-| E1 | `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::governance:: -- --nocapture` | pass | 治理门禁 + 身份惩罚申诉回归通过 | 本地测试日志 |
-| E2 | `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::gameplay_protocol:: -- --nocapture` | pass | 快照投票与惩罚后投票权恢复闭环通过 | 本地测试日志 |
-| E3 | `env -u RUSTC_WRAPPER cargo test -p agent_world runtime::tests::persistence:: -- --nocapture` + `runtime::tests::audit::` | pass | 快照恢复、审计事件过滤回归通过 | 本地测试日志 |
+| E1 | `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::governance:: -- --nocapture` | pass | 治理门禁 + 身份惩罚申诉回归通过 | 本地测试日志 |
+| E2 | `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::gameplay_protocol:: -- --nocapture` | pass | 快照投票与惩罚后投票权恢复闭环通过 | 本地测试日志 |
+| E3 | `env -u RUSTC_WRAPPER cargo test -p oasis7 runtime::tests::persistence:: -- --nocapture` + `runtime::tests::audit::` | pass | 快照恢复、审计事件过滤回归通过 | 本地测试日志 |
 | E4 | `./scripts/p2p-longrun-soak.sh --profile soak_smoke --topologies triad --duration-secs 90 --no-prewarm --chaos-continuous-enable --chaos-continuous-interval-secs 20 --chaos-continuous-start-sec 20 --chaos-continuous-max-events 2 --chaos-continuous-actions restart,pause --out-dir .tmp/p2p_longrun_dcg009` | pass | 新增共识哈希一致性门禁在短窗 chaos 下可用 | `.tmp/p2p_longrun_dcg009/20260306-175501/` |
 | E5 | `./scripts/p2p-longrun-soak.sh --profile soak_release --topologies triad_distributed --duration-secs 300 --no-prewarm --max-stall-secs 240 --max-lag-p95 50 --max-distfs-failure-ratio 0.1 --chaos-continuous-enable --chaos-continuous-interval-secs 30 --chaos-continuous-start-sec 30 --chaos-continuous-max-events 8 --chaos-continuous-actions restart,pause --chaos-continuous-seed 1772284566 --chaos-continuous-restart-down-secs 1 --chaos-continuous-pause-duration-secs 2 --out-dir .tmp/release_gate_p2p_dcg010` | pass | `overall_status=ok`、`metric_gate=pass`、`consensus_hash_consistent=true`、`consensus_hash_mismatch_count=0` | `.tmp/release_gate_p2p_dcg010/20260306-180215/` |
 

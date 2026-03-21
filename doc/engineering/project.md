@@ -54,10 +54,10 @@
 - [x] TASK-ENGINEERING-047 (PRD-ENGINEERING-016) [test_tier_required]: 统一各模块主 `prd.md` 接口区中“文件级索引”路径的反引号格式，保持入口字段样式一致。
 - [x] TASK-ENGINEERING-048 (PRD-ENGINEERING-016) [test_tier_required]: 回写 `module-root-md-allowlist`，补齐近期新增模块根级专题文档与交接记录路径，恢复 allowlist 与真实目录一致。
 - [x] TASK-ENGINEERING-049 (PRD-ENGINEERING-018) [test_tier_required]: 将根 `AGENTS.md` 顶部协作执行口径从“可开启 sub agent”收敛为“切换到标准角色视角并加载职责卡”，消除机制表述与现行角色协作工作流的不一致。
-- [x] TASK-ENGINEERING-050 (PRD-ENGINEERING-016) [test_tier_required]: 收口 `doc/engineering/**` 仍可读治理专题标题的 `oasis7` 品牌，避免工程治理入口继续混用旧 `Agent World` 标题。
+- [x] TASK-ENGINEERING-050 (PRD-ENGINEERING-016) [test_tier_required]: 收口 `doc/engineering/**` 仍可读治理专题标题的 `oasis7` 品牌，避免工程治理入口继续混用旧 `oasis7` 标题。
   - 验收命令 (`test_tier_required`):
     - `rg -n "^# oasis7" doc/engineering --glob '!third_party/**'`
-    - `rg -n "^# Agent World" doc/engineering --glob '!third_party/**'`
+    - `rg -n "^# oasis7" doc/engineering --glob '!third_party/**'`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 

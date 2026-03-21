@@ -166,8 +166,8 @@
 | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-roadmap.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
 | `doc/p2p/consensus/builtin-wasm-identity-consensus.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
 | `doc/p2p/consensus/builtin-wasm-identity-consensus.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
-| `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
-| `doc/p2p/consensus/consensus-code-consolidation-to-agent-world-consensus.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
+| `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
+| `doc/p2p/consensus/consensus-code-consolidation-to-oasis7-consensus.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |
 | `doc/p2p/design.md` | `design` | `mixed_prd_design` | `I7-002` | `trim` | `n/a` | `n/a` | `producer_system_designer` | `done` | 已将旧模板段落标题收敛为设计型段落名，并完成复核 |
 | `doc/p2p/distfs/distfs-builtin-wasm-api-closure.prd.md` | `prd` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | PRD 目标态边界复核通过 |
 | `doc/p2p/distfs/distfs-builtin-wasm-api-closure.project.md` | `project` | `pass` | `none` | `keep` | `n/a` | `n/a` | `producer_system_designer` | `done` | Project 执行闭环边界复核通过 |

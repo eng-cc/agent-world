@@ -16,12 +16,12 @@
 ## 关键指标
 | 指标 | 说明 | 来源 | 当前状态 (`pass` / `fail` / `blocked`) | 证据路径 | 备注 |
 | --- | --- | --- | --- | --- | --- |
-| replay / state root 一致性 | 确定性回放与恢复后状态根一致 | `required` | `pass` | `env -u RUSTC_WRAPPER cargo test -p agent_world from_snapshot_replay_rebuilds_missing_tick_consensus_records -- --nocapture` | 2026-03-10 本轮实测通过。 |
-| WASM ABI / hash / registry | 工件、接口、registry 可追溯且无漂移 | `full` | `pass` | `env -u RUSTC_WRAPPER cargo test -p agent_world --features test_tier_full --test module_release_sla_triad -- --nocapture` | 覆盖 wasm hash、artifact identity、submit->shadow->approve->apply 链路。 |
-| 治理状态机 / 拒绝路径 | propose/shadow/approve/apply 与拒绝原因完整 | `required` | `pass` | `env -u RUSTC_WRAPPER cargo test -p agent_world longrun_operability_release_gate_blocks_stage_and_economy_pressure -- --nocapture` | 覆盖 stage / rollback drill / economy gate 的阻断原因。 |
+| replay / state root 一致性 | 确定性回放与恢复后状态根一致 | `required` | `pass` | `env -u RUSTC_WRAPPER cargo test -p oasis7 from_snapshot_replay_rebuilds_missing_tick_consensus_records -- --nocapture` | 2026-03-10 本轮实测通过。 |
+| WASM ABI / hash / registry | 工件、接口、registry 可追溯且无漂移 | `full` | `pass` | `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_full --test module_release_sla_triad -- --nocapture` | 覆盖 wasm hash、artifact identity、submit->shadow->approve->apply 链路。 |
+| 治理状态机 / 拒绝路径 | propose/shadow/approve/apply 与拒绝原因完整 | `required` | `pass` | `env -u RUSTC_WRAPPER cargo test -p oasis7 longrun_operability_release_gate_blocks_stage_and_economy_pressure -- --nocapture` | 覆盖 stage / rollback drill / economy gate 的阻断原因。 |
 | 安全失败签名 | 越权、缺审计、receipt 断裂等失败签名为 0 | `required` | `pass` | `doc/world-runtime/checklists/runtime-core-boundary-acceptance-checklist.md` / `doc/world-runtime/templates/runtime-security-numeric-regression-template.md` | 本轮定向回归未见新增安全失败签名。 |
-| 数值语义失败签名 | 数值漂移、边界值异常、恢复后不一致等失败签名为 0 | `required` | `pass` | `env -u RUSTC_WRAPPER cargo test -p agent_world snapshot_retention_policy_prunes_old_entries -- --nocapture` | 保留/裁剪后语义保持一致，本轮无异常信号。 |
-| storage / GC / replay summary | profile、GC 结果、恢复摘要满足当前候选要求 | `required` | `pass` | `env -u RUSTC_WRAPPER cargo test -p agent_world storage_footprint_fixture_baseline_covers_2500_ticks -- --nocapture` / `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.project.md` / `.tmp/s10_longrun_t2/20260308-113318/summary.md` | T7.1 基线已覆盖 2500 ticks；现有 S10 摘要仅为 dry-run，不作为阻断失败。 |
+| 数值语义失败签名 | 数值漂移、边界值异常、恢复后不一致等失败签名为 0 | `required` | `pass` | `env -u RUSTC_WRAPPER cargo test -p oasis7 snapshot_retention_policy_prunes_old_entries -- --nocapture` | 保留/裁剪后语义保持一致，本轮无异常信号。 |
+| storage / GC / replay summary | profile、GC 结果、恢复摘要满足当前候选要求 | `required` | `pass` | `env -u RUSTC_WRAPPER cargo test -p oasis7 storage_footprint_fixture_baseline_covers_2500_ticks -- --nocapture` / `doc/world-runtime/runtime/runtime-storage-footprint-governance-2026-03-08.project.md` / `.tmp/s10_longrun_t2/20260308-113318/summary.md` | T7.1 基线已覆盖 2500 ticks；现有 S10 摘要仅为 dry-run，不作为阻断失败。 |
 
 ## 风险与例外
 | 风险 ID | 描述 | 是否阻断 | 缓解措施 | 负责人 | 复审时间 |

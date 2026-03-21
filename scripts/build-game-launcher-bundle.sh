@@ -94,7 +94,7 @@ validate_web_dist_source() {
 
   # Guardrail: this script often gets pointed at top-level `site/`, which is
   # docs/marketing pages and will open GitHub Pages instead of the game viewer.
-  if grep -E -q "eng-cc\.github\.io/(agent-world|oasis7)|doc/cn/index.html|会进化的文明战争游戏" "$index_html"; then
+  if grep -E -q "eng-cc\.github\.io/oasis7|doc/cn/index.html|会进化的文明战争游戏" "$index_html"; then
     echo "error: --web-dist appears to be docs/marketing site, not viewer web dist: $web_dist" >&2
     echo "hint: remove --web-dist to let script run trunk build automatically," >&2
     echo "      or pass a dist directory built from crates/oasis7_viewer." >&2

@@ -48,7 +48,7 @@
   - SC-17: `devlog` 继续按日期单文件归档，但多角色执行时单条记录必须显式标注角色。
   - SC-18: `devlog` / handoff 中的角色字段由 `.agents/roles/*.md` 白名单约束，新增别名违规数为 0。
   - SC-19: 当任务需要其他伙伴协作时，执行主体必须切换到标准角色视角并加载对应职责卡，不再依赖未定义的 `sub agent` 机制表述。
-  - SC-20: `engineering` 模块治理专题标题对外统一使用 `oasis7` 品牌，不再在活跃/历史治理入口中混用 `Agent World` 标题。
+  - SC-20: `engineering` 模块治理专题标题对外统一使用 `oasis7` 品牌，不再在活跃/历史治理入口中混用 `oasis7` 标题。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -125,7 +125,7 @@
   - AC-17A: 根 `AGENTS.md` 的“项目运行模式”需明确：需要其他伙伴协作时，执行主体必须切换到 `.agents/roles/*.md` 中的标准角色视角并加载对应职责描述，而非依赖未定义的 `sub agent` 能力。
   - AC-18: 根 `AGENTS.md` 的 devlog 规则需明确“按日期单文件、不按角色拆文件、条目级标角色”的约束。
   - AC-19: 文档治理门禁需阻断 `devlog` / handoff 中未在 `.agents/roles/*.md` 注册的角色名。
-  - AC-20: `doc/engineering/**` 仍可读治理专题标题统一使用 `oasis7` 品牌；旧 `Agent World` 仅允许出现在历史正文引用或实现兼容说明中。
+  - AC-20: `doc/engineering/**` 仍可读治理专题标题统一使用 `oasis7` 品牌；旧 `oasis7` 仅允许出现在历史正文引用或实现兼容说明中。
 - Non-Goals:
   - 不定义 gameplay/p2p/runtime 业务规则。
   - 不替代模块内部测试策略。

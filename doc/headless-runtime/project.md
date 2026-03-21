@@ -24,7 +24,7 @@
     - `rg -n "对接规则|引用字段映射|testing 证据包|core go/no-go" doc/headless-runtime/templates/headless-runtime-release-gate-linkage.md`
 - [x] TASK-NONVIEWER-005 (PRD-NONVIEWER-001/002/003) [test_tier_required]: 对齐 strict PRD schema，补齐关键流程/规格矩阵/边界异常/NFR/验证与决策记录。
 - [x] TASK-NONVIEWER-006 (PRD-NONVIEWER-001) [test_tier_required]: 同步 `doc/headless-runtime/README.md` 与 `doc/headless-runtime/prd.index.md` 的模块入口索引，补齐近期专题、模块职责与根目录收口口径。
-- [x] TASK-NONVIEWER-007 (PRD-NONVIEWER-001/002/003) [test_tier_required]: 收口 `doc/headless-runtime/nonviewer/**` 活跃专题中仍把旧 `agent_world*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
+- [x] TASK-NONVIEWER-007 (PRD-NONVIEWER-001/002/003) [test_tier_required]: 收口 `doc/headless-runtime/nonviewer/**` 活跃专题中仍把旧 `oasis7*` crate/path 写成当前实现载体的口径，统一到 `oasis7*`。
   - 产物文件:
     - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.prd.md`
     - `doc/headless-runtime/nonviewer/nonviewer-onchain-auth-protocol-hardening.project.md`
@@ -61,7 +61,7 @@
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
 - 最新完成: `TASK-NONVIEWER-008`（已补齐 `nonviewer-onchain-auth-protocol-hardening` 项目文档中遗漏的当前实现 crate 名，统一切到 `oasis7::viewer`。）
-- 最新完成: `TASK-NONVIEWER-007`（已完成 `doc/headless-runtime/nonviewer/**` 活跃专题中旧 `agent_world*` crate/path 当前真值口径的 `oasis7*` 收口。）
+- 最新完成: `TASK-NONVIEWER-007`（已完成 `doc/headless-runtime/nonviewer/**` 活跃专题中旧 `oasis7*` crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-NONVIEWER-006`（headless-runtime 模块 README / PRD 索引入口同步）。
 - 阶段收口优先级: `P1`
 - 阶段 owner: `runtime_engineer`（验证：`qa_engineer`；排序裁剪：`producer_system_designer`）
