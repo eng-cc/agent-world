@@ -65,7 +65,7 @@
 
 ### 5) LLM Debug 工具（仅 debug 模式）
 - 新增配置：
-  - `AGENT_WORLD_LLM_DEBUG_MODE`（默认 `false`）。
+  - `OASIS7_LLM_DEBUG_MODE`（默认 `false`）。
 - tool 暴露策略：
   - 默认仅保留现有 query tools + `agent_submit_decision`。
   - 当 `debug_mode=true` 时，追加 `agent_debug_grant_resource` tool。
@@ -342,11 +342,11 @@
 - 不改 viewer 协议或展示逻辑。
 
 ### 接口 / 数据
-- `crates/agent_world/src/simulator/llm_agent/behavior_loop.rs`
+- `crates/oasis7/src/simulator/llm_agent/behavior_loop.rs`
   - `collapse_multi_turn_payloads` 与 `parsed_turn_kind_name` 作为 `LlmAgentBehavior` 固有 helper，服务单轮多段 payload 折叠。
-- `crates/agent_world/src/simulator/llm_agent/behavior_guardrails.rs`
+- `crates/oasis7/src/simulator/llm_agent/behavior_guardrails.rs`
   - `build_factory` guardrail 增加 `inferred_current_location_id`（当前位置优先、最近可见兜底）与不可推断时的保守回退。
-- `crates/agent_world/src/simulator/llm_agent/tests.rs` / `tests_part2.rs`
+- `crates/oasis7/src/simulator/llm_agent/tests.rs` / `tests_part2.rs`
   - 更新旧协议断言为“折叠终态”语义；
   - 新增“当前位置缺失时按最近可见位置归一”的覆盖用例。
 

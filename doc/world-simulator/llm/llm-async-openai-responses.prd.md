@@ -14,7 +14,7 @@
 ## 2. User Experience & Functionality
 
 ### In Scope
-- 在 `crates/agent_world` 引入 `async-openai`（Responses API）依赖并完成客户端替换。
+- 在 `crates/oasis7` 引入 `async-openai`（Responses API）依赖并完成客户端替换。
 - 将请求构造从 `messages + tools/tool_choice` 迁移为 Responses 的 `instructions + input + tools`。
 - 将响应解析从 `choices.message.content/tool_calls/function_call` 迁移为 Responses `output`（`function_call` / 文本输出）。
 - 适配并回归测试工具注册与函数参数解析逻辑（含参数 JSON 解析与 module 名映射）。

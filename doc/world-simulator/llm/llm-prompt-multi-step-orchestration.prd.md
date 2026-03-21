@@ -58,10 +58,10 @@
   - 模块历史默认仅保留最近 `N` 条 + 摘要，不再每轮全量重复。
 
 ### 2) 新增配置项
-- `AGENT_WORLD_LLM_MAX_DECISION_STEPS`：单次 `decide` 最大步骤数（默认 `4`）。
-- `AGENT_WORLD_LLM_MAX_REPAIR_ROUNDS`：解析失败后的格式修复轮次（默认 `1`）。
-- `AGENT_WORLD_LLM_PROMPT_MAX_HISTORY_ITEMS`：Prompt 中注入的模块历史条数上限（默认 `4`）。
-- `AGENT_WORLD_LLM_PROMPT_PROFILE`：Prompt 模板档位（`compact`/`balanced`，默认 `balanced`）。
+- `OASIS7_LLM_MAX_DECISION_STEPS`：单次 `decide` 最大步骤数（默认 `4`）。
+- `OASIS7_LLM_MAX_REPAIR_ROUNDS`：解析失败后的格式修复轮次（默认 `1`）。
+- `OASIS7_LLM_PROMPT_MAX_HISTORY_ITEMS`：Prompt 中注入的模块历史条数上限（默认 `4`）。
+- `OASIS7_LLM_PROMPT_PROFILE`：Prompt 模板档位（`compact`/`balanced`，默认 `balanced`）。
 
 ### 3) 多步协议（JSON）
 - 规划步骤：
@@ -162,7 +162,7 @@
 - 在强制再规划的同时，保留“确实需要连续执行同一动作”的表达能力。
 
 ### 新增配置
-- `AGENT_WORLD_LLM_FORCE_REPLAN_AFTER_SAME_ACTION`：连续同动作阈值（默认 `4`，`0` 表示关闭）。
+- `OASIS7_LLM_FORCE_REPLAN_AFTER_SAME_ACTION`：连续同动作阈值（默认 `4`，`0` 表示关闭）。
   - 当连续动作达到阈值时，下一轮 `decide` 进入反重复门控，优先要求 `plan/module_call`。
 
 ### Prompt 策略补充
@@ -202,7 +202,7 @@
 - `scripts/llm-longrun-stress.sh` 新增同名参数并透传；`summary.txt` 追加 `llm_io_max_chars` 字段，便于跨版本对齐。
 
 ### LLM 超时策略（LMSO17）
-- 将默认 `AGENT_WORLD_LLM_TIMEOUT_MS` 提升到 `180000`（3 分钟），适配真实运行态中“几分钟响应”的模型调用。
+- 将默认 `OASIS7_LLM_TIMEOUT_MS` 提升到 `180000`（3 分钟），适配真实运行态中“几分钟响应”的模型调用。
 - 保留短超时自动回退机制：当显式配置小于默认值时，首次用短超时请求，超时后自动用默认超时重试一次。
 - 目标：减少正常慢响应被误判为错误，同时保留低延迟偏好下的快速失败能力。
 
@@ -330,7 +330,7 @@
 
 ### 已实施优化
 1. 配置层新增可调上限：
-   - `AGENT_WORLD_LLM_HARVEST_MAX_AMOUNT_CAP`（默认 `100`，要求正整数）。
+   - `OASIS7_LLM_HARVEST_MAX_AMOUNT_CAP`（默认 `100`，要求正整数）。
 2. Prompt 协议补充参数硬约束：
    - 在 `Decision JSON Schema` 中标注 `max_amount` 范围（`1..=cap`）。
    - 在每轮 `Output Constraints` 中显式提醒上限规则。
@@ -363,7 +363,7 @@
 1. `execute_until` 模板增强（输入侧）：
    - 在 `Decision JSON Schema` 中新增 move/harvest 推荐模板，明确事件组合。
 2. 自动重入策略（运行时）：
-   - 新增配置 `AGENT_WORLD_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`（默认 `4`，`0` 关闭）。
+   - 新增配置 `OASIS7_LLM_EXECUTE_UNTIL_AUTO_REENTER_TICKS`（默认 `4`，`0` 关闭）。
    - 当检测到“连续同动作”且模型本轮未显式输出 `execute_until` 时，自动挂载短周期 `execute_until`，减少重复 LLM 调用。
 3. 可观测性增强：
    - 新增 `execute_until_auto_reentry` step trace，记录自动重入是否触发。

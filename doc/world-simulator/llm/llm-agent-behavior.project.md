@@ -20,8 +20,8 @@
 - [x] LLM13 补充端点与超时回退重试测试
 
 ## 依赖
-- `crates/agent_world/src/simulator/agent.rs`
-- `crates/agent_world/src/simulator/tests/runner.rs`
+- `crates/oasis7/src/simulator/agent.rs`
+- `crates/oasis7/src/simulator/tests/runner.rs`
 - `README.md`
 - `config.example.toml`
 

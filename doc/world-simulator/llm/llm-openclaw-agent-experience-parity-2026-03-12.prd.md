@@ -79,9 +79,9 @@
   - `doc/world-simulator/prd/acceptance/openclaw-agent-parity-score-card-2026-03-12.md`
   - `doc/world-simulator/prd/acceptance/openclaw-agent-parity-benchmark-protocol-2026-03-12.md`
   - `doc/world-simulator/prd/acceptance/openclaw-agent-parity-aggregation-template-2026-03-12.md`
-  - `crates/agent_world/src/simulator/agent.rs`
-  - `crates/agent_world/src/simulator/memory.rs`
-  - `crates/agent_world_proto/src/viewer.rs`
+- `crates/oasis7/src/simulator/agent.rs`
+- `crates/oasis7/src/simulator/memory.rs`
+- `crates/oasis7_proto/src/viewer.rs`
 - Parity Scope Definition:
   - `P0 低频单 NPC`：移动、观察、对话、简单交互。
   - `P1 多轮记忆/对话`：跨 3~5 轮任务目标保持、失败后重试、上下文连续性。

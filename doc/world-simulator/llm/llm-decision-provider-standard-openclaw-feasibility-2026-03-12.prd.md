@@ -79,9 +79,9 @@
   - `ProviderAdapter`: 为不同 provider 提供具体适配实现；`OpenClawAdapter` 作为其中之一。
   - `Trace & Memory Bridge`: 把 provider trace / memory 意图映射回本地 `AgentDecisionTrace` 与 `AgentMemory`。
 - Integration Points:
-  - `crates/agent_world/src/simulator/agent.rs`
-  - `crates/agent_world/src/simulator/memory.rs`
-  - `crates/agent_world_proto/src/viewer.rs`
+- `crates/oasis7/src/simulator/agent.rs`
+- `crates/oasis7/src/simulator/memory.rs`
+- `crates/oasis7_proto/src/viewer.rs`
   - `doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.md`
   - `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.prd.md`
 - Standard Contracts:

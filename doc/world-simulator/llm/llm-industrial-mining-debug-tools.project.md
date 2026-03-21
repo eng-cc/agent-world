@@ -20,7 +20,7 @@
 - [x] MMD1.7 调整 `llm_bootstrap` 初始资源口径，验证“不能开局直建厂”
 
 ### MMD2 Debug 模式 LLM 补给工具
-- [x] MMD2.1 新增配置开关 `AGENT_WORLD_LLM_DEBUG_MODE`（默认关闭）
+- [x] MMD2.1 新增配置开关 `OASIS7_LLM_DEBUG_MODE`（默认关闭）
 - [x] MMD2.2 新增 `debug_grant_resource` 决策与 `Action::DebugGrantResource`
 - [x] MMD2.3 OpenAI tools 仅在 debug 模式暴露 `agent_debug_grant_resource`
 - [x] MMD2.4 非 debug 模式补给决策硬拒绝（解析/守卫）

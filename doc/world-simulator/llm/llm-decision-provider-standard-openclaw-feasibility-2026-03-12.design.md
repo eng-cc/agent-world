@@ -15,10 +15,10 @@
 - 验证与评估层：通过 golden fixtures、错误签名与 QoS 指标，对不同 provider 进行横向评估。
 
 ## 3. 关键接口 / 入口
-- `AgentBehavior`：`crates/agent_world/src/simulator/agent.rs`
-- `AgentDecisionTrace`：`crates/agent_world/src/simulator/agent.rs`
-- `AgentMemory`：`crates/agent_world/src/simulator/memory.rs`
-- viewer 诊断协议：`crates/agent_world_proto/src/viewer.rs`
+- `AgentBehavior`：`crates/oasis7/src/simulator/agent.rs`
+- `AgentDecisionTrace`：`crates/oasis7/src/simulator/agent.rs`
+- `AgentMemory`：`crates/oasis7/src/simulator/memory.rs`
+- viewer 诊断协议：`crates/oasis7_proto/src/viewer.rs`
 - runtime live 真 LLM 接管专题：`doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.md`
 - launcher GUI Agent 统一机器接口专题：`doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.prd.md`
 

@@ -7,7 +7,7 @@
 
 
 ## 1. Executive Summary
-- 将 `config.toml` 中 LLM 配置从 `AGENT_WORLD_LLM_*` 形态统一为小写、结构化 TOML 字段。
+- 将 `config.toml` 中 LLM 配置从 `OASIS7_LLM_*` 形态统一为小写、结构化 TOML 字段。
 - 保持运行行为不退化：`LlmAgentConfig` 仍可从 `config.toml` 读取完整配置，并在缺失时回退环境变量。
 - 消除配置入口混杂问题，统一“文件内用 TOML 风格、环境中用 ENV 风格”的边界。
 
@@ -51,7 +51,7 @@
 - M3：完成文档同步与回归验证。
 
 ### Technical Risks
-- 迁移风险：旧 `config.toml` 仍使用 `AGENT_WORLD_LLM_*` 时可能读取失败。
+- 迁移风险：旧 `config.toml` 仍使用 `OASIS7_LLM_*` 时可能读取失败。
   - 缓解：保留环境变量回退，并更新示例/文档给出新结构。
 - 字段优先级风险：`llm/profile/provider` 多层回退可能产生认知偏差。
   - 缓解：在设计文档与示例中明确优先级。
@@ -60,11 +60,11 @@
 
 ## 完成态（2026-03-02）
 - 已完成 `LlmAgentConfig::from_config_file*` 的小写 TOML 解析重构，文件内配置统一走 `[llm]` / `[profiles.*]` / `[model_providers.*]`。
-- 已迁移示例配置与文档说明，`config.example.toml` 不再使用 `AGENT_WORLD_LLM_*` 顶层键；agent 级目标覆盖改为 `[llm.agent_overrides.<AGENT_ID_NORMALIZED>]`。
+- 已迁移示例配置与文档说明，`config.example.toml` 不再使用 `OASIS7_LLM_*` 顶层键；agent 级目标覆盖改为 `[llm.agent_overrides.<AGENT_ID_NORMALIZED>]`。
 - 已保留环境变量回退能力，明确“文件内 TOML 风格、环境中 ENV 风格”的边界，确保兼容运行时注入场景。
 - 回归验证通过：
-  - `env -u RUSTC_WRAPPER cargo test -p agent_world simulator::llm_agent::tests::llm_config_ -- --nocapture`
-  - `env -u RUSTC_WRAPPER cargo check -p agent_world`
+  - `env -u RUSTC_WRAPPER cargo test -p oasis7 simulator::llm_agent::tests::llm_config_ -- --nocapture`
+  - `env -u RUSTC_WRAPPER cargo check -p oasis7`
 
 ## 6. Validation & Decision Record
 - 追溯: 对应同名 `.project.md`，保持原文约束语义不变。

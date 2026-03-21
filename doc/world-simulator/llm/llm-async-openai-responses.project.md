@@ -17,12 +17,12 @@
 - [x] AOR10 回顾并更新项目状态与开发日志（`doc/devlog/2026-02-10.md`）
 
 ## 依赖
-- `crates/agent_world/Cargo.toml`
-- `crates/agent_world/src/simulator/llm_agent.rs`
-- `crates/agent_world/src/simulator/llm_agent/tests.rs`
-- `crates/agent_world/src/simulator/mod.rs`
-- `crates/agent_world/src/viewer/live.rs`
-- `crates/agent_world/src/lib.rs`
+- `crates/oasis7/Cargo.toml`
+- `crates/oasis7/src/simulator/llm_agent.rs`
+- `crates/oasis7/src/simulator/llm_agent/tests.rs`
+- `crates/oasis7/src/simulator/mod.rs`
+- `crates/oasis7/src/viewer/live.rs`
+- `crates/oasis7/src/lib.rs`
 - `README.md`
 - `config.example.toml`
 

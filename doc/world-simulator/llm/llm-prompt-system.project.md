@@ -17,8 +17,8 @@
 - [x] LPS10 回顾文档状态，补 devlog，跑测试并收口
 
 ## 依赖
-- `crates/agent_world/src/simulator/llm_agent.rs`
-- `crates/agent_world/src/simulator/memory.rs`
+- `crates/oasis7/src/simulator/llm_agent.rs`
+- `crates/oasis7/src/simulator/memory.rs`
 - `README.md`
 - `config.example.toml`
 

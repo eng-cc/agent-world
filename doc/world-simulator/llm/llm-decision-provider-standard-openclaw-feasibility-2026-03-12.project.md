@@ -17,9 +17,9 @@
 - `doc/world-simulator/prd.md`
 - `doc/world-simulator/project.md`
 - `doc/world-simulator/prd.index.md`
-- `crates/agent_world/src/simulator/agent.rs`
-- `crates/agent_world/src/simulator/memory.rs`
-- `crates/agent_world_proto/src/viewer.rs`
+- `crates/oasis7/src/simulator/agent.rs`
+- `crates/oasis7/src/simulator/memory.rs`
+- `crates/oasis7_proto/src/viewer.rs`
 - `doc/world-simulator/viewer/viewer-live-runtime-world-llm-full-bridge-2026-03-05.prd.md`
 - `doc/world-simulator/launcher/game-client-launcher-web-console-gui-agent-interface-2026-03-08.prd.md`
 

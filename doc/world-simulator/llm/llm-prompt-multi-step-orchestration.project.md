@@ -32,12 +32,12 @@
 - [x] LMSO22 LLM 请求层迁移至 `async-openai` Responses API（工具注册/调用解析适配）
 
 ## 依赖
-- `crates/agent_world/src/simulator/llm_agent.rs`
-- `crates/agent_world/src/simulator/llm_agent/behavior_loop.rs`
-- `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
-- `crates/agent_world/src/simulator/llm_agent/execution_controls.rs`
-- `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
-- `crates/agent_world/src/simulator/llm_agent/tests.rs`
+- `crates/oasis7/src/simulator/llm_agent.rs`
+- `crates/oasis7/src/simulator/llm_agent/behavior_loop.rs`
+- `crates/oasis7/src/simulator/llm_agent/decision_flow.rs`
+- `crates/oasis7/src/simulator/llm_agent/execution_controls.rs`
+- `crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
+- `crates/oasis7/src/simulator/llm_agent/tests.rs`
 - `config.example.toml`
 - `README.md`
 

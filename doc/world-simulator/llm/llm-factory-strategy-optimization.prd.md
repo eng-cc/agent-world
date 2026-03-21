@@ -28,7 +28,7 @@
 ## 4. Technical Specifications
 
 ### 1) Prompt 恢复规则（TODO-1）
-- 位置：`crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
+- 位置：`crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
 - 设计：
   - 在“决策约束”段新增固定恢复规则表（文本模板 + 可枚举 reject reason）。
   - 明确“当上一步因资源拒绝时，下一个动作必须是补资源动作；禁止连续超过 N 次相同采集动作”。
@@ -44,7 +44,7 @@
     - `last_action.reject_reason`
 
 ### 2) 报告动作触发率指标（TODO-2）
-- 位置：`crates/agent_world/src/bin/world_llm_agent_demo.rs`（及其 report 结构）
+- 位置：`crates/oasis7/src/bin/world_llm_agent_demo.rs`（及其 report 结构）
 - 新增字段（JSON）：
   - `action_kind_counts: { "<action_kind>": <u64> }`
   - `action_kind_success_counts: { "<action_kind>": <u64> }`
@@ -56,9 +56,9 @@
 
 ### 3) 固定序列离线回归（TODO-3）
 - 位置：
-  - `crates/agent_world/src/simulator/llm_agent/tests.rs`
-  - `crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
-  - 可按需要继续扩展 `crates/agent_world/src/simulator/llm_agent/tests.rs` 或新增分段测试文件
+  - `crates/oasis7/src/simulator/llm_agent/tests.rs`
+  - `crates/oasis7/src/simulator/llm_agent/tests_part2.rs`
+  - 可按需要继续扩展 `crates/oasis7/src/simulator/llm_agent/tests.rs` 或新增分段测试文件
 - 用例设计：
   - 用例 A（成功主链路）：
     - mock 决策序列：`build_factory`（失败: insufficient hardware）-> `refine_compound` -> `build_factory`（成功）-> `schedule_recipe`（成功）。

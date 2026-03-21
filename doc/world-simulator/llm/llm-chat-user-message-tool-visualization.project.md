@@ -16,12 +16,12 @@
 - [x] LUV9 文档回写、devlog 记录、收口提交
 
 ## 依赖
-- `crates/agent_world/src/simulator/llm_agent/decision_flow.rs`
-- `crates/agent_world/src/simulator/llm_agent/behavior_loop.rs`
-- `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
-- `crates/agent_world/src/simulator/llm_agent/tests.rs`
-- `crates/agent_world/src/simulator/llm_agent/tests_part2.rs`
-- `crates/agent_world_viewer/src/egui_right_panel_chat.rs`
+- `crates/oasis7/src/simulator/llm_agent/decision_flow.rs`
+- `crates/oasis7/src/simulator/llm_agent/behavior_loop.rs`
+- `crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
+- `crates/oasis7/src/simulator/llm_agent/tests.rs`
+- `crates/oasis7/src/simulator/llm_agent/tests_part2.rs`
+- `crates/oasis7_viewer/src/egui_right_panel_chat.rs`
 
 ## 状态
 - 当前阶段：已完成（LUV1-LUV9）

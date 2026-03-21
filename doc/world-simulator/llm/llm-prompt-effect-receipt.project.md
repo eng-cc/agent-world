@@ -15,12 +15,12 @@
 - [x] LPER8 回顾文档状态、补 devlog、运行测试并收口
 
 ## 依赖
-- `crates/agent_world/src/simulator/agent.rs`
-- `crates/agent_world/src/simulator/kernel/types.rs`
-- `crates/agent_world/src/simulator/runner.rs`
-- `crates/agent_world/src/simulator/llm_agent.rs`
+- `crates/oasis7/src/simulator/agent.rs`
+- `crates/oasis7/src/simulator/kernel/types.rs`
+- `crates/oasis7/src/simulator/runner.rs`
+- `crates/oasis7/src/simulator/llm_agent.rs`
 
 ## 状态
 - 当前阶段：LPER8（已收口，viewer 集成兼容已补齐）
 - 下一步：将 simulator 侧 `llm.prompt.module_call` 与 runtime 统一到共享 effect schema
-- 最近更新：补齐 agent_world_viewer 对新增 trace/event 字段的兼容并通过全仓测试（2026-02-09）
+- 最近更新：补齐 oasis7_viewer 对新增 trace/event 字段的兼容并通过全仓测试（2026-02-09）

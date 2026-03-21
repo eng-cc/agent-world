@@ -55,7 +55,7 @@
     - `short_term_goal` / `long_term_goal`
     - `AGENT_ID_NORMALIZED` 为大写+非字母数字转下划线（如 `agent-1` -> `AGENT_1`）。
 - 环境变量（回退/注入）：
-  - 仍支持 `AGENT_WORLD_LLM_*` 与 `AGENT_WORLD_LLM_*_<AGENT_ID_NORMALIZED>`。
+  - 使用 `OASIS7_LLM_*` 与 `OASIS7_LLM_*_<AGENT_ID_NORMALIZED>`。
 
 ### Prompt 交互协议（JSON）
 - 模块调用：

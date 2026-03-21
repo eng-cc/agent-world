@@ -13,8 +13,8 @@
 
 ## 依赖
 - doc/world-simulator/llm/llm-config-toml-style-unification-2026-03-02.prd.md
-- `crates/agent_world/src/simulator/llm_agent.rs` 配置加载入口。
-- `crates/agent_world/src/simulator/llm_agent/tests_split_part1.rs` 现有配置解析测试。
+- `crates/oasis7/src/simulator/llm_agent.rs` 配置加载入口。
+- `crates/oasis7/src/simulator/llm_agent/tests_split_part1.rs` 现有配置解析测试。
 - `config.toml` 与 `config.example.toml` 配置样例。
 - `testing-manual.md` 测试分层规范。
 

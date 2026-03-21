@@ -11,9 +11,9 @@
 - [x] LMSO29D 文档回写与开发日志更新。
 
 ## 依赖
-- `crates/agent_world/src/simulator/llm_agent.rs`
-- `crates/agent_world/src/simulator/llm_agent/prompt_assembly.rs`
-- `crates/agent_world/src/simulator/llm_agent/tests.rs`
+- `crates/oasis7/src/simulator/llm_agent.rs`
+- `crates/oasis7/src/simulator/llm_agent/prompt_assembly.rs`
+- `crates/oasis7/src/simulator/llm_agent/tests.rs`
 - `doc/world-simulator/llm/llm-lmso29-stability.prd.md`
 
 ## 状态
