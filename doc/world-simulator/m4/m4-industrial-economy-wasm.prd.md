@@ -354,7 +354,7 @@ V2 需要新增以下测试组：
 
 ## 当前实现进展（2026-02-14）
 
-- ABI 层已提供 Recipe/Product/Factory 接口类型与 trait 草案（`agent_world_wasm_abi`）。
+- ABI 层已提供 Recipe/Product/Factory 接口类型与 trait 草案（`oasis7_wasm_abi`）。
 - runtime 已落地最小执行闭环：
   - 新动作：`BuildFactory`、`ScheduleRecipe`
   - 新事件：`FactoryBuildStarted`、`FactoryBuilt`、`RecipeStarted`、`RecipeCompleted`

@@ -33,10 +33,10 @@
 
 ## 依赖
 - doc/world-simulator/m4/material-multi-ledger-logistics.prd.md
-- `crates/agent_world/src/runtime/state.rs`
-- `crates/agent_world/src/runtime/world/event_processing.rs`
-- `crates/agent_world/src/runtime/world/economy.rs`
-- `crates/agent_world_wasm_abi/src/economy.rs`
+- `crates/oasis7/src/runtime/state.rs`
+- `crates/oasis7/src/runtime/world/event_processing.rs`
+- `crates/oasis7/src/runtime/world/economy.rs`
+- `crates/oasis7_wasm_abi/src/economy.rs`
 - `doc/world-simulator/scenario/scenario-files.prd.md`
 
 ## 状态

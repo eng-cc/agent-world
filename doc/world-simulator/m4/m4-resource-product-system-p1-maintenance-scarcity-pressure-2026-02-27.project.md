@@ -14,8 +14,8 @@
 - doc/world-simulator/m4/m4-resource-product-system-p1-maintenance-scarcity-pressure-2026-02-27.prd.md
 - `doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.md`
 - `doc/world-simulator/m4/m4-resource-product-system-p0-shared-bottleneck-logistics-priority-2026-02-27.prd.md`
-- `crates/agent_world/src/runtime/world/economy.rs`
-- `crates/agent_world/src/runtime/world/event_processing/action_to_event_economy.rs`
+- `crates/oasis7/src/runtime/world/economy.rs`
+- `crates/oasis7/src/runtime/world/event_processing/action_to_event_economy.rs`
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

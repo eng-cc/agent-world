@@ -15,12 +15,12 @@
 - doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.md
 - `doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.md`
 - `doc/world-simulator/m4/m4-resource-product-system-p2-stage-guidance-market-governance-linkage-2026-02-27.prd.md`
-- `crates/agent_world_wasm_abi/src/economy.rs`
-- `crates/agent_world/src/runtime/state.rs`
-- `crates/agent_world/src/runtime/world/event_processing/action_to_event_core.rs`
-- `crates/agent_world/src/runtime/world/event_processing/action_to_event_economy.rs`
-- `crates/agent_world/src/runtime/world/bootstrap_economy.rs`
-- `crates/agent_world/src/runtime/world/artifacts/m4_builtin_*`
+- `crates/oasis7_wasm_abi/src/economy.rs`
+- `crates/oasis7/src/runtime/state.rs`
+- `crates/oasis7/src/runtime/world/event_processing/action_to_event_core.rs`
+- `crates/oasis7/src/runtime/world/event_processing/action_to_event_economy.rs`
+- `crates/oasis7/src/runtime/world/bootstrap_economy.rs`
+- `crates/oasis7/src/runtime/world/artifacts/m4_builtin_*`
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

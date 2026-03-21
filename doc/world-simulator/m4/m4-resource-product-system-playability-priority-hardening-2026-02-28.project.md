@@ -15,10 +15,10 @@
 - doc/world-simulator/m4/m4-resource-product-system-playability-priority-hardening-2026-02-28.prd.md
 - `doc/world-simulator/m4/m4-resource-product-system-playability-2026-02-27.prd.md`
 - `doc/world-simulator/m4/m4-resource-product-system-p3-layer-profile-chain-expansion-2026-02-27.prd.md`
-- `crates/agent_world/src/runtime/world/bootstrap_economy.rs`
-- `crates/agent_world/src/runtime/world/event_processing/action_to_event_core.rs`
-- `crates/agent_world/src/runtime/world/event_processing/action_to_event_economy.rs`
-- `crates/agent_world/src/runtime/tests/economy*.rs`
+- `crates/oasis7/src/runtime/world/bootstrap_economy.rs`
+- `crates/oasis7/src/runtime/world/event_processing/action_to_event_core.rs`
+- `crates/oasis7/src/runtime/world/event_processing/action_to_event_economy.rs`
+- `crates/oasis7/src/runtime/tests/economy*.rs`
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

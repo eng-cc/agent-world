@@ -14,9 +14,9 @@
 - doc/world-simulator/m4/m4-builtin-wasm-maintainability-2026-02-26.prd.md
 - `doc/world-simulator/m4/m4-industrial-economy-wasm.prd.md`
 - `doc/world-simulator/m4/m4-industrial-economy-wasm.project.md`
-- `crates/agent_world_builtin_wasm_modules/m4_*`
-- `crates/agent_world/src/runtime/world/bootstrap_economy.rs`
-- `crates/agent_world/src/runtime/tests/economy_bootstrap.rs`
+- `crates/oasis7_builtin_wasm_modules/m4_*`
+- `crates/oasis7/src/runtime/world/bootstrap_economy.rs`
+- `crates/oasis7/src/runtime/tests/economy_bootstrap.rs`
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

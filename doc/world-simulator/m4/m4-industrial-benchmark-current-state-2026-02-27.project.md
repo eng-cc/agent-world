@@ -16,7 +16,7 @@
 - `doc/world-simulator/m4/material-multi-ledger-logistics.prd.md`
 - `doc/world-simulator/m4/m4-market-hardware-data-governance-closure-2026-02-26.prd.md`
 - `README.md`（资源分层口径）
-- `crates/agent_world/src/runtime/*` 与 `crates/agent_world/src/simulator/*` 当前实现
+- `crates/oasis7/src/runtime/*` 与 `crates/oasis7/src/simulator/*` 当前实现
 
 ## 状态
 - 最近更新：2026-03-06（ROUND-005 I5-001 字段补齐）

@@ -13,8 +13,8 @@
 
 ## 2. User Experience & Functionality
 ### In Scope
-- `crates/agent_world_builtin_wasm_modules/m4_*` 的模块入口重构（模板化）。
-- `crates/agent_world/src/runtime/world/bootstrap_economy.rs` 改为描述符清单驱动。
+- `crates/oasis7_builtin_wasm_modules/m4_*` 的模块入口重构（模板化）。
+- `crates/oasis7/src/runtime/world/bootstrap_economy.rs` 改为描述符清单驱动。
 - `runtime` 侧一致性校验与测试补充。
 - 文档、项目管理文档、devlog 更新。
 
@@ -28,7 +28,7 @@
 
 ## 4. Technical Specifications
 ### 1) 模块模板化
-- 新增共享模板目录：`crates/agent_world_builtin_wasm_modules/_templates/`。
+- 新增共享模板目录：`crates/oasis7_builtin_wasm_modules/_templates/`。
 - 三类模板文件：
   - `m4_recipe_module_template.rs`
   - `m4_product_module_template.rs`

@@ -20,7 +20,7 @@
   - world fallback 触发供给延迟且按期完成。
 
 ### Out of Scope
-- 不改 `agent_world_wasm_abi::RecipeExecutionPlan` 结构。
+- 不改 `oasis7_wasm_abi::RecipeExecutionPlan` 结构。
 - 不引入市场撮合或新治理税种。
 - 不改 viewer 结构，仅通过现有事件行为可观测。
 

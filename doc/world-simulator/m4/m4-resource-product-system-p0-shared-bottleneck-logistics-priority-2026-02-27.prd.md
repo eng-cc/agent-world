@@ -22,7 +22,7 @@
   - 物流优先级字段在事件中可观测。
 
 ### Out of Scope
-- 不改 `agent_world_wasm_abi` 配方结构。
+- 不改 `oasis7_wasm_abi` 配方结构。
 - 不做市场撮合机制重构。
 - 不做 viewer 大面板改版，仅保障事件语义可观测。
 
