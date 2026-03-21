@@ -44,7 +44,7 @@
 - 编译流程：
   1. 校验 agent、manifest path、文件路径合法性（拒绝绝对路径/`..`）。
   2. 将 source package 展开到临时目录。
-  3. 优先执行 `AGENT_WORLD_MODULE_SOURCE_COMPILER`（可测试注入）。
+  3. 优先执行 `OASIS7_MODULE_SOURCE_COMPILER`（可测试注入）。
   4. 若未配置则回退 `scripts/build-wasm-module.sh`。
   5. 读取产物 wasm，按现有 `DeployModuleArtifact` 路径注册与扣费。
 
