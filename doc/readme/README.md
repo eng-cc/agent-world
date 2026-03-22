@@ -33,6 +33,7 @@
 - `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md`
 - `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.prd.md`
 - `doc/readme/governance/readme-limited-preview-invite-pack-2026-03-22.md`
+- `doc/readme/governance/readme-xiaohongshu-intro-post-pack-2026-03-22.md`
 
 ## 根目录收口
 - 模块根目录主入口保留：`README.md`、`prd.md`、`design.md`、`project.md`、`prd.index.md`。

@@ -244,6 +244,20 @@
     - `rg -n "eligible-small|eligible-medium|eligible-large|no fixed token/point ratio|play-to-earn|login reward|time played = token" doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.prd.md doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.md doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-README-031 (PRD-README-021) [test_tier_required]: 记录小红书账号第一篇自我介绍帖的标题、正文、封面文案、标签和使用说明，固定“人类开发者 + agent 队友”的首帖叙事。
+  - 产物文件:
+    - `doc/readme/prd.md`
+    - `doc/readme/project.md`
+    - `doc/readme/README.md`
+    - `doc/readme/prd.index.md`
+    - `doc/readme/governance/readme-xiaohongshu-intro-post-pack-2026-03-22.md`
+    - `site/social/xiaohongshu-cover-agent-team.html`
+    - `site/social/xiaohongshu-cover-agent-team.png`
+    - `doc/devlog/2026-03-22.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "大家好，我最近在和一群 agent 一起做游戏|我在和一群 agent 一起做游戏|#独立开发|#开发日记|人类开发者" doc/readme/governance/readme-xiaohongshu-intro-post-pack-2026-03-22.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md

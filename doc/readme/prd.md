@@ -67,6 +67,7 @@
 - PRD-README-018: As a `liveops_community`, I want real Moltbook execution lessons written back into the runbook, so that future posts can reuse what triggered discussion and avoid what triggered spam.
 - PRD-README-019: As a `liveops_community`, I want a controlled limited preview execution pack, so that the first invite-only builder round can run with fixed callout copy, monitoring slots, signal buckets, and producer-facing summary fields.
 - PRD-README-020: As a `liveops_community`, I want an early contributor reward pack for limited preview, so that reward eligibility, evidence fields, score bands, and forbidden phrases stay contribution-based and do not depend on invite-only or play-to-earn framing.
+- PRD-README-021: As a `liveops_community`, I want a reusable Xiaohongshu intro post pack from the human developer perspective, so that the account can open with a clear identity, safe tone, and repeatable asset set instead of improvising its first post.
 - Critical User Flows:
   1. Flow-RM-001: `阅读 README -> 跳转模块入口 -> 快速定位目标能力`
   2. Flow-RM-002: `检测口径变更 -> 更新入口文档 -> 校验链接 -> 发布同步`
@@ -77,6 +78,7 @@
   7. Flow-RM-007: `复盘真实帖子表现 -> 提炼有效讨论钩子与 spam 触发条件 -> 回写 runbook -> 调整下一帖策略`
   8. Flow-RM-008: `冻结 limited preview 口径 -> 选用 invite-only callout copy -> 按固定窗口巡检 -> 将信号按 Blocking / Opportunity / Idea 归档 -> 输出 producer 摘要`
   9. Flow-RM-009: `收集 early contributor signal -> 按评分模板记录证据 -> 输出 small/medium/large reward recommendation -> 检查对外禁语 -> 回流 producer 审核`
+  10. Flow-RM-010: `确定小红书账号第一帖定位 -> 冻结标题/正文/封面/标签 -> 对齐“人类开发者 + agent 队友”叙事主语 -> 保存可复用素材包`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -172,6 +174,7 @@
 | PRD-README-018 | TASK-README-027 | `test_tier_required` | Moltbook runbook 回写真实运营经验，明确哪些内容设计更易引发讨论、哪些自评动作更易触发 spam | 第三方渠道运营复用性与风控 |
 | PRD-README-019 | TASK-README-029 | `test_tier_required` | invite-only limited preview execution pack 明确 callout copy、check slots、signal buckets、summary fields | 受控预览执行性与回流一致性 |
 | PRD-README-020 | TASK-README-030 | `test_tier_required` | early contributor reward pack 明确评分模板、证据字段、奖励建议分级与禁语清单 | limited preview 贡献奖励执行性与对外口径安全性 |
+| PRD-README-021 | TASK-README-031 | `test_tier_required` | 小红书首帖素材包明确标题、正文、封面文案、标签与“人类开发者视角”使用说明 | 新渠道冷启动识别度与口径稳定性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -194,3 +197,4 @@
 | DEC-RM-017 | 将 Moltbook 实战复盘写回现有 runbook | 只在 devlog 留一次性记录 | runbook 才是后续运营会重复翻看的入口。 |
 | DEC-RM-018 | 为 invite-only limited preview 新增独立执行包 | 继续只靠 handoff 和零散 devlog 驱动首轮外放 | 首轮 limited preview 需要固定文案、巡检窗口、分桶与摘要字段，才能避免执行漂移。 |
 | DEC-RM-019 | 早期奖励模板只输出贡献评分与奖励建议档位，不公开固定 token 数额或 point 汇率 | 直接把 token 发放表做成外部宣传文案 | 当前阶段仍是 `limited playable technical preview`，需要避免过度金融化与过度承诺。 |
+| DEC-RM-020 | 小红书首帖采用“人类开发者自我介绍”而非“项目功能介绍” | 首帖直接解释完整世界观或产品能力 | 小红书面向人，首帖更需要建立创作者身份与协作关系，而不是先堆产品信息。 |
