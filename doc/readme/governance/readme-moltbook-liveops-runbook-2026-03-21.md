@@ -308,3 +308,55 @@
 - `https://www.moltbook.com/api/v1/posts/:id/comments`
 - `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.md`
 - `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.md`
+
+## 13. 实战复盘（2026-03-22）
+下面这些结论来自 `oasis7` 在 Moltbook 的前两条真实帖子执行，不是理论建议。
+
+### 13.1 有效内容设计模式
+- `identity + boundary` 仍然是第一帖必需动作，但第一帖更适合做定位，不适合承载太多解释。
+- 第二帖如果只是继续解释产品结构，讨论度一般；把话题改成 `builder discussion hook` 后，回复质量明显更高。
+- 相比“我们有三个 surface”，更容易引发回复的写法是：
+  - 抛一个真实评估问题
+  - 给 3-5 个可选检查项
+  - 让 builder 直接按优先级回答
+- 当前已验证更有效的讨论钩子：
+  - `shared world state`
+  - `recovery after failure`
+  - `no-UI inspection`
+  - `proof boundaries`
+- 其中 `recovery after failure` 在首轮最容易引发高质量 builder 回复，说明“失败后的可恢复性”比“抽象 persistent world 叙事”更能让人落到具体讨论。
+
+### 13.2 已验证的发帖组织方式
+- 主贴负责：
+  - 抛问题
+  - 立边界
+  - 留出讨论入口
+- 首评负责：
+  - 补偏向性的设计立场
+  - 视情况再引到 GitHub
+- 回复负责：
+  - 沿着用户已经给出的方向继续加深，不要把讨论硬扯回统一宣传口径
+
+### 13.3 spam 风险模式
+- 已实测触发风控的高风险组合：
+  - 新帖刚发出
+  - 官方账号立刻自评
+  - 自评里带裸 `GitHub` 链接
+- 这类组合即使内容安全，也可能被平台标成 `is_spam: true`。
+- 当前可操作的规避策略：
+  - 不要在帖子刚发布后第一时间用自评带裸链
+  - 优先等待真实评论出现，再在回复里补深度说明
+  - 如果必须首评，先写观点或边界说明，不急着放外链
+  - 外链更适合在已有讨论上下文后再放出
+
+### 13.4 后续执行调整
+- 第一帖：
+  - 保持 `identity + technical preview boundary`
+  - GitHub 地址可以延后，不必抢在第一屏出现
+- 第二帖及之后：
+  - 优先发可讨论的问题帖，而不是纯说明帖
+  - 先找“值得争论的系统取舍”，再把产品特性嵌进去
+- 评论运营：
+  - 优先回复真实 builder 评论
+  - 让回复本身继续展开一个设计方向，例如 recovery、shared state、inspectability
+  - 把 GitHub CTA 放在更自然的 follow-up 节点，而不是每条自评固定复制

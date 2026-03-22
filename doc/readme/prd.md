@@ -64,6 +64,7 @@
 - PRD-README-015: As a `liveops_community`, I want a Moltbook liveops runbook for post-publish checks, replies, and signal triage, so that day-2 channel operations do not fall back to unsafe improvisation.
 - PRD-README-016: As a `liveops_community`, I want a first-week Moltbook operating template layered onto the runbook, so that the first 7 days of channel activity have a concrete daily rhythm instead of generic SOP only.
 - PRD-README-017: As a `liveops_community`, I want a closed beta candidate runbook plus feedback/incident templates, so that recruitment, feedback, and incident signals stay within the technical preview envelope while still feeding the unified release gate.
+- PRD-README-018: As a `liveops_community`, I want real Moltbook execution lessons written back into the runbook, so that future posts can reuse what triggered discussion and avoid what triggered spam.
 - Critical User Flows:
   1. Flow-RM-001: `阅读 README -> 跳转模块入口 -> 快速定位目标能力`
   2. Flow-RM-002: `检测口径变更 -> 更新入口文档 -> 校验链接 -> 发布同步`
@@ -71,6 +72,7 @@
   4. Flow-RM-004: `读取第三方平台当前机制 -> 绑定内部 claim envelope -> 生成平台适配推广方案 -> 回流 owner 审核`
   5. Flow-RM-005: `发布 Moltbook 帖子 -> 检查 /home / notifications / comments -> 分级回复或升级 -> 回写 devlog`
   6. Flow-RM-006: `按首周模板安排 day1-day7 发帖 / 巡检 / 跟评 / 周复盘 -> 将真实信号沉淀到 runbook 与 devlog`
+  7. Flow-RM-007: `复盘真实帖子表现 -> 提炼有效讨论钩子与 spam 触发条件 -> 回写 runbook -> 调整下一帖策略`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -81,6 +83,7 @@
 | 渠道运营 runbook | `check_window`、`signal_bucket`、`reply_boundary`、`escalation_owner`、`log_requirement` | 固化第三方渠道发帖后运营 SOP | `draft -> approved -> adopted` | 先定义检查顺序，再定义回复与升级边界 | `liveops_community` 维护，`producer_system_designer` 审核边界 |
 | 首周运营模板 | `day_id`、`primary_post`、`check_slots`、`reply_goal`、`log_focus` | 把抽象 runbook 压实到 day1-day7 的执行模板 | `planned -> executed -> reviewed` | 先 identity / surfaces，再 proof / diary / builder hook，再 recap | `liveops_community` 执行，`producer_system_designer` 审核边界 |
 | Closed Beta Candidate Runbook | `candidate_signal`、`release_gate_link`、`response_template`、`incident_level` | 招募、反馈、事故模板、FAQ | `tech_preview -> candidate_runbook -> gate_ready` | runbook步骤优先，监测其次 | `liveops_community` 维护，`producer_system_designer` 决定口径 |
+| 实战运营经验 | `post_id`、`working_hook`、`spam_trigger`、`next_adjustment` | 把真实发帖结果沉淀成后续可复用规则 | `observed -> distilled -> adopted` | 先记录高信号模式，再记录高风险模式 | `liveops_community` 维护 |
 - Acceptance Criteria:
   - AC-1: readme PRD 明确入口文档职责边界。
   - AC-2: readme project 文档维护同步任务与状态。
@@ -92,6 +95,7 @@
 - AC-8: 若第三方渠道进入持续运营阶段，必须补齐独立 runbook，明确巡检入口、回复边界、升级路径与 `devlog` 回写方式。
 - AC-9: 若渠道进入首周冷启动执行阶段，runbook 必须补齐 day1-day7 模板，明确每天的主动作、检查窗口、回复目标与记录重点。
 - AC-10: 已新建 `closed beta candidate` runbook与 incident template，供招募/反馈/事故信号在 `technical preview` claim envelope 内沟通并可直接回流 unified release gate。
+  - AC-11: Moltbook runbook 至少记录一轮真实执行后的“有效讨论钩子”和“高风险 spam 触发模式”，并明确下一轮如何调整。
 - Non-Goals:
   - 不在 readme PRD 中替代各模块详细设计。
   - 不在 readme PRD 中定义测试用例细节。
@@ -153,6 +157,7 @@
 | PRD-README-015 | TASK-README-024 | `test_tier_required` | Moltbook runbook 明确发帖前、发帖后 24h、常规日与周复盘动作，并包含回复边界、升级路径与 `devlog` 回写要求 | 第三方渠道持续运营一致性 |
 | PRD-README-016 | TASK-README-025 | `test_tier_required` | Moltbook runbook 追加 day1-day7 首周模板，覆盖主帖节奏、检查窗口、回复目标与日志重点 | 第三方渠道冷启动执行性 |
 | PRD-README-017 | TASK-README-026 | `test_tier_required` | Closed beta candidate runbook + incident templates cover recruitment, feedback, and incident guardrails | Closed beta candidate recruiting/feedback/technical preview messaging |
+| PRD-README-018 | TASK-README-027 | `test_tier_required` | Moltbook runbook 回写真实运营经验，明确哪些内容设计更易引发讨论、哪些自评动作更易触发 spam | 第三方渠道运营复用性与风控 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -172,3 +177,4 @@
 | DEC-RM-014 | 将 Moltbook 日常运营动作沉淀为独立 runbook，而不是继续扩写角色卡 | 把巡检、回复、升级细节继续堆进角色卡或推广方案 | 角色卡应保持稳定职责边界；执行细节更适合 runbook 持续演进。 |
 | DEC-RM-015 | 在已有 Moltbook runbook 内补首周运营模板，而不是再拆一份平行文档 | 单独再建一份“week-one playbook” | 首周模板属于 runbook 的执行层细化，放在同一文档更利于维护与回查。 |
 | DEC-RM-016 | 新增 `PRD-README-017` 作为 closed beta candidate runbook专题 | 继续把 closed beta 运营信号写回 devlog / single thread | 独立 runbook 强制维持 `technical preview` 口径，避免提前升级 release claim。 |
+| DEC-RM-017 | 将 Moltbook 实战复盘写回现有 runbook | 只在 devlog 留一次性记录 | runbook 才是后续运营会重复翻看的入口。 |

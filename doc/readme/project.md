@@ -190,6 +190,16 @@
     - `rg -n "closed beta candidate|technical preview|incident template|candidate-feedback" doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md doc/playability_test_result/templates/closed-beta-candidate-incident-templates-2026-03-22.md doc/playability_test_result/templates/closed-beta-candidate-feedback-log-guide-2026-03-22.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-README-027 (PRD-README-018) [test_tier_required]: 将 Moltbook 首轮真实执行的内容设计思路与 spam 风险回写到 runbook，明确“什么更能引发讨论”和“什么更容易被平台风控命中”。
+  - 产物文件:
+    - `doc/readme/prd.md`
+    - `doc/readme/project.md`
+    - `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`
+    - `doc/devlog/2026-03-22.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "实战复盘|有效内容设计模式|spam 风险模式|builder discussion hook|自评带裸链" doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -205,6 +215,7 @@
 - 更新日期: 2026-03-21
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-README-027`（已将 Moltbook 首轮真实执行的讨论钩子与 spam 风险回写到 runbook，供后续运营复用。）
 - 最新完成: `TASK-README-026`（已新增 closed beta candidate runbook 与反馈/事故模板，明确招募/反馈/事故流程与 `technical preview` 口径。）
 - 最新完成: `TASK-README-025`（已在 Moltbook runbook 内补齐首周冷启动模板，明确 day1-day7 节奏、巡检窗口、回复目标与记录重点。）
 - 最新完成: `TASK-README-024`（已为 `liveops_community` 新增 Moltbook 持续运营 runbook，并把角色入口、readme 模块追踪与索引同步补齐。）
