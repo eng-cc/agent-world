@@ -18,7 +18,8 @@ fn apply_player_layout_preset_command_opens_panel_and_enables_chat() {
     assert!(!layout.panel_hidden);
     assert!(!layout.top_panel_collapsed);
     assert!(visibility.show_chat);
-    assert!(visibility.show_overview);
+    assert!(!visibility.show_overview);
+    assert!(!visibility.show_event_link);
     assert!(!visibility.show_timeline);
     assert!(!visibility.show_details);
 }
@@ -40,8 +41,9 @@ fn apply_player_layout_preset_mission_reduces_non_essential_sections() {
     apply_player_layout_preset(&mut layout, &mut visibility, PlayerLayoutPreset::Mission);
 
     assert!(!layout.panel_hidden);
-    assert!(visibility.show_overview);
+    assert!(!visibility.show_overview);
     assert!(!visibility.show_chat);
+    assert!(!visibility.show_event_link);
     assert!(!visibility.show_timeline);
     assert!(!visibility.show_details);
     assert!(!visibility.show_overlay);

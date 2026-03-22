@@ -609,16 +609,16 @@ fn apply_layout_preset_automation(
 
     match preset {
         ViewerAutomationLayoutPreset::Mission => {
-            module_visibility.show_overview = true;
+            module_visibility.show_overview = false;
             module_visibility.show_chat = false;
-            module_visibility.show_event_link = true;
+            module_visibility.show_event_link = false;
             module_visibility.show_timeline = false;
             module_visibility.show_details = false;
         }
         ViewerAutomationLayoutPreset::Command => {
-            module_visibility.show_overview = true;
+            module_visibility.show_overview = false;
             module_visibility.show_chat = true;
-            module_visibility.show_event_link = true;
+            module_visibility.show_event_link = false;
             module_visibility.show_timeline = false;
             module_visibility.show_details = false;
         }
@@ -1564,6 +1564,31 @@ mod tests {
         assert!(module_visibility.show_event_link);
         assert!(module_visibility.show_timeline);
         assert!(module_visibility.show_details);
+    }
+
+    #[test]
+    fn apply_layout_preset_automation_command_keeps_player_surface_compact() {
+        let mut layout_state = RightPanelLayoutState {
+            top_panel_collapsed: true,
+            panel_hidden: true,
+        };
+        let mut module_visibility =
+            crate::right_panel_module_visibility::RightPanelModuleVisibilityState::default();
+
+        apply_layout_preset_automation(
+            &mut layout_state,
+            &mut module_visibility,
+            ViewerAutomationLayoutPreset::Command,
+        );
+
+        assert!(!layout_state.panel_hidden);
+        assert!(!layout_state.top_panel_collapsed);
+        assert!(!module_visibility.show_controls);
+        assert!(!module_visibility.show_overview);
+        assert!(module_visibility.show_chat);
+        assert!(!module_visibility.show_event_link);
+        assert!(!module_visibility.show_timeline);
+        assert!(!module_visibility.show_details);
     }
 
     #[test]

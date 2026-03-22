@@ -66,6 +66,32 @@ fn sync_agent_chatter_bubbles_formats_runtime_industry_feedback() {
 }
 
 #[test]
+fn sync_agent_chatter_bubbles_filters_agent_not_found_focus_noise() {
+    let mut achievements = PlayerAchievementState::default();
+    let mut state = sample_viewer_state(
+        crate::ConnectionStatus::Connected,
+        vec![sample_agent_moved_event(1, 1)],
+    );
+    let locale = crate::i18n::UiLocale::ZhCn;
+
+    sync_agent_chatter_bubbles(&mut achievements, &state, 10.0, locale);
+    assert_eq!(player_agent_chatter_len(&achievements), 0);
+    assert_eq!(
+        player_agent_chatter_last_seen_event_id(&achievements),
+        Some(1)
+    );
+
+    state.events.push(sample_agent_not_found_rejected_event(2, 2));
+    sync_agent_chatter_bubbles(&mut achievements, &state, 11.0, locale);
+
+    assert_eq!(
+        player_agent_chatter_last_seen_event_id(&achievements),
+        Some(2)
+    );
+    assert_eq!(player_agent_chatter_len(&achievements), 0);
+}
+
+#[test]
 fn sync_agent_chatter_bubbles_clamps_queue_and_expires() {
     let mut achievements = PlayerAchievementState::default();
     let mut state = sample_viewer_state(

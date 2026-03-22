@@ -312,11 +312,11 @@ fn default_module_visibility_state(mode: ViewerExperienceMode) -> RightPanelModu
     match mode {
         ViewerExperienceMode::Player => RightPanelModuleVisibilityState {
             show_controls: true,
-            show_overview: true,
+            show_overview: false,
             show_chat: true,
             show_overlay: false,
             show_diagnosis: false,
-            show_event_link: true,
+            show_event_link: false,
             show_timeline: false,
             show_details: false,
         },
@@ -476,11 +476,11 @@ mod tests {
     fn default_module_visibility_state_player_is_lightweight() {
         let state = default_module_visibility_state(ViewerExperienceMode::Player);
         assert!(state.show_controls);
-        assert!(state.show_overview);
+        assert!(!state.show_overview);
         assert!(state.show_chat);
         assert!(!state.show_overlay);
         assert!(!state.show_diagnosis);
-        assert!(state.show_event_link);
+        assert!(!state.show_event_link);
         assert!(!state.show_timeline);
         assert!(!state.show_details);
     }

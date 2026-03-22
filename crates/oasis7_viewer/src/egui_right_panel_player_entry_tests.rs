@@ -17,7 +17,8 @@ fn activate_player_command_entry_opens_panel_and_switches_to_command_layout() {
     assert!(!layout.panel_hidden);
     assert!(!layout.top_panel_collapsed);
     assert!(visibility.show_chat);
-    assert!(visibility.show_overview);
+    assert!(!visibility.show_overview);
+    assert!(!visibility.show_event_link);
     assert!(!visibility.show_timeline);
     assert!(!visibility.show_details);
 }

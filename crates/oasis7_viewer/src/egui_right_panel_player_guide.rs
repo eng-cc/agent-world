@@ -253,16 +253,16 @@ pub(super) fn apply_player_layout_preset(
 
     match preset {
         PlayerLayoutPreset::Mission => {
-            module_visibility.show_overview = true;
+            module_visibility.show_overview = false;
             module_visibility.show_chat = false;
-            module_visibility.show_event_link = true;
+            module_visibility.show_event_link = false;
             module_visibility.show_timeline = false;
             module_visibility.show_details = false;
         }
         PlayerLayoutPreset::Command => {
-            module_visibility.show_overview = true;
+            module_visibility.show_overview = false;
             module_visibility.show_chat = true;
-            module_visibility.show_event_link = true;
+            module_visibility.show_event_link = false;
             module_visibility.show_timeline = false;
             module_visibility.show_details = false;
         }

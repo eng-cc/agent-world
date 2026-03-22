@@ -50,10 +50,10 @@
 
 ### T7 封闭 Beta 准入门禁（2026-03-21）
 - [x] 冻结“当前阶段为 internal_playable_alpha_late、下一阶段目标为 closed_beta_candidate”专题 PRD / design / project，并完成根入口挂载。
-- [ ] `runtime_engineer`：补齐 five-node no-LLM soak、replay/rollback drill 与 longrun release gate 的候选版本证据。
-- [ ] `viewer_engineer`：收口 `PostOnboarding` 首屏降噪、主目标优先级与玩家入口 full-coverage gate 的最小产品化包。
-- [ ] `qa_engineer`：建立统一 `closed_beta_candidate` release gate，串联 headed Web/UI、pure API、no-UI smoke、longrun/recovery 与 trend baseline。
-- [ ] `liveops_community`：收口封闭 Beta 候选 runbook、招募/反馈/事故回流模板与禁语清单。
+- [x] `runtime_engineer`：补齐 five-node no-LLM soak、replay/rollback drill 与 longrun release gate 的候选版本证据。
+- [x] `viewer_engineer`：收口 `PostOnboarding` 首屏降噪、主目标优先级与玩家入口 full-coverage gate 的最小产品化包。
+- [x] `qa_engineer`：建立统一 `closed_beta_candidate` release gate，串联 headed Web/UI、pure API、no-UI smoke、longrun/recovery 与 trend baseline。
+- [x] `liveops_community`：收口封闭 Beta 候选 runbook、招募/反馈/事故回流模板与禁语清单。
 
 ## 依赖
 
@@ -76,8 +76,8 @@
 
 - 当前状态：`进行中`
 - 已完成：文档归位、命名语义化、必备字段补齐、工程分册格式修复、Gameplay Runtime/模块化/协议扩展任务拆解与落地、Gameplay 模块测试矩阵引用固化、设计评审准备与战争/政治数值基线补齐、前期工业引导闭环文档冻结（首个制成品/工厂主链）、T4 的 runtime 工业状态/事件与 viewer 主反馈闭环、T5 的 `PostOnboarding` 阶段目标链闭环、T6 的纯 API 客户端等价闭环、T7 的封闭 Beta 准入专题冻结与根入口挂载。
-- 未完成：`T7` 的 runtime / viewer / QA / liveops 四条准入收口线尚未完成。
-- 阻塞项：无（待相关 owner 按 `T7` 执行）
+- 未完成：`T7` 的 producer 阶段评审、pure API / no-UI smoke 同候选 fresh rerun 与 trend baseline 仍未收口，因此项目阶段继续保持 `internal_playable_alpha_late`。
+- 阻塞项：统一 `closed_beta_candidate` gate 仍为 `block`；不得据此宣称 `closed beta approved`。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。

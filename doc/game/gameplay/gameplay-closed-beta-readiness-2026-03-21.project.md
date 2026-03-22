@@ -9,7 +9,7 @@
 
 - [x] TASK-GAMEPLAY-CB-001 (`PRD-GAME-009`) [test_tier_required]: 冻结“当前处于 internal_playable_alpha_late、下一阶段目标为 closed_beta_candidate”的正式口径，并完成 `game` 根 PRD / project、`gameplay-top-level-design` 主文档、索引、handoff 与 devlog 挂载。
 - [x] TASK-GAMEPLAY-CB-002 (`PRD-GAME-009`) [test_tier_required + test_tier_full]: `runtime_engineer` 已收口 five-node no-LLM soak、replay/rollback drill 与 longrun release gate 的候选版本证据，证明当前技术底座已达到封闭 Beta 准入下限。
-- [ ] TASK-GAMEPLAY-CB-003 (`PRD-GAME-009`) [test_tier_required]: `viewer_engineer` 收口 `PostOnboarding` 首屏降噪、主目标优先级与玩家入口 full-coverage gate 的最小产品化包。
+- [x] TASK-GAMEPLAY-CB-003 (`PRD-GAME-009`) [test_tier_required]: `viewer_engineer` 已完成 `PostOnboarding` 首屏降噪收口、同候选 headed Web/UI rerun 与 playability 卡片回写；当前主目标、进度和下一步建议已成为封闭 Beta 候选级首屏主焦点。
 - [x] TASK-GAMEPLAY-CB-004 (`PRD-GAME-009`) [test_tier_required + test_tier_full]: `qa_engineer` 已建立统一 `closed_beta_candidate` release gate，汇总 headed Web/UI、pure API、no-UI smoke、longrun/recovery 与趋势基线，并输出当前正式建议 `block`。
 - [x] TASK-GAMEPLAY-CB-005 (`PRD-GAME-009`) [test_tier_required]: `liveops_community` 收口封闭 Beta 候选招募/反馈/事故回流 runbook 与对外禁语清单，在 producer 放行前保持 `technical preview` 口径。
 - [ ] TASK-GAMEPLAY-CB-006 (`PRD-GAME-009`) [test_tier_required]: `producer_system_designer` 基于 `TASK-GAMEPLAY-CB-002/003/004/005` 的统一证据执行阶段评审，决定继续保持 `internal_playable_alpha_late` 还是升级为 `closed_beta_candidate`。
@@ -29,9 +29,10 @@
 - 更新日期: 2026-03-22
 - 当前状态: in_progress
 - 当前 owner: `producer_system_designer`
-- 下一任务: `TASK-GAMEPLAY-CB-003`
+- 下一任务: `TASK-GAMEPLAY-CB-006`
 - 已完成补充:
   - `TASK-GAMEPLAY-CB-002` 已交付 `doc/testing/evidence/closed-beta-runtime-s10-2026-03-22.md`，其中包含 clean-room `120s` / `600s+` soak 通过样本与 replay/rollback required-tier drill 结果，runtime lane 已可交 QA 并入 unified gate。
+  - `TASK-GAMEPLAY-CB-003` 已交付 `doc/playability_test_result/card_2026_03_22_15_56_13.md` 与 `output/playwright/playability/closed-beta-20260322/post-onboarding-20260322-155613/`：同候选 headed Web/UI rerun 已 `pass`，且 `AgentNotFound` 历史噪音不再占据右侧 chatter 焦点。
   - `TASK-GAMEPLAY-CB-005` 已交付 `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.{prd,design,project}.md`、`doc/playability_test_result/templates/closed-beta-candidate-{feedback-log-guide,incident-templates}-2026-03-22.md`，并把 `technical preview` 口径边界回写到 `readme` 模块正式追踪。
 - 阻断条件:
   - 若统一 release gate 尚未建立，则不得使用 `closed beta` 口径。
@@ -41,4 +42,5 @@
   - 本专题的目标是“阶段准入治理”，不是新增玩法功能。
   - 允许保持当前阶段，只要阻断项被如实记录并重新拆回 owner。
   - `TASK-GAMEPLAY-CB-002` 当前最新事实：clean-room `600s+` soak `output/longrun/closed-beta-candidate-20260322/20260322-121320` 已 `process_status=ok / metric_gate=pass`，且 replay/rollback required-tier drill 两条测试均通过，因此 runtime lane 已完成并可交 QA。
-  - `TASK-GAMEPLAY-CB-004` 当前最新事实：统一 QA gate 文档已建立且 longrun lane 已转为 `pass`；当前总结论仍是 `block`，原因仅剩 trend baseline 未达阈值、其他 lane 尚未在同一 candidate 上重跑。
+  - `TASK-GAMEPLAY-CB-003` 当前最新事实：fresh bundle headed Web/UI rerun `output/playwright/playability/closed-beta-20260322/post-onboarding-20260322-155613` 已 `pass`，并通过人工复核确认 `PostOnboarding` 主目标仍为首屏焦点。
+  - `TASK-GAMEPLAY-CB-004` 当前最新事实：统一 QA gate 文档已建立且 runtime / headed Web/UI lane 已转为 `pass`；当前总结论仍是 `block`，原因仅剩 trend baseline 未达阈值、pure API 与 no-UI smoke 尚未在同一 candidate 上重跑。

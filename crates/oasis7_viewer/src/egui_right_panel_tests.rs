@@ -274,6 +274,19 @@ fn sample_rejected_event(id: u64, time: u64) -> WorldEvent {
         id,
         time,
         kind: WorldEventKind::ActionRejected {
+            reason: RejectReason::RuleDenied {
+                notes: vec![format!("rule-{id}")],
+            },
+        },
+        runtime_event: None,
+    }
+}
+
+fn sample_agent_not_found_rejected_event(id: u64, time: u64) -> WorldEvent {
+    WorldEvent {
+        id,
+        time,
+        kind: WorldEventKind::ActionRejected {
             reason: RejectReason::AgentNotFound {
                 agent_id: format!("agent-{id}"),
             },
@@ -752,6 +765,23 @@ fn sync_feedback_toasts_skips_history_then_tracks_new_events_only() {
         feedback_toast_snapshot(&feedback, 0),
         Some((3, FeedbackTone::Warning, "操作受阻"))
     );
+}
+
+#[test]
+fn sync_feedback_toasts_ignores_agent_not_found_noise() {
+    let mut feedback = FeedbackToastState::default();
+    let mut state = sample_viewer_state(crate::ConnectionStatus::Connected, Vec::new());
+    let locale = crate::i18n::UiLocale::ZhCn;
+
+    sync_feedback_toasts(&mut feedback, &state, 20.0, locale);
+    assert_eq!(feedback_toast_len(&feedback), 0);
+
+    state.events.push(sample_agent_not_found_rejected_event(1, 1));
+    sync_feedback_toasts(&mut feedback, &state, 21.0, locale);
+
+    assert_eq!(feedback_last_seen_event_id(&feedback), Some(1));
+    assert!(!feedback_action_feedback_seen(&feedback));
+    assert_eq!(feedback_toast_len(&feedback), 0);
 }
 
 #[test]

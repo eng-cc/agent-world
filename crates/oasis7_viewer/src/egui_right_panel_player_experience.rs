@@ -12,7 +12,7 @@ use super::egui_right_panel_player_micro_loop::{
     build_player_micro_loop_snapshot, build_player_no_progress_diagnosis, PlayerNoProgressDiagnosis,
 };
 use bevy_egui::egui;
-use oasis7::simulator::{ResourceOwner, WorldEvent, WorldEventKind};
+use oasis7::simulator::{RejectReason, ResourceOwner, WorldEvent, WorldEventKind};
 use std::collections::BTreeSet;
 
 use crate::event_click_list::event_row_label;
@@ -203,6 +203,15 @@ pub(super) fn push_feedback_toast(
     }
 }
 
+fn should_show_feedback_toast_for_event(event: &WorldEventKind) -> bool {
+    !matches!(
+        event,
+        WorldEventKind::ActionRejected {
+            reason: oasis7::simulator::RejectReason::AgentNotFound { .. }
+        }
+    )
+}
+
 pub(super) fn sync_feedback_toasts(
     feedback: &mut FeedbackToastState,
     state: &ViewerState,
@@ -226,9 +235,11 @@ pub(super) fn sync_feedback_toasts(
     let mut seen_max = last_seen;
     let mut saw_new_event = false;
     for event in state.events.iter().filter(|event| event.id > last_seen) {
-        push_feedback_toast(feedback, event, now_secs, locale);
+        if should_show_feedback_toast_for_event(&event.kind) {
+            push_feedback_toast(feedback, event, now_secs, locale);
+            saw_new_event = true;
+        }
         seen_max = seen_max.max(event.id);
-        saw_new_event = true;
     }
     feedback.last_seen_event_id = Some(seen_max);
     if saw_new_event {
@@ -520,10 +531,22 @@ fn owner_agent_id(owner: &ResourceOwner) -> Option<&str> {
     }
 }
 
+fn is_player_focus_noise(event: &WorldEventKind) -> bool {
+    matches!(
+        event,
+        WorldEventKind::ActionRejected {
+            reason: RejectReason::AgentNotFound { .. }
+        }
+    )
+}
+
 fn chatter_line_for_event(
     event: &WorldEvent,
     locale: crate::i18n::UiLocale,
 ) -> Option<(String, String, FeedbackTone)> {
+    if is_player_focus_noise(&event.kind) {
+        return None;
+    }
     match &event.kind {
         WorldEventKind::AgentMoved { agent_id, to, .. } => Some((
             super::truncate_observe_text(agent_id, 14),

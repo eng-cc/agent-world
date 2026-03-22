@@ -113,6 +113,9 @@ shot_entry="$out_dir/01-post-onboarding-entry.png"
 shot_followup="$out_dir/02-post-onboarding-followup.png"
 session="${session_prefix}-${stamp}"
 
+# Ensure the polling loop can read the log file before tee opens it.
+touch "$run_log"
+
 stack_pid=""
 stack_logs_dir=""
 
