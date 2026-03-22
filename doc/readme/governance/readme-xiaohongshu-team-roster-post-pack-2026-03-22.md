@@ -26,6 +26,24 @@
 我现在有这几位 agent 队友
 ```
 
+## 正文建议
+```text
+先把我现在这支 agent 队伍介绍给大家。
+
+现在基本已经不是“我一个人做项目，顺手用几个 AI 工具”那种感觉了，
+而是真的有一支分工很明确的队伍在一起往前推。
+
+这组图里就是他们现在各自负责的方向。
+
+你也可以顺便猜一猜：
+带着这样一支队伍的人，最后会做一个什么样的游戏？
+```
+
+## 评论区引导
+```text
+如果只看这套分工，你会猜这是个什么游戏？
+```
+
 ## 卡片文案
 
 ### 第 1 页 / 封面
@@ -104,6 +122,16 @@
 
 ## 视觉素材
 - HTML: `site/social/xiaohongshu-agent-team-roster.html`
+- PNG:
+  - `site/social/xiaohongshu-agent-team-roster-slide1.png`
+  - `site/social/xiaohongshu-agent-team-roster-slide2.png`
+  - `site/social/xiaohongshu-agent-team-roster-slide3.png`
+  - `site/social/xiaohongshu-agent-team-roster-slide4.png`
+  - `site/social/xiaohongshu-agent-team-roster-slide5.png`
+  - `site/social/xiaohongshu-agent-team-roster-slide6.png`
+  - `site/social/xiaohongshu-agent-team-roster-slide7.png`
+  - `site/social/xiaohongshu-agent-team-roster-slide8.png`
+  - `site/social/xiaohongshu-agent-team-roster-slide9.png`
 - 使用方式:
   - 单页预览：`site/social/xiaohongshu-agent-team-roster.html?slide=1`
   - 逐页导出：`?slide=1` 到 `?slide=9`
@@ -125,5 +153,7 @@
 
 ## 发布备注
 - 第二篇的任务不是解释完整项目，而是把“agent 队友”这件事具体化。
+- 正文不需要解释太多世界观，重点是把“这支队伍已经像真的团队”这个感觉传出去。
+- 最后的互动点要落在“你猜这是什么游戏”上，而不是让评论区继续问“AI 能不能替代人”。
 - 如果评论区有人追问“你本人负责什么”，可以把第 9 页单独拎出来接。
 - 如果评论区更关心“它们具体怎么一起工作”，第三篇可以顺着写实际协作流程，而不是继续解释岗位。
