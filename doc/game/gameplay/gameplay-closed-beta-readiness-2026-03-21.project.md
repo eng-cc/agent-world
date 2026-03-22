@@ -41,4 +41,4 @@
   - 本专题的目标是“阶段准入治理”，不是新增玩法功能。
   - 允许保持当前阶段，只要阻断项被如实记录并重新拆回 owner。
   - `TASK-GAMEPLAY-CB-002` 当前最新事实：`scripts/s10-five-node-game-soak.sh` 的 cleanup 漏洞已修复，`--base-port 6410` 的 back-to-back 诊断样本证明脚本不再残留 listener，`--base-port 6310` 的 clean-room 120 秒样本也已 `process_status=ok / metric_gate=pass`；当前剩余缺口只剩 `600s+` soak 与 replay/rollback drill，因此 runtime lane 继续 `blocking`。
-  - `TASK-GAMEPLAY-CB-004` 当前最新事实：统一 QA gate 文档已建立，但当前结论仍是 `block`，原因包括 runtime lane 未完成 clean-room 600 秒候选验证、trend baseline 未达阈值、其他 lane 尚未在同一 candidate 上重跑。
+  - `TASK-GAMEPLAY-CB-004` 当前最新事实：统一 QA gate 文档已建立，当前结论仍是 `block`；runtime lane 虽已补齐 clean-room 120 秒 `pass`，但仍缺 `600s+` soak 与 replay/rollback drill，同时 trend baseline 未达阈值、其他 lane 尚未在同一 candidate 上重跑。

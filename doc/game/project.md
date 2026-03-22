@@ -185,6 +185,7 @@
 - ROUND-035 进展: `runtime_engineer` 已定位并修复 `scripts/s10-five-node-game-soak.sh` 的 cleanup 漏洞：此前 run 结束后会残留默认端口 listener，导致下一轮 sequencer startup 直接报 `bind 127.0.0.1:5811 failed: Address already in use`；修复后，`--base-port 6410` 的 back-to-back 10 秒诊断样本已证明不再残留 listener。与此同时，`20260322-115646` 的 60 秒样本也确认 reward runtime / settlement 链路本身可跑通。
 - ROUND-036 进展: `qa_engineer` 已将 `doc/testing/evidence/closed-beta-candidate-release-gate-2026-03-22.md` 从模板升级为统一 gate 入口，并给出当前正式结论 `block`：runtime lane 尚未完成 clean-room 候选证据，trend baseline 仍未达标，且 headed Web/UI、pure API、no-UI smoke 还没在同一 candidate 上完成 fresh rerun。
 - ROUND-037 进展: `runtime_engineer` 已补齐 clean-room `120s` 候选样本 `output/longrun/closed-beta-rerun-fixed-20260322/20260322-120458`，结果为 `process_status=ok / metric_gate=pass`，且 `nodes/*/exit-status.txt` 全部显示脚本收尾阶段的受控 `SIGTERM`（`exit_status=143`）；runtime lane 的正式缺口已从“120 秒样本缺失”收敛为“还缺 `600s+` soak 与 replay/rollback drill”，项目阶段继续保持 `internal_playable_alpha_late`。
+- ROUND-038 进展: `qa_engineer` 已将 unified gate 同步到 runtime 最新真值：longrun lane 现在是“clean-room `120s` 已 pass，但同一 candidate 的 `600s+` soak 与 replay/rollback drill 仍缺”，因此 QA 总结论继续保持 `block`，同时维持 trend baseline 未达阈值、其他 lane 未 fresh rerun 的阻断项。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-21.md`。
 
