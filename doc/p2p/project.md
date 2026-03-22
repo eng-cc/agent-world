@@ -341,8 +341,8 @@
 ## 状态
 - 更新日期: 2026-03-22
 - 当前状态: active（ROUND-022）
-- 下一任务: 进入 `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.project.md` 的 `TIGR-1~4`，冻结具体创世 bucket/account/vesting 与早期贡献奖励执行口径。
-- 最新完成: `TASK-P2P-031`（已完成 Token 初始分配与早期贡献奖励专题建档，并把项目战略控制 `5000 bps`、单人直持硬上限 `1500 bps` 与 contribution-based reward 口径纳入模块追踪。）
+- 下一任务: 维持当前 Token 创世冻结口径，等待 limited preview 首轮真实贡献奖励台账；若后续要把 `early_contributor_reward_reserve` fully on-chain 化，需新开治理专题评审是否迁移到 `ecosystem_pool` 或新分发路径。
+- 最新完成: `TASK-P2P-031`（已完成 Token 初始分配与早期贡献奖励专题建档与 `TIGR-1~4` 收口，冻结项目战略控制 `5000 bps`、单人直持硬上限 `1500 bps`，并决定 limited preview 期间 `early_contributor_reward_reserve` 保持独立多签执行、不并入 `ecosystem_pool`。）
 - 最新完成: `TASK-P2P-030`（已完成 `viewer-live` 活跃专题中旧 `oasis7*` crate/path 与 launcher 名称当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-029`（已完成 `node replication / contribution / reward` 活跃专题中旧 `oasis7*` crate/path 当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-028`（已完成 `node` 活跃专题第二批中旧 `oasis7*` crate/path 与旧 builtin wasm 环境变量当前真值口径的 `oasis7*` 收口。）

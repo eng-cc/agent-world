@@ -41,6 +41,13 @@
 - 生态/治理储备：`ecosystem_governance_reserve = 1500 bps`
 - 创始人个人直持：不单列独立大 bucket；如需个人受益，必须内嵌在 `team_long_term_vesting` 受益人表内并继续受 `500~1000 bps` 目标区间与 `1500 bps` 硬上限约束。
 
+## 3.3 TIGR-4 制作人执行路径决策
+- 当前 limited preview 期间，`early_contributor_reward_reserve` 保持为独立的 reward multisig / producer approval 执行路径，不并入 `ecosystem_pool`。
+- 原因-1：`InitializeMainTokenGenesis` 当前只把分配写入 recipient account `vested_balance`，创世时并不会直接生成 treasury bucket 余额。
+- 原因-2：limited preview 需要更强的低流通与低承诺纪律，独立储备更容易把“贡献奖励”与“生态 grant”分开管理。
+- 原因-3：`TIGR-3` 已把奖励口径固定为 contribution-based review，如果现在并入 `ecosystem_pool`，会放大对外对 grant / reward / airdrop 的语义混淆。
+- 重审条件：至少完成 1~2 轮真实贡献奖励台账、审批记录与复盘，再由新专题决定是否迁移到 fully on-chain 的治理分发路径。
+
 ## 4. 约束与边界
 - 创世分配总和必须为 `10000 bps`。
 - 项目战略控制目标为 `5000 bps`，单人直接受益硬上限为 `1500 bps`。
@@ -51,4 +58,5 @@
 ## 5. 设计演进计划
 - 先冻结比例和控制边界。
 - 再落实具体 bucket/account/vesting 参数表与审计 checklist。
-- 最后根据是否需要 fully on-chain 分发，决定 early contributor reserve 的长期执行载体。
+- limited preview 期间先按独立 reward reserve 多签执行。
+- 后续根据真实奖励轮次与治理成熟度，再决定 early contributor reserve 的长期执行载体。

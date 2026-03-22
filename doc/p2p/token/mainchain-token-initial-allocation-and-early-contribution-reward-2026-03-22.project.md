@@ -3,13 +3,13 @@
 - 对应设计文档: `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.design.md`
 - 对应需求文档: `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
 
-审计轮次: 2
+审计轮次: 3
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TIGR-0 (PRD-P2P-TOKEN-INIT-001/002/003) [test_tier_required]: 完成 Token 初始分配与早期贡献奖励专题 PRD / design / project 建档，并接入 `doc/p2p` 模块主追踪。
 - [x] TIGR-1 (PRD-P2P-TOKEN-INIT-001/002) [test_tier_required]: 由 `runtime_engineer` 输出创世 bucket/account/recipient/vesting 参数表草案，明确当前实现下所有创世 bucket 都先进入 recipient `vested_balance`，并区分 custody account 与 post-genesis treasury bucket 语义。
 - [x] TIGR-2 (PRD-P2P-TOKEN-INIT-002/003) [test_tier_required]: 由 `qa_engineer` 建立创世配置审计清单，覆盖 `sum=10000 bps`、单人直持上限、创世液态流通上限、首年外部释放上限与 custody/treasury 语义边界。
 - [x] TIGR-3 (PRD-P2P-TOKEN-INIT-003) [test_tier_required]: 由 `liveops_community` 输出 limited preview 早期贡献奖励评分模板、证据字段、奖励建议档位与对外禁语清单，明确该流程不依赖 invite-only、也不公开固定 token 汇率。
-- [ ] TIGR-4 (PRD-P2P-TOKEN-INIT-002/003) [test_tier_required]: 由 `producer_system_designer` 基于 `TIGR-1~3` 做最终发行前评审，决定 early contributor reserve 是保持多签治理执行还是后续合并进 `ecosystem_pool` 路径。
+- [x] TIGR-4 (PRD-P2P-TOKEN-INIT-002/003) [test_tier_required]: 由 `producer_system_designer` 基于 `TIGR-1~3` 做最终发行前评审，决定 early contributor reserve 在 limited preview 阶段保持多签治理执行，不并入 `ecosystem_pool`，并把“后续是否 fully on-chain”留给未来专题重审。
 
 ## TIGR-1 产物（本地草案，待 review）
 | bucket_id | ratio_bps | recipient | start_epoch | cliff_epochs | linear_unlock_epochs | genesis_liquid | ownership_note |
@@ -29,6 +29,17 @@
 - 全部 bucket `genesis_liquid=0`
 - `recipient` 当前均为 custody account 命名草案，不假装已初始化 treasury bucket
 
+## TIGR-4 评审结论
+- 决策：当前 limited preview 期间，`early_contributor_reward_reserve` 保持 `protocol:early-contributor-reward` 独立 reward multisig 执行路径，不并入 `ecosystem_pool`。
+- 理由：
+  - 当前 runtime 创世语义仍以 recipient `vested_balance` / custody account 为主，不支持把该储备直接视作已初始化的 treasury bucket。
+  - `TIGR-3` 的贡献奖励模板强调 contribution-based review；若现在并入 `ecosystem_pool`，会把贡献奖励和生态 grant 混成一套公开口径。
+  - limited preview 阶段优先级是低流通、低承诺、强人工审核，而不是尽快 fully on-chain 化。
+- 后续触发条件：
+  - 至少形成 1~2 轮真实贡献奖励台账。
+  - 审批链、台账与 QA 审计能稳定复用。
+  - 再由新专题评估是否迁移到 proposal-bound / treasury-bound 执行路径。
+
 ## 依赖
 - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`
 - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md`
@@ -43,7 +54,7 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：active
-- 下一步：执行 `TIGR-4`，由 `producer_system_designer` 基于当前 `TIGR-1~3` 做最终发行前评审，并决定 early contributor reserve 的执行路径。
+- 当前阶段：completed
+- 下一步：保持当前发行前冻结口径，等待 limited preview 首轮真实贡献奖励台账；若未来要把 early contributor reserve fully on-chain 化，需新开专题。
 - 最近更新：2026-03-22
-- 备注：`TIGR-1/TIGR-3` 已落盘，但仍未执行真实创世或真实对外发币；在 `TIGR-4` 完成前，仍不得把早期贡献奖励写成公开发币活动。
+- 备注：`TIGR-1~4` 已完成并形成当前发行前冻结结论，但仍未执行真实创世或真实对外发币；在新的治理专题明确前，不得把早期贡献奖励写成公开发币活动，也不得把 reward reserve 自动并入 `ecosystem_pool`。

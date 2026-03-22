@@ -47,10 +47,10 @@
 | 功能点 | 字段定义 | 动作行为 | 状态转换 | 计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 核心团队长期锁仓 | `bucket_id=team_long_term_vesting`、`allocation_bps=2000`、`recipient=team multisig / vesting beneficiaries`、`cliff=12m`、`linear=36m` | 创世写入锁仓；到期后按 vesting 释放 | `frozen -> cliff -> linear_unlock -> claimable` | 占总量 `20%`；不得在创世即液态 | 仅团队多签与受益人可按 vesting 领取 |
-| 早期贡献奖励储备 | `bucket_id=early_contributor_reward_reserve`、`allocation_bps=1500`、`recipient=governed reward reserve multisig` | 仅在贡献证据成立后发放；不得按登录/时长自动发放 | `frozen -> reviewed -> approved -> distributed` | 占总量 `15%`；发放需附带贡献台账 | `liveops_community` 记录，producer/治理维护者审核 |
+| 早期贡献奖励储备 | `bucket_id=early_contributor_reward_reserve`、`allocation_bps=1500`、`recipient=governed reward reserve multisig` | limited preview 期间保持独立 reward multisig 执行；仅在贡献证据成立后发放；不得按登录/时长自动发放 | `frozen -> reviewed -> approved -> distributed` | 占总量 `15%`；发放需附带贡献台账；当前不并入 `ecosystem_pool` | `liveops_community` 记录，producer/治理维护者审核 |
 | 节点服务创世储备 | `bucket_id=node_service_genesis_custody`、`allocation_bps=2000` | 作为协议长期储备，不视为团队库存 | `frozen -> protocol_distributable` | 占总量 `20%`；后续是否转入/补充 treasury 需单独决议 | 只能按协议/治理批准后的 custody claim 路径使用 |
 | 质押创世储备 | `bucket_id=staking_genesis_custody`、`allocation_bps=1500` | 作为协议长期储备，不视为团队库存 | `frozen -> protocol_distributable` | 占总量 `15%`；后续是否转入/补充 treasury 需单独决议 | 只能按协议/治理批准后的 custody claim 路径使用 |
-| 生态金库 | `bucket_id=ecosystem_pool`、`allocation_bps=1500` | 用于 grant、生态激励或未来治理计划；不等于早期玩家普发 | `frozen -> governance_distributable` | 占总量 `15%`；需治理记录 | 只能通过治理绑定分发 |
+| 生态治理储备 | `bucket_id=ecosystem_governance_reserve`、`allocation_bps=1500` | 用于 grant、生态激励或未来治理计划；后续如需导入 `ecosystem_pool`，必须单独决议；不等于早期玩家普发 | `frozen -> governance_distributable` | 占总量 `15%`；需治理记录 | 只能通过治理绑定分发 |
 | 安全储备 | `bucket_id=security_reserve_emergency`、`allocation_bps=1000` | 仅用于安全事故、应急补偿或协议防御 | `frozen -> emergency_only` | 占总量 `10%`；常态不可外发 | 仅受限治理或安全委员会可动用 |
 | 基金会/运营储备 | `bucket_id=foundation_ops_reserve`、`allocation_bps=500`、`recipient=ops multisig` | 用于基础运营与合规/基础设施费用 | `frozen -> vested_ops` | 占总量 `5%`；建议同步锁仓 | 仅运营多签可按规则动用 |
 | 单人直持边界 | `founder_direct_target_bps=500~1000`、`founder_direct_cap_bps=1500` | 创世前检查任一自然人直接受益份额是否超限 | `candidate -> approved/rejected` | 超过 `15%` 直接拒绝；目标区间 `5%~10%` | producer 与 QA 共同审计 |
@@ -71,6 +71,7 @@
   - AC-7: 早期奖励口径不得依赖产品级 invite-only 机制；没有产品级准入控制时，仍可通过运营名单、贡献审核和多签审批执行。
   - AC-8: 分配表必须能映射到现有 runtime 能力：创世分配走 `InitializeMainTokenGenesis`，锁仓释放走 `ClaimMainTokenVesting`；`TIGR-1` 输出的 `protocol:*` recipient 当前表示 custody account，而不是直接初始化 `main_token_treasury_balances`。
   - AC-9: `TIGR-1` 必须产出 7 条创世 bucket 参数草案，明确 `recipient/start_epoch/cliff_epochs/linear_unlock_epochs/genesis_liquid/claim_policy`，并把 `node_service/staking/ecosystem/security` 的创世 custody 账户与 post-genesis treasury bucket 语义分开。
+  - AC-10: `TIGR-4` 必须冻结当前执行路径为“`early_contributor_reward_reserve` 在 limited preview 期间保持 `protocol:early-contributor-reward` 多签治理执行，不并入 `ecosystem_pool`”；只有在真实奖励轮次、审计台账与治理成熟度都跑出来后，才允许另开专题重审是否合并。
 - Non-Goals:
   - 本专题不决定总供应量绝对数值（如 `1e8` 或 `1e9`），只冻结比例和控制边界。
   - 不在本专题给出法律意见、证券属性判断、税务结论或上市计划。
@@ -82,7 +83,6 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 使用现有 `main_token` runtime 的创世分配、锁仓领取、增发与治理绑定 treasury 分发能力承接该口径。创世时先把总量按 bucket 写入锁仓/金库；后续释放严格区分“团队/项目战略控制”“协议奖励池”“外部可流通”三层，不把 treasury custody 误当作个人库存。
 - Architecture Overview: 使用现有 `main_token` runtime 的创世分配、锁仓领取、增发与治理绑定 treasury 分发能力承接该口径。创世时先把总量按 bucket 写入 recipient 账户的 `vested_balance`，而不是直接写入 `main_token_treasury_balances`；后续释放严格区分“团队/项目战略控制”“协议奖励池”“外部可流通”三层，不把 custody account 误当作 treasury bucket 或个人库存。
 - Integration Points:
   - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`
@@ -91,6 +91,10 @@
   - `doc/game/gameplay/gameplay-limited-preview-execution-2026-03-22.prd.md`
   - `crates/oasis7/src/runtime/main_token.rs`
   - `testing-manual.md`
+- Execution Path Decision:
+  - `TIGR-4` 当前选定 `early_contributor_reward_reserve -> protocol:early-contributor-reward -> reward multisig + producer approval` 作为 limited preview 执行路径。
+  - 当前不把 early contributor reserve 合并进 `ecosystem_pool`，避免在 runtime 语义尚未直连 treasury bucket、且真实奖励轮次尚未跑完时，把“贡献奖励”与“生态 grant”混成同一个公开口径。
+  - 若未来需要 fully on-chain、proposal-bound 的 contributor distribution，应在新的治理专题里同时回答“运行时映射”“审计透明度”“社区预期”三项问题后再迁移。
 - Edge Cases & Error Handling:
   - 若创世 bucket 比例和不为 `10000 bps`，则候选配置直接拒绝。
   - 若任一自然人直接受益份额超过 `1500 bps`，则创世配置直接退回。
@@ -98,7 +102,7 @@
   - 若某奖励提案无法附带可审计贡献证据，则不得发放。
   - 若外部文案把奖励描述为 `play-to-earn`、`airdrop for playing` 或“来玩就有币”，则 `liveops_community` 必须退回改稿。
   - 若产品仍无 invite-only 功能，则 reward eligibility 只能依赖运营筛选与贡献审核，不得宣称链上准入门槛已存在。
-  - 若 early_contributor_reward_reserve 未来需要 fully on-chain 治理分发，但现有实现不支持其作为 treasury bucket，则必须在后续专题里决定“合并入 `ecosystem_pool`”或“保持多签治理执行”，本期不允许口头跳过。
+  - 若有人主张把 early contributor reserve 立即并入 `ecosystem_pool`，但拿不出真实贡献轮次数据、治理审批节奏与 runtime 映射方案，则该提案直接退回；当前 producer 决策是继续保持独立多签执行。
 - Non-Functional Requirements:
   - NFR-TOKEN-INIT-1: 创世分配表字段完整率 `100%`，至少包含 `bucket_id/allocation_bps/recipient/controller/vesting/release_path`。
   - NFR-TOKEN-INIT-2: 创世配置审计时必须同时输出三类汇总：项目战略控制比例、协议奖励池比例、单人直接受益比例。
@@ -107,18 +111,20 @@
   - NFR-TOKEN-INIT-4: 早期奖励外部文案中，`play-to-earn`、`login reward`、`time played = token` 命中次数必须为 `0`。
   - NFR-TOKEN-INIT-5: 任何早期奖励发放记录都必须可追溯到贡献证据、审批人、数量和发放日期。
   - NFR-TOKEN-INIT-6: 若后续需要修改上述比例或控盘上限，必须新开专题 PRD，不允许只在聊天、海报或运营帖中变更口径。
+  - NFR-TOKEN-INIT-7: limited preview 阶段任何 early contributor reward 执行都必须走独立 reward reserve 审批链，`ecosystem_pool` 的治理 grant 流程不得被拿来替代或掩盖贡献奖励发放。
 - Security & Privacy: 创世分配配置、控制账户与奖励记录必须可审计；安全储备不得与运营或个人钱包混用；涉及个人身份映射时只记录必要的链上账户与贡献证据，不在文档中暴露敏感个人信息。
 
 ## 5. Risks & Roadmap
 - Phased Rollout:
   - MVP: 冻结比例、控盘边界、低流通门禁和 early contribution reward 规则。
   - v1.1: 输出具体创世 bucket/account/vesting 参数表与 QA 审计清单。
-  - v2.0: 若需要 fully on-chain 的 early contributor distribution，再决定合并进 `ecosystem_pool` 或扩展新的治理型分发路径。
+  - v2.0: 至少跑出 1~2 轮真实贡献奖励台账并完成治理复盘后，再决定是否合并进 `ecosystem_pool` 或扩展新的治理型分发路径。
 - Technical Risks:
   - 风险-1: 若把项目多签控制与个人直持混为一谈，会高估创始人个人库存并放大外部质疑。
-  - 风险-2: 若 early contributor reserve 长期停留在链下多签操作，治理透明度会弱于 treasury-bound 路径。
+  - 风险-2: 若 early contributor reserve 长期停留在链下多签操作，治理透明度会弱于 treasury-bound 路径；因此需要用真实台账、审批记录与后续专题评审补足可审计性。
   - 风险-3: 若 limited preview 为了拉新而放宽奖励口径，极易从“贡献制”滑向“时长挖矿”。
   - 风险-4: 若创世初期释放过快，会直接冲掉当前 `limited playable technical preview` 阶段应保持的低流通与低承诺策略。
+  - 风险-5: 若过早把 early contributor reserve 并入 `ecosystem_pool`，会把“贡献奖励审批”与“生态 grant 治理”混成同一口径，放大对外理解偏差。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -134,3 +140,4 @@
 | DEC-TOKEN-INIT-002 | 项目战略控制目标设为 `5000 bps`，单人直持目标 `500~1000 bps`、硬上限 `1500 bps` | 创始人直接持有大比例流通筹码 | 降低个人过度控盘观感，保留项目推进所需控制力。 |
 | DEC-TOKEN-INIT-003 | 早期奖励采用 contribution-based reward | 开放式 play-to-earn / login reward / time-play mining | 当前阶段仍是技术预览，不能把代币激励建立在泛流量和挂机行为上。 |
 | DEC-TOKEN-INIT-004 | 协议奖励池与项目战略控制分开记账和对外表述 | 将 treasury custody 与团队库存混用 | 避免治理资产与个人/团队资产混淆。 |
+| DEC-TOKEN-INIT-005 | limited preview 期间保持 `early_contributor_reward_reserve` 独立多签治理执行，不并入 `ecosystem_pool` | 现在就把贡献奖励储备并入 `ecosystem_pool` | 当前 runtime 创世语义仍以 custody account 为主，且真实奖励轮次与治理成熟度尚不足以支撑立即合并。 |
