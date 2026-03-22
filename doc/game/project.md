@@ -113,11 +113,31 @@
     - `git diff --check`
 - [x] TASK-GAME-033 (PRD-GAME-009) [test_tier_required]: `producer_system_designer` 已基于 `TASK-GAME-029/030/031/032` 的统一证据完成阶段评审，决定当前继续保持 `internal_playable_alpha_late`；理由是 unified gate `pass` 只证明技术门收口，而当前 claim envelope 与 liveops 节奏仍继续维持 `limited playable technical preview`，暂不切换到 `closed_beta_candidate` 口径。
 - [x] TASK-GAME-034 (PRD-GAME-009) [test_tier_required]: 基于最新制作人口径决策，将当前对外 claim envelope 从 `technical preview / not playable yet` 收口为 `limited playable technical preview`，并同步更新 game/readme/liveops 当前真值文档，不改变阶段判断与禁语边界。
+- [x] TASK-GAME-035 (PRD-GAME-010) [test_tier_required]: 新增“受控 limited preview 执行”专题 PRD / design / project，并完成 game 根 PRD、项目文档、索引、handoff 与 devlog 挂载。
+  - 产物文件:
+    - `doc/game/gameplay/gameplay-limited-preview-execution-2026-03-22.prd.md`
+    - `doc/game/gameplay/gameplay-limited-preview-execution-2026-03-22.design.md`
+    - `doc/game/gameplay/gameplay-limited-preview-execution-2026-03-22.project.md`
+    - `doc/game/gameplay/producer-to-liveops-task-game-036-limited-preview-execution-2026-03-22.md`
+    - `doc/game/gameplay/producer-to-qa-task-game-037-limited-preview-gate-watch-2026-03-22.md`
+    - `doc/game/prd.md`
+    - `doc/game/project.md`
+    - `doc/game/prd.index.md`
+    - `doc/game/README.md`
+    - `doc/devlog/2026-03-22.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "PRD-GAME-010|limited playable technical preview|continue / hold / reassess|claim drift" doc/game/prd.md doc/game/project.md doc/game/gameplay/gameplay-limited-preview-execution-2026-03-22.prd.md doc/game/gameplay/gameplay-limited-preview-execution-2026-03-22.project.md doc/game/gameplay/producer-to-liveops-task-game-036-limited-preview-execution-2026-03-22.md doc/game/gameplay/producer-to-qa-task-game-037-limited-preview-gate-watch-2026-03-22.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
+- [ ] TASK-GAME-036 (PRD-GAME-010) [test_tier_required]: `liveops_community` 执行 1 轮 invite-only builder callout，按固定巡检窗口归档 `Blocking / Opportunity / Idea` 信号，并在出现 claim drift 时当轮纠偏。
+- [ ] TASK-GAME-037 (PRD-GAME-010) [test_tier_required]: `qa_engineer` 输出 `QA Weekly / Event Verdict`，确认当前 unified gate 是否仍保持 `pass`，并在真实反馈触发时建议 `continue / conditional go / no-go`。
+- [ ] TASK-GAME-038 (PRD-GAME-010) [test_tier_required]: `producer_system_designer` 基于 `TASK-GAME-036/037` 的真实执行样本，正式决定继续维持、收紧节奏，或触发下一轮阶段评审。
 
 ## 依赖
 - 模块设计总览：`doc/game/design.md`
 - doc/game/prd.index.md
 - `doc/game/gameplay/gameplay-top-level-design.prd.md`
+- `doc/game/gameplay/gameplay-limited-preview-execution-2026-03-22.prd.md`
 - `doc/game/gameplay/gameplay-distributed-consensus-governance-longrun-2026-03-06.prd.md`
 - `doc/game/gameplay/gameplay-longrun-p0-production-hardening-2026-03-06.prd.md`
 - `doc/game/gameplay/gameplay-engineering-architecture.md`
@@ -128,7 +148,8 @@
 ## 状态
 - 更新日期: 2026-03-22
 - 当前状态: in_progress
-- 下一任务: `待新需求（当前阶段保持 internal_playable_alpha_late，继续监控 unified gate / trend baseline / liveops 节奏）`
+- 下一任务: `TASK-GAME-036（执行 1 轮受控 limited preview builder callout，并回流首批真实信号）`
+- 最新完成: `TASK-GAME-035`（已新增 `PRD-GAME-010` 受控 limited preview 执行专题，并将 owner、handoff、done 定义与验证方式正式挂载到 game 根入口。）
 - 最新完成: `TASK-GAME-033`（`producer_system_designer` 已完成阶段评审，决定当前继续保持 `internal_playable_alpha_late`；统一 gate `pass` 不自动放宽对外 claim envelope。）
 - 最新完成: `TASK-GAME-030`（`viewer_engineer` 已完成 `PostOnboarding` 首屏降噪收口、fresh bundle headed Web/UI rerun 与 playability 卡片回写；`AgentNotFound` 历史噪音不再占据右侧 chatter 焦点。）
 - 最新完成: `TASK-GAME-032`（`liveops_community` 已交付 closed beta candidate runbook、feedback/incident 模板与 `technical preview` 禁语边界，并在 `readme` 模块正式追踪。）
@@ -151,6 +172,7 @@
 - 下一阶段目标: `closed_beta_candidate`
 - 阻断条件: 若统一 `closed_beta_candidate` release gate 尚未建立或任一关键 lane `block`，当前项目仍不得升级为 `closed beta` 对外口径。
 - 当前评审结论: unified gate 已 `pass`，但本轮 producer 决策继续维持 `limited playable technical preview` claim envelope，因此阶段暂不提升到 `closed_beta_candidate`。
+- 当前执行重点: 将 `limited playable technical preview` 从文案边界推进为 1 轮受控、invite-only、可回流的真实执行闭环；若出现 claim drift 或 unified gate 回退，必须立即收紧节奏。
 - 承接约束: `TASK-GAME-029/030/031/032` 必须以同一候选版本互链，不能用不同批次专题 `pass` 拼凑升阶结论。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002/003/004` 与 `TASK-GAME-007` 已闭环；分布式长期在线专题已完成设计建档（`TASK-GAME-008`）与执行共识首个实现切片（`TASK-GAME-009`）。
@@ -197,6 +219,7 @@
 - ROUND-043 进展: `qa_engineer` 已将 `doc/testing/evidence/testing-quality-trend-baseline-2026-03-11.md` 刷新为最近 7 天窗口（`2026-03-19` ~ `2026-03-22`）真值，纳入 7 个 candidate 相关样本后得到 `first-pass=100% / escape=0% / fix-time=0d`，并据此把 unified gate 更新为 `pass`。项目当前已无 QA 技术 blocker，但阶段仍保持 `internal_playable_alpha_late`，下一步必须由 `producer_system_designer` 执行 `TASK-GAME-033` 决定是否继续保持当前阶段或进入下一阶段候选口径。
 - ROUND-044 进展: `producer_system_designer` 已完成 `TASK-GAME-033` 阶段评审，并正式决定继续保持 `internal_playable_alpha_late`。理由不是 QA 技术 blocker，而是当前 release / 招募节奏仍按受控技术预览管理；在 producer 明确打开下一阶段 claim envelope 之前，`closed_beta_candidate` 继续只作为目标态，不作为当前对外口径。
 - ROUND-045 进展: `producer_system_designer` 已完成 `TASK-GAME-034`，将当前有效对外口径正式收口为 `limited playable technical preview`；该调整只放宽“完全不可玩”的表述，不改变阶段判断，也不放开 `closed beta / play now / live now` 禁语。
+- ROUND-046 进展: `producer_system_designer` 已完成 `TASK-GAME-035`，新增 `PRD-GAME-010` 受控 limited preview 执行专题，并正式把下一步拆成 `TASK-GAME-036/037/038`：先由 `liveops_community` 执行 1 轮 invite-only callout，再由 `qa_engineer` 给出 `QA Weekly / Event Verdict`，最后由制作人决定 `continue / hold / reassess`。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-21.md`。
 

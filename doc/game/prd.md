@@ -64,6 +64,7 @@
   - PRD-GAME-007: As a 新玩家, I want a post-onboarding stage objective chain, so that I know what to pursue after the first guided action.
   - PRD-GAME-008: As a 纯 API 玩家, I want the same gameplay information and actions as the UI client, so that I can keep playing without a browser.
   - PRD-GAME-009: As a 制作人与阶段评审 owner, I want a unified closed-beta admission gate, so that stage upgrades and external claims are evidence-driven instead of topic-by-topic guesses.
+  - PRD-GAME-010: As a 制作人与 limited preview owner, I want one controlled external execution loop, so that the new claim envelope is validated with real feedback instead of internal assumptions.
 - 模式分层说明：按 `PRD-CORE-009`，`PRD-GAME-008` 所承接的是玩家访问模式 `pure_api`，而不是 OpenClaw `headless_agent` 一类 execution lane。
 - Critical User Flows:
   1. Flow-GAME-001: `玩法需求提出 -> 规则层建模 -> 映射实现边界 -> 进入开发`
@@ -74,6 +75,7 @@
   6. Flow-GAME-006: `完成首次行动闭环 -> 进入 PostOnboarding 阶段 -> 达成首个持续能力里程碑 -> 进入中循环方向`
   7. Flow-GAME-007: `纯 API 客户端连接 -> 获取 canonical gameplay snapshot -> 执行动作/聊天/推进 -> 恢复阶段与下一步 -> 持续推进到中循环入口`
   8. Flow-GAME-008: `制作人冻结当前阶段 -> runtime/viewer/QA/liveops 汇总统一 release gate -> 若任一关键门禁失败则维持 internal_playable_alpha_late -> 全部通过后才允许升级 closed_beta_candidate 口径`
+  9. Flow-GAME-009: `制作人冻结 limited preview 执行边界 -> liveops 发起受控 callout -> QA 持续守门并吸收真实信号 -> 制作人决定 continue / hold / reassess`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -85,6 +87,7 @@
 | PostOnboarding 目标链 | `stage_id`、`goal_id`、`goal_type`、`progress`、`blocker_primary`、`next_step_hint` | 完成首次行动闭环后生成主目标并持续更新 | `introduced -> active -> blocked -> completed -> branch_ready` | 默认工业持续能力优先，完成首个里程碑后再展开治理 / 冲突 / 扩张方向 | 玩家可见，系统生成，玩法负责人定义口径 |
 | 纯 API 客户端等价 | `player_gameplay_snapshot`、`available_actions`、`recent_feedback`、`parity_level` | 客户端查看阶段/目标/阻塞、执行推进/聊天/命令、恢复会话 | `observer_only -> playable -> parity_verified` | UI/API 共用 canonical 语义，不允许各算一套 | 已连接客户端可读；写操作按玩家鉴权 |
 | 阶段准入门禁 | `current_stage`、`candidate_stage`、`claim_envelope`、`trend_status`、`gate_lane_status` | 汇总 headed Web/UI、pure API、no-UI、longrun/recovery 与 liveops 口径，输出升阶或维持原阶段结论 | `internal_playable_alpha -> internal_playable_alpha_late -> closed_beta_candidate -> closed_beta` | 先统一 gate，再允许升级对外口径；任一关键 lane 阻断即整体阻断 | `producer_system_designer` 最终拍板；`qa_engineer` 可独立给阻断建议 |
+| 受控 limited preview 执行 | `preview_round_status`、`callout_id`、`signal_quality`、`claim_drift_status`、`qa_recommendation` | 发起 invite-only 预览、归档真实信号、持续校验 gate、输出 continue/hold/reassess 结论 | `ready_to_run -> running -> reviewed -> continue/hold/reassess` | 先验证口径是否受控，再判断是否扩大节奏 | `producer_system_designer` 最终拍板；`liveops_community` 执行；`qa_engineer` 守门 |
 - 核心玩法循环验收矩阵（TASK-GAME-002）:
 | 循环 | 验收场景（Given / When / Then） | 规则层边界（PRD-GAME-002） | 证据事件/状态 | `test_tier_required` 入口 | 通过阈值（Done） | 失败处置 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -137,6 +140,7 @@
   - AC-11: 新增 `PostOnboarding` 专题 PRD，明确首次行动闭环后的阶段目标、阻塞分类、阶段完成与中循环承接，并可映射到 `#46` 的 required-tier 验收。
   - AC-12: 新增纯 API 等价专题 PRD，明确 canonical 玩家语义、动作集合、恢复逻辑与 UI/API parity matrix，并可映射到纯 API 长玩 required/full 验收。
   - AC-13: 新增 `PRD-GAME-009` 封闭 Beta 准入专题，明确当前阶段、统一 release gate、趋势阈值和对外口径边界，并能直接驱动跨角色 handoff。
+  - AC-14: 新增 `PRD-GAME-010` 受控 limited preview 执行专题，明确 invite-only 外放、claim drift 纠偏、QA 持续守门与制作人 continue/hold/reassess 决策。
 - Non-Goals:
   - 不在本 PRD 中给出逐条数值参数表。
   - 不替代 runtime/p2p 的底层实现设计。
@@ -187,6 +191,7 @@
   - NFR-GAME-13: 正式纯 API 玩家入口 100% 具备 canonical `stage/goal/progress/blocker/next_step/available_actions` 字段，不允许依赖 UI 私有拼装。
   - NFR-GAME-14: 纯 API required-tier 长玩回归必须在 fresh bundle 本地可复跑，并至少推进到首个持续能力里程碑。
   - NFR-GAME-15: 在 `PRD-GAME-009` 的统一 release gate 未通过前，公开渠道 100% 维持 `limited playable technical preview` 口径，不允许出现 `closed beta` / `play now` / `live now`。
+  - NFR-GAME-16: `PRD-GAME-010` 的每一轮受控 limited preview 执行都必须在同日回写信号归档、owner 与 next action，并允许 QA 因真实反馈把 unified gate 从 `pass` 回退为 `block`。
 - Security & Privacy: gameplay 不直接处理密钥；涉及玩家反馈与行为数据时遵循最小化采集与脱敏记录。
 
 ## 5. Risks & Roadmap
@@ -211,6 +216,7 @@
 | PRD-GAME-007 | TASK-GAME-021 + TASK-GAMEPLAY-POD-001/002/003/004 | `test_tier_required` | 文档治理检查、Viewer / Web required-tier 回归、playability 卡片复核 | 新手阶段承接、`#46` 回归、目标链表达稳定性 |
 | PRD-GAME-008 | TASK-GAME-023 + TASK-GAMEPLAY-API-001/002/003/004 | `test_tier_required` + `test_tier_full` | 文档治理检查、协议字段对账、纯 API 长玩回归、UI/API parity matrix、full-tier 长稳抽样 | 纯 API 正式入口、阶段承接、持续游玩等价性 |
 | PRD-GAME-009 | TASK-GAME-028/029/030/031/032/033 | `test_tier_required` + `test_tier_full` | 文档治理检查、统一 release gate、趋势基线对账、longrun/recovery 证据、runbook 口径检查 | 当前阶段判断、封闭 Beta 准入、对外口径一致性 |
+| PRD-GAME-010 | TASK-GAME-035/036/037/038 | `test_tier_required` | 文档治理检查、limited preview callout 与回流模板核验、QA 守门结论、producer 复盘记录 | 受控预览执行、claim drift、继续/暂停决策 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -224,3 +230,4 @@
 | DEC-GAME-008 | 新增独立 `PRD-GAME-007` 作为 `FirstSessionLoop` 之后的阶段承接专题 | 继续把 post-4/4 行为留在静态提示或零散 Viewer 文案里 | 独立专题更利于把 `#46` 从 UI 缺陷提升为正式玩法阶段设计问题。 |
 | DEC-GAME-009 | 新增独立 `PRD-GAME-008` 作为纯 API 正式玩家入口专题 | 继续把无 UI 路径视为探针/调试能力，不定义玩法等价门禁 | 用户目标是长期以 API 玩游戏，必须把“协议可用”升级为“玩法可玩且等价”。 |
 | DEC-GAME-010 | 新增独立 `PRD-GAME-009` 作为封闭 Beta 准入专题 | 继续把阶段判断留在零散 evidence/devlog 中 | 当前阶段已跨过原型，但还未达到 Beta；独立专题更利于统一 gate、趋势与对外口径。 |
+| DEC-GAME-011 | 新增独立 `PRD-GAME-010` 作为受控 limited preview 执行专题 | 在没有真实外部样本的情况下直接扩大节奏或继续只做内部判断 | 现在缺的不是新的技术门，而是“limited playable technical preview”在真实执行中是否稳定成立的治理闭环。 |
