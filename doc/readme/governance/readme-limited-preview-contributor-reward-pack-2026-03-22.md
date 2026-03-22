@@ -1,0 +1,89 @@
+# Limited Preview Early Contributor Reward Pack（2026-03-22）
+
+审计轮次: 1
+
+## Meta
+- Owner Role: `liveops_community`
+- Review Role: `producer_system_designer`
+- Round Scope: `limited playable technical preview`
+- Dependency: `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.project.md`
+- Rule: reward review is contribution-based, not invite-only-gated, and not `play-to-earn`
+
+## 1. What Counts
+Countable contribution examples:
+- reproducible bug report with clear steps
+- merged PR or high-quality patch
+- long-session structured play sample
+- content / docs / translation contribution
+- builder support or ecosystem help with concrete evidence
+
+Default non-countable examples:
+- signup
+- login
+- casual play
+- online time
+- AFK / idle time
+- vague praise with no evidence
+
+## 2. Scoring Sheet
+| Field | Value |
+| --- | --- |
+| Contributor |  |
+| Public Handle / GitHub |  |
+| Chain Account / Reward Account |  |
+| Contribution Type |  |
+| Base Score |  |
+| Quality Modifier |  |
+| Total Score |  |
+| Recommended Band | `no-token-recommendation / eligible-small / eligible-medium / eligible-large` |
+| Reviewer |  |
+| Review Date |  |
+
+## 3. Evidence Fields
+Each recommendation should include:
+- `proof_link`
+- `issue_or_pr_link` if available
+- `build_id / env`
+- `repro_steps` or `session summary`
+- `why_this_matters`
+- `duplicate_check`
+- `reviewer_note`
+
+Missing any key evidence field means default `no-token-recommendation` until completed.
+
+## 4. Band Rules
+- `<20`: `no-token-recommendation`
+- `20-49`: `eligible-small`
+- `50-89`: `eligible-medium`
+- `>=90`: `eligible-large`
+
+These are recommendation bands only.
+
+Do not say:
+- fixed token amount
+- fixed token/point ratio
+- “play X hours, get Y token”
+
+## 5. Safe Copy
+Allowed phrasing:
+- `early contributor reward`
+- `contribution-based review`
+- `small auditable reward consideration`
+- `bug report / PR / structured feedback may be eligible`
+- `subject to review and approval`
+
+Forbidden phrasing:
+- `play-to-earn`
+- `login reward`
+- `time played = token`
+- `come play to earn`
+- `airdrop for players`
+- `just try the game and get token`
+- `invite-only reward drop`
+
+## 6. Review Chain
+1. `liveops_community` records contribution + evidence + score
+2. `producer_system_designer` reviews recommendation band
+3. if approved, later treasury / execution owner handles actual distribution
+
+No public promise should be made before producer approval.

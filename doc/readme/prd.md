@@ -1,6 +1,6 @@
 # readme PRD
 
-审计轮次: 6
+审计轮次: 7
 
 ## 目标
 - 建立 readme 模块设计主文档，统一需求边界、技术方案与验收标准。
@@ -66,6 +66,7 @@
 - PRD-README-017: As a `liveops_community`, I want a closed beta candidate runbook plus feedback/incident templates, so that recruitment, feedback, and incident signals stay within the technical preview envelope while still feeding the unified release gate.
 - PRD-README-018: As a `liveops_community`, I want real Moltbook execution lessons written back into the runbook, so that future posts can reuse what triggered discussion and avoid what triggered spam.
 - PRD-README-019: As a `liveops_community`, I want a controlled limited preview execution pack, so that the first invite-only builder round can run with fixed callout copy, monitoring slots, signal buckets, and producer-facing summary fields.
+- PRD-README-020: As a `liveops_community`, I want an early contributor reward pack for limited preview, so that reward eligibility, evidence fields, score bands, and forbidden phrases stay contribution-based and do not depend on invite-only or play-to-earn framing.
 - Critical User Flows:
   1. Flow-RM-001: `阅读 README -> 跳转模块入口 -> 快速定位目标能力`
   2. Flow-RM-002: `检测口径变更 -> 更新入口文档 -> 校验链接 -> 发布同步`
@@ -75,6 +76,7 @@
   6. Flow-RM-006: `按首周模板安排 day1-day7 发帖 / 巡检 / 跟评 / 周复盘 -> 将真实信号沉淀到 runbook 与 devlog`
   7. Flow-RM-007: `复盘真实帖子表现 -> 提炼有效讨论钩子与 spam 触发条件 -> 回写 runbook -> 调整下一帖策略`
   8. Flow-RM-008: `冻结 limited preview 口径 -> 选用 invite-only callout copy -> 按固定窗口巡检 -> 将信号按 Blocking / Opportunity / Idea 归档 -> 输出 producer 摘要`
+  9. Flow-RM-009: `收集 early contributor signal -> 按评分模板记录证据 -> 输出 small/medium/large reward recommendation -> 检查对外禁语 -> 回流 producer 审核`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -87,6 +89,7 @@
 | Closed Beta Candidate Runbook | `candidate_signal`、`release_gate_link`、`response_template`、`incident_level` | 招募、反馈、事故模板、FAQ | `tech_preview -> candidate_runbook -> gate_ready` | runbook步骤优先，监测其次 | `liveops_community` 维护，`producer_system_designer` 决定口径 |
 | 实战运营经验 | `post_id`、`working_hook`、`spam_trigger`、`next_adjustment` | 把真实发帖结果沉淀成后续可复用规则 | `observed -> distilled -> adopted` | 先记录高信号模式，再记录高风险模式 | `liveops_community` 维护 |
 | 受控预览执行包 | `round_id`、`callout_copy`、`check_slot`、`signal_bucket`、`claim_drift_flag`、`summary_field` | 把 limited preview 第一轮执行压成可直接照跑的操作包 | `draft -> execution_ready -> reused` | 先冻结文案，再冻结巡检，再冻结回流摘要 | `liveops_community` 维护，`producer_system_designer` 审核边界 |
+| 早期贡献奖励操作包 | `contribution_type`、`score_band`、`evidence_field`、`reward_recommendation`、`forbidden_phrase` | 按贡献评分模板判断是否进入奖励建议池，并约束对外表达 | `signal -> scored -> reviewed -> recommended` | 不公布固定 token/point 比率；仅按贡献审计后给 `eligible-small/medium/large` 建议 | `liveops_community` 记录与初评，`producer_system_designer` 最终审批 |
 - Acceptance Criteria:
   - AC-1: readme PRD 明确入口文档职责边界。
   - AC-2: readme project 文档维护同步任务与状态。
@@ -100,6 +103,7 @@
 - AC-10: 已新建 `closed beta candidate` runbook与 incident template，供招募/反馈/事故信号在 `limited playable technical preview` claim envelope 内沟通并可直接回流 unified release gate。
   - AC-11: Moltbook runbook 至少记录一轮真实执行后的“有效讨论钩子”和“高风险 spam 触发模式”，并明确下一轮如何调整。
 - AC-12: 若团队进入 `limited playable technical preview` 的 invite-only 执行阶段，必须补齐受控执行包，明确 callout 文案、巡检窗口、信号分桶、claim drift 纠偏与 producer 摘要字段。
+- AC-13: 若团队决定在 limited preview 阶段使用 early contributor reward，必须补齐独立操作包，明确评分模板、证据字段、审阅链、禁语与“无固定 token/point 汇率”边界。
 - Non-Goals:
   - 不在 readme PRD 中替代各模块详细设计。
   - 不在 readme PRD 中定义测试用例细节。
@@ -115,7 +119,9 @@
   - `README.md`
   - `world-rule.md`
   - `testing-manual.md`
-  - `doc/README.md`
+- `doc/README.md`
+  - `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.prd.md`
+  - `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
 - Edge Cases & Error Handling:
   - 链接失效：断链必须在巡检报告中暴露并进入修复队列。
   - 口径冲突：冲突出现时禁止发布“已同步”状态。
@@ -123,12 +129,14 @@
   - 权限不足：非维护者不得直接修改对外核心描述。
   - 并发编辑：同文件并发更新时需合并后重跑链接检查。
   - 历史重定向：legacy redirect 必须保留指向并声明主入口。
+  - 过度承诺：若对外文案把贡献奖励写成 `play-to-earn`、`airdrop for players`、`just play and earn token`，必须阻断发布。
 - Non-Functional Requirements:
   - NFR-RM-1: 顶层入口链接可用率 100%。
   - NFR-RM-2: 术语冲突修复 SLA <= 1 个工作日。
   - NFR-RM-3: README 与模块 PRD 关键引用一致率 100%。
   - NFR-RM-4: 发布前口径巡检覆盖率 100%。
   - NFR-RM-5: 对外文档不得暴露敏感配置信息。
+  - NFR-RM-6: 早期贡献奖励模板不得公开固定 token 数额、固定 token/point 比率或“玩多久给多少”的承诺。
 - Security & Privacy: 对外文档不得暴露敏感配置与密钥信息；示例配置需使用脱敏样例。
 
 ## 5. Risks & Roadmap
@@ -163,6 +171,7 @@
 | PRD-README-017 | TASK-README-026 | `test_tier_required` | Closed beta candidate runbook + incident templates cover recruitment, feedback, and incident guardrails | Closed beta candidate recruiting/feedback/technical preview messaging |
 | PRD-README-018 | TASK-README-027 | `test_tier_required` | Moltbook runbook 回写真实运营经验，明确哪些内容设计更易引发讨论、哪些自评动作更易触发 spam | 第三方渠道运营复用性与风控 |
 | PRD-README-019 | TASK-README-029 | `test_tier_required` | invite-only limited preview execution pack 明确 callout copy、check slots、signal buckets、summary fields | 受控预览执行性与回流一致性 |
+| PRD-README-020 | TASK-README-030 | `test_tier_required` | early contributor reward pack 明确评分模板、证据字段、奖励建议分级与禁语清单 | limited preview 贡献奖励执行性与对外口径安全性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -184,3 +193,4 @@
 | DEC-RM-016 | 新增 `PRD-README-017` 作为 closed beta candidate runbook专题 | 继续把 closed beta 运营信号写回 devlog / single thread | 独立 runbook 强制维持 `technical preview` 口径，避免提前升级 release claim。 |
 | DEC-RM-017 | 将 Moltbook 实战复盘写回现有 runbook | 只在 devlog 留一次性记录 | runbook 才是后续运营会重复翻看的入口。 |
 | DEC-RM-018 | 为 invite-only limited preview 新增独立执行包 | 继续只靠 handoff 和零散 devlog 驱动首轮外放 | 首轮 limited preview 需要固定文案、巡检窗口、分桶与摘要字段，才能避免执行漂移。 |
+| DEC-RM-019 | 早期奖励模板只输出贡献评分与奖励建议档位，不公开固定 token 数额或 point 汇率 | 直接把 token 发放表做成外部宣传文案 | 当前阶段仍是 `limited playable technical preview`，需要避免过度金融化与过度承诺。 |

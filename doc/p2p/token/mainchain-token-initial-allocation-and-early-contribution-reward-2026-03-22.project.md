@@ -8,7 +8,7 @@
 - [x] TIGR-0 (PRD-P2P-TOKEN-INIT-001/002/003) [test_tier_required]: 完成 Token 初始分配与早期贡献奖励专题 PRD / design / project 建档，并接入 `doc/p2p` 模块主追踪。
 - [x] TIGR-1 (PRD-P2P-TOKEN-INIT-001/002) [test_tier_required]: 由 `runtime_engineer` 输出创世 bucket/account/recipient/vesting 参数表草案，明确当前实现下所有创世 bucket 都先进入 recipient `vested_balance`，并区分 custody account 与 post-genesis treasury bucket 语义。
 - [x] TIGR-2 (PRD-P2P-TOKEN-INIT-002/003) [test_tier_required]: 由 `qa_engineer` 建立创世配置审计清单，覆盖 `sum=10000 bps`、单人直持上限、创世液态流通上限、首年外部释放上限与 custody/treasury 语义边界。
-- [ ] TIGR-3 (PRD-P2P-TOKEN-INIT-003) [test_tier_required]: 由 `liveops_community` 输出 limited preview 早期贡献奖励评分模板、证据字段与对外禁语清单。
+- [x] TIGR-3 (PRD-P2P-TOKEN-INIT-003) [test_tier_required]: 由 `liveops_community` 输出 limited preview 早期贡献奖励评分模板、证据字段、奖励建议档位与对外禁语清单，明确该流程不依赖 invite-only、也不公开固定 token 汇率。
 - [ ] TIGR-4 (PRD-P2P-TOKEN-INIT-002/003) [test_tier_required]: 由 `producer_system_designer` 基于 `TIGR-1~3` 做最终发行前评审，决定 early contributor reserve 是保持多签治理执行还是后续合并进 `ecosystem_pool` 路径。
 
 ## TIGR-1 产物（本地草案，待 review）
@@ -34,6 +34,8 @@
 - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md`
 - `doc/testing/governance/token-genesis-allocation-audit-checklist-2026-03-22.prd.md`
 - `doc/testing/evidence/token-genesis-allocation-audit-template-2026-03-22.md`
+- `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.prd.md`
+- `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.md`
 - `doc/p2p/prd.md`
 - `doc/game/prd.md`
 - `doc/game/gameplay/gameplay-limited-preview-execution-2026-03-22.prd.md`
@@ -42,6 +44,6 @@
 
 ## 状态
 - 当前阶段：active
-- 下一步：执行 `TIGR-3`，由 `liveops_community` 基于当前 `TIGR-1/TIGR-2` 输出 limited preview 早期贡献奖励评分模板、证据字段与禁语清单。
+- 下一步：执行 `TIGR-4`，由 `producer_system_designer` 基于当前 `TIGR-1~3` 做最终发行前评审，并决定 early contributor reserve 的执行路径。
 - 最近更新：2026-03-22
-- 备注：`TIGR-1/TIGR-2` 已落盘，但仍未执行真实创世或真实对外发币；在 `TIGR-3/TIGR-4` 完成前，仍不得把早期贡献奖励写成公开发币活动。
+- 备注：`TIGR-1/TIGR-3` 已落盘，但仍未执行真实创世或真实对外发币；在 `TIGR-4` 完成前，仍不得把早期贡献奖励写成公开发币活动。

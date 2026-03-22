@@ -1,6 +1,6 @@
 # readme 文档索引
 
-审计轮次: 6
+审计轮次: 7
 
 ## 入口
 - PRD: `doc/readme/prd.md`
@@ -31,6 +31,7 @@
 - `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.prd.md`
 - `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.prd.md`
 - `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md`
+- `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.prd.md`
 - `doc/readme/governance/readme-limited-preview-invite-pack-2026-03-22.md`
 
 ## 根目录收口
