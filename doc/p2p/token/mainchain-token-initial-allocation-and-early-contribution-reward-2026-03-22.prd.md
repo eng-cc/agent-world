@@ -33,15 +33,25 @@
   2. Flow-TOKEN-INIT-002: `limited preview 参与者提交 bug/长时游玩样本/高价值反馈 -> liveops 记录贡献证据 -> producer 或治理维护者审核 -> 按规则从奖励储备发放`
   3. Flow-TOKEN-INIT-003: `团队或基金会到达解锁窗口 -> 按 vesting 领取 -> QA 复核 circulating 与单人持仓上限 -> 若越界则阻断后续释放`
   4. Flow-TOKEN-INIT-004: `外部提议给“早期玩游戏的人”发币 -> 对照 PRD 检查是否为贡献制 -> 若仅按登录/时长/开放引流，则直接驳回`
+- 创世参数表（TIGR-1 草案，假设 `genesis_epoch=0`，并以 `1 epoch ~= 1 day` 作为当前锁仓换算口径；若最终链上 epoch 节奏不同，需在创世冻结前按同等自然时间重算）：
+| bucket_id | ratio_bps | recipient | start_epoch | cliff_epochs | linear_unlock_epochs | genesis_liquid | claim_policy | 说明 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `team_long_term_vesting` | `2000` | `protocol:team-core-vesting` | `0` | `365` | `1095` | `0` | cliff 结束后按季度 claim；未经团队多签批准不得提前 claim | 核心团队长期锁仓，目标 `12m cliff + 36m linear` |
+| `early_contributor_reward_reserve` | `1500` | `protocol:early-contributor-reward` | `0` | `0` | `3650` | `0` | 仅在贡献审批批次通过后按预算 claim，不得为拉新一次性 claim | 用于 limited preview 早期贡献奖励，10 年线性释放上限约束首年可领取容量 |
+| `node_service_genesis_custody` | `2000` | `protocol:node-service-custody` | `0` | `180` | `1825` | `0` | 仅在后续协议决议确认需要补充节点激励时按批次 claim | 注意这是创世 custody 账户，不是 runtime `node_service_reward_pool` treasury bucket |
+| `staking_genesis_custody` | `1500` | `protocol:staking-custody` | `0` | `180` | `1825` | `0` | 仅在后续协议决议确认需要补充 staking 激励时按批次 claim | 注意这是创世 custody 账户，不是 runtime `staking_reward_pool` treasury bucket |
+| `ecosystem_governance_reserve` | `1500` | `protocol:ecosystem-governance` | `0` | `90` | `1460` | `0` | 仅在 grant / ecosystem plan 获批后按季度 claim | 生态与 grant 储备，避免创世即形成大额液态筹码 |
+| `security_reserve_emergency` | `1000` | `protocol:security-council-reserve` | `0` | `0` | `0` | `0` | 默认不 claim；只有安全事故、补偿或防御动作才 claim | 为应急保留即时可用能力 |
+| `foundation_ops_reserve` | `500` | `protocol:foundation-ops` | `0` | `90` | `730` | `0` | 仅在基础设施/合规/运营预算批准后月度或季度 claim | 限制早期运营盘一次性流出 |
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 动作行为 | 状态转换 | 计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | 核心团队长期锁仓 | `bucket_id=team_long_term_vesting`、`allocation_bps=2000`、`recipient=team multisig / vesting beneficiaries`、`cliff=12m`、`linear=36m` | 创世写入锁仓；到期后按 vesting 释放 | `frozen -> cliff -> linear_unlock -> claimable` | 占总量 `20%`；不得在创世即液态 | 仅团队多签与受益人可按 vesting 领取 |
 | 早期贡献奖励储备 | `bucket_id=early_contributor_reward_reserve`、`allocation_bps=1500`、`recipient=governed reward reserve multisig` | 仅在贡献证据成立后发放；不得按登录/时长自动发放 | `frozen -> reviewed -> approved -> distributed` | 占总量 `15%`；发放需附带贡献台账 | `liveops_community` 记录，producer/治理维护者审核 |
-| 节点服务奖励池 | `bucket_id=node_service_reward_pool`、`allocation_bps=2000` | 作为协议奖励池，不视为团队库存 | `frozen -> protocol_distributable` | 占总量 `20%`；按协议/桥接规则释放 | 只能按协议结算路径使用 |
-| 质押奖励池 | `bucket_id=staking_reward_pool`、`allocation_bps=1500` | 作为协议奖励池，不视为团队库存 | `frozen -> protocol_distributable` | 占总量 `15%`；按 staking 规则释放 | 只能按治理绑定 treasury 分发使用 |
+| 节点服务创世储备 | `bucket_id=node_service_genesis_custody`、`allocation_bps=2000` | 作为协议长期储备，不视为团队库存 | `frozen -> protocol_distributable` | 占总量 `20%`；后续是否转入/补充 treasury 需单独决议 | 只能按协议/治理批准后的 custody claim 路径使用 |
+| 质押创世储备 | `bucket_id=staking_genesis_custody`、`allocation_bps=1500` | 作为协议长期储备，不视为团队库存 | `frozen -> protocol_distributable` | 占总量 `15%`；后续是否转入/补充 treasury 需单独决议 | 只能按协议/治理批准后的 custody claim 路径使用 |
 | 生态金库 | `bucket_id=ecosystem_pool`、`allocation_bps=1500` | 用于 grant、生态激励或未来治理计划；不等于早期玩家普发 | `frozen -> governance_distributable` | 占总量 `15%`；需治理记录 | 只能通过治理绑定分发 |
-| 安全储备 | `bucket_id=security_reserve`、`allocation_bps=1000` | 仅用于安全事故、应急补偿或协议防御 | `frozen -> emergency_only` | 占总量 `10%`；常态不可外发 | 仅受限治理或安全委员会可动用 |
+| 安全储备 | `bucket_id=security_reserve_emergency`、`allocation_bps=1000` | 仅用于安全事故、应急补偿或协议防御 | `frozen -> emergency_only` | 占总量 `10%`；常态不可外发 | 仅受限治理或安全委员会可动用 |
 | 基金会/运营储备 | `bucket_id=foundation_ops_reserve`、`allocation_bps=500`、`recipient=ops multisig` | 用于基础运营与合规/基础设施费用 | `frozen -> vested_ops` | 占总量 `5%`；建议同步锁仓 | 仅运营多签可按规则动用 |
 | 单人直持边界 | `founder_direct_target_bps=500~1000`、`founder_direct_cap_bps=1500` | 创世前检查任一自然人直接受益份额是否超限 | `candidate -> approved/rejected` | 超过 `15%` 直接拒绝；目标区间 `5%~10%` | producer 与 QA 共同审计 |
 - Acceptance Criteria:
@@ -53,13 +63,14 @@
     - 生态金库 `1500 bps`
     - 安全储备 `1000 bps`
     - 基金会/运营储备 `500 bps`
-  - AC-2: 项目战略控制口径固定为 `5000 bps`，由 `team_long_term_vesting + early_contributor_reward_reserve + security_reserve + foundation_ops_reserve` 组成。
-  - AC-3: 协议奖励池口径固定为 `3500 bps`，由 `node_service_reward_pool + staking_reward_pool` 组成，且不得对外表述为创始人/团队自由库存。
+  - AC-2: 项目战略控制口径固定为 `5000 bps`，由 `team_long_term_vesting + early_contributor_reward_reserve + security_reserve_emergency + foundation_ops_reserve` 组成。
+  - AC-3: 协议长期储备口径固定为 `3500 bps`，由 `node_service_genesis_custody + staking_genesis_custody` 组成，且不得对外表述为创始人/团队自由库存。
   - AC-4: 单个自然人的直接受益持仓目标为 `500~1000 bps`，硬上限 `1500 bps`；超过上限的部分必须转入团队锁仓、多签金库或协议池。
   - AC-5: 创世液态流通不得超过总量 `500 bps`；首 12 个月非团队外部释放目标为总量 `100~200 bps`，硬上限 `500 bps`。
   - AC-6: 早期奖励只能按 bug、PR、长时有效游玩样本、结构化高价值反馈、内容建设或生态贡献发放，不得按登录、注册、在线时长或单纯“试玩”自动发放。
   - AC-7: 早期奖励口径不得依赖产品级 invite-only 机制；没有产品级准入控制时，仍可通过运营名单、贡献审核和多签审批执行。
-  - AC-8: 分配表必须能映射到现有 runtime 能力：创世分配走 `InitializeMainTokenGenesis`，锁仓释放走 `ClaimMainTokenVesting`，协议金库分发优先走治理绑定 treasury 分发路径。
+  - AC-8: 分配表必须能映射到现有 runtime 能力：创世分配走 `InitializeMainTokenGenesis`，锁仓释放走 `ClaimMainTokenVesting`；`TIGR-1` 输出的 `protocol:*` recipient 当前表示 custody account，而不是直接初始化 `main_token_treasury_balances`。
+  - AC-9: `TIGR-1` 必须产出 7 条创世 bucket 参数草案，明确 `recipient/start_epoch/cliff_epochs/linear_unlock_epochs/genesis_liquid/claim_policy`，并把 `node_service/staking/ecosystem/security` 的创世 custody 账户与 post-genesis treasury bucket 语义分开。
 - Non-Goals:
   - 本专题不决定总供应量绝对数值（如 `1e8` 或 `1e9`），只冻结比例和控制边界。
   - 不在本专题给出法律意见、证券属性判断、税务结论或上市计划。
@@ -72,6 +83,7 @@
 
 ## 4. Technical Specifications
 - Architecture Overview: 使用现有 `main_token` runtime 的创世分配、锁仓领取、增发与治理绑定 treasury 分发能力承接该口径。创世时先把总量按 bucket 写入锁仓/金库；后续释放严格区分“团队/项目战略控制”“协议奖励池”“外部可流通”三层，不把 treasury custody 误当作个人库存。
+- Architecture Overview: 使用现有 `main_token` runtime 的创世分配、锁仓领取、增发与治理绑定 treasury 分发能力承接该口径。创世时先把总量按 bucket 写入 recipient 账户的 `vested_balance`，而不是直接写入 `main_token_treasury_balances`；后续释放严格区分“团队/项目战略控制”“协议奖励池”“外部可流通”三层，不把 custody account 误当作 treasury bucket 或个人库存。
 - Integration Points:
   - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`
   - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md`
@@ -82,6 +94,7 @@
 - Edge Cases & Error Handling:
   - 若创世 bucket 比例和不为 `10000 bps`，则候选配置直接拒绝。
   - 若任一自然人直接受益份额超过 `1500 bps`，则创世配置直接退回。
+  - 若把创世 recipient 误写成 treasury bucket 语义并假定 runtime 会自动记入 `main_token_treasury_balances`，则必须退回；当前实现只会记入 recipient account 的 `vested_balance`。
   - 若某奖励提案无法附带可审计贡献证据，则不得发放。
   - 若外部文案把奖励描述为 `play-to-earn`、`airdrop for playing` 或“来玩就有币”，则 `liveops_community` 必须退回改稿。
   - 若产品仍无 invite-only 功能，则 reward eligibility 只能依赖运营筛选与贡献审核，不得宣称链上准入门槛已存在。
@@ -90,6 +103,7 @@
   - NFR-TOKEN-INIT-1: 创世分配表字段完整率 `100%`，至少包含 `bucket_id/allocation_bps/recipient/controller/vesting/release_path`。
   - NFR-TOKEN-INIT-2: 创世配置审计时必须同时输出三类汇总：项目战略控制比例、协议奖励池比例、单人直接受益比例。
   - NFR-TOKEN-INIT-3: 创世液态流通硬上限为 `500 bps`；若超过即不允许进入发币执行。
+  - NFR-TOKEN-INIT-3A: `TIGR-1` 参数表中的 `genesis_liquid` 必须全部为 `0`；任何 bucket 不得在创世时直接形成 liquid balance。
   - NFR-TOKEN-INIT-4: 早期奖励外部文案中，`play-to-earn`、`login reward`、`time played = token` 命中次数必须为 `0`。
   - NFR-TOKEN-INIT-5: 任何早期奖励发放记录都必须可追溯到贡献证据、审批人、数量和发放日期。
   - NFR-TOKEN-INIT-6: 若后续需要修改上述比例或控盘上限，必须新开专题 PRD，不允许只在聊天、海报或运营帖中变更口径。
@@ -110,7 +124,7 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-P2P-TOKEN-INIT-001 | TIGR-0/TIGR-1 | `test_tier_required` | 分配表、bucket/account/vesting 参数表、比例求和与单人直持上限审计 | 创世配置与控盘边界 |
+| PRD-P2P-TOKEN-INIT-001 | TIGR-0/TIGR-1 | `test_tier_required` | 分配表、bucket/account/vesting 参数表、比例求和、单人直持上限与 `genesis_liquid=0` 审计 | 创世配置与控盘边界 |
 | PRD-P2P-TOKEN-INIT-002 | TIGR-1/TIGR-2/TIGR-4 | `test_tier_required` | runtime 映射检查、金库/多签控制路径检查、流通上限门禁 | 创世落地路径与 treasury 执行 |
 | PRD-P2P-TOKEN-INIT-003 | TIGR-2/TIGR-3/TIGR-4 | `test_tier_required` | 贡献证据模板、运营文案禁语检查、奖励台账抽检 | limited preview 奖励发放与外部口径 |
 - Decision Log:
@@ -120,4 +134,3 @@
 | DEC-TOKEN-INIT-002 | 项目战略控制目标设为 `5000 bps`，单人直持目标 `500~1000 bps`、硬上限 `1500 bps` | 创始人直接持有大比例流通筹码 | 降低个人过度控盘观感，保留项目推进所需控制力。 |
 | DEC-TOKEN-INIT-003 | 早期奖励采用 contribution-based reward | 开放式 play-to-earn / login reward / time-play mining | 当前阶段仍是技术预览，不能把代币激励建立在泛流量和挂机行为上。 |
 | DEC-TOKEN-INIT-004 | 协议奖励池与项目战略控制分开记账和对外表述 | 将 treasury custody 与团队库存混用 | 避免治理资产与个人/团队资产混淆。 |
-
