@@ -179,6 +179,17 @@
     - `rg -n "首周运营模板|Day 1|Day 7|回复目标|记录重点" doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-README-026 (PRD-README-017) [test_tier_required]: 形成 closed beta candidate runbook、feedback/incident 模板，明确招募/反馈/事故流程与 `technical preview` 口径，并把 evidence link 交给 `producer_system_designer`。
+  - 产物文件:
+    - `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md`
+    - `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.design.md`
+    - `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.project.md`
+    - `doc/playability_test_result/templates/closed-beta-candidate-incident-templates-2026-03-22.md`
+    - `doc/playability_test_result/templates/closed-beta-candidate-feedback-log-guide-2026-03-22.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "closed beta candidate|technical preview|incident template|candidate-feedback" doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md doc/playability_test_result/templates/closed-beta-candidate-incident-templates-2026-03-22.md doc/playability_test_result/templates/closed-beta-candidate-feedback-log-guide-2026-03-22.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -194,6 +205,7 @@
 - 更新日期: 2026-03-21
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-README-026`（已新增 closed beta candidate runbook 与反馈/事故模板，明确招募/反馈/事故流程与 `technical preview` 口径。）
 - 最新完成: `TASK-README-025`（已在 Moltbook runbook 内补齐首周冷启动模板，明确 day1-day7 节奏、巡检窗口、回复目标与记录重点。）
 - 最新完成: `TASK-README-024`（已为 `liveops_community` 新增 Moltbook 持续运营 runbook，并把角色入口、readme 模块追踪与索引同步补齐。）
 - 最新完成: `TASK-README-023`（已补齐 `doc/readme/production/**` 活跃专题中遗漏的当前实现模块名口径，统一切到 `oasis7::runtime`。）

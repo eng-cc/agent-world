@@ -1,8 +1,8 @@
 # readme PRD 文件级索引
 
-审计轮次: 6
+审计轮次: 7
 
-更新时间：2026-03-19
+更新时间：2026-03-22
 
 ## 入口
 - 模块 PRD：`doc/readme/prd.md`
@@ -33,6 +33,7 @@
 | `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.prd.md` | `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.design.md` | `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.project.md` |
 | `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.prd.md` | `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.design.md` | `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.project.md` |
 | `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.prd.md` | `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.design.md` | `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.project.md` |
+| `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md` | `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.design.md` | `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.project.md` |
 | `doc/readme/governance/readme-world-rules-consolidation.prd.md` | `doc/readme/governance/readme-world-rules-consolidation.design.md` | `doc/readme/governance/readme-world-rules-consolidation.project.md` |
 | `doc/readme/production/readme-llm-p1p2-production-closure.prd.md` | `doc/readme/production/readme-llm-p1p2-production-closure.design.md` | `doc/readme/production/readme-llm-p1p2-production-closure.project.md` |
 | `doc/readme/production/readme-p0-p1-closure.prd.md` | `doc/readme/production/readme-p0-p1-closure.design.md` | `doc/readme/production/readme-p0-p1-closure.project.md` |

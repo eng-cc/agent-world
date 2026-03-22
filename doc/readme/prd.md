@@ -32,8 +32,9 @@
 - Success Criteria:
   - SC-1: README 关键章节与模块 PRD 引用一致率达到 100%。
   - SC-2: 对外入口链接有效性检查持续通过。
-  - SC-3: 术语与架构描述变更在 1 个工作日内同步到 README 体系。
-  - SC-4: readme 相关变更全部具备 PRD-ID 与 devlog 追踪。
+- SC-3: 术语与架构描述变更在 1 个工作日内同步到 README 体系。
+- SC-4: readme 相关变更全部具备 PRD-ID 与 devlog 追踪。
+- SC-5: Closed beta candidate 的 liveops runbook与模板能直接维持 `technical preview` 口径，并服务 `prg-game-009` 的 evidence gate。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -62,6 +63,7 @@
 - PRD-README-014: As a 仓库访客, I want the repo root and public entry docs to use the canonical `oasis7` brand while still explaining legacy internal identifiers, so that I do not confuse project branding with crate/bin compatibility names.
 - PRD-README-015: As a `liveops_community`, I want a Moltbook liveops runbook for post-publish checks, replies, and signal triage, so that day-2 channel operations do not fall back to unsafe improvisation.
 - PRD-README-016: As a `liveops_community`, I want a first-week Moltbook operating template layered onto the runbook, so that the first 7 days of channel activity have a concrete daily rhythm instead of generic SOP only.
+- PRD-README-017: As a `liveops_community`, I want a closed beta candidate runbook plus feedback/incident templates, so that recruitment, feedback, and incident signals stay within the technical preview envelope while still feeding the unified release gate.
 - Critical User Flows:
   1. Flow-RM-001: `阅读 README -> 跳转模块入口 -> 快速定位目标能力`
   2. Flow-RM-002: `检测口径变更 -> 更新入口文档 -> 校验链接 -> 发布同步`
@@ -78,6 +80,7 @@
 | 平台化推广方案 | `platform`、`audience`、`content_pillars`、`claim_boundary`、`cta`、`signal_tags` | 生成渠道适配的推广/运营方案 | `draft -> reviewed -> approved` | 先写平台机制，再写口径边界，再写动作节奏 | `liveops_community` 起草，`producer_system_designer` 审核 |
 | 渠道运营 runbook | `check_window`、`signal_bucket`、`reply_boundary`、`escalation_owner`、`log_requirement` | 固化第三方渠道发帖后运营 SOP | `draft -> approved -> adopted` | 先定义检查顺序，再定义回复与升级边界 | `liveops_community` 维护，`producer_system_designer` 审核边界 |
 | 首周运营模板 | `day_id`、`primary_post`、`check_slots`、`reply_goal`、`log_focus` | 把抽象 runbook 压实到 day1-day7 的执行模板 | `planned -> executed -> reviewed` | 先 identity / surfaces，再 proof / diary / builder hook，再 recap | `liveops_community` 执行，`producer_system_designer` 审核边界 |
+| Closed Beta Candidate Runbook | `candidate_signal`、`release_gate_link`、`response_template`、`incident_level` | 招募、反馈、事故模板、FAQ | `tech_preview -> candidate_runbook -> gate_ready` | runbook步骤优先，监测其次 | `liveops_community` 维护，`producer_system_designer` 决定口径 |
 - Acceptance Criteria:
   - AC-1: readme PRD 明确入口文档职责边界。
   - AC-2: readme project 文档维护同步任务与状态。
@@ -86,8 +89,9 @@
   - AC-5: 渠道化推广方案必须显式绑定内部公开口径边界，不得把 generic marketing 文案直接外推到第三方平台。
   - AC-6: `doc/readme/governance/**` 仍可读历史专题的首行标题必须统一使用 `oasis7` 品牌；旧 `oasis7*` 标题仅允许保留在正文历史上下文与证据原文中。
   - AC-7: `doc/readme/governance/**` 中仍作为当前公开口径使用的项目名必须统一写为 `oasis7`；旧 `oasis7` 仅允许保留在历史证据、兼容说明或外部原文引用中。
-  - AC-8: 若第三方渠道进入持续运营阶段，必须补齐独立 runbook，明确巡检入口、回复边界、升级路径与 `devlog` 回写方式。
-  - AC-9: 若渠道进入首周冷启动执行阶段，runbook 必须补齐 day1-day7 模板，明确每天的主动作、检查窗口、回复目标与记录重点。
+- AC-8: 若第三方渠道进入持续运营阶段，必须补齐独立 runbook，明确巡检入口、回复边界、升级路径与 `devlog` 回写方式。
+- AC-9: 若渠道进入首周冷启动执行阶段，runbook 必须补齐 day1-day7 模板，明确每天的主动作、检查窗口、回复目标与记录重点。
+- AC-10: 已新建 `closed beta candidate` runbook与 incident template，供招募/反馈/事故信号在 `technical preview` claim envelope 内沟通并可直接回流 unified release gate。
 - Non-Goals:
   - 不在 readme PRD 中替代各模块详细设计。
   - 不在 readme PRD 中定义测试用例细节。
@@ -148,6 +152,7 @@
 | PRD-README-014 | TASK-README-018/019/020 | `test_tier_required` | 根 README、公开入口文档与 `doc/readme/governance/**` 的历史标题/当前公开口径统一为 `oasis7`，并显式区分内部兼容命名 | 仓库首页认知、公开品牌一致性 |
 | PRD-README-015 | TASK-README-024 | `test_tier_required` | Moltbook runbook 明确发帖前、发帖后 24h、常规日与周复盘动作，并包含回复边界、升级路径与 `devlog` 回写要求 | 第三方渠道持续运营一致性 |
 | PRD-README-016 | TASK-README-025 | `test_tier_required` | Moltbook runbook 追加 day1-day7 首周模板，覆盖主帖节奏、检查窗口、回复目标与日志重点 | 第三方渠道冷启动执行性 |
+| PRD-README-017 | TASK-README-026 | `test_tier_required` | Closed beta candidate runbook + incident templates cover recruitment, feedback, and incident guardrails | Closed beta candidate recruiting/feedback/technical preview messaging |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -166,3 +171,4 @@
 | DEC-RM-013 | 对外品牌统一为 `oasis7`，内部 crate/bin 暂保留兼容命名 | 同一轮同时重命名全部 crate/bin/script/env 标识 | 先统一用户可见品牌与下载入口，避免把品牌收口与大规模兼容迁移耦合。 |
 | DEC-RM-014 | 将 Moltbook 日常运营动作沉淀为独立 runbook，而不是继续扩写角色卡 | 把巡检、回复、升级细节继续堆进角色卡或推广方案 | 角色卡应保持稳定职责边界；执行细节更适合 runbook 持续演进。 |
 | DEC-RM-015 | 在已有 Moltbook runbook 内补首周运营模板，而不是再拆一份平行文档 | 单独再建一份“week-one playbook” | 首周模板属于 runbook 的执行层细化，放在同一文档更利于维护与回查。 |
+| DEC-RM-016 | 新增 `PRD-README-017` 作为 closed beta candidate runbook专题 | 继续把 closed beta 运营信号写回 devlog / single thread | 独立 runbook 强制维持 `technical preview` 口径，避免提前升级 release claim。 |
