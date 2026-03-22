@@ -1,6 +1,6 @@
 # 纯 API parity 验证证据（2026-03-19）
 
-审计轮次: 1
+审计轮次: 2
 
 ## Meta
 - 关联专题: `PRD-GAME-008 / 纯 API 客户端等价玩法`
@@ -36,6 +36,16 @@
   - `env -u RUSTC_WRAPPER cargo build -q -p oasis7 --bin oasis7_pure_api_client`
   - `target/debug/oasis7_pure_api_client --addr 127.0.0.1:5132 reconnect-sync --player-id player-api-smoke --with-snapshot`
 
+## 同候选 fresh bundle 复验（2026-03-22 18:38 CST）
+- 为 closed-beta unified gate 复跑同候选 no-LLM bundle required/full：
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier required --bundle-dir output/release/game-launcher-local --no-llm`
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier full --bundle-dir output/release/game-launcher-local --no-llm`
+- fresh rerun 结果：
+  - required/full 均 `pass`。
+  - 两条链路都到达 `post_onboarding.choose_midloop_path`，且 `followup_progress_percent=100`。
+  - required/full 继续保持 `reconnect-sync` 恢复语义；full 继续通过 `step_c` 抽样。
+- 该轮的作用不是改变专题结论，而是证明 `parity_verified` 已在当前 `closed_beta_candidate` 候选包上持续成立，可正式并入 unified gate。
+
 ## 执行命令
 - source required-tier 预跑:
   - `./scripts/oasis7-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4277 --web-bind 127.0.0.1:5117 --live-bind 127.0.0.1:5127 --chain-status-bind 127.0.0.1:5237`
@@ -48,6 +58,10 @@
   - `./scripts/oasis7-pure-api-parity-smoke.sh --tier required --no-llm --viewer-port 4297 --web-bind 127.0.0.1:5161 --live-bind 127.0.0.1:5163 --chain-status-bind 127.0.0.1:5249`
 - source full-tier 收口复验:
   - `./scripts/oasis7-pure-api-parity-smoke.sh --tier full --no-llm --viewer-port 4299 --web-bind 127.0.0.1:5171 --live-bind 127.0.0.1:5173 --chain-status-bind 127.0.0.1:5251`
+- 同候选 bundle required-tier 复验:
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier required --bundle-dir output/release/game-launcher-local --no-llm`
+- 同候选 bundle full-tier 复验:
+  - `./scripts/oasis7-pure-api-parity-smoke.sh --tier full --bundle-dir output/release/game-launcher-local --no-llm`
 
 ## 产物路径
 - source required-tier:
@@ -60,12 +74,18 @@
   - `output/playwright/playability/pure-api-required-20260319-151759/`
 - source full-tier 收口复验:
   - `output/playwright/playability/pure-api-full-20260319-151847/`
+- 同候选 bundle required-tier 复验:
+  - `output/playwright/playability/pure-api-required-20260322-183650/`
+- 同候选 bundle full-tier 复验:
+  - `output/playwright/playability/pure-api-full-20260322-183750/`
 - 对应启动日志:
   - `output/playwright/playability/startup-20260319-131630/`
   - `output/playwright/playability/startup-20260319-132300/`
   - `output/playwright/playability/startup-20260319-132317/`
   - `output/playwright/playability/startup-20260319-151759/`
   - `output/playwright/playability/startup-20260319-151847/`
+  - `output/playwright/playability/startup-20260322-183721/`
+  - `output/playwright/playability/startup-20260322-183750/`
 
 ## required/full 结果摘要
 - source required-tier:
@@ -87,6 +107,15 @@
   - `followup_progress_percent=100`
   - `reconnect_sync_ack=catch_up_ready`
 - source full-tier 收口复验:
+  - `followup_goal_id=post_onboarding.choose_midloop_path`
+  - `followup_progress_percent=100`
+  - `step_c_advanced=true`
+  - 继续步进后仍能稳定保留 `player_gameplay` 与最新反馈
+- 同候选 bundle required-tier 复验:
+  - `followup_goal_id=post_onboarding.choose_midloop_path`
+  - `followup_progress_percent=100`
+  - `reconnect_sync_ack=catch_up_ready`
+- 同候选 bundle full-tier 复验:
   - `followup_goal_id=post_onboarding.choose_midloop_path`
   - `followup_progress_percent=100`
   - `step_c_advanced=true`
@@ -121,5 +150,5 @@
 
 ## 下一步建议
 - 非阻断 follow-up:
-  - `qa_engineer`: release gate 继续优先使用 bundle 口径抽样 pure API required/full，防止未来回退。
+  - `qa_engineer`: 继续把 `output/playwright/playability/pure-api-required-20260322-183650/` 与 `output/playwright/playability/pure-api-full-20260322-183750/` 作为当前 candidate 的 pure API gate 锚点，防止未来回退。
   - `agent_engineer`: 如后续要把 `agent_chat / prompt_control` 纳入 pure API parity，请单独定义 LLM 模式下的等价专题与验收口径。

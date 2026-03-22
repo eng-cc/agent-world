@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.design.md`
 - 对应需求文档: `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.prd.md`
 
-审计轮次: 1
+审计轮次: 2
 
 ## 任务拆解
 
@@ -33,6 +33,7 @@
 - 已完成补充:
   - `TASK-GAMEPLAY-CB-002` 已交付 `doc/testing/evidence/closed-beta-runtime-s10-2026-03-22.md`，其中包含 clean-room `120s` / `600s+` soak 通过样本与 replay/rollback required-tier drill 结果，runtime lane 已可交 QA 并入 unified gate。
   - `TASK-GAMEPLAY-CB-003` 已交付 `doc/playability_test_result/card_2026_03_22_15_56_13.md` 与 `output/playwright/playability/closed-beta-20260322/post-onboarding-20260322-155613/`：同候选 headed Web/UI rerun 已 `pass`，且 `AgentNotFound` 历史噪音不再占据右侧 chatter 焦点。
+  - `TASK-GAMEPLAY-CB-004` 已补齐同候选 pure API / no-UI rerun：`output/playwright/playability/pure-api-required-20260322-183650/`、`output/playwright/playability/pure-api-full-20260322-183750/` 与 `output/playwright/playability/post-onboarding-headless-20260322-183832/` 均已 `pass`，统一 gate 的剩余 blocker 已收敛到 trend baseline。
   - `TASK-GAMEPLAY-CB-005` 已交付 `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.{prd,design,project}.md`、`doc/playability_test_result/templates/closed-beta-candidate-{feedback-log-guide,incident-templates}-2026-03-22.md`，并把 `technical preview` 口径边界回写到 `readme` 模块正式追踪。
 - 阻断条件:
   - 若统一 release gate 尚未建立，则不得使用 `closed beta` 口径。
@@ -43,4 +44,4 @@
   - 允许保持当前阶段，只要阻断项被如实记录并重新拆回 owner。
   - `TASK-GAMEPLAY-CB-002` 当前最新事实：clean-room `600s+` soak `output/longrun/closed-beta-candidate-20260322/20260322-121320` 已 `process_status=ok / metric_gate=pass`，且 replay/rollback required-tier drill 两条测试均通过，因此 runtime lane 已完成并可交 QA。
   - `TASK-GAMEPLAY-CB-003` 当前最新事实：fresh bundle headed Web/UI rerun `output/playwright/playability/closed-beta-20260322/post-onboarding-20260322-155613` 已 `pass`，并通过人工复核确认 `PostOnboarding` 主目标仍为首屏焦点。
-  - `TASK-GAMEPLAY-CB-004` 当前最新事实：统一 QA gate 文档已建立且 runtime / headed Web/UI lane 已转为 `pass`；当前总结论仍是 `block`，原因仅剩 trend baseline 未达阈值、pure API 与 no-UI smoke 尚未在同一 candidate 上重跑。
+  - `TASK-GAMEPLAY-CB-004` 当前最新事实：统一 QA gate 文档已建立且 runtime / headed Web/UI / pure API / no-UI lane 均已转为 `pass`；当前总结论仍是 `block`，原因仅剩 trend baseline 未达阈值。
