@@ -93,7 +93,7 @@
     - `rg -n "PRD-GAME-009|internal_playable_alpha_late|closed_beta_candidate" doc/game/prd.md doc/game/project.md doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.prd.md doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [ ] TASK-GAME-029 (PRD-GAME-009) [test_tier_required + test_tier_full]: `runtime_engineer` 收口 five-node no-LLM soak、replay/rollback drill 与 longrun release gate 的候选版本证据，形成封闭 Beta 准入所需的 runtime 最小硬证据包。
+- [x] TASK-GAME-029 (PRD-GAME-009) [test_tier_required + test_tier_full]: `runtime_engineer` 已收口 five-node no-LLM soak、replay/rollback drill 与 longrun release gate 的候选版本证据，形成封闭 Beta 准入所需的 runtime 最小硬证据包。
 - [ ] TASK-GAME-030 (PRD-GAME-009) [test_tier_required]: `viewer_engineer` 收口 `PostOnboarding` 首屏降噪、主目标优先级与玩家入口 full-coverage gate 的最小产品化包，确保核心首屏不再偏“工程工具”。
 - [ ] TASK-GAME-031 (PRD-GAME-009) [test_tier_required + test_tier_full]: `qa_engineer` 建立统一 `closed_beta_candidate` release gate，串联 headed Web/UI、pure API、no-UI smoke、longrun/recovery 与 trend baseline，给出升阶或阻断结论。
 - [x] TASK-GAME-032 (PRD-GAME-009) [test_tier_required]: `liveops_community` 收口封闭 Beta 候选 runbook、招募/反馈/事故回流模板与禁语清单；在 `producer_system_designer` 放行前继续保持 `technical preview` 口径。
@@ -127,7 +127,7 @@
 ## 状态
 - 更新日期: 2026-03-22
 - 当前状态: in_progress
-- 下一任务: `TASK-GAME-029`
+- 下一任务: `TASK-GAME-030`
 - 最新完成: `TASK-GAME-032`（`liveops_community` 已交付 closed beta candidate runbook、feedback/incident 模板与 `technical preview` 禁语边界，并在 `readme` 模块正式追踪。）
 - 最新完成: `TASK-GAME-028`（已冻结当前阶段为 `internal_playable_alpha_late`，新增 `PRD-GAME-009` 封闭 Beta 准入专题，并把下一阶段目标正式拆为 runtime / viewer / QA / liveops 四条线。）
 - 最新完成: `TASK-GAME-027`（已完成更早期 `gameplay` 活跃专题中遗漏的 runtime crate 路径与 `cargo -p` 命令收口，统一切到 `oasis7` / `crates/oasis7*`。）
@@ -186,6 +186,7 @@
 - ROUND-036 进展: `qa_engineer` 已将 `doc/testing/evidence/closed-beta-candidate-release-gate-2026-03-22.md` 从模板升级为统一 gate 入口，并给出当前正式结论 `block`：runtime lane 尚未完成 clean-room 候选证据，trend baseline 仍未达标，且 headed Web/UI、pure API、no-UI smoke 还没在同一 candidate 上完成 fresh rerun。
 - ROUND-037 进展: `runtime_engineer` 已补齐 clean-room `120s` 候选样本 `output/longrun/closed-beta-rerun-fixed-20260322/20260322-120458`，结果为 `process_status=ok / metric_gate=pass`，且 `nodes/*/exit-status.txt` 全部显示脚本收尾阶段的受控 `SIGTERM`（`exit_status=143`）；runtime lane 的正式缺口已从“120 秒样本缺失”收敛为“还缺 `600s+` soak 与 replay/rollback drill”，项目阶段继续保持 `internal_playable_alpha_late`。
 - ROUND-038 进展: `qa_engineer` 已将 unified gate 同步到 runtime 最新真值：longrun lane 现在是“clean-room `120s` 已 pass，但同一 candidate 的 `600s+` soak 与 replay/rollback drill 仍缺”，因此 QA 总结论继续保持 `block`，同时维持 trend baseline 未达阈值、其他 lane 未 fresh rerun 的阻断项。
+- ROUND-039 进展: `runtime_engineer` 已补齐 clean-room `600s+` 候选样本 `output/longrun/closed-beta-candidate-20260322/20260322-121320`，结果为 `process_status=ok / metric_gate=pass`；同时 `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests::basic::from_snapshot_replay_rebuilds_missing_tick_consensus_records -- --nocapture` 与 `runtime::tests::persistence::rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift -- --nocapture` 均已通过，`TASK-GAME-029` 正式完成，项目剩余阻断转入 viewer / unified gate / trend baseline lane。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-21.md`。
 
