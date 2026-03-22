@@ -202,9 +202,11 @@ pub(super) fn build_player_micro_loop_snapshot(
                     _ => {}
                 }
             }
-            WorldEventKind::ActionRejected { reason } => {
+        WorldEventKind::ActionRejected { reason } => {
+            if !matches!(reason, RejectReason::AgentNotFound { .. }) {
                 latest_reject = Some((event.time, reject_reason_summary(reason, locale)));
             }
+        }
             _ => {}
         }
     }

@@ -138,6 +138,7 @@
   - 玩家忽略主目标：系统允许自由探索，但必须保留可重新聚焦的主目标卡，不因收起而永久消失。
   - 会话中断后恢复：重新进入时必须恢复 `stage_id / goal_id / blocker_primary / next_step_hint`。
   - 战争 / 危机导致主目标不可达：切换为 `blocked`，并优先给出“保全 / 恢复”型下一步建议，而不是继续催促原目标。
+  - AgentNotFound 历史噪音：虽然 `RejectReason::AgentNotFound` 会留在历史聊天/控制拒绝中，这类噪音不得重复占据 Action Status 标题或右侧聊天区焦点，以便首次进入 `PostOnboarding` 时视线优先落在主目标与进度。
 - Non-Functional Requirements:
   - NFR-POD-1: `FirstSessionLoop` 完成到 `PostOnboarding` 主目标首次可见的延迟目标为 P95 <= 1 秒（本地 Viewer 会话）。
   - NFR-POD-2: 同一世界状态输入下，v1 主目标选择结果必须保持确定性，避免同条件下随机变化。
