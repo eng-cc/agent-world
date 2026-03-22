@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xiaohongshu Agent Team Roster</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Noto+Serif+SC:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f4eee3;
+        --ink: #171717;
+        --muted: rgba(23, 23, 23, 0.62);
+        --warm: #cf5b35;
+        --olive: #627056;
+        --line: rgba(23, 23, 23, 0.1);
+        --panel: rgba(255, 252, 247, 0.72);
+        --panel-strong: rgba(255, 252, 247, 0.9);
+        --shadow: 0 24px 50px rgba(23, 23, 23, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, rgba(207, 91, 53, 0.14), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(98, 112, 86, 0.18), transparent 32%),
+          linear-gradient(150deg, #ece3d3, #f7f1e7 42%, #ede6da);
+        color: var(--ink);
+        font-family: "Manrope", sans-serif;
+      }
+
+      .gallery {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 0 72px;
+      }
+
+      .slide {
+        position: relative;
+        width: 1080px;
+        height: 1440px;
+        margin: 0 auto 28px;
+        overflow: hidden;
+        border-radius: 32px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 34%),
+          linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.1)),
+          var(--paper);
+        box-shadow: 0 36px 72px rgba(23, 23, 23, 0.16);
+      }
+
+      .single .gallery {
+        max-width: none;
+        padding: 0;
+      }
+
+      .single .slide {
+        margin: 0 auto;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .grain,
+      .grid,
+      .arc {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .grain {
+        opacity: 0.08;
+        background-image:
+          radial-gradient(circle at 20% 20%, rgba(0, 0, 0, 0.7) 0.7px, transparent 0.8px),
+          radial-gradient(circle at 84% 34%, rgba(0, 0, 0, 0.5) 0.55px, transparent 0.7px),
+          radial-gradient(circle at 38% 82%, rgba(0, 0, 0, 0.52) 0.6px, transparent 0.75px);
+        background-size: 18px 18px, 23px 23px, 28px 28px;
+      }
+
+      .grid {
+        background-image:
+          linear-gradient(to right, var(--line) 1px, transparent 1px),
+          linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+        background-size: 74px 74px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.48), transparent 88%);
+      }
+
+      .arc::before,
+      .arc::after {
+        content: "";
+        position: absolute;
+        border: 1px solid rgba(23, 23, 23, 0.1);
+        border-radius: 999px;
+      }
+
+      .arc::before {
+        width: 760px;
+        height: 760px;
+        right: -200px;
+        top: -180px;
+      }
+
+      .arc::after {
+        width: 620px;
+        height: 620px;
+        left: -180px;
+        bottom: -230px;
+      }
+
+      .header {
+        position: absolute;
+        top: 68px;
+        left: 74px;
+        right: 74px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 22px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 800;
+      }
+
+      .header .meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        color: var(--muted);
+      }
+
+      .header .meta::before {
+        content: "";
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: var(--warm);
+        box-shadow: 0 0 0 8px rgba(207, 91, 53, 0.14);
+      }
+
+      .hero {
+        position: absolute;
+        top: 168px;
+        left: 78px;
+        right: 78px;
+      }
+
+      .eyebrow {
+        margin-bottom: 22px;
+        color: var(--olive);
+        font-size: 26px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 800;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 860px;
+        font-family: "Noto Serif SC", serif;
+        font-size: 88px;
+        line-height: 1.1;
+        letter-spacing: -0.04em;
+      }
+
+      h1 .accent {
+        color: var(--warm);
+      }
+
+      .deck {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+        bottom: 118px;
+        display: grid;
+        grid-template-columns: 1.3fr 0.9fr;
+        gap: 28px;
+        align-items: end;
+      }
+
+      .panel {
+        position: relative;
+        border-radius: 30px;
+        border: 1px solid rgba(23, 23, 23, 0.09);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(16px);
+      }
+
+      .panel::before {
+        content: "";
+        position: absolute;
+        top: 22px;
+        left: 24px;
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        background: rgba(23, 23, 23, 0.14);
+        box-shadow:
+          28px 0 0 rgba(23, 23, 23, 0.09),
+          56px 0 0 rgba(23, 23, 23, 0.09);
+      }
+
+      .summary {
+        min-height: 362px;
+        padding: 62px 30px 30px;
+        transform: rotate(-2deg);
+      }
+
+      .summary .tag,
+      .notes .tag,
+      .card .tag,
+      .badge .tag {
+        display: inline-block;
+        margin-bottom: 22px;
+        color: var(--muted);
+        font-size: 19px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .summary .line {
+        padding: 16px 0;
+        border-top: 1px solid rgba(23, 23, 23, 0.08);
+      }
+
+      .summary .line:first-of-type {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .summary strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 28px;
+        line-height: 1.24;
+      }
+
+      .summary span,
+      .notes p,
+      .list li,
+      .footer {
+        font-size: 23px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .notes {
+        min-height: 304px;
+        padding: 62px 24px 24px;
+        transform: rotate(2.5deg);
+      }
+
+      .notes p {
+        margin: 0 0 16px;
+      }
+
+      .notes p:last-child {
+        margin-bottom: 0;
+      }
+
+      .role-hero {
+        position: absolute;
+        top: 168px;
+        left: 78px;
+        right: 78px;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 28px;
+        align-items: start;
+      }
+
+      .role-title .index {
+        margin-bottom: 20px;
+        color: var(--olive);
+        font-size: 24px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 800;
+      }
+
+      .role-title h1 {
+        font-size: 72px;
+        line-height: 1.06;
+      }
+
+      .role-title p {
+        margin: 26px 0 0;
+        max-width: 560px;
+        font-size: 30px;
+        line-height: 1.55;
+        color: rgba(23, 23, 23, 0.74);
+      }
+
+      .badge {
+        position: relative;
+        min-height: 372px;
+        padding: 62px 28px 26px;
+        background: var(--panel-strong);
+      }
+
+      .badge .signal {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(207, 91, 53, 0.12);
+        color: var(--warm);
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .badge .signal::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--warm);
+      }
+
+      .badge h2 {
+        margin: 0 0 14px;
+        font-size: 38px;
+        line-height: 1.18;
+      }
+
+      .badge p {
+        margin: 0;
+        font-size: 23px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .role-deck {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+        bottom: 112px;
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 28px;
+      }
+
+      .card {
+        min-height: 384px;
+        padding: 62px 30px 26px;
+      }
+
+      .card strong {
+        display: block;
+        margin-bottom: 14px;
+        font-size: 34px;
+        line-height: 1.2;
+      }
+
+      .card p {
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+
+      .list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .list li {
+        display: grid;
+        grid-template-columns: 28px 1fr;
+        gap: 14px;
+        padding: 10px 0;
+      }
+
+      .list li::before {
+        content: "•";
+        color: var(--warm);
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .footer {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+        bottom: 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 20px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 800;
+      }
+
+      .footer .brand {
+        color: var(--ink);
+      }
+
+      .is-hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="gallery">
+      <section class="slide" data-slide="1">
+        <div class="grain"></div>
+        <div class="grid"></div>
+        <div class="arc"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">team post / 002</span>
+        </div>
+        <div class="hero">
+          <div class="eyebrow">Agent Team Roster</div>
+          <h1>我现在有这几位 <span class="accent">agent</span> 队友</h1>
+        </div>
+        <div class="deck">
+          <div class="panel summary">
+            <div class="tag">Why This Post</div>
+            <div class="line">
+              <strong>第一篇先说了“我不是一个人在做”。</strong>
+              <span>第二篇就该把这件事讲具体一点。</span>
+            </div>
+            <div class="line">
+              <strong>这不是一个泛泛的 AI 助手。</strong>
+              <span>而是一支分工明确、真的会一起推进项目的开发队伍。</span>
+            </div>
+            <div class="line">
+              <strong>所以先把队友介绍给大家。</strong>
+              <span>每个人负责什么，为什么重要，一眼就能看懂。</span>
+            </div>
+          </div>
+          <div class="panel notes">
+            <div class="tag">Roster</div>
+            <p>producer_system_designer</p>
+            <p>runtime_engineer</p>
+            <p>wasm_platform_engineer</p>
+            <p>agent_engineer</p>
+            <p>viewer_engineer</p>
+            <p>qa_engineer</p>
+            <p>liveops_community</p>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">intro to the team</span>
+          <span>1 / 9</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="2">
+        <div class="grain"></div>
+        <div class="grid"></div>
+        <div class="arc"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">roster card</span>
+        </div>
+        <div class="role-hero">
+          <div class="role-title">
+            <div class="index">01 / producer_system_designer</div>
+            <h1>负责把目标、规则和玩法口径收在一起</h1>
+            <p>很多看起来是“做不做”的问题，本质上都是先在这里定方向。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">Role Signal</div>
+            <div class="signal">north star owner</div>
+            <h2>不是单纯想点子。</h2>
+            <p>更重要的是把世界承诺、系统边界和优先级收成一个能执行的方向。</p>
+          </div>
+        </div>
+        <div class="role-deck">
+          <div class="panel card">
+            <div class="tag">What I Rely On</div>
+            <strong>先把“我们到底要做什么”说清楚。</strong>
+            <p>没有这一步，后面的工程、测试和运营都会很容易各说各话。</p>
+          </div>
+          <div class="panel card">
+            <div class="tag">Why It Matters</div>
+            <ul class="list">
+              <li>把玩法目标和世界规则收口。</li>
+              <li>在跨角色冲突里给出优先级。</li>
+              <li>防止项目越做越散。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">team roster</span>
+          <span>2 / 9</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="3">
+        <div class="grain"></div>
+        <div class="grid"></div>
+        <div class="arc"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">roster card</span>
+        </div>
+        <div class="role-hero">
+          <div class="role-title">
+            <div class="index">02 / runtime_engineer</div>
+            <h1>负责世界怎么运行，系统怎么闭环</h1>
+            <p>很多体验能不能成立，最后都要回到底层是不是稳。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">Role Signal</div>
+            <div class="signal">stability owner</div>
+            <h2>平时不一定最显眼。</h2>
+            <p>但只要世界一旦真的跑起来，这个角色的重要性就会立刻变得非常具体。</p>
+          </div>
+        </div>
+        <div class="role-deck">
+          <div class="panel card">
+            <div class="tag">What I Rely On</div>
+            <strong>把抽象设计变成真的可运行状态。</strong>
+            <p>它决定的不是一句概念话，而是系统能不能稳定、可重复、可继续推进。</p>
+          </div>
+          <div class="panel card">
+            <div class="tag">Why It Matters</div>
+            <ul class="list">
+              <li>世界状态要真正闭环。</li>
+              <li>问题不能只在表层绕过去。</li>
+              <li>很多体验最后都要由底层兜住。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">team roster</span>
+          <span>3 / 9</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="4">
+        <div class="grain"></div>
+        <div class="grid"></div>
+        <div class="arc"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">roster card</span>
+        </div>
+        <div class="role-hero">
+          <div class="role-title">
+            <div class="index">03 / wasm_platform_engineer</div>
+            <h1>负责模块能力和平台边界</h1>
+            <p>它决定的不是表面效果，而是这套系统以后能不能持续长下去。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">Role Signal</div>
+            <div class="signal">platform owner</div>
+            <h2>很多事能不能接上，得看这里稳不稳。</h2>
+            <p>平台边界一旦没收好，后面的扩展性和一致性都会被拖住。</p>
+          </div>
+        </div>
+        <div class="role-deck">
+          <div class="panel card">
+            <div class="tag">What I Rely On</div>
+            <strong>不是只解决“能跑”。</strong>
+            <p>更关键的是让模块生态、执行边界和长期扩展能力都能留下来。</p>
+          </div>
+          <div class="panel card">
+            <div class="tag">Why It Matters</div>
+            <ul class="list">
+              <li>决定模块接入方式。</li>
+              <li>决定平台能力边界。</li>
+              <li>决定系统是不是可持续扩展。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">team roster</span>
+          <span>4 / 9</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="5">
+        <div class="grain"></div>
+        <div class="grid"></div>
+        <div class="arc"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">roster card</span>
+        </div>
+        <div class="role-hero">
+          <div class="role-title">
+            <div class="index">04 / agent_engineer</div>
+            <h1>负责 agent 的行为设计和能力边界</h1>
+            <p>不是让它“看起来聪明”就够了，而是让它真的能在世界里行动。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">Role Signal</div>
+            <div class="signal">behavior owner</div>
+            <h2>最容易被误读的一层。</h2>
+            <p>因为真正难的从来不是“像不像”，而是行为到底有没有世界内意义。</p>
+          </div>
+        </div>
+        <div class="role-deck">
+          <div class="panel card">
+            <div class="tag">What I Rely On</div>
+            <strong>把 agent 从表现层拉回行动层。</strong>
+            <p>它负责的是选择、边界、恢复和长期行为，而不是只做出一段像样的回应。</p>
+          </div>
+          <div class="panel card">
+            <div class="tag">Why It Matters</div>
+            <ul class="list">
+              <li>行为要能落到世界规则里。</li>
+              <li>能力边界要明确而不是漂。</li>
+              <li>agent 不能只是展示效果。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">team roster</span>
+          <span>5 / 9</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="6">
+        <div class="grain"></div>
+        <div class="grid"></div>
+        <div class="arc"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">roster card</span>
+        </div>
+        <div class="role-hero">
+          <div class="role-title">
+            <div class="index">05 / viewer_engineer</div>
+            <h1>负责把世界变成可见、可操作、可理解的体验</h1>
+            <p>很多东西做出来以后，能不能被感受到，要靠这一层完成。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">Role Signal</div>
+            <div class="signal">experience owner</div>
+            <h2>它不只是“做界面”。</h2>
+            <p>更像是在负责一件事：把系统真实地交到人手上，而不是只存在于内部逻辑里。</p>
+          </div>
+        </div>
+        <div class="role-deck">
+          <div class="panel card">
+            <div class="tag">What I Rely On</div>
+            <strong>把抽象系统变成能看到、能点、能判断的东西。</strong>
+            <p>没有这一层，很多本来成立的东西也很难被真正理解。</p>
+          </div>
+          <div class="panel card">
+            <div class="tag">Why It Matters</div>
+            <ul class="list">
+              <li>决定体验是否可感知。</li>
+              <li>决定交互是否顺手。</li>
+              <li>决定系统能不能被看懂。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">team roster</span>
+          <span>6 / 9</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="7">
+        <div class="grain"></div>
+        <div class="grid"></div>
+        <div class="arc"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">roster card</span>
+        </div>
+        <div class="role-hero">
+          <div class="role-title">
+            <div class="index">06 / qa_engineer</div>
+            <h1>负责验证、拦风险、给出能不能继续往前走的判断</h1>
+            <p>它的价值不只是找错，而是防止团队对现状产生错觉。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">Role Signal</div>
+            <div class="signal">quality gate</div>
+            <h2>最重要的不是说“不行”。</h2>
+            <p>而是把“不行在哪、为什么、要怎么复核”说清楚，让项目继续往前时不带着幻想。</p>
+          </div>
+        </div>
+        <div class="role-deck">
+          <div class="panel card">
+            <div class="tag">What I Rely On</div>
+            <strong>把“差不多可以了”换成可验证的判断。</strong>
+            <p>这一步决定的是节奏、风险和后面每一次 release 的可信度。</p>
+          </div>
+          <div class="panel card">
+            <div class="tag">Why It Matters</div>
+            <ul class="list">
+              <li>验证不是感觉，是证据。</li>
+              <li>风险需要被明确拦住。</li>
+              <li>推进需要有 gate，而不是赌运气。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">team roster</span>
+          <span>7 / 9</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="8">
+        <div class="grain"></div>
+        <div class="grid"></div>
+        <div class="arc"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">roster card</span>
+        </div>
+        <div class="role-hero">
+          <div class="role-title">
+            <div class="index">07 / liveops_community</div>
+            <h1>负责内容、社区、反馈和对外口径</h1>
+            <p>项目不是做完就结束，别人怎么理解、怎么回应，也要有人持续接住。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">Role Signal</div>
+            <div class="signal">signal owner</div>
+            <h2>不是“发出去”就完了。</h2>
+            <p>更关键的是把外部反馈、社区信号和风险判断重新带回产品和开发闭环里。</p>
+          </div>
+        </div>
+        <div class="role-deck">
+          <div class="panel card">
+            <div class="tag">What I Rely On</div>
+            <strong>替团队守住对外表达，也把外部声音接回来。</strong>
+            <p>很多项目的问题，不是没人做，而是做出来以后没人解释、没人消化反馈。</p>
+          </div>
+          <div class="panel card">
+            <div class="tag">Why It Matters</div>
+            <ul class="list">
+              <li>对外口径不能漂。</li>
+              <li>社区反馈不能丢。</li>
+              <li>线上信号需要回流团队。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">team roster</span>
+          <span>8 / 9</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="9">
+        <div class="grain"></div>
+        <div class="grid"></div>
+        <div class="arc"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">closing card</span>
+        </div>
+        <div class="hero">
+          <div class="eyebrow">As For Me</div>
+          <h1>我负责把他们带着<br />一起往前做</h1>
+        </div>
+        <div class="deck">
+          <div class="panel summary">
+            <div class="tag">My Role</div>
+            <div class="line">
+              <strong>不是单独完成每一件事。</strong>
+              <span>而是让这支分工不同的队伍真的协作起来。</span>
+            </div>
+            <div class="line">
+              <strong>一边做游戏，一边学怎么带队。</strong>
+              <span>很多时候，项目本身和协作方式其实是在一起长出来的。</span>
+            </div>
+            <div class="line">
+              <strong>这也是这个号接下来会慢慢记录的事。</strong>
+              <span>不只是做了什么，也包括这支队伍是怎么一起把事情做出来的。</span>
+            </div>
+          </div>
+          <div class="panel notes">
+            <div class="tag">Next Post</div>
+            <p>为什么会开始这样做游戏？</p>
+            <p>和 agent 协作，最反常识的一件事是什么？</p>
+            <p>这种分工真的能把项目推快吗？</p>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">human + agent team</span>
+          <span>9 / 9</span>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        const slide = params.get("slide");
+        if (!slide || slide === "all") {
+          return;
+        }
+        document.body.classList.add("single");
+        document.querySelectorAll("[data-slide]").forEach((node) => {
+          if (node.getAttribute("data-slide") !== slide) {
+            node.classList.add("is-hidden");
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

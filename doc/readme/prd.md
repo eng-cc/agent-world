@@ -70,6 +70,7 @@
 - PRD-README-020: As a `liveops_community`, I want an early contributor reward pack for limited preview, so that reward eligibility, evidence fields, score bands, and forbidden phrases stay contribution-based and do not depend on invite-only or play-to-earn framing.
 - PRD-README-021: As a `liveops_community`, I want a reusable Xiaohongshu intro post pack from the human developer perspective, so that the account can open with a clear identity, safe tone, and repeatable asset set instead of improvising its first post.
 - PRD-README-022: As a `liveops_community`, I want a round-based contributor reward ledger template, so that real limited preview contributions can be reviewed, approved, distributed, and archived without falling back to ad-hoc notes.
+- PRD-README-023: As a `liveops_community`, I want a reusable Xiaohongshu team-roster post pack, so that the second post can explain the current agent team structure with human-facing clarity instead of drifting into either dry role docs or vague AI talk.
 - Critical User Flows:
   1. Flow-RM-001: `阅读 README -> 跳转模块入口 -> 快速定位目标能力`
   2. Flow-RM-002: `检测口径变更 -> 更新入口文档 -> 校验链接 -> 发布同步`
@@ -81,6 +82,7 @@
   8. Flow-RM-008: `冻结 limited preview 口径 -> 选用 invite-only callout copy -> 按固定窗口巡检 -> 将信号按 Blocking / Opportunity / Idea 归档 -> 输出 producer 摘要`
   9. Flow-RM-009: `收集 early contributor signal -> 按评分模板记录证据 -> 输出 small/medium/large reward recommendation -> 检查对外禁语 -> 回流 producer 审核`
   10. Flow-RM-010: `确定小红书账号第一帖定位 -> 冻结标题/正文/封面/标签 -> 对齐“人类开发者 + agent 队友”叙事主语 -> 保存可复用素材包`
+  11. Flow-RM-011: `确定第二篇队友介绍轮播结构 -> 为每位 agent 收口一句专业但有人味的角色说明 -> 产出轮播卡与可截图 HTML`
   11. Flow-RM-011: `结束一轮 limited preview -> 将可计分贡献抄入 reward ledger -> producer 审批档位 -> execution owner 回填发放记录 -> 台账归档`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
@@ -183,6 +185,7 @@
 | PRD-README-020 | TASK-README-030 | `test_tier_required` | early contributor reward pack 明确评分模板、证据字段、奖励建议分级与禁语清单 | limited preview 贡献奖励执行性与对外口径安全性 |
 | PRD-README-021 | TASK-README-031 | `test_tier_required` | 小红书首帖素材包明确标题、正文、封面文案、标签与“人类开发者视角”使用说明 | 新渠道冷启动识别度与口径稳定性 |
 | PRD-README-022 | TASK-README-032 | `test_tier_required` | reward ledger 模板明确 round meta、逐条贡献记录、producer 审批、distribution ref 与归档字段 | limited preview 真实贡献奖励结算闭环 |
+| PRD-README-023 | TASK-README-033 | `test_tier_required` | 小红书第二帖素材包明确 7 位 agent 队友卡文案、收束页与可截图 HTML | 渠道内容连续性与“agent 队伍”概念可理解性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -206,4 +209,5 @@
 | DEC-RM-018 | 为 invite-only limited preview 新增独立执行包 | 继续只靠 handoff 和零散 devlog 驱动首轮外放 | 首轮 limited preview 需要固定文案、巡检窗口、分桶与摘要字段，才能避免执行漂移。 |
 | DEC-RM-019 | 早期奖励模板只输出贡献评分与奖励建议档位，不公开固定 token 数额或 point 汇率 | 直接把 token 发放表做成外部宣传文案 | 当前阶段仍是 `limited playable technical preview`，需要避免过度金融化与过度承诺。 |
 | DEC-RM-020 | 小红书首帖采用“人类开发者自我介绍”而非“项目功能介绍” | 首帖直接解释完整世界观或产品能力 | 小红书面向人，首帖更需要建立创作者身份与协作关系，而不是先堆产品信息。 |
+| DEC-RM-021 | 第二篇采用“团队 roster 轮播卡”而非长文解释 | 继续用长文解释 agent 协作或直接贴角色职责原文 | 用户第二篇更需要快速理解“有哪些队友、为什么重要”，轮播卡比长文更适合这一层信息。 |
 | DEC-RM-021 | 用 round-based reward ledger 承接真实贡献奖励结算 | 继续靠 issue 评论、聊天记录或零散表格临场结算 | 真实发放前必须把评分、审批、执行引用和归档收进统一模板，才能保持可审计性。 |

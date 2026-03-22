@@ -37,6 +37,7 @@
 | `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.prd.md` | `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.design.md` | `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.project.md` |
 | `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.prd.md` | `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.design.md` | `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.project.md` |
 | `doc/readme/governance/readme-xiaohongshu-intro-post-pack-2026-03-22.md` | `-` | `-` |
+| `doc/readme/governance/readme-xiaohongshu-team-roster-post-pack-2026-03-22.md` | `-` | `-` |
 | `doc/readme/governance/readme-world-rules-consolidation.prd.md` | `doc/readme/governance/readme-world-rules-consolidation.design.md` | `doc/readme/governance/readme-world-rules-consolidation.project.md` |
 | `doc/readme/production/readme-llm-p1p2-production-closure.prd.md` | `doc/readme/production/readme-llm-p1p2-production-closure.design.md` | `doc/readme/production/readme-llm-p1p2-production-closure.project.md` |
 | `doc/readme/production/readme-p0-p1-closure.prd.md` | `doc/readme/production/readme-p0-p1-closure.design.md` | `doc/readme/production/readme-p0-p1-closure.project.md` |
