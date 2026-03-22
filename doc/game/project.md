@@ -182,6 +182,7 @@
 - ROUND-032 进展: `producer_system_designer` 已完成 `TASK-GAME-025`，将 `gameplay` 专题里仍作为当前真值使用的 runtime 源码锚点、builtin wasm 模块路径与 `cargo -p oasis7*` 命令统一收口到 `oasis7` / `oasis7_viewer` / `crates/oasis7*`，且保留历史证据、手动量化记录与 devlog 引用不变。
 - ROUND-033 进展: `producer_system_designer` 已新增 `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.{prd,design,project}.md`，正式冻结当前阶段为 `internal_playable_alpha_late`，并把冲 `closed_beta_candidate` 的工作拆为 `TASK-GAME-029/030/031/032/033`；对应 handoff 已分别发给 `runtime_engineer`、`viewer_engineer`、`qa_engineer` 与 `liveops_community`。
 - ROUND-034 进展: `liveops_community` 已完成 `TASK-GAME-032`，新增 closed beta candidate runbook、feedback/incident 模板与 FAQ/禁语边界，明确在 `producer_system_designer` 放行前继续维持 `technical preview / not playable yet` 口径。
+- ROUND-035 进展: `runtime_engineer` 已为 `scripts/s10-five-node-game-soak.sh` 增加 `exit-status.txt` 级别的失败签名记录，并确认 `TASK-GAME-029` 当前主阻断更接近“默认端口环境污染/外部 SIGTERM”而非 runtime 明确 panic；`--base-port 5910` 的 60 秒诊断样本已通过，但正式 `closed_beta_candidate` 所需的 600 秒候选 soak + replay/rollback 仍未完成，因此阶段继续保持 `internal_playable_alpha_late`。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-21.md`。
 

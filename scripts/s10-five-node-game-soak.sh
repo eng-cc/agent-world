@@ -677,6 +677,89 @@ isolate_node_state_dirs() {
 active_cleanup_done=0
 declare -a active_pids=()
 declare -a active_nodes=()
+declare -a active_waited=()
+declare -a active_exit_statuses=()
+
+capture_process_exit_status() {
+  local idx=$1
+  if [[ "${active_waited[$idx]:-0}" -eq 1 ]]; then
+    printf '%s' "${active_exit_statuses[$idx]:-0}"
+    return 0
+  fi
+
+  local pid=${active_pids[$idx]}
+  local status=0
+  if wait "$pid"; then
+    status=0
+  else
+    status=$?
+  fi
+
+  active_waited[$idx]=1
+  active_exit_statuses[$idx]=$status
+
+  local node_name=${active_nodes[$idx]}
+  local node_dir="$run_dir/nodes/$node_name"
+  local exit_status_file="$node_dir/exit-status.txt"
+  {
+    echo "node_id=$node_name"
+    echo "pid=$pid"
+    echo "exit_status=$status"
+    if (( status >= 128 )); then
+      echo "signal=$((status - 128))"
+    fi
+  } > "$exit_status_file"
+
+  printf '%s' "$status"
+}
+
+matching_node_pids() {
+  local node_name=$1
+  local idx=-1
+  local candidate
+  for candidate in "${!node_ids[@]}"; do
+    if [[ "${node_ids[$candidate]}" == "$node_name" ]]; then
+      idx=$candidate
+      break
+    fi
+  done
+  if (( idx < 0 )); then
+    return 0
+  fi
+  local status_addr gossip_addr
+  status_addr="$(node_status_bind_addr "$idx")"
+  gossip_addr="$(node_gossip_addr "$idx")"
+  pgrep -f "/target/debug/oasis7_chain_runtime --node-id ${node_name} .*--status-bind ${status_addr} .*--node-gossip-bind ${gossip_addr}( |$)" || true
+}
+
+wait_for_node_ports_to_close() {
+  local deadline=$(( $(date +%s) + 8 ))
+  local idx gossip_port status_port
+  while :; do
+    local any_open=0
+    for idx in "${!node_ids[@]}"; do
+      gossip_port=$((base_port + idx + 1))
+      status_port=$((base_port + 20 + idx + 1))
+      if curl -fsS --max-time 1 "http://${bind_host}:${status_port}/healthz" >/dev/null 2>&1; then
+        any_open=1
+        break
+      fi
+      if (exec 3<>"/dev/tcp/${bind_host}/${gossip_port}") >/dev/null 2>&1; then
+        exec 3<&-
+        exec 3>&-
+        any_open=1
+        break
+      fi
+    done
+    if [[ "$any_open" -eq 0 ]]; then
+      return 0
+    fi
+    if (( $(date +%s) >= deadline )); then
+      return 1
+    fi
+    sleep 1
+  done
+}
 
 stop_active_processes() {
   if [[ "$active_cleanup_done" -eq 1 ]]; then
@@ -684,11 +767,19 @@ stop_active_processes() {
   fi
   active_cleanup_done=1
 
-  local pid
+  local pid node_name
   for pid in "${active_pids[@]}"; do
     if kill -0 "$pid" >/dev/null 2>&1; then
       kill "$pid" >/dev/null 2>&1 || true
     fi
+  done
+  for node_name in "${node_ids[@]}"; do
+    while read -r pid; do
+      [[ -z "$pid" ]] && continue
+      if kill -0 "$pid" >/dev/null 2>&1; then
+        kill "$pid" >/dev/null 2>&1 || true
+      fi
+    done < <(matching_node_pids "$node_name")
   done
 
   local deadline=$(( $(date +%s) + 8 ))
@@ -701,6 +792,14 @@ stop_active_processes() {
       fi
     done
     if [[ "$any_alive" -eq 0 ]]; then
+      for node_name in "${node_ids[@]}"; do
+        if [[ -n "$(matching_node_pids "$node_name")" ]]; then
+          any_alive=1
+          break
+        fi
+      done
+    fi
+    if [[ "$any_alive" -eq 0 ]]; then
       break
     fi
     if (( $(date +%s) >= deadline )); then
@@ -709,14 +808,28 @@ stop_active_processes() {
           kill -9 "$pid" >/dev/null 2>&1 || true
         fi
       done
+      for node_name in "${node_ids[@]}"; do
+        while read -r pid; do
+          [[ -z "$pid" ]] && continue
+          if kill -0 "$pid" >/dev/null 2>&1; then
+            kill -9 "$pid" >/dev/null 2>&1 || true
+          fi
+        done < <(matching_node_pids "$node_name")
+      done
       break
     fi
     sleep 1
   done
 
-  for pid in "${active_pids[@]}"; do
-    wait "$pid" >/dev/null 2>&1 || true
+  local idx
+  for idx in "${!active_pids[@]}"; do
+    if [[ "${active_waited[$idx]:-0}" -eq 1 ]]; then
+      continue
+    fi
+    capture_process_exit_status "$idx" >/dev/null 2>&1 || true
   done
+
+  wait_for_node_ports_to_close || true
 }
 
 cleanup_on_exit() {
@@ -742,6 +855,8 @@ launch_node() {
   local pid=$!
   active_pids+=("$pid")
   active_nodes+=("$node_name")
+  active_waited+=(0)
+  active_exit_statuses+=("")
 }
 
 wait_for_startup_ready() {
@@ -751,7 +866,9 @@ wait_for_startup_ready() {
     local idx
     for idx in "${!node_ids[@]}"; do
       if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
-        echo "node exited before startup ready: ${active_nodes[$idx]}" >&2
+        local exit_status
+        exit_status=$(capture_process_exit_status "$idx")
+        echo "node exited before startup ready: ${active_nodes[$idx]} exit_status=${exit_status}" >&2
         return 1
       fi
       if ! curl -fsS --max-time "$curl_timeout_secs" "$(node_healthz_url "$idx")" >/dev/null 2>&1; then
@@ -1443,8 +1560,9 @@ if [[ "$run_status" == "ok" ]]; then
 
     for idx in "${!active_pids[@]}"; do
       if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
+        exit_status=$(capture_process_exit_status "$idx")
         run_status="process_exit"
-        run_notes="node=${active_nodes[$idx]} exited during soak"
+        run_notes="node=${active_nodes[$idx]} exited during soak exit_status=${exit_status}"
         break 2
       fi
     done

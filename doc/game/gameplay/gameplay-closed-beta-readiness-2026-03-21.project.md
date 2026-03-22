@@ -33,9 +33,11 @@
 - 已完成补充:
   - `TASK-GAMEPLAY-CB-005` 已交付 `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.{prd,design,project}.md`、`doc/playability_test_result/templates/closed-beta-candidate-{feedback-log-guide,incident-templates}-2026-03-22.md`，并把 `technical preview` 口径边界回写到 `readme` 模块正式追踪。
 - 阻断条件:
+  - 若 `TASK-GAMEPLAY-CB-002` 仍只拿到“隔离端口诊断 pass、默认端口候选样本 fail”的混合证据，则不得把 runtime lane 视为收口。
   - 若统一 release gate 尚未建立，则不得使用 `closed beta` 口径。
   - 若 trend baseline 未达标，则不得把当前阶段从 `internal_playable_alpha_late` 提升到 `closed_beta_candidate`。
   - 若 liveops 对外 runbook 仍缺招募/反馈/事故回流模板，则不得扩大对外承诺。
 - 说明:
   - 本专题的目标是“阶段准入治理”，不是新增玩法功能。
   - 允许保持当前阶段，只要阻断项被如实记录并重新拆回 owner。
+  - `TASK-GAMEPLAY-CB-002` 当前最新事实：默认端口 five-node soak 样本仍会被外部 `SIGTERM`/脏端口环境污染；`--base-port 5910` 的 60 秒诊断样本可过，但尚不足以作为正式 candidate 放行证据。
