@@ -41,3 +41,4 @@
   - 本专题的目标是“阶段准入治理”，不是新增玩法功能。
   - 允许保持当前阶段，只要阻断项被如实记录并重新拆回 owner。
   - `TASK-GAMEPLAY-CB-002` 当前最新事实：默认端口 five-node soak 样本仍会被外部 `SIGTERM`/脏端口环境污染；`--base-port 5910` 的 60 秒诊断样本可过，但尚不足以作为正式 candidate 放行证据。
+  - `TASK-GAMEPLAY-CB-004` 当前最新事实：统一 QA gate 文档已建立，但当前结论仍是 `block`，原因包括 runtime lane 未完成 clean-room 600 秒候选验证、trend baseline 未达阈值、其他 lane 尚未在同一 candidate 上重跑。
