@@ -215,6 +215,19 @@
     - `rg -n "limited playable technical preview|closed beta|play now|live now" doc/readme/prd.md doc/readme/project.md doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.prd.md doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.design.md doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.md doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-README-029 (PRD-README-019) [test_tier_required]: 为 invite-only `limited playable technical preview` 首轮执行补齐 liveops 操作包，固定 callout copy、巡检窗口、信号分桶、claim drift 纠偏与 producer 摘要字段。
+  - 产物文件:
+    - `doc/readme/prd.md`
+    - `doc/readme/project.md`
+    - `doc/readme/README.md`
+    - `doc/readme/governance/readme-limited-preview-invite-pack-2026-03-22.md`
+    - `doc/playability_test_result/templates/closed-beta-candidate-feedback-log-guide-2026-03-22.md`
+    - `doc/playability_test_result/templates/closed-beta-candidate-incident-templates-2026-03-22.md`
+    - `doc/devlog/2026-03-22.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "Round ID|Invite-only Builder Callout|Blocking|Opportunity|Idea|claim drift|Producer Summary" doc/readme/governance/readme-limited-preview-invite-pack-2026-03-22.md doc/playability_test_result/templates/closed-beta-candidate-feedback-log-guide-2026-03-22.md doc/playability_test_result/templates/closed-beta-candidate-incident-templates-2026-03-22.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -230,6 +243,7 @@
 - 更新日期: 2026-03-22
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-README-029`（已为 invite-only limited preview 首轮执行补齐 liveops 操作包，固定文案、巡检窗口、信号分桶与 producer 摘要字段。）
 - 最新完成: `TASK-README-028`（已将当前有效对外文档统一收口到 `limited playable technical preview` 口径，并保持 `closed beta / play now / live now` 禁语不变。）
 - 最新完成: `TASK-README-027`（已将 Moltbook 首轮真实执行的讨论钩子与 spam 风险回写到 runbook，供后续运营复用。）
 - 最新完成: `TASK-README-026`（已新增 closed beta candidate runbook 与反馈/事故模板，明确招募/反馈/事故流程与受控技术预览口径。）
