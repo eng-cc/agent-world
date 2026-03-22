@@ -1,6 +1,6 @@
 # p2p 文档索引
 
-审计轮次: 6
+审计轮次: 7
 
 ## 入口
 - PRD: `doc/p2p/prd.md`
@@ -18,7 +18,7 @@
 - `node/`：节点能力、奖励、身份与复制链路。
 - `observer/`：观察者同步模式与可观测性。
 - `blockchain/`：区块链与 P2PFS 硬化阶段。
-- `token/`：主链 token 分配与治理分发。
+- `token/`：主链 token 分配、创世分桶、低流通与治理分发。
 - `viewer-live/`：viewer live 发行与开关策略。
 - `consensus/`：共识相关专题。
 - `distributed/`：分布式运行时专题。
@@ -29,6 +29,7 @@
 - `doc/p2p/node/node-pos-slot-clock-real-time-2026-03-07.prd.md`
 - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.md`
 - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
+- `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
 - `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.md`
 
 ## 根目录收口

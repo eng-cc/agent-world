@@ -1,8 +1,8 @@
 # p2p PRD 文件级索引
 
-审计轮次: 6
+审计轮次: 7
 
-更新时间：2026-03-11
+更新时间：2026-03-22
 
 ## 入口
 - 模块 PRD：`doc/p2p/prd.md`
@@ -88,6 +88,7 @@
 | `doc/p2p/observer/observer-sync-source-mode.prd.md` | `doc/p2p/observer/observer-sync-source-mode.design.md` | `doc/p2p/observer/observer-sync-source-mode.project.md` |
 | `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md` | `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.design.md` | `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.project.md` |
 | `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md` | `doc/p2p/token/mainchain-token-allocation-mechanism.design.md` | `doc/p2p/token/mainchain-token-allocation-mechanism.project.md` |
+| `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md` | `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.design.md` | `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.project.md` |
 | `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.prd.md` | `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.design.md` | `doc/p2p/viewer-live/oasis7-viewer-live-llm-default-on-2026-02-23.project.md` |
 | `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.prd.md` | `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.design.md` | `doc/p2p/viewer-live/oasis7-viewer-live-no-llm-flag-2026-02-23.project.md` |
 | `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.prd.md` | `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.design.md` | `doc/p2p/viewer-live/oasis7-viewer-live-release-locked-launch-2026-02-23.project.md` |
