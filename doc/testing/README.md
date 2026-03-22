@@ -1,6 +1,6 @@
 # testing 文档索引
 
-审计轮次: 6
+审计轮次: 7
 
 ## 入口
 - PRD: `doc/testing/prd.md`
@@ -23,6 +23,7 @@
 
 ## 近期专题
 - `doc/testing/governance/testing-quality-trend-tracking-2026-03-11.prd.md`
+- `doc/testing/governance/token-genesis-allocation-audit-checklist-2026-03-22.prd.md`
 - `doc/testing/launcher/launcher-bundle-first-playtest-entry-2026-03-12.prd.md`
 - `doc/testing/launcher/launcher-manual-test-checklist-2026-03-10.prd.md`
 - `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.prd.md`

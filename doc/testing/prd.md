@@ -1,6 +1,6 @@
 # testing PRD
 
-审计轮次: 6
+审计轮次: 7
 
 ## 目标
 - 建立 testing 模块设计主文档，统一需求边界、技术方案与验收标准。
@@ -36,24 +36,28 @@
   - SC-4: 测试任务 100% 映射 PRD-TESTING-ID。
   - SC-5: 活跃 testing 专题文档按批次完成人工迁移到 strict schema，并统一 `*.prd.md` / `*.project.md` 命名。
   - SC-6: builtin wasm（m1/m4/m5）hash 发布链路具备跨 runner 对账、required check 保护与本地只读校验策略。
+  - SC-7: 主链 Token 创世前具备一份 QA 审计清单，覆盖分配比例、custody/treasury 语义、个人上限、创世流通与首年释放上限，避免带着错误经济配置进入执行。
 
 ## 2. User Experience & Functionality
 - User Personas:
   - 测试维护者：需要统一分层模型与执行标准。
   - 功能开发者：需要明确改动后最小必跑集合。
   - 发布负责人：需要审计级测试证据判断放行。
+  - 制作人与经济配置维护者：需要一份可审计的创世配置检查表，避免只靠聊天结论发币。
 - User Scenarios & Frequency:
   - 开发分支回归：每次核心改动后触发一次 required 路径。
   - 发布候选验证：每个候选版本执行 required + full 组合。
   - 专项长跑：高风险链路按周执行并沉淀趋势结果。
   - 失效复盘：出现逃逸缺陷后补齐回归与触发矩阵。
   - 前期工业体验回归：影响 `首个制成品 / 停机恢复 / 首座工厂单元` 时，补跑 required-tier 手动卡组。
+  - 创世配置冻结前审计：每次准备冻结 Token 分配表时执行一次 required-tier 配置审计。
 - User Stories:
   - PRD-TESTING-001: As a 测试维护者, I want one canonical testing strategy, so that suite evolution stays coherent.
   - PRD-TESTING-002: As a 开发者, I want clear trigger matrices, so that I can run the right tests efficiently.
   - PRD-TESTING-003: As a 发布负责人, I want auditable evidence bundles, so that release decisions are defensible.
   - PRD-TESTING-004: As a 文档维护者, I want each legacy testing topic doc manually migrated with content-preserving rewrite, so that historical intent remains accurate after format upgrade.
   - PRD-TESTING-005: As a 发布工程维护者, I want builtin wasm hash chain hardened end-to-end, so that hash drift can be blocked and traced before release.
+  - PRD-TESTING-006: As a `qa_engineer`, I want a token genesis allocation audit checklist, so that producer/runtime can freeze mint configuration without hidden control or circulation risk.
 - Critical User Flows:
   1. Flow-TST-001: `识别改动类型 -> 匹配 S0~S10 -> 执行 required -> 输出结果`
   2. Flow-TST-002: `发布前执行 full 套件 -> 按 Viewer/launcher 选择正确驱动链路 -> 汇总命令/日志/截图 -> 生成证据包`
@@ -61,6 +65,7 @@
   4. Flow-TST-004: `逐篇阅读 legacy 专题文档 -> 按 strict schema 人工重写 -> 改名为 .prd/.project -> 回归校验`
   5. Flow-TST-005: `触发 wasm hash 校验 -> 跨 runner 对账 -> required check 放行/阻断 -> 发布链路收口`
   6. Flow-TST-006: `识别工业引导体验改动 -> 运行自动化前置 -> 执行 playability 卡组 -> 回写 QA 阻断结论`
+  7. Flow-TST-007: `读取 token 创世参数表 -> 逐项核对比例/recipient/vesting/流通边界 -> 输出 QA verdict -> 回流 producer 决策`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -72,6 +77,7 @@
 | Builtin wasm hash 治理 | 模块集、canonical token、runner 摘要、required check context、release evidence | 执行 Docker canonical `sync --check`、摘要导出与证据对账、分支保护同步 | `check-only -> reconciled -> protected` | 发布清单仅允许 `linux-x86_64` canonical token，identity 输入使用 receipt + 白名单 | 本地默认只读校验，写路径限定非 CI 的显式授权 |
 | Release 资产预构建复用 | web dist artifact、cargo cache key、bundle build command set | 同一 release workflow 先产出 viewer/launcher 静态包并复用 warm cache；后续打包不得重复 bootstrap 相同 Web 产物 | `bootstrapped -> reused -> packaged` | 先复用同轮 artifact / cache，再允许脚本 fallback；原生 bundle 构建优先单次 cargo 调用 | QA / 发布维护者维护 release 时延口径 |
 | Runtime gate 分片执行 | full-suite shard、sync check、runner capability、日志 artifact | 将 release runtime gate 拆成 core/support/sync 并行 job；聚合 gate 统一裁决是否放行 | `planned -> sharded -> aggregated` | 重型 `oasis7` full-tier 优先单独成 shard，其余 support / sync 独立并行；最终必须全部成功 | QA / 发布维护者维护 runtime 关键路径 |
+| Token 创世配置审计 | `bucket_id`、`ratio_bps`、`recipient`、`cliff_epochs`、`linear_unlock_epochs`、`genesis_liquid`、`founder_cap_bps`、`year1_external_release_cap_bps` | 逐项核对参数表与经济口径，输出 `pass/block` 审计结论 | `draft -> audited -> pass/block` | `sum=10000 bps`；项目战略控制 `5000 bps`；协议长期储备 `3500 bps`；`genesis_liquid=0`；个人上限 `<=1500 bps` | `qa_engineer` 独立出具结论，producer 决定是否冻结 |
 - Acceptance Criteria:
   - AC-1: testing PRD 覆盖分层模型、触发矩阵、证据规范。
   - AC-2: testing project 文档维护分层测试演进任务。
@@ -85,6 +91,7 @@
   - AC-10: `release-gate-runtime` 必须允许将 `ci-tests.sh full` 拆为至少两个并行 shard，并与 builtin wasm sync 检查独立聚合，保证放行语义不变。
   - AC-11: runtime shard 划分必须按关键路径持续重平衡；`oasis7 --lib --bins` 等中重量级套件不应长期挤占最重 shard。
   - AC-12: `doc/testing/**` 仍可读历史专题的首行标题必须统一使用 `oasis7` / `oasis7 Runtime` 品牌；旧 `oasis7*` 标题仅允许保留在正文历史上下文与证据原文中。
+  - AC-13: `token-genesis-allocation-audit-checklist-2026-03-22` 专题文档与执行模板落盘并映射 `TASK-TESTING-062`，明确创世参数审计项、阻断条件、证据字段与 verdict 口径。
 - Non-Goals:
   - 不在本 PRD 中替代业务模块的功能设计。
   - 不承诺所有测试都进入 CI 默认路径。
@@ -98,7 +105,9 @@
 - Integration Points:
   - `testing-manual.md`
   - `doc/testing/manual/web-ui-agent-browser-closure-manual.prd.md`
+  - `doc/testing/governance/token-genesis-allocation-audit-checklist-2026-03-22.prd.md`
   - `doc/playability_test_result/topics/industrial-onboarding-required-tier-cards-2026-03-15.md`
+  - `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
   - `doc/testing/ci/ci-builtin-wasm-docker-canonical-gate.prd.md`
   - `scripts/ci-tests.sh`
   - `scripts/sync-m1-builtin-wasm-artifacts.sh`
@@ -113,6 +122,8 @@
   - 并发冲突：同一产物路径并发写入时强制分目录隔离。
   - 数据异常：日志格式破损时保留原始文件并标记解析失败。
   - 迁移断链：文档改名后若引用未同步，需在同批次修复并复测。
+  - 创世语义误读：若把 `protocol:*` custody account 误当成已初始化 treasury bucket，QA 必须直接阻断。
+  - 流通口径漂移：若创世参数表未显式声明 `genesis_liquid=0` 或首年外部释放上限，视为配置不完整。
 - Non-Functional Requirements:
   - NFR-TST-1: required 套件变更前后执行时间波动 <= 20%。
   - NFR-TST-2: 发布证据包字段完整率 100%。
@@ -121,6 +132,7 @@
   - NFR-TST-5: 测试执行结果可在 30 分钟内完成追溯定位。
   - NFR-TST-6: 文档迁移批次在不降低治理质量的前提下保持可审阅粒度（每任务对应单文档或单专题）。
   - NFR-TST-7: builtin wasm hash 校验在多 runner 下可复现且差异可定位到模块与平台维度。
+  - NFR-TST-8: Token 创世 QA 审计模板字段完整率必须为 `100%`，缺任何一项关键字段都不能给 `pass`。
 - Security & Privacy: 测试日志与产物需避免泄露凭据；外部 API 测试使用最小化数据并执行脱敏。
 
 ## 5. Risks & Roadmap
@@ -145,6 +157,7 @@
 | PRD-TESTING-003 | TASK-TESTING-003/004/006/053/054/055/056 | `test_tier_full` | 趋势指标回顾、缺陷逃逸复盘、release 关键路径对比 | 长期质量治理与发布风险控制 |
 | PRD-TESTING-004 | TASK-TESTING-007/008/009/010/011/012/013/014/015/016/017/018/019/020/021/022/023/024/025/026/027/028/029/030/031/032/033/034/035/036/059/060/061 | `test_tier_required` | 原文约束点映射审查、命名与引用回归检查、历史专题标题零残留校验、活跃专题当前真值命名回归检查 | 专题文档可维护性与追溯一致性 |
 | PRD-TESTING-005 | TASK-TESTING-037/038/039/040 | `test_tier_required` | keyed manifest/strict policy/多 runner required checks/identity 输入收敛回归 | builtin wasm 发布链路稳定性 |
+| PRD-TESTING-006 | TASK-TESTING-062 | `test_tier_required` | token 创世参数表审计清单、执行模板、p2p/testing 模块追踪回写 | 主链 Token 创世冻结与经济配置门禁 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -152,3 +165,4 @@
 | DEC-TST-002 | 证据包作为发布必备输入 | 只记录口头结论 | 审计与追溯能力不足风险更高。 |
 | DEC-TST-003 | 以手册驱动触发矩阵统一口径 | 各模块自行定义测试口径 | 可减少跨模块冲突和遗漏。 |
 | DEC-TST-004 | legacy 专题文档采用逐篇人工迁移并统一 `.prd` 命名 | 自动脚本批量改写 | 可确保内容语义与约束不丢失。 |
+| DEC-TST-005 | Token 创世前增加 QA 审计清单与阻断 verdict | 仅由 producer/runtime 自审 | 经济配置错误一旦进入创世，后续修复成本极高。 |
