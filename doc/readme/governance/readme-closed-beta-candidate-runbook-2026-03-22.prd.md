@@ -40,7 +40,7 @@
 - 若 incident 处理流程不透明，release gate 可能误判 release readiness。
 
 ## 1. Runbook Intent
-- 本跑道面向 `PRD-GAME-009` 中的 `closed_beta_candidate` 准入节奏。所有活动都必须默认 `technical preview / not playable yet` 口径，公开声明不能含 `closed beta / live now / play now`。
+- 本跑道面向 `PRD-GAME-009` 中的 `closed_beta_candidate` 准入节奏。所有活动都必须默认 `limited playable technical preview` 口径，公开声明不能含 `closed beta / live now / play now`。
 - 目标是把候选版本的招募、反馈、事故三个闭环沉淀成可重复模板，便于 producer 在阶段评审前对外同步一致的 evidence link 与禁语。
 - 本跑道不替代 Moltbook 日常运营 SOP，完成招聘/反馈/事故闭环后需把信号回流给 `producer_system_designer` 决策阶段升级或维持当前技术预览声明。
 
@@ -54,7 +54,7 @@
 ```
 Post Title: Closed Beta Candidate Builder Call
 Body:
-- Status: technical preview; not playable yet.
+- Status: limited playable technical preview.
 - Evidence: canonical candidate release gate link: `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.prd.md`.
 - Goal: gather builder feedback for `closed_beta_candidate` gate.
 - CTA: open a GitHub issue with `candidate-feedback` tag or provide PR/patch.
@@ -83,7 +83,7 @@ Body:
 | P2 | high value feedback or repeated bug but not gating | Log and update liveops feed, escalate to qa/engineer if occurs 2+ times per day | Track in `doc/devlog` when aggregated |
 
 ## 5. FAQ & Disclaimers
-- Q: “Can I play the closed beta now?” → “It’s still a technical preview; the closed-beta gate is still being validated. Please inspect the candidate evidence link and file a GitHub issue if you hit a blocker.”
+- Q: “Can I play the closed beta now?” → “It’s still a limited playable technical preview; the closed-beta gate is still being validated. Please inspect the candidate evidence link and file a GitHub issue if you hit a blocker.”
 - Q: “Is this a public release?” → “No, we continue to treat it as `closed_beta_candidate` with limited invite and require a candidate evidence bundle before broader beta talk.”
 - Q: “Will there be a Moltbook integration officially?” → “The candidate is preview-only; no official integration is announced yet.”
 - Q: “When will open availability happen?” → `Redirect to producer_system_designer` and reiterate “subject to release gate signals.”

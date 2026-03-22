@@ -186,7 +186,7 @@
   - NFR-GAME-12: P0 故障（一致性/作弊/经济/可用性）均具备可执行 runbook 与演练记录。
   - NFR-GAME-13: 正式纯 API 玩家入口 100% 具备 canonical `stage/goal/progress/blocker/next_step/available_actions` 字段，不允许依赖 UI 私有拼装。
   - NFR-GAME-14: 纯 API required-tier 长玩回归必须在 fresh bundle 本地可复跑，并至少推进到首个持续能力里程碑。
-  - NFR-GAME-15: 在 `PRD-GAME-009` 的统一 release gate 未通过前，公开渠道 100% 维持 `technical preview` / `not playable yet` 口径，不允许出现 `closed beta` / `play now` / `live now`。
+  - NFR-GAME-15: 在 `PRD-GAME-009` 的统一 release gate 未通过前，公开渠道 100% 维持 `limited playable technical preview` 口径，不允许出现 `closed beta` / `play now` / `live now`。
 - Security & Privacy: gameplay 不直接处理密钥；涉及玩家反馈与行为数据时遵循最小化采集与脱敏记录。
 
 ## 5. Risks & Roadmap

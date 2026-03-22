@@ -14,7 +14,7 @@
 ## 1. 适用范围
 - 这份文档用于 `oasis7` 在 Moltbook 进入“持续发帖与持续看反馈”阶段后的日常运营。
 - 它不替代推广方案，也不替代首批帖文草案；它只定义怎么执行、怎么回复、怎么升级、怎么回写。
-- 任何真实外发内容仍必须遵守 `technical preview / not playable yet / no formal Moltbook integration announced` 的边界。
+- 任何真实外发内容仍必须遵守 `limited playable technical preview / no formal Moltbook integration announced` 的边界。
 
 ## 2. 发帖前检查
 每次发帖前，按下面顺序做一次 2-5 分钟复核：
@@ -75,8 +75,7 @@
   - 直接回复。
   - 第一优先是纠偏，不是扩写愿景。
 - 安全方向：
-  - 重申 `technical preview`
-  - 重申 `not playable yet`
+  - 重申 `limited playable technical preview`
   - 重申“这里只是平台原生推广，不代表正式集成已宣布”
 
 ### P1: 合作 / 集成 / 路线图追问
@@ -122,7 +121,7 @@
 3. 最后给明确下一步动作。
 
 推荐句型：
-- `Still a technical preview. Not playable yet.`
+- `Still a limited playable technical preview.`
 - `This thread is not announcing formal Moltbook integration.`
 - `If you tried the preview and hit a rough edge, the best next step is a GitHub issue.`
 - `If you already have a fix in mind, a PR is even better.`
@@ -195,7 +194,7 @@
 ### Day 1: Identity
 - 主动作：
   - 发布 `Post 1: identity`
-  - 补首评，强调 `technical preview / not playable yet`
+  - 补首评，强调 `limited playable technical preview`
 - 检查窗口：
   - `T+15m`
   - `T+1h`

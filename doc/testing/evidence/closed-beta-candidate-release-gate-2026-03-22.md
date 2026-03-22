@@ -30,7 +30,7 @@
 - 允许的结论:
   - 可以将本 gate 文档作为 `TASK-GAME-031` 的 QA 汇总入口，并交 `producer_system_designer` 执行 `TASK-GAME-033` 阶段评审。
   - 不可以把当前 gate 文档当成 `closed_beta_candidate approved` 或 `TASK-GAME-033 go` 证据。
-  - 当前 producer 阶段评审已决定继续保持 `internal_playable_alpha_late`；`pass` 仅说明 QA 技术门已收口，不代表 claim envelope 已放宽。
+  - 当前 producer 阶段评审已决定继续保持 `internal_playable_alpha_late`；`pass` 仅说明 QA 技术门已收口，不代表阶段已升级。当前允许的对外 claim envelope 为 `limited playable technical preview`。
 
 ## Gate Execution Notes
 - Candidate definition: use the fresh bundle that passes `TASK-GAME-018` evidence (see `doc/testing/evidence/release-evidence-bundle-task-game-018-2026-03-10.md`) plus pure API parity smoke artifacts; reference this candidate in all lane logs.
@@ -42,7 +42,7 @@
 
 ## Next Steps
 1. 维持当前 unified gate 为 `pass`，并继续按周续写最近 7 天窗口 baseline；若指标回落或任一 lane 回归，立即把 unified gate 回退为 `block`。
-2. 在新的 producer 升阶决策出现前，继续维持 `internal_playable_alpha_late` 与 `technical preview` 对外口径，不得提前宣称 `closed_beta_candidate approved`。
+2. 在新的 producer 升阶决策出现前，继续维持 `internal_playable_alpha_late` 与 `limited playable technical preview` 对外口径，不得提前宣称 `closed_beta_candidate approved`。
 3. 若后续要重新评估阶段升级，必须复核当前 gate 是否仍保持 `pass`，并确认 liveops 招募节奏已准备进入下一阶段 claim envelope。
 
 ## Outstanding Inputs

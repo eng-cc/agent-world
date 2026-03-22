@@ -111,7 +111,8 @@
     - `rg -n "closed beta candidate|technical preview|incident template|candidate-feedback" doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md doc/playability_test_result/templates/closed-beta-candidate-incident-templates-2026-03-22.md doc/playability_test_result/templates/closed-beta-candidate-feedback-log-guide-2026-03-22.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-GAME-033 (PRD-GAME-009) [test_tier_required]: `producer_system_designer` 已基于 `TASK-GAME-029/030/031/032` 的统一证据完成阶段评审，决定当前继续保持 `internal_playable_alpha_late`；理由是 unified gate `pass` 只证明技术门收口，而当前 claim envelope 与 liveops 节奏仍继续维持 `technical preview / not playable yet`，暂不切换到 `closed_beta_candidate` 口径。
+- [x] TASK-GAME-033 (PRD-GAME-009) [test_tier_required]: `producer_system_designer` 已基于 `TASK-GAME-029/030/031/032` 的统一证据完成阶段评审，决定当前继续保持 `internal_playable_alpha_late`；理由是 unified gate `pass` 只证明技术门收口，而当前 claim envelope 与 liveops 节奏仍继续维持 `limited playable technical preview`，暂不切换到 `closed_beta_candidate` 口径。
+- [x] TASK-GAME-034 (PRD-GAME-009) [test_tier_required]: 基于最新制作人口径决策，将当前对外 claim envelope 从 `technical preview / not playable yet` 收口为 `limited playable technical preview`，并同步更新 game/readme/liveops 当前真值文档，不改变阶段判断与禁语边界。
 
 ## 依赖
 - 模块设计总览：`doc/game/design.md`
@@ -149,7 +150,7 @@
 - 当前阶段判断: `internal_playable_alpha_late`
 - 下一阶段目标: `closed_beta_candidate`
 - 阻断条件: 若统一 `closed_beta_candidate` release gate 尚未建立或任一关键 lane `block`，当前项目仍不得升级为 `closed beta` 对外口径。
-- 当前评审结论: unified gate 已 `pass`，但本轮 producer 决策继续维持 `technical preview / not playable yet` claim envelope，因此阶段暂不提升到 `closed_beta_candidate`。
+- 当前评审结论: unified gate 已 `pass`，但本轮 producer 决策继续维持 `limited playable technical preview` claim envelope，因此阶段暂不提升到 `closed_beta_candidate`。
 - 承接约束: `TASK-GAME-029/030/031/032` 必须以同一候选版本互链，不能用不同批次专题 `pass` 拼凑升阶结论。
 - PRD 质量门状态: strict schema 已对齐（含第 6 章验证与决策记录）。
 - ROUND-002 进展: gameplay 子簇主从化完成，`TASK-GAMEPLAY-MLF-001/002/003/004` 与 `TASK-GAME-007` 已闭环；分布式长期在线专题已完成设计建档（`TASK-GAME-008`）与执行共识首个实现切片（`TASK-GAME-009`）。
@@ -184,7 +185,7 @@
 - ROUND-031 进展: `producer_system_designer` 已完成 `TASK-GAME-024`，将 `game` 根 PRD / project 中仍作为当前真值使用的 `cargo -p oasis7*` 命令与 pure API 客户端源码路径统一收口到 `oasis7` / `oasis7_viewer` / `crates/oasis7/src/bin/oasis7_pure_api_client.rs`，确保 `game` 模块入口文档不再把旧品牌当作默认口径。
 - ROUND-032 进展: `producer_system_designer` 已完成 `TASK-GAME-025`，将 `gameplay` 专题里仍作为当前真值使用的 runtime 源码锚点、builtin wasm 模块路径与 `cargo -p oasis7*` 命令统一收口到 `oasis7` / `oasis7_viewer` / `crates/oasis7*`，且保留历史证据、手动量化记录与 devlog 引用不变。
 - ROUND-033 进展: `producer_system_designer` 已新增 `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.{prd,design,project}.md`，正式冻结当前阶段为 `internal_playable_alpha_late`，并把冲 `closed_beta_candidate` 的工作拆为 `TASK-GAME-029/030/031/032/033`；对应 handoff 已分别发给 `runtime_engineer`、`viewer_engineer`、`qa_engineer` 与 `liveops_community`。
-- ROUND-034 进展: `liveops_community` 已完成 `TASK-GAME-032`，新增 closed beta candidate runbook、feedback/incident 模板与 FAQ/禁语边界，明确在 `producer_system_designer` 放行前继续维持 `technical preview / not playable yet` 口径。
+- ROUND-034 进展: `liveops_community` 已完成 `TASK-GAME-032`，新增 closed beta candidate runbook、feedback/incident 模板与 FAQ/禁语边界，明确在 `producer_system_designer` 放行前继续维持受控技术预览口径。
 - ROUND-035 进展: `runtime_engineer` 已定位并修复 `scripts/s10-five-node-game-soak.sh` 的 cleanup 漏洞：此前 run 结束后会残留默认端口 listener，导致下一轮 sequencer startup 直接报 `bind 127.0.0.1:5811 failed: Address already in use`；修复后，`--base-port 6410` 的 back-to-back 10 秒诊断样本已证明不再残留 listener。与此同时，`20260322-115646` 的 60 秒样本也确认 reward runtime / settlement 链路本身可跑通。
 - ROUND-036 进展: `qa_engineer` 已将 `doc/testing/evidence/closed-beta-candidate-release-gate-2026-03-22.md` 从模板升级为统一 gate 入口，并给出当前正式结论 `block`：runtime lane 尚未完成 clean-room 候选证据，trend baseline 仍未达标，且 headed Web/UI、pure API、no-UI smoke 还没在同一 candidate 上完成 fresh rerun。
 - ROUND-037 进展: `runtime_engineer` 已补齐 clean-room `120s` 候选样本 `output/longrun/closed-beta-rerun-fixed-20260322/20260322-120458`，结果为 `process_status=ok / metric_gate=pass`，且 `nodes/*/exit-status.txt` 全部显示脚本收尾阶段的受控 `SIGTERM`（`exit_status=143`）；runtime lane 的正式缺口已从“120 秒样本缺失”收敛为“还缺 `600s+` soak 与 replay/rollback drill”，项目阶段继续保持 `internal_playable_alpha_late`。
@@ -194,7 +195,8 @@
 - ROUND-041 进展: `viewer_engineer` 已修复 `scripts/viewer-post-onboarding-qa.sh` 的启动日志轮询健壮性，并在 `crates/oasis7_viewer/src/egui_right_panel_player_experience.rs` 过滤 `AgentNotFound` 历史噪音的右侧 chatter 焦点渲染；随后用 fresh bundle 执行 `./scripts/viewer-post-onboarding-qa.sh --bundle-dir output/release/game-launcher-local --out-dir output/playwright/playability/closed-beta-20260322 --no-llm`，得到 `output/playwright/playability/closed-beta-20260322/post-onboarding-20260322-155613`，自动检查 `pass`、`console.errors.log` 为空，人工复核确认 `PostOnboarding` 主目标/顶部总结保持首屏焦点，`TASK-GAME-030` 正式完成。项目阶段继续保持 `internal_playable_alpha_late`，剩余 blocker 收敛为 pure API / no-UI smoke 的同 candidate fresh rerun 与 trend baseline 未达阈值。
 - ROUND-042 进展: `qa_engineer` 已对同候选 fresh bundle 完成 pure API required/full rerun 与 no-UI smoke rerun：`output/playwright/playability/pure-api-required-20260322-183650/`、`output/playwright/playability/pure-api-full-20260322-183750/`、`output/playwright/playability/post-onboarding-headless-20260322-183832/` 全部 `pass`，其中 pure API required/full 均到达 `post_onboarding.choose_midloop_path` 且 `progress=100`，no-UI lane 继续确认 `timeline=1 -> 9 -> 33` 与 `RuntimeEvent` feed 存在。统一 gate 在该时点只剩 trend baseline 未达阈值，项目阶段仍保持 `internal_playable_alpha_late`，不得提前宣称 `closed_beta_candidate approved`。
 - ROUND-043 进展: `qa_engineer` 已将 `doc/testing/evidence/testing-quality-trend-baseline-2026-03-11.md` 刷新为最近 7 天窗口（`2026-03-19` ~ `2026-03-22`）真值，纳入 7 个 candidate 相关样本后得到 `first-pass=100% / escape=0% / fix-time=0d`，并据此把 unified gate 更新为 `pass`。项目当前已无 QA 技术 blocker，但阶段仍保持 `internal_playable_alpha_late`，下一步必须由 `producer_system_designer` 执行 `TASK-GAME-033` 决定是否继续保持当前阶段或进入下一阶段候选口径。
-- ROUND-044 进展: `producer_system_designer` 已完成 `TASK-GAME-033` 阶段评审，并正式决定继续保持 `internal_playable_alpha_late`。理由不是 QA 技术 blocker，而是当前 release / 招募节奏仍按 `technical preview / not playable yet` 管理；在 producer 明确打开下一阶段 claim envelope 之前，`closed_beta_candidate` 继续只作为目标态，不作为当前对外口径。
+- ROUND-044 进展: `producer_system_designer` 已完成 `TASK-GAME-033` 阶段评审，并正式决定继续保持 `internal_playable_alpha_late`。理由不是 QA 技术 blocker，而是当前 release / 招募节奏仍按受控技术预览管理；在 producer 明确打开下一阶段 claim envelope 之前，`closed_beta_candidate` 继续只作为目标态，不作为当前对外口径。
+- ROUND-045 进展: `producer_system_designer` 已完成 `TASK-GAME-034`，将当前有效对外口径正式收口为 `limited playable technical preview`；该调整只放宽“完全不可玩”的表述，不改变阶段判断，也不放开 `closed beta / play now / live now` 禁语。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-21.md`。
 

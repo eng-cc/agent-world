@@ -34,7 +34,7 @@
   - SC-2: 对外入口链接有效性检查持续通过。
 - SC-3: 术语与架构描述变更在 1 个工作日内同步到 README 体系。
 - SC-4: readme 相关变更全部具备 PRD-ID 与 devlog 追踪。
-- SC-5: Closed beta candidate 的 liveops runbook与模板能直接维持 `technical preview` 口径，并服务 `prg-game-009` 的 evidence gate。
+- SC-5: Closed beta candidate 的 liveops runbook与模板能直接维持 `limited playable technical preview` 口径，并服务 `prg-game-009` 的 evidence gate。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -94,7 +94,7 @@
   - AC-7: `doc/readme/governance/**` 中仍作为当前公开口径使用的项目名必须统一写为 `oasis7`；旧 `oasis7` 仅允许保留在历史证据、兼容说明或外部原文引用中。
 - AC-8: 若第三方渠道进入持续运营阶段，必须补齐独立 runbook，明确巡检入口、回复边界、升级路径与 `devlog` 回写方式。
 - AC-9: 若渠道进入首周冷启动执行阶段，runbook 必须补齐 day1-day7 模板，明确每天的主动作、检查窗口、回复目标与记录重点。
-- AC-10: 已新建 `closed beta candidate` runbook与 incident template，供招募/反馈/事故信号在 `technical preview` claim envelope 内沟通并可直接回流 unified release gate。
+- AC-10: 已新建 `closed beta candidate` runbook与 incident template，供招募/反馈/事故信号在 `limited playable technical preview` claim envelope 内沟通并可直接回流 unified release gate。
   - AC-11: Moltbook runbook 至少记录一轮真实执行后的“有效讨论钩子”和“高风险 spam 触发模式”，并明确下一轮如何调整。
 - Non-Goals:
   - 不在 readme PRD 中替代各模块详细设计。

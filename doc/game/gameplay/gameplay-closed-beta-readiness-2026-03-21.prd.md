@@ -15,7 +15,7 @@
   - SC-3: `qa_engineer` 维护的阶段趋势在最近 5 个样本中达到首次通过率 `>= 60%`、阶段内逃逸率 `<= 20%`，否则不得升级阶段口径。
   - SC-4: 同一候选版本必须在 fresh bundle 本地复跑通过 headed Web/UI required、pure API required、no-UI smoke 和 replay/rollback drill 四类门禁。
   - SC-5: `viewer_engineer` 必须把 `PostOnboarding` 首屏收成“主目标优先、无无关噪音”的玩家入口；若首条路径仍出现与主目标无关的高显著错误噪音，则不得给出 `封闭 Beta` 体验结论。
-  - SC-6: `liveops_community` 必须先完成封闭 Beta 候选 runbook、招募/反馈/事故回流模板与对外禁语清单；在 `producer_system_designer` 最终放行前，对外仍保持 `technical preview` / `not playable yet` 口径。
+  - SC-6: `liveops_community` 必须先完成封闭 Beta 候选 runbook、招募/反馈/事故回流模板与对外禁语清单；在 `producer_system_designer` 最终放行前，对外仍保持 `limited playable technical preview` 口径。
 
 ## 2. User Experience & Functionality
 
@@ -52,7 +52,7 @@
   - AC-3: headed Web/UI、pure API、no-UI live protocol、longrun/recovery 四类证据必须进入同一 release gate，而不是散落在各专题“各自 pass”。
   - AC-4: 若 QA 趋势未达到首次通过率 `>= 60%`、阶段内逃逸率 `<= 20%`，则必须在结论中保留 `internal_playable_alpha_late`，不得升级阶段。
   - AC-5: `PostOnboarding` 首屏必须以阶段目标、进度、阻塞、下一步建议为主语义；若继续出现与主目标无关的高显著错误噪音，则 `viewer` 体验门禁失败。
-  - AC-6: 对外文档与 runbook 在 producer 放行前只能使用 `technical preview` / `not playable yet` 一类口径，不得出现 `closed beta` / `play now` / `live now`。
+  - AC-6: 对外文档与 runbook 在 producer 放行前只能使用 `limited playable technical preview` 一类口径，不得出现 `closed beta` / `play now` / `live now`。
   - AC-7: 当前阶段结论、任务拆解、handoff、devlog 必须在同一轮文档回写中完成，确保角色协作可追溯。
 - Non-Goals:
   - 不在本专题中直接新增完整商业化包装或公开发行计划。
@@ -102,7 +102,7 @@
   - NFR-CB-3: 同一候选版本必须至少具备 1 轮 headed Web/UI required、1 轮 pure API required、1 轮 no-UI smoke、1 轮 replay/rollback drill 的通过证据。
   - NFR-CB-4: 长跑和恢复类失败若被标记为 `blocking`，必须在下一轮阶段评审前关闭或显式降级目标，不允许“带阻断升级阶段”。
   - NFR-CB-5: 对外文档、runbook 与 devlog 中的阶段口径在 1 个工作日内同步。
-  - NFR-CB-6: 在 producer 最终放行前，公开渠道 100% 使用 `technical preview` / `not playable yet` 口径。
+  - NFR-CB-6: 在 producer 最终放行前，公开渠道 100% 使用 `limited playable technical preview` 口径。
 - Security & Privacy:
   - 本专题仅汇总证据、沟通和阶段判断，不新增新的玩家敏感数据采集。
   - 对外反馈样本与事故摘要需遵循最小披露原则，避免在公开渠道泄露内部世界状态或用户敏感信息。
