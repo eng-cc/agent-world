@@ -1,6 +1,6 @@
 # game PRD Project
 
-审计轮次: 9
+审计轮次: 10
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-GAME-001 (PRD-GAME-001) [test_tier_required]: 完成 game PRD 改写，建立玩法设计总入口。
@@ -190,7 +190,8 @@
 - ROUND-039 进展: `runtime_engineer` 已补齐 clean-room `600s+` 候选样本 `output/longrun/closed-beta-candidate-20260322/20260322-121320`，结果为 `process_status=ok / metric_gate=pass`；同时 `env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required runtime::tests::basic::from_snapshot_replay_rebuilds_missing_tick_consensus_records -- --nocapture` 与 `runtime::tests::persistence::rollback_with_reconciliation_recovers_from_detected_tick_consensus_drift -- --nocapture` 均已通过，`TASK-GAME-029` 正式完成，项目剩余阻断转入 viewer / unified gate / trend baseline lane。
 - ROUND-040 进展: `qa_engineer` 已将 unified gate 的 longrun lane 从 `block` 升级为 `pass`，并同步把 `TASK-GAME-031` 标记为完成；当前总 gate 结论仍是 `block`，剩余阻断收敛为 viewer / pure API / no-UI smoke 的同 candidate fresh rerun 与 trend baseline 未达阈值。
 - ROUND-041 进展: `viewer_engineer` 已修复 `scripts/viewer-post-onboarding-qa.sh` 的启动日志轮询健壮性，并在 `crates/oasis7_viewer/src/egui_right_panel_player_experience.rs` 过滤 `AgentNotFound` 历史噪音的右侧 chatter 焦点渲染；随后用 fresh bundle 执行 `./scripts/viewer-post-onboarding-qa.sh --bundle-dir output/release/game-launcher-local --out-dir output/playwright/playability/closed-beta-20260322 --no-llm`，得到 `output/playwright/playability/closed-beta-20260322/post-onboarding-20260322-155613`，自动检查 `pass`、`console.errors.log` 为空，人工复核确认 `PostOnboarding` 主目标/顶部总结保持首屏焦点，`TASK-GAME-030` 正式完成。项目阶段继续保持 `internal_playable_alpha_late`，剩余 blocker 收敛为 pure API / no-UI smoke 的同 candidate fresh rerun 与 trend baseline 未达阈值。
-- ROUND-042 进展: `qa_engineer` 已对同候选 fresh bundle 完成 pure API required/full rerun 与 no-UI smoke rerun：`output/playwright/playability/pure-api-required-20260322-183650/`、`output/playwright/playability/pure-api-full-20260322-183750/`、`output/playwright/playability/post-onboarding-headless-20260322-183832/` 全部 `pass`，其中 pure API required/full 均到达 `post_onboarding.choose_midloop_path` 且 `progress=100`，no-UI lane 继续确认 `timeline=1 -> 9 -> 33` 与 `RuntimeEvent` feed 存在。统一 gate 现仅剩 trend baseline 未达阈值，项目阶段仍保持 `internal_playable_alpha_late`，不得提前宣称 `closed_beta_candidate approved`。
+- ROUND-042 进展: `qa_engineer` 已对同候选 fresh bundle 完成 pure API required/full rerun 与 no-UI smoke rerun：`output/playwright/playability/pure-api-required-20260322-183650/`、`output/playwright/playability/pure-api-full-20260322-183750/`、`output/playwright/playability/post-onboarding-headless-20260322-183832/` 全部 `pass`，其中 pure API required/full 均到达 `post_onboarding.choose_midloop_path` 且 `progress=100`，no-UI lane 继续确认 `timeline=1 -> 9 -> 33` 与 `RuntimeEvent` feed 存在。统一 gate 在该时点只剩 trend baseline 未达阈值，项目阶段仍保持 `internal_playable_alpha_late`，不得提前宣称 `closed_beta_candidate approved`。
+- ROUND-043 进展: `qa_engineer` 已将 `doc/testing/evidence/testing-quality-trend-baseline-2026-03-11.md` 刷新为最近 7 天窗口（`2026-03-19` ~ `2026-03-22`）真值，纳入 7 个 candidate 相关样本后得到 `first-pass=100% / escape=0% / fix-time=0d`，并据此把 unified gate 更新为 `pass`。项目当前已无 QA 技术 blocker，但阶段仍保持 `internal_playable_alpha_late`，下一步必须由 `producer_system_designer` 执行 `TASK-GAME-033` 决定是否继续保持当前阶段或进入下一阶段候选口径。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-21.md`。
 

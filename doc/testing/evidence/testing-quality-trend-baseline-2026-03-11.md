@@ -1,13 +1,13 @@
 # 测试质量趋势基线（2026-03-11）
 
-审计轮次: 4
+审计轮次: 5
 
 ## Meta
 - Baseline ID: `TEST-TREND-BASELINE-20260311`
-- 统计窗口: `2026-03-08` ~ `2026-03-11`
+- 统计窗口: `2026-03-19` ~ `2026-03-22`
 - 汇总角色: `qa_engineer`
-- 样本数: `3`
-- 指标结论: `yellow`
+- 样本数: `7`
+- 指标结论: `green`
 
 ## 指标定义
 - 首次通过率：`首次结论=pass` 的样本数 / 总样本数。
@@ -25,22 +25,27 @@
 ## 样本明细
 | Sample ID | 来源文档 | 首次结论 | 最终结论 | 是否阶段内逃逸 | 发现日期 | 关闭日期 | 修复时长 | 备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `LAUNCHREV-20260308` | `doc/testing/launcher/launcher-full-usability-closure-audit-2026-03-08.project.md` | `fail` | `conditional_pass` | `yes` | `2026-03-08` | `2026-03-08` | `0d` | Web 静态目录协议错配风险在可用性审查阶段暴露，并在同日切换显式静态目录后收口。 |
-| `TEST-BUNDLE-GAME-018-20260310` | `doc/testing/evidence/release-evidence-bundle-task-game-018-2026-03-10.md` | `pass` | `pass` | `no` | `2026-03-10` | `2026-03-10` | `0d` | task 级 S6 / 回归 / playability 证据一次通过。 |
-| `RT-STORAGE-GATE-SAMPLE-20260310-234544` | `doc/world-runtime/evidence/runtime-storage-gate-sample-2026-03-10.md` | `fail` | `pass_after_fix` | `yes` | `2026-03-10` | `2026-03-11` | `1d` | QA 复验发现 storage profile cadence 未真正透传到 execution bridge，次日修复并通过。 |
+| `POD-WEB-20260319-094056` | `doc/playability_test_result/card_2026_03_19_09_40_56.md` | `pass` | `pass` | `no` | `2026-03-19` | `2026-03-19` | `0d` | `#46 PostOnboarding` headed Web/UI required-tier 在 fresh bundle 下首次通过。 |
+| `POD-NOUI-20260319-101444` | `doc/testing/evidence/post-onboarding-headless-smoke-2026-03-19.md` | `pass` | `pass` | `no` | `2026-03-19` | `2026-03-19` | `0d` | 无 UI live-protocol smoke 首次确认 `step(8) -> step(24)` 与 `RuntimeEvent` feed 正常。 |
+| `CB-RUNTIME-600S-20260322-121320` | `doc/testing/evidence/closed-beta-runtime-s10-2026-03-22.md` | `pass` | `pass` | `no` | `2026-03-22` | `2026-03-22` | `0d` | clean-room `600s+` soak 与 replay/rollback drill 在当前 candidate 上一次通过。 |
+| `CB-WEB-20260322-155613` | `doc/playability_test_result/card_2026_03_22_15_56_13.md` | `pass` | `pass` | `no` | `2026-03-22` | `2026-03-22` | `0d` | 同候选 headed Web/UI rerun 一次通过，首屏主目标与顶部总结保持清晰。 |
+| `CB-PUREAPI-REQ-20260322-183650` | `doc/testing/evidence/pure-api-parity-validation-2026-03-19.md` | `pass` | `pass` | `no` | `2026-03-22` | `2026-03-22` | `0d` | 同候选 pure API required-tier rerun 一次通过，到达 `post_onboarding.choose_midloop_path`。 |
+| `CB-PUREAPI-FULL-20260322-183750` | `doc/testing/evidence/pure-api-parity-validation-2026-03-19.md` | `pass` | `pass` | `no` | `2026-03-22` | `2026-03-22` | `0d` | 同候选 pure API full-tier rerun 一次通过，并保持 `step_c` 抽样稳定。 |
+| `CB-NOUI-20260322-183832` | `doc/testing/evidence/post-onboarding-headless-smoke-2026-03-19.md` | `pass` | `pass` | `no` | `2026-03-22` | `2026-03-22` | `0d` | 同候选 no-UI smoke rerun 一次通过，时间线保持 `1 -> 9 -> 33`。 |
 
 ## 计算结果
-- 首次通过率：`1 / 3 = 33.3%` → `red`
-- 最终收口率：`3 / 3 = 100%` → `green`
-- 阶段内逃逸率：`2 / 3 = 66.7%` → `red`
-- 平均修复时长：`(0d + 0d + 1d) / 3 = 0.33d` → `green`
+- 首次通过率：`7 / 7 = 100%` → `green`
+- 最终收口率：`7 / 7 = 100%` → `green`
+- 阶段内逃逸率：`0 / 7 = 0%` → `green`
+- 平均修复时长：`(0d * 7) / 7 = 0d` → `green`
 
 ## 基线解读
-- 当前 testing 体系的“最终能收口”能力已经可用，但“首次就过”的能力明显不足，说明 QA / 可用性复验仍在承担较高的下游拦截成本。
-- 阶段内逃逸率偏高，主要由启动器可用性口径漂移和 runtime profile 透传缺口构成；这类问题都不是线上事故，但说明实现 owner 的自检边界仍需前移。
-- 修复时长保持在 `1d` 以内，表明一旦问题暴露，修复协作链路是通的。
+- 最近 7 天窗口内，candidate 相关的 headed Web/UI、pure API、no-UI 与 runtime longrun 样本均做到首次通过，说明当前阶段的 QA 入口已经从“靠下游复验兜底”转回“owner 自检后再交 QA”。
+- 阶段内逃逸率在该窗口降到 `0%`，表示这批样本里没有出现“问题等到下游 QA / 可用性复验才被首次发现”的信号。
+- 平均修复时长为 `0d`，不是因为没有做修复，而是当前窗口纳入的都是最终交付前已在 owner 侧消化过的一次通过样本。
+- 历史 `2026-03-08` ~ `2026-03-11` 的首份 baseline 仍保留在前一审计轮次中，用于说明早期启动器 / runtime profile 曾存在明显逃逸；本轮结论代表当前阶段评审使用的最近窗口真值。
 
 ## 建议动作
-- `producer_system_designer`：阶段评审优先关注“首次通过率”与“阶段内逃逸率”，不要只看最终 `pass`。
-- `qa_engineer`：后续 baseline 继续保留 `首次结论/最终结论` 双字段，避免把返工成本隐藏到最终收口率里。
-- 模块 owner：对涉及 launcher/runtime 的高风险任务，在提交前补最小 task 级 evidence，自行吸收一轮 QA 才暴露的问题。
+- `producer_system_designer`：当前 trend baseline 已可作为 `TASK-GAME-033` 的输入，但阶段是否升级仍需结合 claim envelope 与 liveops 节奏单独决策。
+- `qa_engineer`：继续按最近 7 天窗口追加样本；若后续 fresh rerun 出现非首次通过，需立即把 baseline 与 unified gate 一并回退。
+- 模块 owner：维持“先在 owner 侧跑最小 evidence，再交 QA”策略，避免阶段内逃逸率重新抬头。
