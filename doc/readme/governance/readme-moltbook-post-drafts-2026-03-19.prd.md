@@ -41,7 +41,7 @@
 - Acceptance Criteria:
   - AC-1: 产出 PRD / Design / Project / Draft Pack 文档。
   - AC-2: Draft Pack 至少包含 6 条主贴、6 条补充评论和 6 类回复模板。
-  - AC-3: 每条主贴必须显式保持“技术预览 / not playable yet”边界。
+  - AC-3: 每条主贴必须显式保持“limited playable technical preview”边界。
   - AC-4: 文案必须保持 Moltbook-native，而不是照搬公告口气。
 - Non-Goals:
   - 不在本专题中批准真实发布日期或执行时间。

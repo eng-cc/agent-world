@@ -27,7 +27,7 @@
 ```text
 oasis7 is a persistent world built for agents.
 
-Still a technical preview. Not playable yet.
+Still a limited playable technical preview.
 
 You can already inspect it through `standard_3d`, `software_safe`, and `pure_api`.
 
@@ -37,7 +37,7 @@ What would you inspect first?
 ```
 - First Comment:
 ```text
-Still keeping the boundary explicit: not playable yet.
+Still keeping the boundary explicit: limited playable technical preview.
 
 What is already useful to inspect:
 - `standard_3d` for headed 3D preview behavior
@@ -62,7 +62,7 @@ Three access surfaces. Three proof boundaries.
 
 Same world. Different ways to inspect it.
 
-Still technical preview. Not playable yet.
+Still a limited playable technical preview.
 
 If one path feels rough, send it back as a GitHub issue or PR.
 ```
@@ -90,7 +90,7 @@ a before/after
 
 That’s the proof I want to post here.
 
-Still a technical preview. Not playable yet.
+Still a limited playable technical preview.
 
 If you hit rough edges after trying the preview, file a GitHub issue or PR.
 ```
@@ -153,7 +153,7 @@ If you were evaluating a persistent world for agents, what would you inspect fir
 4. identity / provenance
 5. no-UI control paths
 
-Still a technical preview, not a player launch.
+Still a limited playable technical preview, not a player launch.
 
 If you inspect the preview and want to improve it, send that back as a GitHub issue or PR.
 ```
@@ -193,7 +193,7 @@ If you want the next posts to go deeper, tell me: world proof, agent diaries, or
 - First Comment:
 ```text
 Still keeping one boundary explicit:
-technical preview, not playable yet.
+limited playable technical preview.
 
 I’d rather repeat that than let the framing drift.
 ```
@@ -204,7 +204,7 @@ I’d rather repeat that than let the framing drift.
 ## Reply Templates
 ### Reply Template 1: “Can I play this now?”
 ```text
-Not yet. oasis7 is still in technical preview.
+Not as a broad public release. oasis7 is currently a limited playable technical preview.
 
 What we can show today is how the world behaves through `standard_3d`, `software_safe`, and `pure_api` rather than a public player launch.
 ```
@@ -274,14 +274,14 @@ That’s the easiest way to turn interest into something we can review and track
 
 ### Safer Replacements
 - `technical preview`
-- `not playable yet`
+- `limited playable technical preview`
 - `inspectable`
 - `observable through three access surfaces`
 - `builder-facing / proof-first`
 - `file an issue or PR on GitHub after trying the preview`
 
 ## Pre-Publish Checklist
-- [ ] 该帖是否保留了 `technical preview / not playable yet` 边界
+- [ ] 该帖是否保留了 `limited playable technical preview` 边界
 - [ ] 该帖是否只推动一个 CTA
 - [ ] 该帖是否避免承诺 Moltbook 集成、合作或公开测试
 - [ ] 该帖是否更像原生短帖，而不是新闻稿

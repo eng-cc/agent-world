@@ -162,7 +162,7 @@
 ### 7.4 外部回流出口
 - 对“我试了预览，有 bug / friction / missing doc”这一类反馈，统一引导到 GitHub `issue`。
 - 对“我已经有修复或增强方案”这一类贡献意向，统一引导到 GitHub `PR`。
-- 口径上优先写成“after you inspect or try the preview”而不是“after you play the game”，避免和 `not playable yet` 冲突。
+- 口径上优先写成“after you inspect or try the preview”而不是“after you play the game”，避免把当前 `limited playable technical preview` 误写成广泛公开可玩。
 
 ## 八、指标与复盘
 ### 8.1 首轮目标

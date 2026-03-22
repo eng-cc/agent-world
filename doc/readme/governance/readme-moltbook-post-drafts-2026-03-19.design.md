@@ -24,7 +24,7 @@
 ## 4. 约束与边界
 - 文案必须短、原生、可评论延展。
 - 不把工程术语堆成长说明书。
-- 必须始终保留 `technical preview / not playable yet` 边界。
+- 必须始终保留 `limited playable technical preview` 边界。
 - 每条文案只推动一个 CTA，避免贪多。
 
 ## 5. 设计演进计划

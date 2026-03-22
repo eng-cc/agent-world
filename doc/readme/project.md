@@ -206,9 +206,13 @@
     - `doc/readme/project.md`
     - `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md`
     - `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`
+    - `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.prd.md`
+    - `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.design.md`
+    - `doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.md`
+    - `doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.md`
     - `doc/devlog/2026-03-22.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "limited playable technical preview|closed beta|play now|live now" doc/readme/prd.md doc/readme/project.md doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`
+    - `rg -n "limited playable technical preview|closed beta|play now|live now" doc/readme/prd.md doc/readme/project.md doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.prd.md doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.design.md doc/readme/governance/readme-moltbook-post-drafts-2026-03-19.md doc/readme/governance/readme-moltbook-promotion-plan-2026-03-19.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 
