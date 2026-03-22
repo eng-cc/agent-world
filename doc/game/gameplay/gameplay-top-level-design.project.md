@@ -2,7 +2,7 @@
 
 - 对应设计文档: `doc/game/gameplay/gameplay-top-level-design.design.md`
 - 对应需求文档: `doc/game/gameplay/gameplay-top-level-design.prd.md`
-审计轮次: 7
+审计轮次: 8
 
 ## ROUND-002 主从口径
 - 本文件为 gameplay 项目主入口，其余 gameplay project 为增量计划。
@@ -76,8 +76,8 @@
 
 - 当前状态：`进行中`
 - 已完成：文档归位、命名语义化、必备字段补齐、工程分册格式修复、Gameplay Runtime/模块化/协议扩展任务拆解与落地、Gameplay 模块测试矩阵引用固化、设计评审准备与战争/政治数值基线补齐、前期工业引导闭环文档冻结（首个制成品/工厂主链）、T4 的 runtime 工业状态/事件与 viewer 主反馈闭环、T5 的 `PostOnboarding` 阶段目标链闭环、T6 的纯 API 客户端等价闭环、T7 的封闭 Beta 准入专题冻结与根入口挂载。
-- 未完成：`T7` 的 producer 阶段评审；当前 unified gate 已转为 `pass`，但项目阶段仍待 `producer_system_designer` 决策。
-- 阻塞项：统一 `closed_beta_candidate` gate 仍为 `block`；不得据此宣称 `closed beta approved`。
+- 未完成：当前无 `T7` 技术阻塞；后续仅保留统一 gate、trend baseline 与 liveops 节奏的持续监控。
+- 阻塞项：无统一 gate 技术阻塞；当前继续保持 `internal_playable_alpha_late` 属于 producer claim 决策，不得据此宣称 `closed beta approved`。
 
 ## 迁移记录（2026-03-03）
 - 已按 `TASK-ENGINEERING-014-D1 (PRD-ENGINEERING-006)` 从 legacy 命名迁移为 `.prd.md/.project.md`。
