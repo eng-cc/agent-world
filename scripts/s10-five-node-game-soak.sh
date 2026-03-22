@@ -679,11 +679,12 @@ declare -a active_pids=()
 declare -a active_nodes=()
 declare -a active_waited=()
 declare -a active_exit_statuses=()
+captured_exit_status=0
 
 capture_process_exit_status() {
   local idx=$1
   if [[ "${active_waited[$idx]:-0}" -eq 1 ]]; then
-    printf '%s' "${active_exit_statuses[$idx]:-0}"
+    captured_exit_status="${active_exit_statuses[$idx]:-0}"
     return 0
   fi
 
@@ -697,6 +698,7 @@ capture_process_exit_status() {
 
   active_waited[$idx]=1
   active_exit_statuses[$idx]=$status
+  captured_exit_status=$status
 
   local node_name=${active_nodes[$idx]}
   local node_dir="$run_dir/nodes/$node_name"
@@ -710,7 +712,7 @@ capture_process_exit_status() {
     fi
   } > "$exit_status_file"
 
-  printf '%s' "$status"
+  return 0
 }
 
 matching_node_pids() {
@@ -779,7 +781,7 @@ stop_active_processes() {
       if kill -0 "$pid" >/dev/null 2>&1; then
         kill "$pid" >/dev/null 2>&1 || true
       fi
-    done < <(matching_node_pids "$node_name")
+      done < <(matching_node_pids "$node_name")
   done
 
   local deadline=$(( $(date +%s) + 8 ))
@@ -867,7 +869,8 @@ wait_for_startup_ready() {
     for idx in "${!node_ids[@]}"; do
       if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
         local exit_status
-        exit_status=$(capture_process_exit_status "$idx")
+        capture_process_exit_status "$idx"
+        exit_status=$captured_exit_status
         echo "node exited before startup ready: ${active_nodes[$idx]} exit_status=${exit_status}" >&2
         return 1
       fi
@@ -1560,7 +1563,8 @@ if [[ "$run_status" == "ok" ]]; then
 
     for idx in "${!active_pids[@]}"; do
       if ! kill -0 "${active_pids[$idx]}" >/dev/null 2>&1; then
-        exit_status=$(capture_process_exit_status "$idx")
+        capture_process_exit_status "$idx"
+        exit_status=$captured_exit_status
         run_status="process_exit"
         run_notes="node=${active_nodes[$idx]} exited during soak exit_status=${exit_status}"
         break 2
