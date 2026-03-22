@@ -1,6 +1,6 @@
 # readme PRD
 
-审计轮次: 7
+审计轮次: 8
 
 ## 目标
 - 建立 readme 模块设计主文档，统一需求边界、技术方案与验收标准。
@@ -35,6 +35,7 @@
 - SC-3: 术语与架构描述变更在 1 个工作日内同步到 README 体系。
 - SC-4: readme 相关变更全部具备 PRD-ID 与 devlog 追踪。
 - SC-5: Closed beta candidate 的 liveops runbook与模板能直接维持 `limited playable technical preview` 口径，并服务 `prg-game-009` 的 evidence gate。
+- SC-6: limited preview 贡献奖励流程必须具备可直接复用的 round ledger 模板，能够承接评分、审批、发放记录与归档。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -68,6 +69,7 @@
 - PRD-README-019: As a `liveops_community`, I want a controlled limited preview execution pack, so that the first invite-only builder round can run with fixed callout copy, monitoring slots, signal buckets, and producer-facing summary fields.
 - PRD-README-020: As a `liveops_community`, I want an early contributor reward pack for limited preview, so that reward eligibility, evidence fields, score bands, and forbidden phrases stay contribution-based and do not depend on invite-only or play-to-earn framing.
 - PRD-README-021: As a `liveops_community`, I want a reusable Xiaohongshu intro post pack from the human developer perspective, so that the account can open with a clear identity, safe tone, and repeatable asset set instead of improvising its first post.
+- PRD-README-022: As a `liveops_community`, I want a round-based contributor reward ledger template, so that real limited preview contributions can be reviewed, approved, distributed, and archived without falling back to ad-hoc notes.
 - Critical User Flows:
   1. Flow-RM-001: `阅读 README -> 跳转模块入口 -> 快速定位目标能力`
   2. Flow-RM-002: `检测口径变更 -> 更新入口文档 -> 校验链接 -> 发布同步`
@@ -79,6 +81,7 @@
   8. Flow-RM-008: `冻结 limited preview 口径 -> 选用 invite-only callout copy -> 按固定窗口巡检 -> 将信号按 Blocking / Opportunity / Idea 归档 -> 输出 producer 摘要`
   9. Flow-RM-009: `收集 early contributor signal -> 按评分模板记录证据 -> 输出 small/medium/large reward recommendation -> 检查对外禁语 -> 回流 producer 审核`
   10. Flow-RM-010: `确定小红书账号第一帖定位 -> 冻结标题/正文/封面/标签 -> 对齐“人类开发者 + agent 队友”叙事主语 -> 保存可复用素材包`
+  11. Flow-RM-011: `结束一轮 limited preview -> 将可计分贡献抄入 reward ledger -> producer 审批档位 -> execution owner 回填发放记录 -> 台账归档`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -92,6 +95,7 @@
 | 实战运营经验 | `post_id`、`working_hook`、`spam_trigger`、`next_adjustment` | 把真实发帖结果沉淀成后续可复用规则 | `observed -> distilled -> adopted` | 先记录高信号模式，再记录高风险模式 | `liveops_community` 维护 |
 | 受控预览执行包 | `round_id`、`callout_copy`、`check_slot`、`signal_bucket`、`claim_drift_flag`、`summary_field` | 把 limited preview 第一轮执行压成可直接照跑的操作包 | `draft -> execution_ready -> reused` | 先冻结文案，再冻结巡检，再冻结回流摘要 | `liveops_community` 维护，`producer_system_designer` 审核边界 |
 | 早期贡献奖励操作包 | `contribution_type`、`score_band`、`evidence_field`、`reward_recommendation`、`forbidden_phrase` | 按贡献评分模板判断是否进入奖励建议池，并约束对外表达 | `signal -> scored -> reviewed -> recommended` | 不公布固定 token/point 比率；仅按贡献审计后给 `eligible-small/medium/large` 建议 | `liveops_community` 记录与初评，`producer_system_designer` 最终审批 |
+| 贡献奖励台账 | `round_id`、`candidate_id`、`ledger_id`、`reward_account`、`recommended_band`、`review_status`、`approval_id`、`distribution_ref` | 将真实贡献逐条编目、审批、回填发放记录并归档 | `draft -> reviewed -> approved/rejected -> distributed -> archived` | 同一轮按 contributor 与 ledger id 去重；缺证据默认不得进入审批 | `liveops_community` 维护，`producer_system_designer` 审核，execution owner 回填发放记录 |
 - Acceptance Criteria:
   - AC-1: readme PRD 明确入口文档职责边界。
   - AC-2: readme project 文档维护同步任务与状态。
@@ -106,6 +110,7 @@
   - AC-11: Moltbook runbook 至少记录一轮真实执行后的“有效讨论钩子”和“高风险 spam 触发模式”，并明确下一轮如何调整。
 - AC-12: 若团队进入 `limited playable technical preview` 的 invite-only 执行阶段，必须补齐受控执行包，明确 callout 文案、巡检窗口、信号分桶、claim drift 纠偏与 producer 摘要字段。
 - AC-13: 若团队决定在 limited preview 阶段使用 early contributor reward，必须补齐独立操作包，明确评分模板、证据字段、审阅链、禁语与“无固定 token/point 汇率”边界。
+- AC-14: 若团队开始记录真实贡献奖励轮次，必须补齐 round-based ledger，明确 round meta、逐条 row 状态、producer 审批引用、distribution ref 与 archive note。
 - Non-Goals:
   - 不在 readme PRD 中替代各模块详细设计。
   - 不在 readme PRD 中定义测试用例细节。
@@ -123,6 +128,7 @@
   - `testing-manual.md`
 - `doc/README.md`
   - `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.prd.md`
+  - `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.prd.md`
   - `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
 - Edge Cases & Error Handling:
   - 链接失效：断链必须在巡检报告中暴露并进入修复队列。
@@ -139,6 +145,7 @@
   - NFR-RM-4: 发布前口径巡检覆盖率 100%。
   - NFR-RM-5: 对外文档不得暴露敏感配置信息。
   - NFR-RM-6: 早期贡献奖励模板不得公开固定 token 数额、固定 token/point 比率或“玩多久给多少”的承诺。
+  - NFR-RM-7: 真实贡献奖励 ledger 中每条非拒绝记录必须至少有 1 个有效 source/evidence link，且每条已发放记录都必须具备 `Approval ID` 与 `Distribution Ref`。
 - Security & Privacy: 对外文档不得暴露敏感配置与密钥信息；示例配置需使用脱敏样例。
 
 ## 5. Risks & Roadmap
@@ -175,6 +182,7 @@
 | PRD-README-019 | TASK-README-029 | `test_tier_required` | invite-only limited preview execution pack 明确 callout copy、check slots、signal buckets、summary fields | 受控预览执行性与回流一致性 |
 | PRD-README-020 | TASK-README-030 | `test_tier_required` | early contributor reward pack 明确评分模板、证据字段、奖励建议分级与禁语清单 | limited preview 贡献奖励执行性与对外口径安全性 |
 | PRD-README-021 | TASK-README-031 | `test_tier_required` | 小红书首帖素材包明确标题、正文、封面文案、标签与“人类开发者视角”使用说明 | 新渠道冷启动识别度与口径稳定性 |
+| PRD-README-022 | TASK-README-032 | `test_tier_required` | reward ledger 模板明确 round meta、逐条贡献记录、producer 审批、distribution ref 与归档字段 | limited preview 真实贡献奖励结算闭环 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -198,3 +206,4 @@
 | DEC-RM-018 | 为 invite-only limited preview 新增独立执行包 | 继续只靠 handoff 和零散 devlog 驱动首轮外放 | 首轮 limited preview 需要固定文案、巡检窗口、分桶与摘要字段，才能避免执行漂移。 |
 | DEC-RM-019 | 早期奖励模板只输出贡献评分与奖励建议档位，不公开固定 token 数额或 point 汇率 | 直接把 token 发放表做成外部宣传文案 | 当前阶段仍是 `limited playable technical preview`，需要避免过度金融化与过度承诺。 |
 | DEC-RM-020 | 小红书首帖采用“人类开发者自我介绍”而非“项目功能介绍” | 首帖直接解释完整世界观或产品能力 | 小红书面向人，首帖更需要建立创作者身份与协作关系，而不是先堆产品信息。 |
+| DEC-RM-021 | 用 round-based reward ledger 承接真实贡献奖励结算 | 继续靠 issue 评论、聊天记录或零散表格临场结算 | 真实发放前必须把评分、审批、执行引用和归档收进统一模板，才能保持可审计性。 |

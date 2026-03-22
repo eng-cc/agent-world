@@ -1,6 +1,6 @@
 # readme PRD 文件级索引
 
-审计轮次: 7
+审计轮次: 8
 
 更新时间：2026-03-22
 
@@ -35,6 +35,7 @@
 | `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.prd.md` | `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.design.md` | `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.project.md` |
 | `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.prd.md` | `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.design.md` | `doc/readme/governance/readme-closed-beta-candidate-runbook-2026-03-22.project.md` |
 | `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.prd.md` | `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.design.md` | `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.project.md` |
+| `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.prd.md` | `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.design.md` | `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.project.md` |
 | `doc/readme/governance/readme-xiaohongshu-intro-post-pack-2026-03-22.md` | `-` | `-` |
 | `doc/readme/governance/readme-world-rules-consolidation.prd.md` | `doc/readme/governance/readme-world-rules-consolidation.design.md` | `doc/readme/governance/readme-world-rules-consolidation.project.md` |
 | `doc/readme/production/readme-llm-p1p2-production-closure.prd.md` | `doc/readme/production/readme-llm-p1p2-production-closure.design.md` | `doc/readme/production/readme-llm-p1p2-production-closure.project.md` |

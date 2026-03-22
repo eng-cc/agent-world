@@ -1,6 +1,6 @@
 # readme PRD Project
 
-审计轮次: 7
+审计轮次: 8
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-README-001 (PRD-README-001) [test_tier_required]: 完成 readme PRD 改写，建立对外口径主控入口。
@@ -258,6 +258,22 @@
     - `rg -n "大家好，我最近在和一群 agent 一起做游戏|我在和一群 agent 一起做游戏|#独立开发|#开发日记|人类开发者" doc/readme/governance/readme-xiaohongshu-intro-post-pack-2026-03-22.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-README-032 (PRD-README-022) [test_tier_required]: 为 limited preview 真实贡献奖励补齐 round-based ledger 模板，固定 round meta、逐条贡献记录、producer 审批、distribution ref 与归档字段。
+  - 产物文件:
+    - `doc/readme/prd.md`
+    - `doc/readme/project.md`
+    - `doc/readme/prd.index.md`
+    - `doc/readme/README.md`
+    - `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.prd.md`
+    - `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.design.md`
+    - `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.project.md`
+    - `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.md`
+    - `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.project.md`
+    - `doc/devlog/2026-03-22.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "Round ID|Ledger ID|Recommended Band|Approval ID|Distribution Ref|archived" doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.prd.md doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.md doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.project.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -273,6 +289,7 @@
 - 更新日期: 2026-03-22
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-README-032`（已为 limited preview 真实贡献奖励补齐 round-based ledger 模板，固定 round meta、逐条贡献记录、producer 审批、distribution ref 与归档字段。）
 - 最新完成: `TASK-README-030`（已为 limited preview 早期贡献奖励补齐 liveops 操作包，固定评分模板、证据字段、奖励建议档位与禁语清单，并明确不依赖 invite-only 也不公开固定 token 汇率。）
 - 最新完成: `TASK-README-029`（已为 invite-only limited preview 首轮执行补齐 liveops 操作包，固定文案、巡检窗口、信号分桶与 producer 摘要字段。）
 - 最新完成: `TASK-README-028`（已将当前有效对外文档统一收口到 `limited playable technical preview` 口径，并保持 `closed beta / play now / live now` 禁语不变。）
