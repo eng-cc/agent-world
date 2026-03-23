@@ -16,6 +16,9 @@
   - 游戏阶段口径: `limited playable technical preview`
   - 安全阶段口径: `crypto-hardened preview`
   - `MAINNET-1`: completed as specification gate
+- 选定方案:
+  - production signer custody: `offline storage + manual multisig`
+  - operator key staging root: operator-local non-repo path（例如 `~/Documents/keys`）
 - 当前 blocker:
   - `node.private_key` 仍会自动生成并明文写入 `config.toml`
   - viewer signer 仍可从 env / `config.toml` bootstrap 并注入 HTML
@@ -38,5 +41,5 @@
 
 ## 状态
 - 当前阶段: completed
-- 下一步: 进入 `MAINNET-2`，把治理 finality signer 与 controller signer 真值从 deterministic local seed / local config 迁到正式 externalized source，并定义 failover/rotation/revocation。
+- 下一步: 进入 execution workstream，把 `offline storage + manual multisig` 方案拆成真实 key generation / storage / signing runbook；operator-local key staging root（例如 `~/Documents/keys`）仅作为人工 custody 的非仓库 staging 根目录，不作为应用自动 keystore。
 - 最近更新: 2026-03-23

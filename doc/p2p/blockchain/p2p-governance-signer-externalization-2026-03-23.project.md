@@ -16,6 +16,8 @@
   - 游戏阶段口径: `limited playable technical preview`
   - 安全阶段口径: `crypto-hardened preview`
   - `MAINNET-2`: completed as specification gate
+- 选定方案:
+  - governance truth target: `on-chain/world-state registry`
 - 当前 blocker:
   - governance finality signer 仍由 deterministic local seed 派生
   - controller signer policy 真值仍由 `NodeConfig` 本地配置承担
@@ -37,5 +39,5 @@
 
 ## 状态
 - 当前阶段: completed
-- 下一步: 进入 `MAINNET-3`，冻结 genesis recipient/controller/signer policy 真值、ceremony checklist 与 QA evidence bundle。
+- 下一步: 进入 execution workstream，把 governance signer long-term truth 直接迁入链上/world-state registry；链下 registry 只允许做临时迁移工具，不得作为最终完成态。
 - 最近更新: 2026-03-23

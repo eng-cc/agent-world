@@ -455,7 +455,7 @@
 ## 状态
 - 更新日期: 2026-03-23
 - 当前状态: completed（ROUND-023）
-- 下一任务: 若继续推进，应进入 execution workstreams，分别落地 signer custody、governance truth externalization、genesis binding/ceremony/QA；在这些项完成前，继续执行当前 preview claims policy。
+- 下一任务: 若继续推进，应进入 execution workstreams，分别落地 `offline storage + manual multisig` signer custody、`governance truth 直接上链`、genesis binding/ceremony/QA；在这些项完成前，继续执行当前 preview claims policy。
 - 最新完成: `TASK-P2P-038`（已完成 mainnet/public claims policy 复评专题建档，正式冻结当前只允许 `limited playable technical preview` + `crypto-hardened preview`，并把 `mainnet-grade`、`production mint ready` 等口径放入 denylist。）
 - 最新完成: `TASK-P2P-037`（已完成创世 freeze / ceremony / QA gate 专题建档，正式把 `logic_frozen_address_binding_pending`、`TBD_BEFORE_MINT`、`pending_binding`、`ready_pending_address_binding` 与 QA 非 `pass` 结论全部冻结为 mint-ready blocker。）
 - 最新完成: `TASK-P2P-036`（已完成治理 signer 外部化与轮换门禁专题建档，正式把 deterministic local seed 与 `NodeConfig` 本地 controller signer policy 定义为 preview/local 真值，并冻结 externalized source-of-truth、failover/rotation/revocation/operator ownership gate。）

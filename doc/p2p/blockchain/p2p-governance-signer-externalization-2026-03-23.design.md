@@ -17,8 +17,12 @@
 ## 目标态
 | Governance scope | 目标真值 | 必需能力 | 禁止项 |
 | --- | --- | --- | --- |
-| `finality signer` | externalized governance signer registry | rotation、revocation、failover、operator ownership | deterministic local seed 进入 production |
-| `controller signer` | externalized controller signer registry | threshold policy updates、rotation、revocation、audit | 仅靠单机 `NodeConfig` 维护生产真值 |
+| `finality signer` | on-chain/world-state governance signer registry | rotation、revocation、failover、operator ownership | deterministic local seed 进入 production |
+| `controller signer` | on-chain/world-state controller signer registry | threshold policy updates、rotation、revocation、audit | 仅靠单机 `NodeConfig` 维护生产真值 |
+
+## 选定方案备注
+- producer 已选定 `governance truth 直接上链`。
+- 因此任何链下 external registry 都只能作为过渡工具，不得在正式完成定义里替代最终链上 truth。
 
 ## Gate 切片
 1. `GOVSIGN-1 inventory`: 固定 finality/controller signer 当前来源、环境等级和 blocker。

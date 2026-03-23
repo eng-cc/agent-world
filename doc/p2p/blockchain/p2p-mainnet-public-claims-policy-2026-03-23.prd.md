@@ -47,7 +47,7 @@
   - AC-2: 必须明确当前允许口径只有 `limited playable technical preview` 与 `crypto-hardened preview`。
   - AC-3: 必须明确 `mainnet-grade`、`mainstream public-chain-grade security`、`production mint ready` 当前全部禁止。
   - AC-4: 必须明确 `MAINNET-1~3` 当前只完成 specification gate，而不是工程实现闭环。
-  - AC-5: 必须列出至少 3 个剩余工程 blocker：production signer custody 实装、governance truth 外部化实装、genesis freeze/ceremony/QA 实际通过。
+  - AC-5: 必须列出至少 3 个剩余工程 blocker：`offline storage + manual multisig` custody 实装、governance truth 直接上链实装、genesis freeze/ceremony/QA 实际通过。
   - AC-6: 必须定义未来升级 claim 所需的 execution conditions，而不是只写“后续再评估”。
   - AC-7: 必须输出 `CLAIMS-1~4` 任务链与 owner/test tier 映射。
   - AC-8: 模块主 PRD/project/index/README 与 readiness project 必须接入本专题。

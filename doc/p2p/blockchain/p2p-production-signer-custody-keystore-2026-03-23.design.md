@@ -18,9 +18,16 @@
 ## 目标态
 | Signer scope | 目标后端 | 必需能力 | 禁止项 |
 | --- | --- | --- | --- |
-| `node runtime signer` | managed keystore 或 external signer | key isolation、rotation、revocation、audit trail | 明文 `config.toml` 私钥 |
-| `viewer/player signer` | external wallet / delegated signer / managed signing boundary | 页面不持有私钥、失败可观测、环境可控 | HTML 注入私钥、长期 env 私钥 |
-| `governance/controller signer` | 受控治理 signer source | rotation、revocation、operator ownership | local seed/config 继续承担生产真值 |
+| `node runtime signer` | offline storage + manual multisig | key isolation、rotation、revocation、audit trail、人工审批链 | 明文 `config.toml` 私钥 |
+| `viewer/player signer` | delegated signing boundary；生产不保留页面私钥 | 页面不持有私钥、失败可观测、环境可控 | HTML 注入私钥、长期 env 私钥 |
+| `governance/controller signer` | offline storage + manual multisig governance signers | rotation、revocation、operator ownership、人工审批链 | local seed/config 继续承担生产真值 |
+
+## 选定方案备注
+- producer 已选定 `offline storage + manual multisig` 作为当前生产 custody 路径。
+- operator-local key staging/export root（例如 `~/Documents/keys`）仅作为 operator 本机的非仓库目录：
+  - 不允许加入 git
+  - 不允许被 runtime / web launcher 自动读取为 production key source
+  - 不足以单独证明“真正离线”；仍需要后续人工 custody/runbook 约束
 
 ## Gate 切片
 1. `CUSTODY-1 inventory`: 固定所有 signer scope 的当前来源、环境等级和 blocker。
