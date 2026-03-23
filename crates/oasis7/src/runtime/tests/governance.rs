@@ -4,8 +4,9 @@ use super::pos;
 use ed25519_dalek::Signer;
 use ed25519_dalek::SigningKey;
 use serde_json::json;
-#[cfg(feature = "test_tier_full")]
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 const LOCAL_FINALITY_SIGNER_1: (&str, &str) = (
     "governance.local.finality.signer.1",
@@ -89,6 +90,94 @@ fn register_agent(world: &mut World, agent_id: &str, x: f64, y: f64) {
         pos: pos(x, y),
     });
     world.step().unwrap();
+}
+
+fn temp_dir(prefix: &str) -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("duration")
+        .as_nanos();
+    std::env::temp_dir().join(format!("oasis7-governance-{prefix}-{unique}"))
+}
+
+#[test]
+fn governance_finality_registry_roundtrip_persists_and_drives_epoch_snapshot() {
+    let temp_dir = temp_dir("registry-roundtrip");
+    let mut world = World::new();
+    world
+        .set_governance_finality_signer_registry(GovernanceFinalitySignerRegistry {
+            slot_id: "governance.finality.v1".to_string(),
+            threshold: 2,
+            threshold_bps: 0,
+            signer_bindings: BTreeMap::from([
+                (
+                    "governance.finality.v1.signer01".to_string(),
+                    "54e7a02919fff2d49a9c325def8cb0211ea7f7a75a9011b9d0678b9e2a7af6bc".to_string(),
+                ),
+                (
+                    "governance.finality.v1.signer02".to_string(),
+                    "38dac17ff403cc19de033e47be7cf7b5354635fbc5c1976d7c532e20494aace4".to_string(),
+                ),
+                (
+                    "governance.finality.v1.signer03".to_string(),
+                    "e22bd5029176296712fb1a477f91c15775e5ab858181cb4172839ced526f12c8".to_string(),
+                ),
+            ]),
+        })
+        .expect("set finality registry");
+    world
+        .set_governance_main_token_controller_registry(GovernanceMainTokenControllerRegistry {
+            genesis_controller_account_id: "msig.genesis.v1".to_string(),
+            treasury_bucket_controller_slots: BTreeMap::from([(
+                "staking_reward_pool".to_string(),
+                "msig.staking_governance.v1".to_string(),
+            )]),
+            controller_signer_policies: BTreeMap::from([
+                (
+                    "msig.genesis.v1".to_string(),
+                    GovernanceThresholdSignerPolicy {
+                        threshold: 2,
+                        allowed_public_keys: BTreeSet::from([
+                            "6249e5a58278dbc4e629a16b5d33f6b84c39e3ceeb10e963bb9ef64ea4daac30"
+                                .to_string(),
+                            "7014e88a6336ec91fc7e6ffb044b50232e4411ec403f90123fa8a202a3420a04"
+                                .to_string(),
+                        ]),
+                    },
+                ),
+                (
+                    "msig.staking_governance.v1".to_string(),
+                    GovernanceThresholdSignerPolicy {
+                        threshold: 2,
+                        allowed_public_keys: BTreeSet::from([
+                            "13c160fc0f516b9a5663aa00c2a5446be6467f68ce341fdd79cdb64224dffd20"
+                                .to_string(),
+                            "10fa4d90abf753ec1aa54aee3ea53bab25f43e7078897e1fb6a3777af2255bcb"
+                                .to_string(),
+                        ]),
+                    },
+                ),
+            ]),
+        })
+        .expect("set controller registry");
+    world.save_to_dir(&temp_dir).expect("save world");
+
+    let restored = World::load_from_dir(&temp_dir).expect("restore world");
+    let snapshot = restored.governance_effective_finality_epoch_snapshot(7);
+    assert_eq!(snapshot.epoch_id, 7);
+    assert_eq!(snapshot.threshold, 2);
+    assert_eq!(snapshot.signer_node_ids.len(), 3);
+    assert_eq!(
+        restored.node_identity_public_key("governance.finality.v1.signer01"),
+        Some("54e7a02919fff2d49a9c325def8cb0211ea7f7a75a9011b9d0678b9e2a7af6bc")
+    );
+    assert_eq!(
+        restored
+            .governance_main_token_controller_registry()
+            .and_then(|registry| registry.controller_signer_policies.get("msig.genesis.v1"))
+            .map(|policy| policy.threshold),
+        Some(2)
+    );
 }
 
 #[test]

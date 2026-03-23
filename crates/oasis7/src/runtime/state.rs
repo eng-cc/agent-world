@@ -20,6 +20,7 @@ use super::gameplay_state::{
     GovernanceVoteState, GovernanceVoteWeightSnapshotState, MetaProgressState,
     WarParticipantOutcome, WarState, GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT,
 };
+use super::governance::{GovernanceFinalitySignerRegistry, GovernanceMainTokenControllerRegistry};
 use super::main_token::{
     main_token_bucket_unlocked_amount, MainTokenAccountBalance, MainTokenConfig,
     MainTokenEpochIssuanceRecord, MainTokenGenesisAllocationBucketState,
@@ -499,6 +500,10 @@ pub struct WorldState {
     #[serde(default)]
     pub node_main_token_account_bindings: BTreeMap<String, String>,
     #[serde(default)]
+    pub governance_finality_signer_registry: Option<GovernanceFinalitySignerRegistry>,
+    #[serde(default)]
+    pub governance_main_token_controller_registry: Option<GovernanceMainTokenControllerRegistry>,
+    #[serde(default)]
     pub reward_signature_governance_policy: RewardSignatureGovernancePolicy,
 }
 
@@ -565,6 +570,8 @@ impl Default for WorldState {
             system_order_pool_budgets: BTreeMap::new(),
             node_identity_bindings: BTreeMap::new(),
             node_main_token_account_bindings: BTreeMap::new(),
+            governance_finality_signer_registry: None,
+            governance_main_token_controller_registry: None,
             reward_signature_governance_policy: RewardSignatureGovernancePolicy::default(),
         }
     }

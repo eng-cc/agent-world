@@ -43,8 +43,9 @@ use super::consensus::{TickConsensusRecord, TickConsensusRejectionAuditEvent};
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::events::{ActionEnvelope, MaterialTransitPriority};
 use super::governance::{
-    GovernanceExecutionPolicy, GovernanceFinalityEpochSnapshot,
-    GovernanceIdentityPenaltyMonitorStats, GovernanceIdentityPenaltyRecord, Proposal,
+    GovernanceExecutionPolicy, GovernanceFinalityEpochSnapshot, GovernanceFinalitySignerRegistry,
+    GovernanceIdentityPenaltyMonitorStats, GovernanceIdentityPenaltyRecord,
+    GovernanceMainTokenControllerRegistry, Proposal,
 };
 use super::manifest::Manifest;
 use super::modules::{ModuleCache, ModuleLimits, ModuleRegistry};
@@ -299,17 +300,28 @@ impl World {
             .node_identity_bindings
             .entry(BUILTIN_MODULE_SIGNER_NODE_ID.to_string())
             .or_insert_with(|| BUILTIN_MODULE_SIGNER_PUBLIC_KEY_HEX.to_string());
+        if let Some(registry) = state.governance_finality_signer_registry.clone() {
+            for (node_id, public_key_hex) in registry.signer_bindings {
+                state
+                    .node_identity_bindings
+                    .entry(node_id)
+                    .or_insert(public_key_hex);
+            }
+        }
         #[cfg(any(test, feature = "test_tier_required", feature = "test_tier_full"))]
         state
             .node_identity_bindings
             .entry(TEST_MODULE_SIGNER_NODE_ID.to_string())
             .or_insert_with(test_module_signer_public_key_hex);
-        for (node_id, public_key_hex) in governance::local_governance_finality_signer_public_keys()
-        {
-            state
-                .node_identity_bindings
-                .entry(node_id)
-                .or_insert(public_key_hex);
+        if state.governance_finality_signer_registry.is_none() {
+            for (node_id, public_key_hex) in
+                governance::local_governance_finality_signer_public_keys()
+            {
+                state
+                    .node_identity_bindings
+                    .entry(node_id)
+                    .or_insert(public_key_hex);
+            }
         }
         Self {
             manifest: Manifest::default(),
@@ -431,6 +443,18 @@ impl World {
         &self,
     ) -> &BTreeMap<u64, GovernanceFinalityEpochSnapshot> {
         &self.governance_finality_epoch_snapshots
+    }
+
+    pub fn governance_finality_signer_registry(&self) -> Option<&GovernanceFinalitySignerRegistry> {
+        self.state.governance_finality_signer_registry.as_ref()
+    }
+
+    pub fn governance_main_token_controller_registry(
+        &self,
+    ) -> Option<&GovernanceMainTokenControllerRegistry> {
+        self.state
+            .governance_main_token_controller_registry
+            .as_ref()
     }
 
     pub fn governance_emergency_brake_until_tick(&self) -> Option<WorldTime> {

@@ -34,6 +34,8 @@ mod execution_bridge;
 mod explorer_p0_api;
 #[path = "oasis7_chain_runtime/feedback_submit_api.rs"]
 mod feedback_submit_api;
+#[path = "oasis7_chain_runtime/governance_registry.rs"]
+mod governance_registry;
 #[path = "oasis7_chain_runtime/module_release_attestation_submit_api.rs"]
 mod module_release_attestation_submit_api;
 #[path = "oasis7_chain_runtime/node_keypair_config.rs"]
@@ -368,6 +370,10 @@ fn run_chain_runtime(options: CliOptions) -> Result<(), String> {
     config = config
         .with_feedback_p2p(NodeFeedbackP2pConfig::default())
         .map_err(|err| format!("failed to enable node feedback p2p: {err:?}"))?;
+    config = governance_registry::apply_world_governance_registry_overrides(
+        config,
+        paths.execution_world_dir.as_path(),
+    )?;
 
     let mut runtime = NodeRuntime::new(config);
     if require_execution {

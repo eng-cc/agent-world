@@ -1,7 +1,7 @@
 //! Governance types - proposals, decisions, and events.
 
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::events::DomainEvent;
 use super::gameplay_state::GovernanceIdentityStatus;
@@ -228,6 +228,36 @@ impl GovernanceFinalityEpochSnapshot {
             self.threshold
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct GovernanceThresholdSignerPolicy {
+    #[serde(default)]
+    pub threshold: u16,
+    #[serde(default)]
+    pub allowed_public_keys: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct GovernanceFinalitySignerRegistry {
+    #[serde(default)]
+    pub slot_id: String,
+    #[serde(default)]
+    pub threshold: u16,
+    #[serde(default)]
+    pub threshold_bps: u16,
+    #[serde(default)]
+    pub signer_bindings: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct GovernanceMainTokenControllerRegistry {
+    #[serde(default)]
+    pub genesis_controller_account_id: String,
+    #[serde(default)]
+    pub treasury_bucket_controller_slots: BTreeMap<String, String>,
+    #[serde(default)]
+    pub controller_signer_policies: BTreeMap<String, GovernanceThresholdSignerPolicy>,
 }
 
 /// Events related to governance actions.

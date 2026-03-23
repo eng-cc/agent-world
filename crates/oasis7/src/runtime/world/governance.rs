@@ -2,10 +2,11 @@ use super::super::util::{hash_json, sha256_hex};
 use super::super::{
     apply_manifest_patch, GovernanceEvent, GovernanceExecutionPolicy,
     GovernanceFinalityCertificate, GovernanceFinalityEpochSnapshot,
-    GovernanceIdentityPenaltyRecord, GovernanceIdentityPenaltyStatus,
-    GovernanceIdentityProfileState, GovernanceIdentityStatus, Manifest, ManifestPatch,
-    ManifestUpdate, Proposal, ProposalDecision, ProposalId, ProposalStatus, WorldError,
-    WorldEventBody, WorldTime,
+    GovernanceFinalitySignerRegistry, GovernanceIdentityPenaltyRecord,
+    GovernanceIdentityPenaltyStatus, GovernanceIdentityProfileState, GovernanceIdentityStatus,
+    GovernanceMainTokenControllerRegistry, GovernanceThresholdSignerPolicy, Manifest,
+    ManifestPatch, ManifestUpdate, Proposal, ProposalDecision, ProposalId, ProposalStatus,
+    WorldError, WorldEventBody, WorldTime,
 };
 use super::World;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
@@ -57,11 +58,11 @@ fn decode_hex_array<const N: usize>(raw: &str, label: &str) -> Result<[u8; N], W
         })
 }
 
-fn governance_finality_validator_set_hash(signer_node_ids: &[String]) -> String {
+pub(super) fn governance_finality_validator_set_hash(signer_node_ids: &[String]) -> String {
     sha256_hex(signer_node_ids.join("|").as_bytes())
 }
 
-fn governance_finality_stake_root(signer_node_ids: &[String]) -> String {
+pub(super) fn governance_finality_stake_root(signer_node_ids: &[String]) -> String {
     let payload = signer_node_ids
         .iter()
         .map(|node_id| format!("{node_id}:1"))
@@ -78,6 +79,19 @@ fn governance_finality_signed_stake_bps(total_signers: usize, signed_signers: us
         .saturating_mul(10_000)
         .saturating_div(u128::from(total_signers as u64));
     signed.min(10_000) as u16
+}
+
+fn governance_threshold_bps(required_signers: u16, total_signers: usize) -> u16 {
+    if required_signers == 0 || total_signers == 0 {
+        return 0;
+    }
+    let total_signers = total_signers as u128;
+    let required_signers = u128::from(required_signers);
+    required_signers
+        .saturating_mul(10_000)
+        .saturating_add(total_signers.saturating_sub(1))
+        .saturating_div(total_signers)
+        .min(10_000) as u16
 }
 
 impl World {
@@ -152,6 +166,45 @@ impl World {
         self.governance_finality_epoch_snapshots
             .remove(&epoch_id)
             .is_some()
+    }
+
+    pub fn set_governance_finality_signer_registry(
+        &mut self,
+        registry: GovernanceFinalitySignerRegistry,
+    ) -> Result<(), WorldError> {
+        let registry = self.validate_governance_finality_signer_registry(registry)?;
+        for (node_id, public_key_hex) in &registry.signer_bindings {
+            match self.node_identity_public_key(node_id.as_str()) {
+                Some(bound_public_key_hex) if bound_public_key_hex != public_key_hex => {
+                    return Err(WorldError::GovernancePolicyInvalid {
+                        reason: format!(
+                            "finality signer binding conflicts with existing node identity slot_id={} node_id={}",
+                            registry.slot_id, node_id
+                        ),
+                    });
+                }
+                Some(_) => {}
+                None => self.bind_node_identity(node_id.as_str(), public_key_hex.as_str())?,
+            }
+        }
+        self.state.governance_finality_signer_registry = Some(registry);
+        Ok(())
+    }
+
+    pub fn set_governance_main_token_controller_registry(
+        &mut self,
+        registry: GovernanceMainTokenControllerRegistry,
+    ) -> Result<(), WorldError> {
+        let registry = Self::validate_governance_main_token_controller_registry(registry)?;
+        self.state.governance_main_token_controller_registry = Some(registry);
+        Ok(())
+    }
+
+    pub fn governance_effective_finality_epoch_snapshot(
+        &self,
+        epoch_id: u64,
+    ) -> GovernanceFinalityEpochSnapshot {
+        self.governance_finality_epoch_snapshot_for_epoch(epoch_id)
     }
 
     pub fn activate_emergency_brake(
@@ -388,6 +441,11 @@ impl World {
         &self,
         proposal_id: ProposalId,
     ) -> Result<GovernanceFinalityCertificate, WorldError> {
+        if self.governance_finality_signer_registry().is_some() {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: "local finality certificate builder is unavailable when governance finality signer registry is configured".to_string(),
+            });
+        }
         let proposal = self
             .proposals
             .get(&proposal_id)
@@ -593,6 +651,9 @@ impl World {
         if let Some(snapshot) = self.governance_finality_epoch_snapshots.get(&epoch_id) {
             return snapshot.clone();
         }
+        if let Some(snapshot) = self.governance_finality_registry_epoch_snapshot(epoch_id) {
+            return snapshot;
+        }
         let signer_node_ids: Vec<String> = LOCAL_GOVERNANCE_FINALITY_SIGNERS
             .iter()
             .map(|(node_id, _)| (*node_id).to_string())
@@ -607,6 +668,29 @@ impl World {
             threshold: min_unique_signers,
             signer_node_ids,
         }
+    }
+
+    fn governance_finality_registry_epoch_snapshot(
+        &self,
+        epoch_id: u64,
+    ) -> Option<GovernanceFinalityEpochSnapshot> {
+        let registry = self.state.governance_finality_signer_registry.as_ref()?;
+        let signer_node_ids: Vec<String> = registry.signer_bindings.keys().cloned().collect();
+        let threshold = registry.threshold;
+        let threshold_bps = if registry.threshold_bps > 0 {
+            registry.threshold_bps
+        } else {
+            governance_threshold_bps(threshold, signer_node_ids.len())
+        };
+        Some(GovernanceFinalityEpochSnapshot {
+            epoch_id,
+            threshold_bps,
+            min_unique_signers: threshold,
+            validator_set_hash: governance_finality_validator_set_hash(signer_node_ids.as_slice()),
+            stake_root: governance_finality_stake_root(signer_node_ids.as_slice()),
+            threshold,
+            signer_node_ids,
+        })
     }
 
     fn normalize_governance_finality_epoch_snapshot(
@@ -660,13 +744,7 @@ impl World {
         let threshold_bps = if snapshot.threshold_bps > 0 {
             snapshot.threshold_bps
         } else {
-            let total_signers = unique_signers.len() as u128;
-            let required = u128::from(min_unique_signers);
-            let numerator = required.saturating_mul(10_000);
-            numerator
-                .saturating_add(total_signers.saturating_sub(1))
-                .saturating_div(total_signers)
-                .min(10_000) as u16
+            governance_threshold_bps(min_unique_signers, unique_signers.len())
         };
         if threshold_bps == 0 || threshold_bps > 10_000 {
             return Err(WorldError::GovernancePolicyInvalid {
@@ -714,6 +792,174 @@ impl World {
         snapshot.stake_root = stake_root;
         snapshot.signer_node_ids = unique_signers;
         Ok(())
+    }
+
+    fn validate_governance_finality_signer_registry(
+        &self,
+        mut registry: GovernanceFinalitySignerRegistry,
+    ) -> Result<GovernanceFinalitySignerRegistry, WorldError> {
+        registry.slot_id = registry.slot_id.trim().to_string();
+        if registry.slot_id.is_empty() {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: "finality signer registry slot_id cannot be empty".to_string(),
+            });
+        }
+        if registry.threshold == 0 {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "finality signer registry threshold must be > 0 slot_id={}",
+                    registry.slot_id
+                ),
+            });
+        }
+        let mut normalized_bindings = BTreeMap::new();
+        let mut unique_public_keys = BTreeSet::new();
+        for (node_id, public_key_hex) in registry.signer_bindings {
+            let node_id = node_id.trim().to_string();
+            if node_id.is_empty() {
+                return Err(WorldError::GovernancePolicyInvalid {
+                    reason: format!(
+                        "finality signer registry node_id cannot be empty slot_id={}",
+                        registry.slot_id
+                    ),
+                });
+            }
+            let public_key_hex = public_key_hex.trim().to_string();
+            decode_hex_array::<32>(
+                public_key_hex.as_str(),
+                format!(
+                    "finality signer public key slot_id={} node_id={node_id}",
+                    registry.slot_id
+                )
+                .as_str(),
+            )?;
+            if !unique_public_keys.insert(public_key_hex.clone()) {
+                return Err(WorldError::GovernancePolicyInvalid {
+                    reason: format!(
+                        "finality signer registry public key must be unique slot_id={} public_key={}",
+                        registry.slot_id, public_key_hex
+                    ),
+                });
+            }
+            normalized_bindings.insert(node_id, public_key_hex);
+        }
+        if normalized_bindings.len() < usize::from(registry.threshold) {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "finality signer registry threshold exceeds signer count slot_id={} threshold={} signers={}",
+                    registry.slot_id,
+                    registry.threshold,
+                    normalized_bindings.len()
+                ),
+            });
+        }
+        if registry.threshold_bps == 0 {
+            registry.threshold_bps =
+                governance_threshold_bps(registry.threshold, normalized_bindings.len());
+        }
+        if registry.threshold_bps == 0 || registry.threshold_bps > 10_000 {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "finality signer registry threshold_bps must be within 1..=10000 slot_id={} threshold_bps={}",
+                    registry.slot_id, registry.threshold_bps
+                ),
+            });
+        }
+        registry.signer_bindings = normalized_bindings;
+        Ok(registry)
+    }
+
+    fn validate_governance_threshold_signer_policy(
+        account_id: &str,
+        mut policy: GovernanceThresholdSignerPolicy,
+    ) -> Result<GovernanceThresholdSignerPolicy, WorldError> {
+        if policy.threshold == 0 {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "controller signer policy threshold must be > 0 controller_account_id={account_id}"
+                ),
+            });
+        }
+        let mut normalized_public_keys = BTreeSet::new();
+        for public_key_hex in policy.allowed_public_keys {
+            let public_key_hex = public_key_hex.trim().to_string();
+            decode_hex_array::<32>(
+                public_key_hex.as_str(),
+                format!("controller signer policy public key controller_account_id={account_id}")
+                    .as_str(),
+            )?;
+            normalized_public_keys.insert(public_key_hex);
+        }
+        if normalized_public_keys.len() < usize::from(policy.threshold) {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "controller signer policy threshold exceeds signer count controller_account_id={account_id} threshold={} signers={}",
+                    policy.threshold,
+                    normalized_public_keys.len()
+                ),
+            });
+        }
+        policy.allowed_public_keys = normalized_public_keys;
+        Ok(policy)
+    }
+
+    fn validate_governance_main_token_controller_registry(
+        mut registry: GovernanceMainTokenControllerRegistry,
+    ) -> Result<GovernanceMainTokenControllerRegistry, WorldError> {
+        registry.genesis_controller_account_id =
+            registry.genesis_controller_account_id.trim().to_string();
+        if registry.genesis_controller_account_id.is_empty() {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason:
+                    "main token controller registry genesis_controller_account_id cannot be empty"
+                        .to_string(),
+            });
+        }
+        let mut normalized_policies = BTreeMap::new();
+        for (account_id, policy) in registry.controller_signer_policies {
+            let account_id = account_id.trim().to_string();
+            if account_id.is_empty() {
+                return Err(WorldError::GovernancePolicyInvalid {
+                    reason: "main token controller registry account_id cannot be empty".to_string(),
+                });
+            }
+            normalized_policies.insert(
+                account_id.clone(),
+                Self::validate_governance_threshold_signer_policy(account_id.as_str(), policy)?,
+            );
+        }
+        if !normalized_policies.contains_key(registry.genesis_controller_account_id.as_str()) {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "main token controller registry missing genesis controller policy account_id={}",
+                    registry.genesis_controller_account_id
+                ),
+            });
+        }
+        let mut normalized_slots = BTreeMap::new();
+        for (bucket_id, controller_account_id) in registry.treasury_bucket_controller_slots {
+            let bucket_id = bucket_id.trim().to_string();
+            let controller_account_id = controller_account_id.trim().to_string();
+            if bucket_id.is_empty() || controller_account_id.is_empty() {
+                return Err(WorldError::GovernancePolicyInvalid {
+                    reason:
+                        "main token controller registry treasury bucket binding cannot be empty"
+                            .to_string(),
+                });
+            }
+            if !normalized_policies.contains_key(controller_account_id.as_str()) {
+                return Err(WorldError::GovernancePolicyInvalid {
+                    reason: format!(
+                        "main token controller registry missing treasury controller policy bucket_id={} controller_account_id={}",
+                        bucket_id, controller_account_id
+                    ),
+                });
+            }
+            normalized_slots.insert(bucket_id, controller_account_id);
+        }
+        registry.controller_signer_policies = normalized_policies;
+        registry.treasury_bucket_controller_slots = normalized_slots;
+        Ok(registry)
     }
 
     pub(super) fn current_governance_epoch(&self) -> u64 {
