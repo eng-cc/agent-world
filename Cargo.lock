@@ -5676,9 +5676,13 @@ dependencies = [
 name = "oasis7_client_launcher"
 version = "0.1.0"
 dependencies = [
+ "ed25519-dalek",
  "eframe",
  "gloo-net",
+ "hex",
+ "js-sys",
  "libc",
+ "oasis7",
  "oasis7_launcher_ui",
  "serde",
  "serde_json",

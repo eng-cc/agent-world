@@ -9,6 +9,7 @@
 - 复用现有 `ed25519` 原语与 `awt:pk:<public_key_hex>` 账户派生规则，把请求级鉴权前置到 HTTP submit 入口。
 - 把 signed transaction model 上提到 shared `ConsensusActionPayloadEnvelope` / `NodeRuntime` 提交层，避免未来新 submit surface 再次绕过。
 - 明确这是统一 signed transaction model 的推进切片；`STRAUTH-2B1` 只做 controller slot binding，`STRAUTH-2B2` 再把 genesis/treasury 升级到 threshold signer allowlist enforcement，但仍不伪造 ceremony 已完成。
+- 在 `STRAUTH-3A` 把 `oasis7_client_launcher` 的 Web/native 转账窗口补到“本地产签再提交”，并让 `oasis7_web_launcher` 为 wasm 注入受信本地 signer bootstrap。
 
 ## 请求契约
 | 字段 | 含义 | 规则 |
@@ -66,6 +67,7 @@
 
 - `operation` 与签名前缀按 action 区分，用于域隔离。
 - transfer HTTP 入口继续沿用请求级校验，再把已有签名材料写入 shared payload auth envelope。
+- `oasis7_client_launcher` native 侧直接复用 Rust signer helper；wasm 侧必须复刻同一份 canonical JSON 与前缀，避免浏览器端与 runtime 合约漂移。
 
 ## Shared Auth Proof Shape（STRAUTH-2B2）
 | scheme | required fields | usage |
@@ -107,6 +109,6 @@
 | `nonce_replay` | 通过鉴权后 nonce 不满足递增规则 |
 
 ## 兼容性与后续
-- `oasis7_web_launcher` 只负责透传 transfer 新字段，不在本切片生成签名。
-- Web/native 转账 UI 后续需要补签名材料采集与本地 signer 路径，否则提交会被后端拒绝。
+- `oasis7_web_launcher` 除透传 transfer 新字段外，还需要在服务静态 HTML 时注入 `__OASIS7_VIEWER_AUTH_ENV`，让 wasm 转账窗口能读取本地 signer bootstrap。
+- `oasis7_client_launcher` 的 Web/native 转账窗口现在都必须在本地生成签名后再提交；这仍是 trusted local bootstrap，不是钱包托管或生产级 keystore。
 - `genesis/treasury` 在 `STRAUTH-2B2` 完成后，会进入 shared envelope + controller signer allowlist / threshold enforcement；但外部 signer、ceremony freeze、HSM/KMS 仍需后续专题完成。

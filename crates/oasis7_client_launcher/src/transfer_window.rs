@@ -628,11 +628,22 @@ impl ClientLauncherApp {
         };
 
         self.transfer_draft.nonce = nonce.to_string();
-        let request = WebTransferSubmitRequest {
-            from_account_id: self.transfer_draft.from_account_id.trim().to_string(),
-            to_account_id: self.transfer_draft.to_account_id.trim().to_string(),
+        let request = match crate::transfer_auth::build_signed_web_transfer_submit_request(
+            self.transfer_draft.from_account_id.as_str(),
+            self.transfer_draft.to_account_id.as_str(),
             amount,
             nonce,
+        ) {
+            Ok(request) => request,
+            Err(err) => {
+                let message = format!(
+                    "{}: {err}",
+                    self.tr("转账签名失败", "Transfer signing failed")
+                );
+                self.append_log(message.clone());
+                self.transfer_submit_state = TransferSubmitState::Failed(message);
+                return;
+            }
         };
         self.transfer_submit_state = TransferSubmitState::None;
         self.request_web_chain_transfer(request);

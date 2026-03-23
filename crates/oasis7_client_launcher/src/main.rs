@@ -62,6 +62,7 @@ mod self_guided_blocked_actions;
 mod self_guided_error_cards;
 mod self_guided_onboarding_reminder;
 mod self_guided_preflight;
+mod transfer_auth;
 #[cfg(not(target_arch = "wasm32"))]
 mod transfer_entry;
 mod transfer_window;
@@ -520,6 +521,8 @@ struct WebTransferSubmitRequest {
     to_account_id: String,
     amount: u64,
     nonce: u64,
+    public_key: String,
+    signature: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -1,7 +1,9 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
+
+use super::WebTransferSubmitRequest;
 
 const CHAIN_TRANSFER_SUBMIT_PATH: &str = "/v1/chain/transfer/submit";
 const HTTP_TIMEOUT_MS: u64 = 3_000;
@@ -32,14 +34,6 @@ pub(crate) enum TransferDraftIssue {
     SameAccount,
     AmountInvalid,
     NonceInvalid,
-}
-
-#[derive(Debug, Serialize)]
-struct TransferSubmitRequest {
-    from_account_id: String,
-    to_account_id: String,
-    amount: u64,
-    nonce: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -85,7 +79,7 @@ pub(crate) fn submit_transfer_remote(
     Ok(response)
 }
 
-fn build_transfer_submit_request(draft: &TransferDraft) -> Result<TransferSubmitRequest, String> {
+fn build_transfer_submit_request(draft: &TransferDraft) -> Result<WebTransferSubmitRequest, String> {
     let issues = validate_transfer_draft(draft);
     if !issues.is_empty() {
         return Err("transfer draft has invalid required fields".to_string());
@@ -95,12 +89,12 @@ fn build_transfer_submit_request(draft: &TransferDraft) -> Result<TransferSubmit
     let nonce = parse_positive_u64(draft.nonce.as_str())
         .ok_or_else(|| "transfer nonce must be a positive integer".to_string())?;
 
-    Ok(TransferSubmitRequest {
-        from_account_id: draft.from_account_id.trim().to_string(),
-        to_account_id: draft.to_account_id.trim().to_string(),
+    crate::transfer_auth::build_signed_web_transfer_submit_request(
+        draft.from_account_id.as_str(),
+        draft.to_account_id.as_str(),
         amount,
         nonce,
-    })
+    )
 }
 
 fn parse_positive_u64(raw: &str) -> Option<u64> {
@@ -247,9 +241,19 @@ mod tests {
         build_transfer_submit_request, parse_http_json_response, submit_transfer_remote,
         validate_transfer_draft, TransferDraft, TransferDraftIssue,
     };
+    use ed25519_dalek::SigningKey;
     use std::io::{Read, Write};
     use std::net::TcpListener;
     use std::time::Duration;
+
+    fn transfer_test_signer(seed: u8) -> (String, String) {
+        let private_key = [seed; 32];
+        let signing_key = SigningKey::from_bytes(&private_key);
+        (
+            hex::encode(signing_key.verifying_key().to_bytes()),
+            hex::encode(private_key),
+        )
+    }
 
     fn read_http_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
         stream
@@ -323,17 +327,24 @@ mod tests {
 
     #[test]
     fn build_transfer_submit_request_parses_trimmed_values() {
+        let (public_key, private_key) = transfer_test_signer(41);
         let draft = TransferDraft {
-            from_account_id: " player:alice ".to_string(),
-            to_account_id: "player:bob".to_string(),
+            from_account_id: format!(" awt:pk:{public_key} "),
+            to_account_id: "protocol:treasury".to_string(),
             amount: "7".to_string(),
             nonce: "3".to_string(),
         };
+        std::env::set_var("OASIS7_VIEWER_AUTH_PUBLIC_KEY", public_key.as_str());
+        std::env::set_var("OASIS7_VIEWER_AUTH_PRIVATE_KEY", private_key.as_str());
         let request = build_transfer_submit_request(&draft).expect("request");
-        assert_eq!(request.from_account_id, "player:alice");
-        assert_eq!(request.to_account_id, "player:bob");
+        assert_eq!(request.from_account_id, format!("awt:pk:{public_key}"));
+        assert_eq!(request.to_account_id, "protocol:treasury");
         assert_eq!(request.amount, 7);
         assert_eq!(request.nonce, 3);
+        assert_eq!(request.public_key, public_key);
+        assert!(request.signature.starts_with("awttransferauth:v1:"));
+        std::env::remove_var("OASIS7_VIEWER_AUTH_PUBLIC_KEY");
+        std::env::remove_var("OASIS7_VIEWER_AUTH_PRIVATE_KEY");
     }
 
     #[test]
@@ -355,17 +366,22 @@ mod tests {
 
     #[test]
     fn submit_transfer_remote_posts_expected_payload_and_reads_success() {
+        let (public_key, private_key) = transfer_test_signer(43);
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock chain server");
         let bind = listener.local_addr().expect("read local addr");
+        let expected_from = format!("awt:pk:{public_key}");
+        let public_key_for_server = public_key.clone();
         let server = std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().expect("accept launcher request");
             let request = read_http_request(&mut stream);
             let request_text = String::from_utf8_lossy(&request);
             assert!(request_text.starts_with("POST /v1/chain/transfer/submit HTTP/1.1"));
-            assert!(request_text.contains("\"from_account_id\":\"player:alice\""));
-            assert!(request_text.contains("\"to_account_id\":\"player:bob\""));
+            assert!(request_text.contains(&format!("\"from_account_id\":\"{expected_from}\"")));
+            assert!(request_text.contains("\"to_account_id\":\"protocol:treasury\""));
             assert!(request_text.contains("\"amount\":7"));
             assert!(request_text.contains("\"nonce\":9"));
+            assert!(request_text.contains(&format!("\"public_key\":\"{public_key_for_server}\"")));
+            assert!(request_text.contains("\"signature\":\"awttransferauth:v1:"));
 
             write_http_json_response(
                 &mut stream,
@@ -375,23 +391,28 @@ mod tests {
         });
 
         let draft = TransferDraft {
-            from_account_id: "player:alice".to_string(),
-            to_account_id: "player:bob".to_string(),
+            from_account_id: format!("awt:pk:{public_key}"),
+            to_account_id: "protocol:treasury".to_string(),
             amount: "7".to_string(),
             nonce: "9".to_string(),
         };
+        std::env::set_var("OASIS7_VIEWER_AUTH_PUBLIC_KEY", public_key.as_str());
+        std::env::set_var("OASIS7_VIEWER_AUTH_PRIVATE_KEY", private_key.as_str());
         let response =
             submit_transfer_remote(&draft, format!("127.0.0.1:{}", bind.port()).as_str())
                 .expect("submit transfer should succeed");
         assert!(response.ok);
         assert_eq!(response.action_id, Some(17));
         assert_eq!(response.submitted_at_unix_ms, Some(123));
+        std::env::remove_var("OASIS7_VIEWER_AUTH_PUBLIC_KEY");
+        std::env::remove_var("OASIS7_VIEWER_AUTH_PRIVATE_KEY");
 
         server.join().expect("mock chain server should finish");
     }
 
     #[test]
     fn submit_transfer_remote_returns_error_for_rejected_response() {
+        let (public_key, private_key) = transfer_test_signer(45);
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock chain server");
         let bind = listener.local_addr().expect("read local addr");
         let server = std::thread::spawn(move || {
@@ -405,15 +426,19 @@ mod tests {
         });
 
         let draft = TransferDraft {
-            from_account_id: "player:alice".to_string(),
-            to_account_id: "player:bob".to_string(),
+            from_account_id: format!("awt:pk:{public_key}"),
+            to_account_id: "protocol:treasury".to_string(),
             amount: "7".to_string(),
             nonce: "9".to_string(),
         };
+        std::env::set_var("OASIS7_VIEWER_AUTH_PUBLIC_KEY", public_key.as_str());
+        std::env::set_var("OASIS7_VIEWER_AUTH_PRIVATE_KEY", private_key.as_str());
         let err = submit_transfer_remote(&draft, format!("127.0.0.1:{}", bind.port()).as_str())
             .expect_err("submit should return structured remote rejection");
         assert!(err.contains("HTTP 400"));
         assert!(err.contains("nonce replay"));
+        std::env::remove_var("OASIS7_VIEWER_AUTH_PUBLIC_KEY");
+        std::env::remove_var("OASIS7_VIEWER_AUTH_PRIVATE_KEY");
 
         server.join().expect("mock chain server should finish");
     }

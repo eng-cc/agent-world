@@ -5,8 +5,8 @@
 
 审计轮次: 2
 ## 1. Executive Summary
-- Problem Statement: 当前虽然 `TransferMainToken` 的公开 HTTP 入口已经完成签名化，但共享 `consensus action payload` 层仍缺统一 auth envelope，`ClaimMainTokenVesting / InitializeMainTokenGenesis / DistributeMainTokenTreasury` 还没有进入同一条 signed transaction 提交流程。
-- Proposed Solution: 在保留 transfer HTTP 鉴权的前提下，把主链 Token 资产动作的签名模型上提到 `ConsensusActionPayloadEnvelope` 与 `NodeRuntime` 提交层；在 `STRAUTH-2A` 完成 shared auth proof、`STRAUTH-2B1` 完成 controller slot registry 之后，于 `STRAUTH-2B2` 为 genesis/treasury 引入 `threshold_ed25519` controller proof，并在 submit-layer 叠加 `slot -> signer allowlist / threshold` 校验，把治理控制从“slot label”推进到“真实 signer 集合”。
+- Problem Statement: 当前虽然 `TransferMainToken` 的公开 HTTP 入口与 shared payload 层已经完成签名化，但 Web/native 的 `oasis7_client_launcher` 转账入口仍然只会提交裸字段，无法自己产出 `public_key + signature`，导致前端闭环仍然断在 signer/bootstrap 层。
+- Proposed Solution: 在保留 transfer HTTP 鉴权与 shared payload submit-layer gating 的前提下，把主链 Token 资产动作的签名模型继续接到 `oasis7_client_launcher` 的 Web/native 转账窗口；native 复用现有 Rust signer helper，wasm 复刻同一份 transfer canonical payload 签名协议，并让 `oasis7_web_launcher` 在受信本地环境把 viewer auth bootstrap 注入到 HTML，确保浏览器端也能产出与 runtime 契约一致的 signed request。
 - Success Criteria:
   - SC-1: `/v1/chain/transfer/submit` 不再接受未签名请求；缺少 `public_key` 或 `signature` 的请求必须被拒绝。
   - SC-2: 只有当 `from_account_id == awt:pk:<normalized_public_key_hex>` 且 `ed25519` 签名校验通过时，转账请求才允许继续进入余额/nonce 预检与共识提交。
@@ -16,13 +16,15 @@
   - SC-6: `InitializeMainTokenGenesis / DistributeMainTokenTreasury` 必须支持 `threshold_ed25519` controller proof，并要求 proof 的 `threshold` 与 controller signer policy 一致。
   - SC-7: `genesis/treasury` 在 `STRAUTH-2B2` 完成后，submit-layer 必须拒绝 signer 不在 allowlist、唯一签名数未达 threshold、或 controller signer policy 缺失的 payload。
   - SC-8: `STRAUTH-2B2` 只完成代码级 signer allowlist / threshold enforcement，不得误写成 ceremony / HSM / external signer 已完成。
+  - SC-9: `oasis7_client_launcher` 的 Web/native 转账窗口必须在提交前自行产出 `public_key + signature`，不再发送裸 `from/to/amount/nonce`。
+  - SC-10: `oasis7_web_launcher` 必须把本地 signer bootstrap 注入所服务的 HTML，使 wasm 端在 trusted local deployment 下也能生成与 runtime 契约一致的 transfer 签名。
 
 ## 2. User Experience & Functionality
 - User Personas:
   - `runtime_engineer`：需要先关闭当前最暴露的公开资产提交面，并把后续资产动作收口到共享提交层。
   - `qa_engineer`：需要把签名缺失、签名错误、账户不匹配、payload 层无 proof 变成可验证的阻断用例。
   - `producer_system_designer`：需要看到“transfer HTTP 已完成，payload 层开始统一，但 genesis/treasury 的治理绑定仍未完成”的真实阶段。
-  - `viewer_engineer`：需要知道 Web/native 转账入口后续必须提供签名材料，而不是再提交裸 JSON。
+  - `viewer_engineer`：需要把 Web/native 转账入口补到“本地产签再提交”，而不是继续发送裸 JSON。
   - 治理/金库维护者：需要知道 `genesis/treasury` 现在至少要携带签名化 controller 元数据，而不是继续 unsigned 提交。
 - User Scenarios & Frequency:
   - 链上转账提交：每次玩家或运营侧通过公开 runtime/control-plane 入口提交主链 Token 转账时触发。
@@ -63,22 +65,31 @@
   - AC-13: 定向 required 回归必须覆盖 genesis/treasury 的 allowlist miss、threshold not met、policy missing 拒绝，以及合法 threshold proof 通过。
   - AC-14: 专题文档必须明确 `STRAUTH-2B2` 只完成代码级 signer allowlist / threshold enforcement，ceremony / HSM / external signer 仍是后续任务。
   - AC-15: 专题文档必须接入 `doc/p2p/prd.md`、`doc/p2p/project.md`、`doc/p2p/prd.index.md` 与 `doc/p2p/README.md`。
+  - AC-16: `oasis7_client_launcher` 的 native 转账窗口必须在提交前生成合法 transfer signature，并把 `public_key/signature` 带入 `/api/chain/transfer`。
+  - AC-17: `oasis7_client_launcher` 的 wasm 转账窗口必须复刻相同 canonical payload 与签名前缀，并在 signer bootstrap 可用时生成与 native 同契约的 signed request。
+  - AC-18: `oasis7_web_launcher` 服务静态 HTML 时必须注入 `__OASIS7_VIEWER_AUTH_ENV` bootstrap，使 wasm 端能读取本地 signer 公私钥。
+  - AC-19: 当前 signer 来源仅限本地 env/config bootstrap；本轮不得误写成已实现钱包托管、助记词、HSM/KMS 或生产级 keystore。
+  - AC-20: `test_tier_required` 必须覆盖 signed request builder、launcher transfer request 序列化，以及 `wasm32` 编译通过。
 - Non-Goals:
   - 本轮不实现生产级 keystore、HSM/KMS、硬件钱包或外部 signer 服务。
   - 本轮不完成外部 signer 服务、HSM/KMS、硬件钱包或 ceremony 自动化。
-  - 本轮不重做 Web/native 转账 UI 交互与助记词/钱包管理体验。
+  - 本轮不重做 Web/native 转账窗口整体交互，也不引入助记词/钱包管理体验；只把现有表单升级成 trusted local signer bootstrap 提交。
 
 ## 3. AI System Requirements (If Applicable)
 - Tool Requirements: 不适用。
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: 客户端、控制面或未来 CLI submitter 先为主链 Token runtime action 构造 canonical auth payload，再以 `ed25519` 生成 action-level proof，并把 proof 写入 `ConsensusActionPayloadEnvelope.auth`。`oasis7_chain_runtime` 的 transfer HTTP 入口先完成请求级校验，再把 proof 写进共识 envelope；`NodeRuntime` 则在共享提交层对 transfer/claim/genesis/treasury 统一验签和阻断。
+- Architecture Overview: `oasis7_client_launcher` 的 native 转账窗口通过本地 signer helper 读取 env/config 中的 signer bootstrap，wasm 转账窗口通过 `window.__OASIS7_VIEWER_AUTH_ENV` 读取同一组 signer bootstrap；两端都先对 `TransferMainToken` 构造同一份 canonical auth payload，再以 `ed25519` 生成 action-level proof，并把 `public_key/signature` 写入 `/api/chain/transfer` 请求。`oasis7_chain_runtime` 的 transfer HTTP 入口先完成请求级校验，再把 proof 写进共识 envelope；`NodeRuntime` 则在共享提交层对 transfer/claim/genesis/treasury 统一验签和阻断。
 - Integration Points:
   - `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api.rs`
   - `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api_tests.rs`
   - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
   - `crates/oasis7/src/bin/oasis7_web_launcher/control_plane.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/viewer_auth_bootstrap.rs`
+  - `crates/oasis7_client_launcher/src/transfer_auth.rs`
+  - `crates/oasis7_client_launcher/src/transfer_window.rs`
+  - `crates/oasis7_client_launcher/src/transfer_window_web.rs`
   - `crates/oasis7/src/consensus_action_payload.rs`
   - `crates/oasis7/src/runtime/main_token.rs`
   - `crates/oasis7_node/src/node_runtime_core.rs`
@@ -90,6 +101,8 @@
   - 若 `signature` 不带预期前缀或不是 64-byte hex，按 `invalid_signature` 拒绝。
   - 若 `public_key` 大小写混用，允许通过规范化为小写 hex 后参与派生与验签。
   - 若签名通过但 `from_account_id` 不是该公钥派生账户，按 `account_auth_mismatch` 拒绝。
+  - 若 Web 端未注入 signer bootstrap，前端必须在本地提示 `transfer signing failed`，而不是继续提交裸请求。
+  - 若本地 env/config 只配置了单边 key（只有 public 或只有 private），前端必须在本地提示 signer bootstrap 缺失，不得静默降级成 unsigned submit。
   - 若 claim 的 `beneficiary` 为 `awt:pk:` 账户，则必须可由 `public_key` 推导；若是 `protocol:*` 等命名控制账户，则当前仅要求 proof 中的 `account_id` 与 `beneficiary` 一致并通过签名校验。
   - 若 genesis/treasury payload 使用单签 proof，但 controller signer policy 的 threshold > 1，则必须拒绝，不能以单签冒充多签治理。
   - 若 genesis/treasury payload 带有效 threshold proof，但对应 signer list 仍是本地配置而非 ceremony freeze 的最终真值，不得误解为 ceremony 已完成。
@@ -109,11 +122,13 @@
   - MVP: 为 `POST /v1/chain/transfer/submit` 落地签名鉴权、账户绑定与 required 回归。
   - v1.1: 将 `ClaimMainTokenVesting / InitializeMainTokenGenesis / DistributeMainTokenTreasury` 接入同一 signed transaction envelope，并在 `NodeRuntime` 强制验签。
   - v1.2: 为 genesis/treasury 补正式 controller slot binding，并把任意 controller label 收紧到固定 registry。
+  - v1.3: 为 `oasis7_client_launcher` 的 Web/native 转账窗口补本地 signer bootstrap 与 signed request builder，并保留 full QA 证据待补。
   - v2.0: 为 genesis/treasury 补外部 signer / ceremony / keystore 托管，并把当前本地配置 allowlist 升级为更长期的治理真值来源。
 - Technical Risks:
   - 风险-1: Web/native 现有转账入口若未同步提供签名材料，会在后端收口后直接变成拒绝路径。
   - 风险-2: 若 canonical payload 定义不稳定，后续多端实现会出现签名不兼容。
   - 风险-3: 若 producer 误把“payload 已签名化”解读成“治理 signer 绑定已完成”，会再次高估安全阶段。
+  - 风险-4: wasm 若与 native 使用不同 canonical payload 或签名前缀，会出现“浏览器签名永远被 runtime 拒绝”的协议漂移。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
