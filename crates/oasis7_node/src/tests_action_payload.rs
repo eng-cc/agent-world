@@ -16,6 +16,8 @@ const MAIN_TOKEN_TRANSFER_AUTH_SIGNATURE_V1_PREFIX: &str = "awttransferauth:v1:"
 const MAIN_TOKEN_CLAIM_AUTH_SIGNATURE_V1_PREFIX: &str = "awtclaimauth:v1:";
 const MAIN_TOKEN_GENESIS_AUTH_SIGNATURE_V1_PREFIX: &str = "awtgenesisauth:v1:";
 const MAIN_TOKEN_TREASURY_AUTH_SIGNATURE_V1_PREFIX: &str = "awttreasuryauth:v1:";
+const DEFAULT_GENESIS_CONTROLLER_SLOT: &str = "msig.genesis.v1";
+const DEFAULT_ECOSYSTEM_TREASURY_CONTROLLER_SLOT: &str = "msig.ecosystem_governance.v1";
 
 #[derive(Clone)]
 struct RecordingExecutionHook {
@@ -595,12 +597,45 @@ fn submit_consensus_action_payload_accepts_signed_main_token_genesis_action() {
                 }]
             }
         }),
-        "msig.genesis.v1",
+        DEFAULT_GENESIS_CONTROLLER_SLOT,
         0x24,
     );
     runtime
         .submit_consensus_action_payload(1, payload)
         .expect("signed genesis payload should pass");
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_signed_main_token_genesis_action_with_wrong_controller_slot() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new(
+            "node-token-genesis-wrong-slot",
+            "world-token-genesis-wrong-slot",
+            NodeRole::Observer,
+        )
+        .expect("config"),
+    );
+    let payload = encode_signed_main_token_runtime_payload(
+        json!({
+            "type": "InitializeMainTokenGenesis",
+            "data": {
+                "allocations": [{
+                    "bucket_id": "team_long_term_vesting",
+                    "ratio_bps": 2000,
+                    "recipient": "protocol:team-core-vesting",
+                    "cliff_epochs": 365,
+                    "linear_unlock_epochs": 1095,
+                    "start_epoch": 0
+                }]
+            }
+        }),
+        "msig.foundation_ops.v1",
+        0x26,
+    );
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("wrong genesis controller slot must fail");
+    assert!(err.to_string().contains("genesis controller slot"));
 }
 
 #[test]
@@ -646,12 +681,44 @@ fn submit_consensus_action_payload_accepts_signed_main_token_treasury_action() {
                 }]
             }
         }),
-        "msig.treasury.v1",
+        DEFAULT_ECOSYSTEM_TREASURY_CONTROLLER_SLOT,
         0x25,
     );
     runtime
         .submit_consensus_action_payload(1, payload)
         .expect("signed treasury payload should pass");
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_signed_main_token_treasury_action_with_wrong_controller_slot() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new(
+            "node-token-treasury-wrong-slot",
+            "world-token-treasury-wrong-slot",
+            NodeRole::Observer,
+        )
+        .expect("config"),
+    );
+    let payload = encode_signed_main_token_runtime_payload(
+        json!({
+            "type": "DistributeMainTokenTreasury",
+            "data": {
+                "proposal_id": 1,
+                "distribution_id": "treasury-1",
+                "bucket_id": "ecosystem_pool",
+                "distributions": [{
+                    "account_id": "protocol:ecosystem-grant",
+                    "amount": 50
+                }]
+            }
+        }),
+        "msig.treasury.v1",
+        0x27,
+    );
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("wrong treasury controller slot must fail");
+    assert!(err.to_string().contains("treasury controller slot"));
 }
 
 #[test]

@@ -8,7 +8,7 @@
 - 在不重做整个资产动作协议的前提下，先关闭当前公开 `transfer submit` 面的未签名提交漏洞。
 - 复用现有 `ed25519` 原语与 `awt:pk:<public_key_hex>` 账户派生规则，把请求级鉴权前置到 HTTP submit 入口。
 - 把 signed transaction model 上提到 shared `ConsensusActionPayloadEnvelope` / `NodeRuntime` 提交层，避免未来新 submit surface 再次绕过。
-- 明确这是统一 signed transaction model 的推进切片，而不是治理控制终态完成。
+- 明确这是统一 signed transaction model 的推进切片；`STRAUTH-2B1` 只做 controller slot binding，不伪造 signer allowlist 已完成。
 
 ## 请求契约
 | 字段 | 含义 | 规则 |
@@ -31,6 +31,16 @@
 - `ConsensusActionPayloadEnvelope` 对非主链 Token action 继续允许 `auth=None`。
 - 对 `TransferMainToken / ClaimMainTokenVesting / InitializeMainTokenGenesis / DistributeMainTokenTreasury`，`NodeRuntime` 必须要求 `auth=Some(main_token_action)`。
 
+## Controller Slot Registry（STRAUTH-2B1）
+| registry item | current source | meaning |
+| --- | --- | --- |
+| `genesis_controller_account_id` | `NodeConfig.main_token_controller_binding` | `InitializeMainTokenGenesis` 唯一允许的治理 controller slot |
+| `treasury_bucket_controller_slots[bucket_id]` | `NodeConfig.main_token_controller_binding` | 每个 treasury bucket 对应的唯一 controller slot |
+
+- `STRAUTH-2B1` 先把 controller slot registry 落在 `NodeConfig`，供 `NodeRuntime` submit-layer 阻断使用。
+- 这不是最终 on-chain / world-state 治理配置，只是把“任意 controller label”升级成“正式 slot binding”。
+- `STRAUTH-2B2` 再补 slot -> signer allowlist / threshold / ceremony。
+
 ## Canonical Payload（shared）
 - 每个主链 Token action 都使用同一签名外框：
 
@@ -52,8 +62,8 @@
 | --- | --- | --- |
 | `TransferMainToken` | `auth.account_id == from_account_id` 且必须等于 `awt:pk:<public_key_hex>` | 账户绑定成立 |
 | `ClaimMainTokenVesting` | `auth.account_id == beneficiary`；若 beneficiary 为 `awt:pk:`，需校验公钥派生；若为 `protocol:*` 等命名账户，只要求签名与 account_id 一致 | 已签名化，但命名控制账户的真实 controller binding 仍待治理专题 |
-| `InitializeMainTokenGenesis` | 必须带 signed controller metadata；当前只保证 action + controller account_id 被签名 | 已签名化，但真实创世 signer allowlist / ceremony 仍待治理专题 |
-| `DistributeMainTokenTreasury` | 必须带 signed controller metadata；当前只保证 action + controller account_id 被签名 | 已签名化，但真实 treasury governance signer 仍待治理专题 |
+| `InitializeMainTokenGenesis` | 必须带 signed controller metadata，且 `auth.account_id` 必须命中 `genesis_controller_account_id`（当前为 `msig.genesis.v1`） | 已完成 slot binding，但真实创世 signer allowlist / ceremony 仍待治理专题 |
+| `DistributeMainTokenTreasury` | 必须带 signed controller metadata，且 `auth.account_id` 必须命中 `bucket_id -> controller slot` 映射 | 已完成 slot binding，但真实 treasury governance signer allowlist / ceremony 仍待治理专题 |
 
 ## 首切片边界
 | 资产动作 | 当前状态 | 原因 |
@@ -63,6 +73,7 @@
 | `ClaimMainTokenVesting` payload submit gate | `implemented_in_this_slice` | 已有 beneficiary，可先纳入 shared envelope |
 | `InitializeMainTokenGenesis` payload submit gate | `implemented_in_this_slice` | 先要求 signed controller metadata，再留待治理绑定 |
 | `DistributeMainTokenTreasury` payload submit gate | `implemented_in_this_slice` | 先要求 signed controller metadata，再留待治理绑定 |
+| Governance controller slot binding | `implemented_in_this_slice` | 通过 `NodeConfig` registry 收紧 controller label |
 | Governance signer allowlist / ceremony | `pending` | 需要 producer/QA/治理专题联审 |
 
 ## 错误码约定
@@ -78,4 +89,4 @@
 ## 兼容性与后续
 - `oasis7_web_launcher` 只负责透传 transfer 新字段，不在本切片生成签名。
 - Web/native 转账 UI 后续需要补签名材料采集与本地 signer 路径，否则提交会被后端拒绝。
-- `genesis/treasury` 虽然进入 shared envelope，但 controller allowlist、真实 signer slot 绑定、external signer 与 ceremony 仍需后续专题完成。
+- `genesis/treasury` 虽然进入 shared envelope 且完成 controller slot binding，但 slot -> signer allowlist、external signer 与 ceremony 仍需后续专题完成。

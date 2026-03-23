@@ -6,13 +6,14 @@
 审计轮次: 2
 ## 1. Executive Summary
 - Problem Statement: 当前虽然 `TransferMainToken` 的公开 HTTP 入口已经完成签名化，但共享 `consensus action payload` 层仍缺统一 auth envelope，`ClaimMainTokenVesting / InitializeMainTokenGenesis / DistributeMainTokenTreasury` 还没有进入同一条 signed transaction 提交流程。
-- Proposed Solution: 在保留 transfer HTTP 鉴权的前提下，把主链 Token 资产动作的签名模型上提到 `ConsensusActionPayloadEnvelope` 与 `NodeRuntime` 提交层，先为 transfer/claim/genesis/treasury 增加统一 auth proof 容器与强制校验，再把治理控制绑定留给后续专题。
+- Proposed Solution: 在保留 transfer HTTP 鉴权的前提下，把主链 Token 资产动作的签名模型上提到 `ConsensusActionPayloadEnvelope` 与 `NodeRuntime` 提交层；在 `STRAUTH-2A` 完成 shared auth proof 之后，继续以 `STRAUTH-2B1` 把 genesis/treasury 的 `auth.account_id` 收紧到正式 controller slot registry，再把 signer allowlist / ceremony 留给 `STRAUTH-2B2`。
 - Success Criteria:
   - SC-1: `/v1/chain/transfer/submit` 不再接受未签名请求；缺少 `public_key` 或 `signature` 的请求必须被拒绝。
   - SC-2: 只有当 `from_account_id == awt:pk:<normalized_public_key_hex>` 且 `ed25519` 签名校验通过时，转账请求才允许继续进入余额/nonce 预检与共识提交。
   - SC-3: `ConsensusActionPayloadEnvelope` 必须支持主链 Token auth proof，且 `NodeRuntime` 对 transfer/claim/genesis/treasury 提交时强制要求对应 proof。
   - SC-4: claim/genesis/treasury 即使没有公开 HTTP submit surface，也必须在共享提交层具备“无 proof 直接拒绝”的门禁。
-  - SC-5: `genesis/treasury` 当前只进入 signed controller metadata 阶段，不得误写成“治理 signer 绑定已完成”。
+  - SC-5: `genesis/treasury` 的 `auth.account_id` 必须绑定到正式 controller slot，不能继续接受任意命名 controller label。
+  - SC-6: `genesis/treasury` 在 `STRAUTH-2B1` 完成后仍只到 controller slot binding 阶段，不得误写成“治理 signer allowlist / ceremony 已完成”。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -43,7 +44,7 @@
 | Transfer canonical signing payload | `version/operation/from_account_id/to_account_id/amount/nonce/public_key` | 以固定字段顺序编码为 canonical JSON，并加固定域前缀后验签 | `parsed_request -> auth_verified/auth_rejected` | 签名域固定为 transfer submit，避免与 viewer/chat auth 混用 | 仅持有对应私钥的请求方可生成有效签名 |
 | 账户所有权绑定 | `derived_from_account_id = awt:pk:<public_key_hex>` | runtime 比对 `request.from_account_id` 与派生账户 | `auth_verified -> bound/rejected` | 若不相等则返回 `account_auth_mismatch` | 请求人只能提交自己公钥派生的主链账户 |
 | Shared consensus auth envelope | `auth.scheme/auth.account_id/auth.public_key/auth.signature` | caller 将主链 Token auth proof 附加到 `ConsensusActionPayloadEnvelope` | `unsigned_payload -> signed_payload -> runtime_verified/rejected` | transfer/claim/genesis/treasury 进入 `NodeRuntime` 前必须带 proof；proof 验签失败直接拒绝 | 所有未来 submit surface 统一走该提交层校验 |
-| Claim / Genesis / Treasury 扩展位 | `action_surface/account_binding/controller_binding/status` | claim 绑定 beneficiary；genesis/treasury 先携带签名化 controller 元数据 | `planned -> payload_signed -> governance_binding_pending` | claim 若为 `awt:pk:` 需可推导；genesis/treasury 当前只保证 signed controller metadata，不等于最终治理绑定完成 | 后续仍需 producer/QA 收口治理 signer 语义 |
+| Claim / Genesis / Treasury 扩展位 | `action_surface/account_binding/controller_binding/status` | claim 绑定 beneficiary；genesis/treasury 继续把 controller 元数据升级到正式 slot registry 绑定 | `planned -> payload_signed -> slot_bound -> governance_allowlist_pending` | claim 若为 `awt:pk:` 需可推导；genesis/treasury 的 `auth.account_id` 必须命中正式 controller slot；仍不等于最终 signer allowlist 完成 | 后续仍需 producer/QA 收口治理 signer allowlist 与 ceremony |
 - Acceptance Criteria:
   - AC-1: `oasis7_chain_runtime` 的 `ChainTransferSubmitRequest` 必须新增 `public_key` 与 `signature` 字段，并在缺失时拒绝请求。
   - AC-2: runtime 必须验证 `ed25519` 签名，且 `from_account_id` 必须严格等于 `awt:pk:<normalized_public_key_hex>`。
@@ -53,8 +54,10 @@
   - AC-6: `ConsensusActionPayloadEnvelope` 必须新增可选主链 Token auth proof；`NodeRuntime` 对 `TransferMainToken / ClaimMainTokenVesting / InitializeMainTokenGenesis / DistributeMainTokenTreasury` 提交时必须强制校验该 proof。
   - AC-7: 定向 required 回归必须覆盖 transfer 有效签名成功、缺签名拒绝、错误签名拒绝、`from_account_id` 与 `public_key` 不匹配拒绝。
   - AC-8: 定向 required 回归必须覆盖 claim/genesis/treasury 在 payload 层“有 proof 可入队、缺 proof 拒绝”的提交门禁。
-  - AC-9: 专题文档必须明确 `genesis/treasury` 当前只进入 signed controller metadata 阶段，真实治理 signer allowlist / ceremony 仍是后续任务。
-  - AC-10: 专题文档必须接入 `doc/p2p/prd.md`、`doc/p2p/project.md`、`doc/p2p/prd.index.md` 与 `doc/p2p/README.md`。
+  - AC-9: `InitializeMainTokenGenesis` 在 payload submit 层必须只接受正式 genesis controller slot（当前为 `msig.genesis.v1`），不得接受任意 controller label。
+  - AC-10: `DistributeMainTokenTreasury` 在 payload submit 层必须按 treasury `bucket_id` 绑定到正式 controller slot（例如 `ecosystem_pool -> msig.ecosystem_governance.v1`），不得接受任意 controller label。
+  - AC-11: 专题文档必须明确 `STRAUTH-2B1` 只完成 controller slot binding，真实治理 signer allowlist / ceremony 仍是 `STRAUTH-2B2` 后续任务。
+  - AC-12: 专题文档必须接入 `doc/p2p/prd.md`、`doc/p2p/project.md`、`doc/p2p/prd.index.md` 与 `doc/p2p/README.md`。
 - Non-Goals:
   - 本轮不实现生产级 keystore、HSM/KMS、硬件钱包或外部 signer 服务。
   - 本轮不完成 genesis/treasury 的真实治理 signer allowlist、external signer、multisig ceremony 或地址绑定。
@@ -83,7 +86,7 @@
   - 若 `public_key` 大小写混用，允许通过规范化为小写 hex 后参与派生与验签。
   - 若签名通过但 `from_account_id` 不是该公钥派生账户，按 `account_auth_mismatch` 拒绝。
   - 若 claim 的 `beneficiary` 为 `awt:pk:` 账户，则必须可由 `public_key` 推导；若是 `protocol:*` 等命名控制账户，则当前仅要求 proof 中的 `account_id` 与 `beneficiary` 一致并通过签名校验。
-  - 若 genesis/treasury payload 带有效 proof，但 `account_id` 仅表示“提交时声明的 controller 身份”，不得误解为真实治理 allowlist 已完成。
+  - 若 genesis/treasury payload 带有效 proof，但 signer 只命中 controller slot binding、尚未命中真实 signer allowlist，不得误解为真实治理 allowlist 已完成。
   - 若鉴权通过但余额不足或 nonce 回放，继续返回现有业务错误，不改变既有预检规则。
   - 若真实治理 signer 绑定、controller allowlist 或 signer ceremony 尚未完成，本专题不得据此把整体 verdict 提升为 `mainnet_grade`。
 - Non-Functional Requirements:
@@ -99,7 +102,8 @@
 - Phased Rollout:
   - MVP: 为 `POST /v1/chain/transfer/submit` 落地签名鉴权、账户绑定与 required 回归。
   - v1.1: 将 `ClaimMainTokenVesting / InitializeMainTokenGenesis / DistributeMainTokenTreasury` 接入同一 signed transaction envelope，并在 `NodeRuntime` 强制验签。
-  - v2.0: 为 genesis/treasury 补治理 signer allowlist / controller slot binding / external signer，并与 keystore / signer rotation 专题合流。
+  - v1.2: 为 genesis/treasury 补正式 controller slot binding，并把任意 controller label 收紧到固定 registry。
+  - v2.0: 为 genesis/treasury 补治理 signer allowlist / external signer / ceremony，并与 keystore / signer rotation 专题合流。
 - Technical Risks:
   - 风险-1: Web/native 现有转账入口若未同步提供签名材料，会在后端收口后直接变成拒绝路径。
   - 风险-2: 若 canonical payload 定义不稳定，后续多端实现会出现签名不兼容。

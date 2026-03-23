@@ -20,6 +20,16 @@ const DEFAULT_REPLICA_MAINTENANCE_MAX_CONTENT_HASH_SAMPLES: usize = 128;
 const DEFAULT_REPLICA_MAINTENANCE_POLL_INTERVAL_MS: i64 = 60_000;
 const DEFAULT_FEEDBACK_P2P_MAX_INCOMING_ANNOUNCES_PER_TICK: usize = 128;
 const DEFAULT_FEEDBACK_P2P_MAX_OUTGOING_ANNOUNCES_PER_TICK: usize = 128;
+const DEFAULT_MAIN_TOKEN_GENESIS_CONTROLLER_ACCOUNT_ID: &str = "msig.genesis.v1";
+const DEFAULT_MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD: &str = "staking_reward_pool";
+const DEFAULT_MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL: &str = "ecosystem_pool";
+const DEFAULT_MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE: &str = "security_reserve";
+const DEFAULT_MAIN_TOKEN_TREASURY_CONTROLLER_STAKING_GOVERNANCE: &str =
+    "msig.staking_governance.v1";
+const DEFAULT_MAIN_TOKEN_TREASURY_CONTROLLER_ECOSYSTEM_GOVERNANCE: &str =
+    "msig.ecosystem_governance.v1";
+const DEFAULT_MAIN_TOKEN_TREASURY_CONTROLLER_SECURITY_COUNCIL: &str =
+    "msig.security_council.v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeRole {
@@ -181,10 +191,89 @@ pub struct NodeConfig {
     pub max_committed_action_batches: usize,
     pub max_dynamic_gossip_peers: usize,
     pub dynamic_gossip_peer_ttl_ms: i64,
+    pub main_token_controller_binding: NodeMainTokenControllerBindingConfig,
     pub replica_maintenance: Option<NodeReplicaMaintenanceConfig>,
     pub gossip: Option<NodeGossipConfig>,
     pub replication: Option<NodeReplicationConfig>,
     pub feedback_p2p: Option<NodeFeedbackP2pConfig>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NodeMainTokenControllerBindingConfig {
+    pub genesis_controller_account_id: String,
+    pub treasury_bucket_controller_slots: BTreeMap<String, String>,
+}
+
+impl Default for NodeMainTokenControllerBindingConfig {
+    fn default() -> Self {
+        let mut treasury_bucket_controller_slots = BTreeMap::new();
+        treasury_bucket_controller_slots.insert(
+            DEFAULT_MAIN_TOKEN_TREASURY_BUCKET_STAKING_REWARD.to_string(),
+            DEFAULT_MAIN_TOKEN_TREASURY_CONTROLLER_STAKING_GOVERNANCE.to_string(),
+        );
+        treasury_bucket_controller_slots.insert(
+            DEFAULT_MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL.to_string(),
+            DEFAULT_MAIN_TOKEN_TREASURY_CONTROLLER_ECOSYSTEM_GOVERNANCE.to_string(),
+        );
+        treasury_bucket_controller_slots.insert(
+            DEFAULT_MAIN_TOKEN_TREASURY_BUCKET_SECURITY_RESERVE.to_string(),
+            DEFAULT_MAIN_TOKEN_TREASURY_CONTROLLER_SECURITY_COUNCIL.to_string(),
+        );
+        Self {
+            genesis_controller_account_id: DEFAULT_MAIN_TOKEN_GENESIS_CONTROLLER_ACCOUNT_ID
+                .to_string(),
+            treasury_bucket_controller_slots,
+        }
+    }
+}
+
+impl NodeMainTokenControllerBindingConfig {
+    pub fn with_genesis_controller_account_id(
+        mut self,
+        account_id: impl Into<String>,
+    ) -> Result<Self, NodeError> {
+        self.genesis_controller_account_id = normalize_controller_slot_id(
+            account_id.into().as_str(),
+            "main_token_controller_binding.genesis_controller_account_id",
+        )?;
+        Ok(self)
+    }
+
+    pub fn with_treasury_bucket_controller_slot(
+        mut self,
+        bucket_id: impl Into<String>,
+        controller_account_id: impl Into<String>,
+    ) -> Result<Self, NodeError> {
+        let bucket_id = normalize_controller_slot_id(
+            bucket_id.into().as_str(),
+            "main_token_controller_binding.treasury bucket_id",
+        )?;
+        let controller_account_id = normalize_controller_slot_id(
+            controller_account_id.into().as_str(),
+            "main_token_controller_binding.treasury controller_account_id",
+        )?;
+        self.treasury_bucket_controller_slots
+            .insert(bucket_id, controller_account_id);
+        Ok(self)
+    }
+
+    pub fn validate(&self) -> Result<(), NodeError> {
+        normalize_controller_slot_id(
+            self.genesis_controller_account_id.as_str(),
+            "main_token_controller_binding.genesis_controller_account_id",
+        )?;
+        for (bucket_id, controller_account_id) in &self.treasury_bucket_controller_slots {
+            normalize_controller_slot_id(
+                bucket_id.as_str(),
+                "main_token_controller_binding.treasury bucket_id",
+            )?;
+            normalize_controller_slot_id(
+                controller_account_id.as_str(),
+                "main_token_controller_binding.treasury controller_account_id",
+            )?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -314,6 +403,7 @@ impl NodeConfig {
             max_committed_action_batches: DEFAULT_MAX_COMMITTED_ACTION_BATCHES,
             max_dynamic_gossip_peers: DEFAULT_MAX_DYNAMIC_GOSSIP_PEERS,
             dynamic_gossip_peer_ttl_ms: DEFAULT_DYNAMIC_GOSSIP_PEER_TTL_MS,
+            main_token_controller_binding: NodeMainTokenControllerBindingConfig::default(),
             replica_maintenance: None,
             gossip: None,
             replication: None,
@@ -484,6 +574,15 @@ impl NodeConfig {
         self
     }
 
+    pub fn with_main_token_controller_binding(
+        mut self,
+        main_token_controller_binding: NodeMainTokenControllerBindingConfig,
+    ) -> Result<Self, NodeError> {
+        main_token_controller_binding.validate()?;
+        self.main_token_controller_binding = main_token_controller_binding;
+        Ok(self)
+    }
+
     pub fn with_replication_root(
         mut self,
         root_dir: impl Into<PathBuf>,
@@ -545,6 +644,16 @@ impl NodeConfig {
             gossip.dynamic_peer_ttl_ms = self.dynamic_gossip_peer_ttl_ms;
         }
     }
+}
+
+fn normalize_controller_slot_id(raw: &str, label: &str) -> Result<String, NodeError> {
+    let value = raw.trim();
+    if value.is_empty() {
+        return Err(NodeError::InvalidConfig {
+            reason: format!("{label} cannot be empty"),
+        });
+    }
+    Ok(value.to_string())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

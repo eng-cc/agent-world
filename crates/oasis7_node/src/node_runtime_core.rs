@@ -15,7 +15,8 @@ use serde_json::Value as JsonValue;
 use crate::runtime_util::now_unix_ms;
 use crate::{
     NodeCommittedActionBatch, NodeCommittedActionBatchesHandle, NodeConfig, NodeConsensusAction,
-    NodeConsensusSnapshot, NodeError, NodeExecutionHook, NodeReplicationNetworkHandle, NodeRuntime,
+    NodeConsensusSnapshot, NodeError, NodeExecutionHook, NodeMainTokenControllerBindingConfig,
+    NodeReplicationNetworkHandle, NodeRuntime,
 };
 
 #[derive(Debug, Clone)]
@@ -204,7 +205,7 @@ impl NodeRuntime {
                 ),
             });
         }
-        validate_consensus_action_payload_auth(payload_cbor.as_slice())?;
+        validate_consensus_action_payload_auth(&self.config, payload_cbor.as_slice())?;
         let action = NodeConsensusAction::from_payload(
             action_id,
             self.config.player_id.clone(),
@@ -328,7 +329,10 @@ impl NodeRuntime {
     }
 }
 
-fn validate_consensus_action_payload_auth(payload_cbor: &[u8]) -> Result<(), NodeError> {
+fn validate_consensus_action_payload_auth(
+    config: &NodeConfig,
+    payload_cbor: &[u8],
+) -> Result<(), NodeError> {
     let envelope = decode_local_consensus_action_payload_envelope(payload_cbor).map_err(|err| {
         NodeError::Consensus {
             reason: format!("decode consensus action payload auth envelope failed: {err}"),
@@ -349,7 +353,8 @@ fn validate_consensus_action_payload_auth(payload_cbor: &[u8]) -> Result<(), Nod
             ),
         });
     };
-    verify_local_main_token_action_auth(action, proof).map_err(|err| NodeError::Consensus {
+    verify_local_main_token_action_auth(action, proof, &config.main_token_controller_binding)
+        .map_err(|err| NodeError::Consensus {
         reason: format!("main token action auth rejected: {err}"),
     })?;
     Ok(())
@@ -403,6 +408,7 @@ fn local_runtime_action_data(action: &JsonValue) -> Result<&serde_json::Map<Stri
 fn verify_local_main_token_action_auth(
     action: &JsonValue,
     proof: &LocalMainTokenActionAuthProof,
+    controller_binding: &NodeMainTokenControllerBindingConfig,
 ) -> Result<(), String> {
     match proof.scheme {
         LocalMainTokenActionAuthScheme::Ed25519 => {}
@@ -414,13 +420,18 @@ fn verify_local_main_token_action_auth(
         account_id.as_str(),
         public_key.as_str(),
     )?;
+    validate_local_main_token_action_account_binding(
+        action,
+        account_id.as_str(),
+        public_key.as_str(),
+        controller_binding,
+    )?;
     verify_local_main_token_action_signature(
         action,
         public_key.as_str(),
         proof.signature.as_str(),
         payload.as_slice(),
-    )?;
-    validate_local_main_token_action_account_binding(action, account_id.as_str(), public_key.as_str())
+    )
 }
 
 fn build_local_main_token_action_signing_payload(
@@ -443,6 +454,7 @@ fn validate_local_main_token_action_account_binding(
     action: &JsonValue,
     account_id: &str,
     public_key: &str,
+    controller_binding: &NodeMainTokenControllerBindingConfig,
 ) -> Result<(), String> {
     let action_kind = local_runtime_action_kind(action).unwrap_or("unknown");
     let data = local_runtime_action_data(action)?;
@@ -485,7 +497,35 @@ fn validate_local_main_token_action_account_binding(
                 }
             }
         }
-        "InitializeMainTokenGenesis" | "DistributeMainTokenTreasury" => {}
+        "InitializeMainTokenGenesis" => {
+            let expected = controller_binding.genesis_controller_account_id.trim();
+            if account_id != expected {
+                return Err(format!(
+                    "main token auth account_id does not match genesis controller slot: expected={expected} actual={account_id}"
+                ));
+            }
+        }
+        "DistributeMainTokenTreasury" => {
+            let bucket_id = data
+                .get("bucket_id")
+                .and_then(JsonValue::as_str)
+                .ok_or_else(|| "treasury action missing bucket_id".to_string())?
+                .trim();
+            let expected = controller_binding
+                .treasury_bucket_controller_slots
+                .get(bucket_id)
+                .map(String::as_str)
+                .ok_or_else(|| {
+                    format!(
+                        "main token treasury controller slot is not configured for bucket {bucket_id}"
+                    )
+                })?;
+            if account_id != expected {
+                return Err(format!(
+                    "main token auth account_id does not match treasury controller slot: bucket={bucket_id} expected={expected} actual={account_id}"
+                ));
+            }
+        }
         other => return Err(format!("main token auth is not supported for action {other}")),
     }
     Ok(())
