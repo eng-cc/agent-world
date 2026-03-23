@@ -79,7 +79,9 @@ pub(crate) fn submit_transfer_remote(
     Ok(response)
 }
 
-fn build_transfer_submit_request(draft: &TransferDraft) -> Result<WebTransferSubmitRequest, String> {
+fn build_transfer_submit_request(
+    draft: &TransferDraft,
+) -> Result<WebTransferSubmitRequest, String> {
     let issues = validate_transfer_draft(draft);
     if !issues.is_empty() {
         return Err("transfer draft has invalid required fields".to_string());
