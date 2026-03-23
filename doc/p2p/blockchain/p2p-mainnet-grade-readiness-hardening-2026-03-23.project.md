@@ -9,7 +9,7 @@
 - [x] MAINNET-1 (PRD-P2P-MAINNET-001/002) [test_tier_required]: 由 `producer_system_designer` + `runtime_engineer` 输出“生产级 signer custody / keystore”专题，冻结生产 signer 源、rotation/revocation 与 audit trail 完成定义。
 - [x] MAINNET-2 (PRD-P2P-MAINNET-002) [test_tier_required]: 由 `runtime_engineer` 输出“治理 finality signer 外部化”专题，去掉 deterministic local seed production path，并定义 failover/rotation/revocation。
 - [x] MAINNET-3 (PRD-P2P-MAINNET-003) [test_tier_required + test_tier_full]: 由 `producer_system_designer` + `qa_engineer` 输出“创世 freeze/ceremony/QA gate”专题，冻结 recipient/controller/signer policy 真值并沉淀证据 bundle。
-- [ ] MAINNET-4 (PRD-P2P-MAINNET-001/004) [test_tier_required]: 由 `producer_system_designer` + `liveops_community` 执行最终 readiness 复评，更新 public claims policy 与阶段 verdict。
+- [x] MAINNET-4 (PRD-P2P-MAINNET-001/004) [test_tier_required]: 由 `producer_system_designer` + `liveops_community` 执行最终 readiness 复评，更新 public claims policy 与阶段 verdict。
 
 ## 当前结论
 - 当前阶段:
@@ -21,7 +21,6 @@
   - Web/native 转账 UI 已补本地签名接线与 Web-first QA 证据。
   - genesis/treasury 已有 controller slot binding 与本地 signer allowlist / threshold enforcement。
 - 仍待完成:
-  - public claims re-evaluation。
   - 生产级 signer custody / keystore 的工程替换仍待后续 runtime 实施，当前只完成规格 gate。
   - 治理 signer 外部化的 runtime 工程替换仍待后续实现，当前只完成规格 gate。
   - 创世 freeze/ceremony/QA 的真实地址、公钥、dry-run 与最终 QA `pass` 仍待后续执行，当前只完成规格 gate。
@@ -42,6 +41,6 @@
 - `git diff --check`
 
 ## 状态
-- 当前阶段: active
-- 下一步: 执行 `MAINNET-4`，基于 `MAINNET-1~3` 的规格 gate 和当前未完成工程项，冻结最终 public claims policy 与阶段复评结论。
+- 当前阶段: completed
+- 下一步: 若继续推进，应进入 execution workstreams，分别落地 signer custody、governance truth externalization、genesis binding/ceremony/QA；在这些项完成前，继续执行当前 preview claims policy。
 - 最近更新: 2026-03-23

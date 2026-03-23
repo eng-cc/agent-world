@@ -36,6 +36,7 @@
 - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-governance-signer-externalization-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-genesis-freeze-ceremony-qa-gate-2026-03-23.prd.md`
+- `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.prd.md`
 - `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.md`
 
 ## 根目录收口

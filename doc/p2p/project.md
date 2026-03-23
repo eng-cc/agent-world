@@ -306,6 +306,21 @@
 - [x] TASK-P2P-035 (PRD-P2P-017) [test_tier_required]: 新增“生产级 signer custody / keystore 基线”专题 PRD / design / project，并冻结 node/viewer/governance signer 的 preview-only bootstrap 边界、rotation/revocation/audit gate 与环境策略。
 - [x] TASK-P2P-036 (PRD-P2P-018) [test_tier_required]: 新增“治理 signer 外部化与轮换门禁”专题 PRD / design / project，并冻结 finality/controller signer 的 preview/local 真值边界、externalized source-of-truth、failover/rotation/revocation 与 operator ownership。
 - [x] TASK-P2P-037 (PRD-P2P-019) [test_tier_required + test_tier_full]: 新增“创世 freeze / ceremony / QA gate”专题 PRD / design / project，并冻结 genesis freeze sheet blocker、ceremony checklist、QA evidence bundle 与 mint-ready claim gate。
+- [x] TASK-P2P-038 (PRD-P2P-020) [test_tier_required]: 新增“mainnet/public claims policy 复评”专题 PRD / design / project，并冻结 `MAINNET-1~3` 仅为 spec gate 的结论、最终 allowlist/denylist 与 future upgrade condition。
+  - 产物文件:
+    - `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.prd.md`
+    - `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.design.md`
+    - `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.project.md`
+    - `doc/p2p/blockchain/p2p-mainnet-grade-readiness-hardening-2026-03-23.project.md`
+    - `doc/p2p/prd.md`
+    - `doc/p2p/project.md`
+    - `doc/p2p/prd.index.md`
+    - `doc/p2p/README.md`
+    - `doc/devlog/2026-03-23.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "not_mainnet_grade|crypto-hardened preview|mainnet-grade|production mint ready|spec gate|execution" doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.prd.md doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.design.md doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.project.md doc/p2p/blockchain/p2p-mainnet-grade-readiness-hardening-2026-03-23.project.md doc/p2p/project.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
   - 产物文件:
     - `doc/p2p/blockchain/p2p-genesis-freeze-ceremony-qa-gate-2026-03-23.prd.md`
     - `doc/p2p/blockchain/p2p-genesis-freeze-ceremony-qa-gate-2026-03-23.design.md`
@@ -422,6 +437,7 @@
 - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-governance-signer-externalization-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-genesis-freeze-ceremony-qa-gate-2026-03-23.prd.md`
+- `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.prd.md`
 - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
 - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - `oasis7_viewer_live.release.example.toml`
@@ -438,8 +454,9 @@
 
 ## 状态
 - 更新日期: 2026-03-23
-- 当前状态: active（ROUND-023）
-- 下一任务: 执行 `MAINNET-4`，基于 `MAINNET-1~3` 的规格 gate 和当前未完成工程项，冻结最终 public claims policy 与阶段复评结论；在此之前，不升级 `mainnet-grade` 或 `production mint ready` 口径。
+- 当前状态: completed（ROUND-023）
+- 下一任务: 若继续推进，应进入 execution workstreams，分别落地 signer custody、governance truth externalization、genesis binding/ceremony/QA；在这些项完成前，继续执行当前 preview claims policy。
+- 最新完成: `TASK-P2P-038`（已完成 mainnet/public claims policy 复评专题建档，正式冻结当前只允许 `limited playable technical preview` + `crypto-hardened preview`，并把 `mainnet-grade`、`production mint ready` 等口径放入 denylist。）
 - 最新完成: `TASK-P2P-037`（已完成创世 freeze / ceremony / QA gate 专题建档，正式把 `logic_frozen_address_binding_pending`、`TBD_BEFORE_MINT`、`pending_binding`、`ready_pending_address_binding` 与 QA 非 `pass` 结论全部冻结为 mint-ready blocker。）
 - 最新完成: `TASK-P2P-036`（已完成治理 signer 外部化与轮换门禁专题建档，正式把 deterministic local seed 与 `NodeConfig` 本地 controller signer policy 定义为 preview/local 真值，并冻结 externalized source-of-truth、failover/rotation/revocation/operator ownership gate。）
 - 最新完成: `TASK-P2P-035`（已完成生产级 signer custody / keystore 基线专题建档，正式把 `config.toml` 明文 key、HTML 私钥注入与 env 私钥 bootstrap 定义为 preview-only signer path，并冻结 rotation/revocation/audit/environment policy gate。）

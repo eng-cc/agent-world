@@ -80,6 +80,7 @@
   - PRD-P2P-017: As a producer_system_designer, I want one explicit production signer custody / keystore baseline, so that preview bootstrap signers are clearly separated from production signer ownership and release policy.
   - PRD-P2P-018: As a producer_system_designer, I want one explicit governance signer externalization baseline, so that deterministic local seed and local config signer truth are clearly separated from long-term production governance truth.
   - PRD-P2P-019: As a producer_system_designer, I want one explicit genesis freeze/ceremony/QA gate, so that logic-frozen but still-unbound genesis parameters cannot be mistaken for mint readiness.
+  - PRD-P2P-020: As a producer_system_designer, I want one final public claims policy re-evaluation after MAINNET readiness planning, so that outward language stays aligned with execution reality rather than spec completeness.
 - Critical User Flows:
   1. Flow-P2P-001: `网络拓扑变更 -> 共识联调 -> DistFS 同步 -> 节点状态一致性验证`
   2. Flow-P2P-002: `执行 S9/S10 长跑 -> 采集故障与恢复数据 -> 输出收敛报告`
@@ -100,6 +101,7 @@
   17. Flow-P2P-017: `盘点 node/viewer/governance signer 来源 -> 冻结 preview-only bootstrap 与 production target backend 边界 -> rotation/revocation/audit policy 入门禁`
   18. Flow-P2P-018: `盘点 finality/controller signer 真值 -> 冻结 externalized source-of-truth 与 operator ownership -> failover/rotation/revocation 进入治理门禁`
   19. Flow-P2P-019: `读取 genesis freeze sheet -> 绑定 slot/bucket 真值 -> 执行 ceremony checklist -> QA 审核 evidence bundle -> 决定是否允许 mint-ready 口径`
+  20. Flow-P2P-020: `读取 MAINNET-1~3 当前状态 -> 判断哪些仅为 spec gate、哪些已 execution complete -> 冻结 claim allowlist/denylist 与未来升级条件`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -147,6 +149,7 @@
   - AC-23: `p2p-production-signer-custody-keystore-2026-03-23` 专题文档落盘并映射任务链 `TASK-P2P-035`，明确 `config.toml` 明文 key、HTML 私钥注入与 env 私钥 bootstrap 只属于 preview-only signer path，不得作为 production custody 完成态。
   - AC-24: `p2p-governance-signer-externalization-2026-03-23` 专题文档落盘并映射任务链 `TASK-P2P-036`，明确 deterministic local seed 与 `NodeConfig` 本地 controller signer policy 只属于 preview/local truth，不得作为 production governance truth。
   - AC-25: `p2p-genesis-freeze-ceremony-qa-gate-2026-03-23` 专题文档落盘并映射任务链 `TASK-P2P-037`，明确 `logic_frozen_address_binding_pending`、`TBD_BEFORE_MINT`、`pending_binding` 与 `ready_pending_address_binding` 都属于 mint-ready blocker。
+  - AC-26: `p2p-mainnet-public-claims-policy-2026-03-23` 专题文档落盘并映射任务链 `TASK-P2P-038`，明确 `MAINNET-1~3` 当前仅完成 spec gate、整体 verdict 仍为 `not_mainnet_grade`，并冻结 allowlist/denylist 与 future upgrade conditions。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -170,6 +173,7 @@
   - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
   - `doc/p2p/blockchain/p2p-governance-signer-externalization-2026-03-23.prd.md`
   - `doc/p2p/blockchain/p2p-genesis-freeze-ceremony-qa-gate-2026-03-23.prd.md`
+  - `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.prd.md`
   - `world-rule.md`
   - `doc/world-simulator/viewer/viewer-manual.md`
   - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md`
@@ -217,6 +221,7 @@
   - NFR-P2P-20: 生产 signer custody 未外部化前，任何本地 `config.toml`、HTML bootstrap 或长期 env 私钥路径都不得进入 production release allowlist。
   - NFR-P2P-21: 生产 governance truth 未外部化前，任何 deterministic local seed 或单机 `NodeConfig` signer policy 路径都不得进入 production governance allowlist。
   - NFR-P2P-22: 在 genesis slot/bucket 真值、ceremony evidence bundle 与 QA `pass` 完成前，任何 `mint_ready` 或 `production mint ready` 口径都不得进入 public claims allowlist。
+  - NFR-P2P-23: 在 `MAINNET-1~3` 仍停留于 spec gate 而 execution blockers 未清零时，任何高于 `crypto-hardened preview` 的 public claims 都必须被 denylist 拒绝。
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 
 ## 5. Risks & Roadmap
@@ -252,6 +257,7 @@
 | PRD-P2P-017 | TASK-P2P-035 | `test_tier_required` | 生产级 signer custody / keystore 专题 PRD/project/design 建档、signer inventory、环境门禁与 readiness project 回写 | signer source boundary、rotation/revocation/audit 与 release policy |
 | PRD-P2P-018 | TASK-P2P-036 | `test_tier_required` | 治理 signer 外部化专题 PRD/project/design 建档、governance signer inventory、source-of-truth 门禁与 readiness project 回写 | governance truth、failover/rotation/revocation 与 operator ownership |
 | PRD-P2P-019 | TASK-P2P-037 | `test_tier_required` + `test_tier_full` | 创世 freeze/ceremony/QA gate 专题 PRD/project/design 建档、freeze sheet blocker 冻结、QA evidence bundle 与 claim gate 回写 | mint readiness、创世执行与对外口径 |
+| PRD-P2P-020 | TASK-P2P-038 | `test_tier_required` | public claims policy 复评专题 PRD/project/design 建档、allowlist/denylist 冻结、future upgrade condition 与 readiness 完结回写 | 对外口径、阶段复评与后续升级条件 |
 - S9/S10 长跑结果模板（TASK-P2P-003）:
 | 字段 | 说明 | 来源 |
 | --- | --- | --- |
