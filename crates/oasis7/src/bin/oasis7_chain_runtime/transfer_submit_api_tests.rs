@@ -8,14 +8,17 @@ use super::explorer_p1_api::{
 use super::{
     build_transfer_submit_action_payload, maybe_handle_transfer_submit_request,
     parse_transfer_submit_request, ChainExplorerOverviewResponse, ChainTransferHistoryResponse,
-    ChainTransferStatusResponse, ChainTransferSubmitResponse, TransferLifecycleStatus,
+    ChainTransferStatusResponse, ChainTransferSubmitRequest, ChainTransferSubmitResponse,
+    TransferLifecycleStatus,
 };
+use ed25519_dalek::SigningKey;
 use oasis7::consensus_action_payload::{
     decode_consensus_action_payload, ConsensusActionPayloadBody,
 };
 use oasis7::runtime::{
-    Action, EconomicContractState, EconomicContractStatus, MainTokenAccountBalance,
-    MainTokenConfig, MainTokenSupplyState, World, WorldState,
+    main_token_account_id_from_node_public_key, Action, EconomicContractState,
+    EconomicContractStatus, MainTokenAccountBalance, MainTokenConfig, MainTokenSupplyState, World,
+    WorldState,
 };
 use oasis7::simulator::ResourceKind;
 use oasis7_node::{
@@ -94,6 +97,58 @@ fn reset_transfer_state_for_tests() {
     super::super::explorer_p0_api::reset_store_for_tests();
 }
 
+fn transfer_test_signer(seed: u8) -> (String, String) {
+    let private_key = [seed; 32];
+    let signing_key = SigningKey::from_bytes(&private_key);
+    (
+        hex::encode(signing_key.verifying_key().to_bytes()),
+        hex::encode(private_key),
+    )
+}
+
+fn build_signed_transfer_request_with_accounts(
+    from_account_id: String,
+    to_account_id: String,
+    amount: u64,
+    nonce: u64,
+    public_key: String,
+    private_key: String,
+) -> ChainTransferSubmitRequest {
+    let mut request = ChainTransferSubmitRequest {
+        from_account_id,
+        to_account_id,
+        amount,
+        nonce,
+        public_key,
+        signature: String::new(),
+    };
+    request.signature = super::sign_transfer_submit_request(&request, private_key.as_str())
+        .expect("sign transfer request");
+    request
+}
+
+fn build_signed_transfer_request(
+    seed: u8,
+    to_seed: u8,
+    amount: u64,
+    nonce: u64,
+) -> ChainTransferSubmitRequest {
+    let (public_key, private_key) = transfer_test_signer(seed);
+    let (to_public_key, _) = transfer_test_signer(to_seed);
+    build_signed_transfer_request_with_accounts(
+        main_token_account_id_from_node_public_key(public_key.as_str()),
+        main_token_account_id_from_node_public_key(to_public_key.as_str()),
+        amount,
+        nonce,
+        public_key,
+        private_key,
+    )
+}
+
+fn serialize_transfer_request(request: &ChainTransferSubmitRequest) -> Vec<u8> {
+    serde_json::to_vec(request).expect("serialize transfer request")
+}
+
 fn seed_world_for_explorer_p1(temp_dir: &Path) {
     let mut state = WorldState::default();
     state.main_token_config = MainTokenConfig {
@@ -147,18 +202,28 @@ fn seed_world_for_explorer_p1(temp_dir: &Path) {
 
 #[test]
 fn parse_transfer_submit_request_rejects_same_account() {
-    let body =
-        br#"{"from_account_id":"player:alice","to_account_id":"player:alice","amount":7,"nonce":1}"#;
-    let err = parse_transfer_submit_request(body).expect_err("same source and target must fail");
+    let (public_key, private_key) = transfer_test_signer(7);
+    let account_id = main_token_account_id_from_node_public_key(public_key.as_str());
+    let request = build_signed_transfer_request_with_accounts(
+        account_id.clone(),
+        account_id,
+        7,
+        1,
+        public_key,
+        private_key,
+    );
+    let body = serialize_transfer_request(&request);
+    let err = parse_transfer_submit_request(body.as_slice())
+        .expect_err("same source and target must fail");
     assert!(err.contains("cannot be the same"));
 }
 
 #[test]
 fn build_transfer_submit_action_payload_encodes_runtime_action() {
-    let request = parse_transfer_submit_request(
-        br#"{"from_account_id":" player:alice ","to_account_id":"player:bob","amount":7,"nonce":2}"#,
-    )
-    .expect("request should parse");
+    let request = build_signed_transfer_request(7, 8, 7, 2);
+    let body = serialize_transfer_request(&request);
+    let request =
+        parse_transfer_submit_request(body.as_slice()).expect("request should parse");
     let payload = build_transfer_submit_action_payload(&request).expect("payload");
     let decoded = decode_consensus_action_payload(payload.as_slice()).expect("decode payload");
     match decoded {
@@ -169,8 +234,9 @@ fn build_transfer_submit_action_payload_encodes_runtime_action() {
                 amount,
                 nonce,
             } => {
-                assert_eq!(from_account_id, "player:alice");
-                assert_eq!(to_account_id, "player:bob");
+                let expected = build_signed_transfer_request(7, 8, 7, 2);
+                assert_eq!(from_account_id, expected.from_account_id);
+                assert_eq!(to_account_id, expected.to_account_id);
                 assert_eq!(amount, 7);
                 assert_eq!(nonce, 2);
             }
@@ -192,8 +258,17 @@ fn transfer_submit_handler_returns_invalid_request_for_bad_payload() {
     )));
 
     let (mut server_stream, mut client_stream) = tcp_stream_pair();
-    let body =
-        r#"{"from_account_id":"player:alice","to_account_id":"player:alice","amount":7,"nonce":2}"#;
+    let (public_key, private_key) = transfer_test_signer(9);
+    let account_id = main_token_account_id_from_node_public_key(public_key.as_str());
+    let request = build_signed_transfer_request_with_accounts(
+        account_id.clone(),
+        account_id,
+        7,
+        2,
+        public_key,
+        private_key,
+    );
+    let body = serde_json::to_string(&request).expect("serialize request");
     let request = format!(
         "POST /v1/chain/transfer/submit HTTP/1.1\r\nHost: 127.0.0.1:5121\r\nContent-Length: {}\r\n\r\n{}",
         body.len(),
@@ -228,6 +303,160 @@ fn transfer_submit_handler_returns_invalid_request_for_bad_payload() {
 }
 
 #[test]
+fn transfer_submit_handler_rejects_missing_signature() {
+    let runtime = Arc::new(Mutex::new(NodeRuntime::new(
+        NodeConfig::new(
+            "node-transfer-submit-missing-signature",
+            "world-transfer-submit-missing-signature",
+            NodeRole::Sequencer,
+        )
+        .expect("node config"),
+    )));
+
+    let (public_key, _) = transfer_test_signer(11);
+    let from_account_id = main_token_account_id_from_node_public_key(public_key.as_str());
+    let (to_public_key, _) = transfer_test_signer(12);
+    let to_account_id = main_token_account_id_from_node_public_key(to_public_key.as_str());
+    let body = format!(
+        r#"{{"from_account_id":"{from_account_id}","to_account_id":"{to_account_id}","amount":7,"nonce":2,"public_key":"{public_key}"}}"#
+    );
+
+    let (mut server_stream, mut client_stream) = tcp_stream_pair();
+    let request = format!(
+        "POST /v1/chain/transfer/submit HTTP/1.1\r\nHost: 127.0.0.1:5121\r\nContent-Length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    maybe_handle_transfer_submit_request(
+        &mut server_stream,
+        request.as_bytes(),
+        &runtime,
+        "POST",
+        "/v1/chain/transfer/submit",
+        "node-transfer-submit-missing-signature",
+        "world-transfer-submit-missing-signature",
+        Path::new("."),
+    )
+    .expect("handler should process request");
+    drop(server_stream);
+
+    client_stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set client timeout");
+    let mut response_bytes = Vec::new();
+    client_stream
+        .read_to_end(&mut response_bytes)
+        .expect("read handler response");
+    let (status, response): (u16, ChainTransferSubmitResponse) =
+        decode_http_json_response(&response_bytes);
+    assert_eq!(status, 400);
+    assert!(!response.ok);
+    assert_eq!(response.error_code.as_deref(), Some("invalid_request"));
+}
+
+#[test]
+fn transfer_submit_handler_rejects_invalid_signature() {
+    let runtime = Arc::new(Mutex::new(NodeRuntime::new(
+        NodeConfig::new(
+            "node-transfer-submit-invalid-signature",
+            "world-transfer-submit-invalid-signature",
+            NodeRole::Sequencer,
+        )
+        .expect("node config"),
+    )));
+
+    let mut request = build_signed_transfer_request(13, 14, 7, 2);
+    request.signature = format!(
+        "{}{}",
+        super::TRANSFER_AUTH_SIGNATURE_V1_PREFIX,
+        "f".repeat(128)
+    );
+    let body = serde_json::to_string(&request).expect("serialize request");
+
+    let (mut server_stream, mut client_stream) = tcp_stream_pair();
+    let request = format!(
+        "POST /v1/chain/transfer/submit HTTP/1.1\r\nHost: 127.0.0.1:5121\r\nContent-Length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    maybe_handle_transfer_submit_request(
+        &mut server_stream,
+        request.as_bytes(),
+        &runtime,
+        "POST",
+        "/v1/chain/transfer/submit",
+        "node-transfer-submit-invalid-signature",
+        "world-transfer-submit-invalid-signature",
+        Path::new("."),
+    )
+    .expect("handler should process request");
+    drop(server_stream);
+
+    client_stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set client timeout");
+    let mut response_bytes = Vec::new();
+    client_stream
+        .read_to_end(&mut response_bytes)
+        .expect("read handler response");
+    let (status, response): (u16, ChainTransferSubmitResponse) =
+        decode_http_json_response(&response_bytes);
+    assert_eq!(status, 400);
+    assert!(!response.ok);
+    assert_eq!(response.error_code.as_deref(), Some("invalid_signature"));
+}
+
+#[test]
+fn transfer_submit_handler_rejects_account_auth_mismatch() {
+    let runtime = Arc::new(Mutex::new(NodeRuntime::new(
+        NodeConfig::new(
+            "node-transfer-submit-auth-mismatch",
+            "world-transfer-submit-auth-mismatch",
+            NodeRole::Sequencer,
+        )
+        .expect("node config"),
+    )));
+
+    let mut request = build_signed_transfer_request(15, 16, 7, 2);
+    let (mismatch_public_key, _) = transfer_test_signer(17);
+    request.from_account_id =
+        main_token_account_id_from_node_public_key(mismatch_public_key.as_str());
+    let body = serde_json::to_string(&request).expect("serialize request");
+
+    let (mut server_stream, mut client_stream) = tcp_stream_pair();
+    let request = format!(
+        "POST /v1/chain/transfer/submit HTTP/1.1\r\nHost: 127.0.0.1:5121\r\nContent-Length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    maybe_handle_transfer_submit_request(
+        &mut server_stream,
+        request.as_bytes(),
+        &runtime,
+        "POST",
+        "/v1/chain/transfer/submit",
+        "node-transfer-submit-auth-mismatch",
+        "world-transfer-submit-auth-mismatch",
+        Path::new("."),
+    )
+    .expect("handler should process request");
+    drop(server_stream);
+
+    client_stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set client timeout");
+    let mut response_bytes = Vec::new();
+    client_stream
+        .read_to_end(&mut response_bytes)
+        .expect("read handler response");
+    let (status, response): (u16, ChainTransferSubmitResponse) =
+        decode_http_json_response(&response_bytes);
+    assert_eq!(status, 400);
+    assert!(!response.ok);
+    assert_eq!(response.error_code.as_deref(), Some("account_auth_mismatch"));
+}
+
+#[test]
 fn transfer_status_and_history_endpoint_report_confirmed_record() {
     let config = NodeConfig::new(
         "node-transfer-query-ok",
@@ -242,8 +471,8 @@ fn transfer_status_and_history_endpoint_report_confirmed_record() {
     let runtime = Arc::new(Mutex::new(node_runtime));
 
     let (mut submit_server, mut submit_client) = tcp_stream_pair();
-    let submit_body =
-        r#"{"from_account_id":"player:alice","to_account_id":"player:bob","amount":3,"nonce":8}"#;
+    let submit_request = build_signed_transfer_request(21, 22, 3, 8);
+    let submit_body = serde_json::to_string(&submit_request).expect("serialize request");
     let submit_http = format!(
         "POST /v1/chain/transfer/submit HTTP/1.1\r\nHost: 127.0.0.1:5121\r\nContent-Length: {}\r\n\r\n{}",
         submit_body.len(),
@@ -372,8 +601,8 @@ fn explorer_overview_and_transaction_queries_return_expected_payloads() {
     let runtime = Arc::new(Mutex::new(node_runtime));
 
     let (mut submit_server, mut submit_client) = tcp_stream_pair();
-    let submit_body =
-        r#"{"from_account_id":"player:alice","to_account_id":"player:bob","amount":4,"nonce":9}"#;
+    let submit_request = build_signed_transfer_request(31, 32, 4, 9);
+    let submit_body = serde_json::to_string(&submit_request).expect("serialize request");
     let submit_http = format!(
         "POST /v1/chain/transfer/submit HTTP/1.1\r\nHost: 127.0.0.1:5121\r\nContent-Length: {}\r\n\r\n{}",
         submit_body.len(),
@@ -606,8 +835,8 @@ fn explorer_p0_blocks_txs_tx_search_queries_return_expected_payloads() {
     let runtime = Arc::new(Mutex::new(node_runtime));
 
     let (mut submit_server, mut submit_client) = tcp_stream_pair();
-    let submit_body =
-        r#"{"from_account_id":"player:alice","to_account_id":"player:bob","amount":5,"nonce":10}"#;
+    let submit_request = build_signed_transfer_request(41, 42, 5, 10);
+    let submit_body = serde_json::to_string(&submit_request).expect("serialize request");
     let submit_http = format!(
         "POST /v1/chain/transfer/submit HTTP/1.1\r\nHost: 127.0.0.1:5121\r\nContent-Length: {}\r\n\r\n{}",
         submit_body.len(),
@@ -862,10 +1091,15 @@ fn explorer_p1_endpoints_return_expected_payloads() {
         .expect("node config"),
     )));
 
-    let accepted_request = parse_transfer_submit_request(
-        br#"{"from_account_id":"player:alice","to_account_id":"player:bob","amount":9,"nonce":8}"#,
-    )
-    .expect("valid transfer request");
+    let (public_key, private_key) = transfer_test_signer(51);
+    let accepted_request = build_signed_transfer_request_with_accounts(
+        "player:alice".to_string(),
+        "player:bob".to_string(),
+        9,
+        8,
+        public_key,
+        private_key,
+    );
     let now_ms = super::super::now_unix_ms().saturating_sub(2_000);
     super::with_transfer_tracker(|tracker| tracker.record_accepted(77, &accepted_request, now_ms));
 

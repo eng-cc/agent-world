@@ -1432,6 +1432,8 @@ mod tests {
             assert!(request_text.contains("\"to_account_id\":\"player:bob\""));
             assert!(request_text.contains("\"amount\":7"));
             assert!(request_text.contains("\"nonce\":2"));
+            assert!(request_text.contains("\"public_key\":\"1111111111111111111111111111111111111111111111111111111111111111\""));
+            assert!(request_text.contains("\"signature\":\"awttransferauth:v1:"));
             write_http_json_response(
                 &mut stream,
                 "200 OK",
@@ -1444,6 +1446,15 @@ mod tests {
             to_account_id: "player:bob".to_string(),
             amount: 7,
             nonce: 2,
+            public_key:
+                "1111111111111111111111111111111111111111111111111111111111111111"
+                    .to_string(),
+            signature: concat!(
+                "awttransferauth:v1:",
+                "2222222222222222222222222222222222222222222222222222222222222222",
+                "2222222222222222222222222222222222222222222222222222222222222222"
+            )
+            .to_string(),
         };
         let response =
             submit_chain_transfer_remote(format!("127.0.0.1:{}", bind.port()).as_str(), &request)
@@ -1473,6 +1484,15 @@ mod tests {
             to_account_id: "player:bob".to_string(),
             amount: 7,
             nonce: 2,
+            public_key:
+                "1111111111111111111111111111111111111111111111111111111111111111"
+                    .to_string(),
+            signature: concat!(
+                "awttransferauth:v1:",
+                "2222222222222222222222222222222222222222222222222222222222222222",
+                "2222222222222222222222222222222222222222222222222222222222222222"
+            )
+            .to_string(),
         };
         let response =
             submit_chain_transfer_remote(format!("127.0.0.1:{}", bind.port()).as_str(), &request)

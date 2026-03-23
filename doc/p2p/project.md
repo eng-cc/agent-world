@@ -301,6 +301,25 @@
     - `git diff --check`
 - [x] TASK-P2P-031 (PRD-P2P-013) [test_tier_required]: 新增“主链 Token 初始分配与早期贡献奖励口径”专题 PRD / design / project，并把项目战略控制比例、单人直持上限、低流通与 contribution-based reward 口径纳入模块追踪。
 - [x] TASK-P2P-032 (PRD-P2P-014) [test_tier_required]: 新增“主链/共识密码学安全基线评估”专题 PRD / design / project，并把当前整体 verdict、系统级 blocker 与 mainnet-ready 路线图纳入模块追踪。
+- [x] TASK-P2P-033 (PRD-P2P-015) [test_tier_required]: 新增“主链 Token 签名交易鉴权”专题 PRD / design / project，并收口 `POST /v1/chain/transfer/submit` 的 `public_key/signature` 鉴权、`awt:pk:` 账户绑定与控制面请求结构同步。
+  - 产物文件:
+    - `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.prd.md`
+    - `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.design.md`
+    - `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.project.md`
+    - `doc/p2p/prd.md`
+    - `doc/p2p/project.md`
+    - `doc/p2p/prd.index.md`
+    - `doc/p2p/README.md`
+    - `doc/devlog/2026-03-23.md`
+    - `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api.rs`
+    - `crates/oasis7/src/bin/oasis7_chain_runtime/transfer_submit_api_tests.rs`
+    - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+    - `crates/oasis7/src/bin/oasis7_web_launcher/control_plane.rs`
+  - 验收命令 (`test_tier_required`):
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 transfer_submit --bin oasis7_chain_runtime`
+    - `env -u RUSTC_WRAPPER cargo test -p oasis7 submit_chain_transfer_remote --bin oasis7_web_launcher`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
   - 产物文件:
     - `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.prd.md`
     - `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.design.md`
@@ -338,6 +357,7 @@
 - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.md`
 - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
 - `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
+- `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.prd.md`
 - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
 - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
@@ -356,7 +376,8 @@
 ## 状态
 - 更新日期: 2026-03-23
 - 当前状态: active（ROUND-023）
-- 下一任务: 启动“主链 Token 签名交易鉴权”专题；在该专题收口前，`TIGR-6` 的真实创世地址绑定只能继续做准备，不作为 producer 当前第一优先级。
+- 下一任务: 执行 `STRAUTH-2/3`，把 claim/genesis/treasury 接入统一 signed transaction 模型，并补 Web/native 转账签名提交流程；在此之前，`TIGR-6` 的真实创世地址绑定只能继续做准备，不作为 producer 当前第一优先级。
+- 最新完成: `TASK-P2P-033`（已完成主链 Token 签名交易鉴权专题建档，并为公开 `transfer submit` 收口 `public_key/signature` 鉴权、`awt:pk:` 账户绑定与控制面请求结构同步；但 claim/genesis/treasury 与 UI signer 闭环仍待继续推进。）
 - 最新完成: `TASK-P2P-032`（已完成主链/共识密码学安全基线专题建档，正式判定当前整体为 `not_mainnet_grade`，固定主链资产动作未签名授权、生产级 keystore 缺失、治理 finality signer 仍含 local seed 路径与创世 slot 未绑定四类 blocker，并把下一个优先级切到签名交易模型。）
 - 最新完成: `TASK-P2P-031`（已完成 Token 初始分配与早期贡献奖励专题建档与 `TIGR-1~5` 收口，冻结项目战略控制 `5000 bps`、单人直持硬上限 `1500 bps`、独立 reward reserve 执行路径，并新增创世参数正式执行清单与 runtime rounding 规则。）
 - 最新完成: `TASK-P2P-030`（已完成 `viewer-live` 活跃专题中旧 `oasis7*` crate/path 与 launcher 名称当前真值口径的 `oasis7*` 收口。）

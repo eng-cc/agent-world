@@ -121,7 +121,8 @@ pub use modules::{
 
 // Node points
 pub use main_token::{
-    main_token_bucket_unlocked_amount, MainTokenAccountBalance, MainTokenBurnPolicy,
+    main_token_account_id_from_node_public_key, main_token_bucket_unlocked_amount,
+    MainTokenAccountBalance, MainTokenBurnPolicy,
     MainTokenConfig, MainTokenEconomyAnomalyAlert, MainTokenEconomyAuditReport,
     MainTokenEconomyAuditThresholds, MainTokenEpochIssuanceRecord,
     MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan,

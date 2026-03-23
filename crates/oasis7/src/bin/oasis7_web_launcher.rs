@@ -359,6 +359,8 @@ struct ChainTransferSubmitRequest {
     to_account_id: String,
     amount: u64,
     nonce: u64,
+    public_key: String,
+    signature: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
