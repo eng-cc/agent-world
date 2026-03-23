@@ -71,14 +71,27 @@ enum TestConsensusActionAuthEnvelope {
 #[serde(rename_all = "snake_case")]
 enum TestMainTokenActionAuthScheme {
     Ed25519,
+    ThresholdEd25519,
+}
+
+#[derive(Serialize)]
+struct TestMainTokenActionParticipantSignature {
+    public_key: String,
+    signature: String,
 }
 
 #[derive(Serialize)]
 struct TestMainTokenActionAuthProof {
     scheme: TestMainTokenActionAuthScheme,
     account_id: String,
-    public_key: String,
-    signature: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    public_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    signature: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    threshold: Option<u16>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    participant_signatures: Vec<TestMainTokenActionParticipantSignature>,
 }
 
 #[derive(Serialize)]
@@ -140,12 +153,14 @@ fn encode_signed_main_token_runtime_payload(action: JsonValue, account_id: &str,
     let proof = TestMainTokenActionAuthProof {
         scheme: TestMainTokenActionAuthScheme::Ed25519,
         account_id: account_id.to_string(),
-        public_key: public_key_hex,
-        signature: format!(
+        public_key: Some(public_key_hex),
+        signature: Some(format!(
             "{}{}",
             test_main_token_action_signature_prefix(action_kind),
             hex::encode(signature.to_bytes())
-        ),
+        )),
+        threshold: None,
+        participant_signatures: Vec::new(),
     };
     serde_cbor::to_vec(&TestConsensusActionPayloadEnvelope {
         version: 1,
@@ -155,6 +170,60 @@ fn encode_signed_main_token_runtime_payload(action: JsonValue, account_id: &str,
     .expect("encode signed payload")
 }
 
+fn encode_threshold_signed_main_token_runtime_payload(
+    action: JsonValue,
+    account_id: &str,
+    threshold: u16,
+    seeds: &[u8],
+) -> Vec<u8> {
+    let action_kind = action
+        .get("type")
+        .and_then(JsonValue::as_str)
+        .expect("action kind");
+    let mut participant_signatures = Vec::with_capacity(seeds.len());
+    for seed in seeds {
+        let (public_key_hex, private_key_hex) = token_auth_test_signer(*seed);
+        let signing_key = SigningKey::from_bytes(
+            &hex::decode(private_key_hex)
+                .expect("decode private key")
+                .try_into()
+                .expect("32 bytes"),
+        );
+        let signing_payload = serde_json::to_vec(&TestMainTokenActionSigningEnvelope {
+            version: 1,
+            operation: test_main_token_action_operation(action_kind),
+            account_id,
+            public_key: public_key_hex.as_str(),
+            action: &action,
+        })
+        .expect("encode threshold signing payload");
+        let signature: Signature = signing_key.sign(signing_payload.as_slice());
+        participant_signatures.push(TestMainTokenActionParticipantSignature {
+            public_key: public_key_hex,
+            signature: format!(
+                "{}{}",
+                test_main_token_action_signature_prefix(action_kind),
+                hex::encode(signature.to_bytes())
+            ),
+        });
+    }
+    serde_cbor::to_vec(&TestConsensusActionPayloadEnvelope {
+        version: 1,
+        auth: Some(TestConsensusActionAuthEnvelope::MainTokenAction(
+            TestMainTokenActionAuthProof {
+                scheme: TestMainTokenActionAuthScheme::ThresholdEd25519,
+                account_id: account_id.to_string(),
+                public_key: None,
+                signature: None,
+                threshold: Some(threshold),
+                participant_signatures,
+            },
+        )),
+        body: TestConsensusActionPayloadBody::RuntimeAction { action },
+    })
+    .expect("encode threshold signed payload")
+}
+
 fn encode_unsigned_runtime_payload(action: JsonValue) -> Vec<u8> {
     serde_cbor::to_vec(&TestConsensusActionPayloadEnvelope {
         version: 1,
@@ -162,6 +231,35 @@ fn encode_unsigned_runtime_payload(action: JsonValue) -> Vec<u8> {
         body: TestConsensusActionPayloadBody::RuntimeAction { action },
     })
     .expect("encode unsigned payload")
+}
+
+fn configured_controller_binding(
+    genesis_threshold: u16,
+    genesis_seeds: &[u8],
+    ecosystem_threshold: u16,
+    ecosystem_seeds: &[u8],
+) -> NodeMainTokenControllerBindingConfig {
+    let genesis_public_keys = genesis_seeds
+        .iter()
+        .map(|seed| token_auth_test_signer(*seed).0)
+        .collect::<Vec<_>>();
+    let ecosystem_public_keys = ecosystem_seeds
+        .iter()
+        .map(|seed| token_auth_test_signer(*seed).0)
+        .collect::<Vec<_>>();
+    NodeMainTokenControllerBindingConfig::default()
+        .with_controller_signer_policy(
+            DEFAULT_GENESIS_CONTROLLER_SLOT,
+            genesis_threshold,
+            genesis_public_keys,
+        )
+        .expect("genesis controller signer policy")
+        .with_controller_signer_policy(
+            DEFAULT_ECOSYSTEM_TREASURY_CONTROLLER_SLOT,
+            ecosystem_threshold,
+            ecosystem_public_keys,
+        )
+        .expect("ecosystem controller signer policy")
 }
 
 #[test]
@@ -581,7 +679,150 @@ fn submit_consensus_action_payload_rejects_unsigned_main_token_genesis_action() 
 fn submit_consensus_action_payload_accepts_signed_main_token_genesis_action() {
     let runtime = NodeRuntime::new(
         NodeConfig::new("node-token-genesis-ok", "world-token-genesis-ok", NodeRole::Observer)
-            .expect("config"),
+            .expect("config")
+            .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
+            .expect("controller binding"),
+    );
+    let payload = encode_threshold_signed_main_token_runtime_payload(
+        json!({
+            "type": "InitializeMainTokenGenesis",
+            "data": {
+                "allocations": [{
+                    "bucket_id": "team_long_term_vesting",
+                    "ratio_bps": 2000,
+                    "recipient": "protocol:team-core-vesting",
+                    "cliff_epochs": 365,
+                    "linear_unlock_epochs": 1095,
+                    "start_epoch": 0
+                }]
+            }
+        }),
+        DEFAULT_GENESIS_CONTROLLER_SLOT,
+        2,
+        &[0x24, 0x28],
+    );
+    runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect("signed genesis payload should pass");
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_signed_main_token_genesis_action_with_wrong_controller_slot() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new(
+            "node-token-genesis-wrong-slot",
+            "world-token-genesis-wrong-slot",
+            NodeRole::Observer,
+        )
+        .expect("config")
+        .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
+        .expect("controller binding"),
+    );
+    let payload = encode_threshold_signed_main_token_runtime_payload(
+        json!({
+            "type": "InitializeMainTokenGenesis",
+            "data": {
+                "allocations": [{
+                    "bucket_id": "team_long_term_vesting",
+                    "ratio_bps": 2000,
+                    "recipient": "protocol:team-core-vesting",
+                    "cliff_epochs": 365,
+                    "linear_unlock_epochs": 1095,
+                    "start_epoch": 0
+                }]
+            }
+        }),
+        "msig.foundation_ops.v1",
+        2,
+        &[0x24, 0x28],
+    );
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("wrong genesis controller slot must fail");
+    assert!(err.to_string().contains("genesis controller slot"));
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_genesis_when_controller_policy_missing() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new(
+            "node-token-genesis-policy-missing",
+            "world-token-genesis-policy-missing",
+            NodeRole::Observer,
+        )
+        .expect("config"),
+    );
+    let payload = encode_threshold_signed_main_token_runtime_payload(
+        json!({
+            "type": "InitializeMainTokenGenesis",
+            "data": {
+                "allocations": [{
+                    "bucket_id": "team_long_term_vesting",
+                    "ratio_bps": 2000,
+                    "recipient": "protocol:team-core-vesting",
+                    "cliff_epochs": 365,
+                    "linear_unlock_epochs": 1095,
+                    "start_epoch": 0
+                }]
+            }
+        }),
+        DEFAULT_GENESIS_CONTROLLER_SLOT,
+        1,
+        &[0x24],
+    );
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("missing controller policy must fail");
+    assert!(err.to_string().contains("allowlist is empty"));
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_genesis_when_threshold_not_met() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new(
+            "node-token-genesis-threshold-miss",
+            "world-token-genesis-threshold-miss",
+            NodeRole::Observer,
+        )
+        .expect("config")
+        .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
+        .expect("controller binding"),
+    );
+    let payload = encode_threshold_signed_main_token_runtime_payload(
+        json!({
+            "type": "InitializeMainTokenGenesis",
+            "data": {
+                "allocations": [{
+                    "bucket_id": "team_long_term_vesting",
+                    "ratio_bps": 2000,
+                    "recipient": "protocol:team-core-vesting",
+                    "cliff_epochs": 365,
+                    "linear_unlock_epochs": 1095,
+                    "start_epoch": 0
+                }]
+            }
+        }),
+        DEFAULT_GENESIS_CONTROLLER_SLOT,
+        1,
+        &[0x24],
+    );
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("threshold mismatch must fail");
+    assert!(err.to_string().contains("threshold mismatch"));
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_genesis_when_signer_not_allowlisted() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new(
+            "node-token-genesis-allowlist-miss",
+            "world-token-genesis-allowlist-miss",
+            NodeRole::Observer,
+        )
+        .expect("config")
+        .with_main_token_controller_binding(configured_controller_binding(1, &[0x24], 2, &[0x25, 0x29]))
+        .expect("controller binding"),
     );
     let payload = encode_signed_main_token_runtime_payload(
         json!({
@@ -598,44 +839,12 @@ fn submit_consensus_action_payload_accepts_signed_main_token_genesis_action() {
             }
         }),
         DEFAULT_GENESIS_CONTROLLER_SLOT,
-        0x24,
-    );
-    runtime
-        .submit_consensus_action_payload(1, payload)
-        .expect("signed genesis payload should pass");
-}
-
-#[test]
-fn submit_consensus_action_payload_rejects_signed_main_token_genesis_action_with_wrong_controller_slot() {
-    let runtime = NodeRuntime::new(
-        NodeConfig::new(
-            "node-token-genesis-wrong-slot",
-            "world-token-genesis-wrong-slot",
-            NodeRole::Observer,
-        )
-        .expect("config"),
-    );
-    let payload = encode_signed_main_token_runtime_payload(
-        json!({
-            "type": "InitializeMainTokenGenesis",
-            "data": {
-                "allocations": [{
-                    "bucket_id": "team_long_term_vesting",
-                    "ratio_bps": 2000,
-                    "recipient": "protocol:team-core-vesting",
-                    "cliff_epochs": 365,
-                    "linear_unlock_epochs": 1095,
-                    "start_epoch": 0
-                }]
-            }
-        }),
-        "msig.foundation_ops.v1",
         0x26,
     );
     let err = runtime
         .submit_consensus_action_payload(1, payload)
-        .expect_err("wrong genesis controller slot must fail");
-    assert!(err.to_string().contains("genesis controller slot"));
+        .expect_err("signer outside allowlist must fail");
+    assert!(err.to_string().contains("not allowlisted"));
 }
 
 #[test]
@@ -666,7 +875,146 @@ fn submit_consensus_action_payload_rejects_unsigned_main_token_treasury_action()
 fn submit_consensus_action_payload_accepts_signed_main_token_treasury_action() {
     let runtime = NodeRuntime::new(
         NodeConfig::new("node-token-treasury-ok", "world-token-treasury-ok", NodeRole::Observer)
-            .expect("config"),
+            .expect("config")
+            .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
+            .expect("controller binding"),
+    );
+    let payload = encode_threshold_signed_main_token_runtime_payload(
+        json!({
+            "type": "DistributeMainTokenTreasury",
+            "data": {
+                "proposal_id": 1,
+                "distribution_id": "treasury-1",
+                "bucket_id": "ecosystem_pool",
+                "distributions": [{
+                    "account_id": "protocol:ecosystem-grant",
+                    "amount": 50
+                }]
+            }
+        }),
+        DEFAULT_ECOSYSTEM_TREASURY_CONTROLLER_SLOT,
+        2,
+        &[0x25, 0x29],
+    );
+    runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect("signed treasury payload should pass");
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_signed_main_token_treasury_action_with_wrong_controller_slot() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new(
+            "node-token-treasury-wrong-slot",
+            "world-token-treasury-wrong-slot",
+            NodeRole::Observer,
+        )
+        .expect("config")
+        .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
+        .expect("controller binding"),
+    );
+    let payload = encode_threshold_signed_main_token_runtime_payload(
+        json!({
+            "type": "DistributeMainTokenTreasury",
+            "data": {
+                "proposal_id": 1,
+                "distribution_id": "treasury-1",
+                "bucket_id": "ecosystem_pool",
+                "distributions": [{
+                    "account_id": "protocol:ecosystem-grant",
+                    "amount": 50
+                }]
+            }
+        }),
+        "msig.treasury.v1",
+        2,
+        &[0x25, 0x29],
+    );
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("wrong treasury controller slot must fail");
+    assert!(err.to_string().contains("treasury controller slot"));
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_treasury_when_allowlist_is_empty() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new(
+            "node-token-treasury-policy-missing",
+            "world-token-treasury-policy-missing",
+            NodeRole::Observer,
+        )
+        .expect("config"),
+    );
+    let payload = encode_threshold_signed_main_token_runtime_payload(
+        json!({
+            "type": "DistributeMainTokenTreasury",
+            "data": {
+                "proposal_id": 1,
+                "distribution_id": "treasury-1",
+                "bucket_id": "ecosystem_pool",
+                "distributions": [{
+                    "account_id": "protocol:ecosystem-grant",
+                    "amount": 50
+                }]
+            }
+        }),
+        DEFAULT_ECOSYSTEM_TREASURY_CONTROLLER_SLOT,
+        1,
+        &[0x25],
+    );
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("empty treasury allowlist must fail");
+    assert!(err.to_string().contains("allowlist is empty"));
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_treasury_when_threshold_not_met() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new(
+            "node-token-treasury-threshold-miss",
+            "world-token-treasury-threshold-miss",
+            NodeRole::Observer,
+        )
+        .expect("config")
+        .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
+        .expect("controller binding"),
+    );
+    let payload = encode_threshold_signed_main_token_runtime_payload(
+        json!({
+            "type": "DistributeMainTokenTreasury",
+            "data": {
+                "proposal_id": 1,
+                "distribution_id": "treasury-1",
+                "bucket_id": "ecosystem_pool",
+                "distributions": [{
+                    "account_id": "protocol:ecosystem-grant",
+                    "amount": 50
+                }]
+            }
+        }),
+        DEFAULT_ECOSYSTEM_TREASURY_CONTROLLER_SLOT,
+        1,
+        &[0x25],
+    );
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("treasury threshold mismatch must fail");
+    assert!(err.to_string().contains("threshold mismatch"));
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_treasury_when_signer_not_allowlisted() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new(
+            "node-token-treasury-allowlist-miss",
+            "world-token-treasury-allowlist-miss",
+            NodeRole::Observer,
+        )
+        .expect("config")
+        .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 1, &[0x25]))
+        .expect("controller binding"),
     );
     let payload = encode_signed_main_token_runtime_payload(
         json!({
@@ -682,43 +1030,12 @@ fn submit_consensus_action_payload_accepts_signed_main_token_treasury_action() {
             }
         }),
         DEFAULT_ECOSYSTEM_TREASURY_CONTROLLER_SLOT,
-        0x25,
-    );
-    runtime
-        .submit_consensus_action_payload(1, payload)
-        .expect("signed treasury payload should pass");
-}
-
-#[test]
-fn submit_consensus_action_payload_rejects_signed_main_token_treasury_action_with_wrong_controller_slot() {
-    let runtime = NodeRuntime::new(
-        NodeConfig::new(
-            "node-token-treasury-wrong-slot",
-            "world-token-treasury-wrong-slot",
-            NodeRole::Observer,
-        )
-        .expect("config"),
-    );
-    let payload = encode_signed_main_token_runtime_payload(
-        json!({
-            "type": "DistributeMainTokenTreasury",
-            "data": {
-                "proposal_id": 1,
-                "distribution_id": "treasury-1",
-                "bucket_id": "ecosystem_pool",
-                "distributions": [{
-                    "account_id": "protocol:ecosystem-grant",
-                    "amount": 50
-                }]
-            }
-        }),
-        "msig.treasury.v1",
         0x27,
     );
     let err = runtime
         .submit_consensus_action_payload(1, payload)
-        .expect_err("wrong treasury controller slot must fail");
-    assert!(err.to_string().contains("treasury controller slot"));
+        .expect_err("treasury signer outside allowlist must fail");
+    assert!(err.to_string().contains("not allowlisted"));
 }
 
 #[test]

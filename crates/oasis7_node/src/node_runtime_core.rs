@@ -16,7 +16,7 @@ use crate::runtime_util::now_unix_ms;
 use crate::{
     NodeCommittedActionBatch, NodeCommittedActionBatchesHandle, NodeConfig, NodeConsensusAction,
     NodeConsensusSnapshot, NodeError, NodeExecutionHook, NodeMainTokenControllerBindingConfig,
-    NodeReplicationNetworkHandle, NodeRuntime,
+    NodeMainTokenControllerSignerPolicy, NodeReplicationNetworkHandle, NodeRuntime,
 };
 
 #[derive(Debug, Clone)]
@@ -65,14 +65,27 @@ enum LocalConsensusActionAuthEnvelope {
 #[serde(rename_all = "snake_case")]
 enum LocalMainTokenActionAuthScheme {
     Ed25519,
+    ThresholdEd25519,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct LocalMainTokenActionParticipantSignature {
+    public_key: String,
+    signature: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct LocalMainTokenActionAuthProof {
     scheme: LocalMainTokenActionAuthScheme,
     account_id: String,
-    public_key: String,
-    signature: String,
+    #[serde(default)]
+    public_key: Option<String>,
+    #[serde(default)]
+    signature: Option<String>,
+    #[serde(default)]
+    threshold: Option<u16>,
+    #[serde(default)]
+    participant_signatures: Vec<LocalMainTokenActionParticipantSignature>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -410,28 +423,99 @@ fn verify_local_main_token_action_auth(
     proof: &LocalMainTokenActionAuthProof,
     controller_binding: &NodeMainTokenControllerBindingConfig,
 ) -> Result<(), String> {
-    match proof.scheme {
-        LocalMainTokenActionAuthScheme::Ed25519 => {}
-    }
     let account_id = normalize_required_field(proof.account_id.as_str(), "main token auth account_id")?;
-    let public_key = normalize_public_key_field(proof.public_key.as_str(), "main token auth public key")?;
-    let payload = build_local_main_token_action_signing_payload(
-        action,
-        account_id.as_str(),
-        public_key.as_str(),
-    )?;
-    validate_local_main_token_action_account_binding(
-        action,
-        account_id.as_str(),
-        public_key.as_str(),
-        controller_binding,
-    )?;
-    verify_local_main_token_action_signature(
-        action,
-        public_key.as_str(),
-        proof.signature.as_str(),
-        payload.as_slice(),
-    )
+    match proof.scheme {
+        LocalMainTokenActionAuthScheme::Ed25519 => {
+            let public_key = normalize_public_key_field(
+                proof.public_key.as_deref().ok_or_else(|| {
+                    "main token auth public_key is required for ed25519".to_string()
+                })?,
+                "main token auth public key",
+            )?;
+            let payload = build_local_main_token_action_signing_payload(
+                action,
+                account_id.as_str(),
+                public_key.as_str(),
+            )?;
+            validate_local_main_token_action_account_binding(
+                action,
+                account_id.as_str(),
+                Some(public_key.as_str()),
+                controller_binding,
+            )?;
+            enforce_local_controller_signer_policy(
+                action,
+                account_id.as_str(),
+                controller_binding,
+                1,
+                &[public_key.as_str()],
+            )?;
+            verify_local_main_token_action_signature(
+                action,
+                public_key.as_str(),
+                proof.signature
+                    .as_deref()
+                    .ok_or_else(|| "main token auth signature is required for ed25519".to_string())?,
+                payload.as_slice(),
+            )
+        }
+        LocalMainTokenActionAuthScheme::ThresholdEd25519 => {
+            let threshold = proof.threshold.ok_or_else(|| {
+                "main token auth threshold is required for threshold_ed25519".to_string()
+            })?;
+            if threshold == 0 {
+                return Err("main token auth threshold must be > 0".to_string());
+            }
+            validate_local_main_token_action_account_binding(
+                action,
+                account_id.as_str(),
+                None,
+                controller_binding,
+            )?;
+            if proof.participant_signatures.len() < threshold as usize {
+                return Err(format!(
+                    "main token auth participant count below threshold: participants={} threshold={threshold}",
+                    proof.participant_signatures.len()
+                ));
+            }
+            let mut signer_public_keys = Vec::with_capacity(proof.participant_signatures.len());
+            let mut seen = std::collections::BTreeSet::new();
+            for participant in &proof.participant_signatures {
+                let public_key = normalize_public_key_field(
+                    participant.public_key.as_str(),
+                    "main token auth participant public key",
+                )?;
+                if !seen.insert(public_key.clone()) {
+                    return Err(format!(
+                        "duplicate main token auth participant public key: {public_key}"
+                    ));
+                }
+                let payload = build_local_main_token_action_signing_payload(
+                    action,
+                    account_id.as_str(),
+                    public_key.as_str(),
+                )?;
+                verify_local_main_token_action_signature(
+                    action,
+                    public_key.as_str(),
+                    participant.signature.as_str(),
+                    payload.as_slice(),
+                )?;
+                signer_public_keys.push(public_key);
+            }
+            let signer_refs = signer_public_keys
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>();
+            enforce_local_controller_signer_policy(
+                action,
+                account_id.as_str(),
+                controller_binding,
+                threshold,
+                signer_refs.as_slice(),
+            )
+        }
+    }
 }
 
 fn build_local_main_token_action_signing_payload(
@@ -453,7 +537,7 @@ fn build_local_main_token_action_signing_payload(
 fn validate_local_main_token_action_account_binding(
     action: &JsonValue,
     account_id: &str,
-    public_key: &str,
+    public_key: Option<&str>,
     controller_binding: &NodeMainTokenControllerBindingConfig,
 ) -> Result<(), String> {
     let action_kind = local_runtime_action_kind(action).unwrap_or("unknown");
@@ -470,6 +554,9 @@ fn validate_local_main_token_action_account_binding(
                     "main token auth account_id does not match transfer from_account_id: expected={from_account_id} actual={account_id}"
                 ));
             }
+            let public_key = public_key.ok_or_else(|| {
+                "main token auth public key is required for transfer binding".to_string()
+            })?;
             let expected = main_token_account_id_from_public_key(public_key);
             if account_id != expected {
                 return Err(format!(
@@ -489,6 +576,9 @@ fn validate_local_main_token_action_account_binding(
                 ));
             }
             if beneficiary.starts_with("awt:pk:") {
+                let public_key = public_key.ok_or_else(|| {
+                    "main token auth public key is required for awt:pk claim binding".to_string()
+                })?;
                 let expected = main_token_account_id_from_public_key(public_key);
                 if account_id != expected {
                     return Err(format!(
@@ -529,6 +619,73 @@ fn validate_local_main_token_action_account_binding(
         other => return Err(format!("main token auth is not supported for action {other}")),
     }
     Ok(())
+}
+
+fn enforce_local_controller_signer_policy(
+    action: &JsonValue,
+    account_id: &str,
+    controller_binding: &NodeMainTokenControllerBindingConfig,
+    proof_threshold: u16,
+    signer_public_keys: &[&str],
+) -> Result<(), String> {
+    let Some(policy) =
+        local_controller_signer_policy_for_action(action, account_id, controller_binding)?
+    else {
+        return Ok(());
+    };
+    if policy.allowed_public_keys.is_empty() {
+        return Err(format!(
+            "main token controller signer allowlist is empty: controller_account_id={account_id}"
+        ));
+    }
+    if policy.threshold != proof_threshold {
+        return Err(format!(
+            "main token controller signer threshold mismatch: controller_account_id={account_id} expected={} actual={proof_threshold}",
+            policy.threshold
+        ));
+    }
+    let mut unique = std::collections::BTreeSet::new();
+    for public_key in signer_public_keys {
+        if !unique.insert((*public_key).to_string()) {
+            continue;
+        }
+        if !policy.allowed_public_keys.contains(*public_key) {
+            return Err(format!(
+                "main token controller signer is not allowlisted: controller_account_id={account_id} public_key={public_key}"
+            ));
+        }
+    }
+    if unique.len() < usize::from(policy.threshold) {
+        return Err(format!(
+            "main token controller signer threshold not met: controller_account_id={account_id} unique_signers={} threshold={}",
+            unique.len(),
+            policy.threshold
+        ));
+    }
+    Ok(())
+}
+
+fn local_controller_signer_policy_for_action<'a>(
+    action: &JsonValue,
+    account_id: &str,
+    controller_binding: &'a NodeMainTokenControllerBindingConfig,
+) -> Result<Option<&'a NodeMainTokenControllerSignerPolicy>, String> {
+    match local_runtime_action_kind(action) {
+        Some("InitializeMainTokenGenesis") | Some("DistributeMainTokenTreasury") => {
+            controller_binding
+                .controller_signer_policies
+                .get(account_id)
+                .ok_or_else(|| {
+                    format!(
+                        "main token controller signer policy is not configured: controller_account_id={account_id}"
+                    )
+                })
+                .map(Some)
+        }
+        Some("TransferMainToken") | Some("ClaimMainTokenVesting") => Ok(None),
+        Some(other) => Err(format!("main token auth is not supported for action {other}")),
+        None => Err("runtime action missing type".to_string()),
+    }
 }
 
 fn verify_local_main_token_action_signature(

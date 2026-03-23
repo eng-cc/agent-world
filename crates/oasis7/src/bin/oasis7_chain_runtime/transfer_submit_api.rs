@@ -1227,8 +1227,10 @@ fn build_transfer_submit_auth_proof(
     MainTokenActionAuthProof {
         scheme: MainTokenActionAuthScheme::Ed25519,
         account_id: request.from_account_id.clone(),
-        public_key: request.public_key.clone(),
-        signature: request.signature.clone(),
+        public_key: Some(request.public_key.clone()),
+        signature: Some(request.signature.clone()),
+        threshold: None,
+        participant_signatures: Vec::new(),
     }
 }
 

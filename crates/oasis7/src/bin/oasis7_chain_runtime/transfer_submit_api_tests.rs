@@ -136,7 +136,8 @@ fn build_signed_transfer_request_with_accounts(
         private_key.as_str(),
     )
     .expect("sign transfer request")
-    .signature;
+    .signature
+    .expect("single signer transfer proof signature");
     request
 }
 

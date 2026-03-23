@@ -77,8 +77,8 @@ pub use replication::NodeReplicationConfig;
 pub use types::{
     NodeCommittedActionBatch, NodeConfig, NodeConsensusMode, NodeConsensusSnapshot,
     NodeFeedbackP2pConfig, NodeGossipConfig, NodeMainTokenControllerBindingConfig,
-    NodePeerCommittedHead, NodePosConfig, NodeReplicaMaintenanceConfig, NodeRole, NodeSnapshot,
-    PosConsensusStatus, PosValidator,
+    NodeMainTokenControllerSignerPolicy, NodePeerCommittedHead, NodePosConfig,
+    NodeReplicaMaintenanceConfig, NodeRole, NodeSnapshot, PosConsensusStatus, PosValidator,
 };
 
 use feedback_runtime::{

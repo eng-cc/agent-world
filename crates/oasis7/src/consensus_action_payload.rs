@@ -29,20 +29,33 @@ pub enum ConsensusActionAuthEnvelope {
 #[serde(rename_all = "snake_case")]
 pub enum MainTokenActionAuthScheme {
     Ed25519,
+    ThresholdEd25519,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MainTokenActionParticipantSignature {
+    pub public_key: String,
+    pub signature: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MainTokenActionAuthProof {
     pub scheme: MainTokenActionAuthScheme,
     pub account_id: String,
-    pub public_key: String,
-    pub signature: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub threshold: Option<u16>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub participant_signatures: Vec<MainTokenActionParticipantSignature>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerifiedMainTokenActionAuth {
     pub account_id: String,
-    pub public_key: String,
+    pub signer_public_keys: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -157,12 +170,69 @@ pub fn sign_main_token_runtime_action_auth(
     Ok(MainTokenActionAuthProof {
         scheme: MainTokenActionAuthScheme::Ed25519,
         account_id,
-        public_key,
-        signature: format!(
+        public_key: Some(public_key),
+        signature: Some(format!(
             "{}{}",
             main_token_action_signature_prefix(action)?,
             hex::encode(signature.to_bytes())
-        ),
+        )),
+        threshold: None,
+        participant_signatures: Vec::new(),
+    })
+}
+
+pub fn sign_threshold_main_token_runtime_action_auth(
+    action: &runtime::Action,
+    account_id: &str,
+    threshold: u16,
+    signer_keypairs: &[(&str, &str)],
+) -> Result<MainTokenActionAuthProof, MainTokenActionAuthError> {
+    ensure_main_token_action_supported(action)?;
+    if threshold == 0 {
+        return Err(MainTokenActionAuthError::InvalidRequest(
+            "main token auth threshold must be > 0".to_string(),
+        ));
+    }
+    let account_id = normalize_required_field(account_id, "main token auth account_id")?;
+    if signer_keypairs.len() < threshold as usize {
+        return Err(MainTokenActionAuthError::InvalidRequest(format!(
+            "main token auth participant count below threshold: participants={} threshold={threshold}",
+            signer_keypairs.len()
+        )));
+    }
+    let mut participant_signatures = Vec::with_capacity(signer_keypairs.len());
+    for (public_key_hex, private_key_hex) in signer_keypairs {
+        let public_key =
+            normalize_public_key_field(public_key_hex, "main token auth signer public key")?;
+        let signing_key =
+            signing_key_from_hex(private_key_hex, "main token auth signer private key")?;
+        verify_keypair_match(
+            &signing_key,
+            public_key.as_str(),
+            "main token auth signer public key",
+        )?;
+        let payload = build_main_token_action_signing_payload(
+            action,
+            account_id.as_str(),
+            public_key.as_str(),
+        )?;
+        let signature: Signature = signing_key.sign(payload.as_slice());
+        participant_signatures.push(MainTokenActionParticipantSignature {
+            public_key,
+            signature: format!(
+                "{}{}",
+                main_token_action_signature_prefix(action)?,
+                hex::encode(signature.to_bytes())
+            ),
+        });
+    }
+    Ok(MainTokenActionAuthProof {
+        scheme: MainTokenActionAuthScheme::ThresholdEd25519,
+        account_id,
+        public_key: None,
+        signature: None,
+        threshold: Some(threshold),
+        participant_signatures,
     })
 }
 
@@ -171,26 +241,92 @@ pub fn verify_main_token_runtime_action_auth(
     proof: &MainTokenActionAuthProof,
 ) -> Result<VerifiedMainTokenActionAuth, MainTokenActionAuthError> {
     ensure_main_token_action_supported(action)?;
-    match proof.scheme {
-        MainTokenActionAuthScheme::Ed25519 => {}
-    }
     let account_id =
         normalize_required_field(proof.account_id.as_str(), "main token auth account_id")?;
-    let public_key =
-        normalize_public_key_field(proof.public_key.as_str(), "main token auth public key")?;
-    let payload =
-        build_main_token_action_signing_payload(action, account_id.as_str(), public_key.as_str())?;
-    validate_main_token_action_account_binding(action, account_id.as_str(), public_key.as_str())?;
-    verify_main_token_action_signature(
-        action,
-        public_key.as_str(),
-        proof.signature.as_str(),
-        payload.as_slice(),
-    )?;
-    Ok(VerifiedMainTokenActionAuth {
-        account_id,
-        public_key,
-    })
+    match proof.scheme {
+        MainTokenActionAuthScheme::Ed25519 => {
+            let public_key = normalize_public_key_field(
+                proof.public_key.as_deref().ok_or_else(|| {
+                    MainTokenActionAuthError::InvalidRequest(
+                        "main token auth public_key is required for ed25519".to_string(),
+                    )
+                })?,
+                "main token auth public key",
+            )?;
+            let payload = build_main_token_action_signing_payload(
+                action,
+                account_id.as_str(),
+                public_key.as_str(),
+            )?;
+            validate_main_token_action_account_binding(
+                action,
+                account_id.as_str(),
+                Some(public_key.as_str()),
+            )?;
+            verify_main_token_action_signature(
+                action,
+                public_key.as_str(),
+                proof.signature.as_deref().ok_or_else(|| {
+                    MainTokenActionAuthError::InvalidRequest(
+                        "main token auth signature is required for ed25519".to_string(),
+                    )
+                })?,
+                payload.as_slice(),
+            )?;
+            Ok(VerifiedMainTokenActionAuth {
+                account_id,
+                signer_public_keys: vec![public_key],
+            })
+        }
+        MainTokenActionAuthScheme::ThresholdEd25519 => {
+            let threshold = proof.threshold.ok_or_else(|| {
+                MainTokenActionAuthError::InvalidRequest(
+                    "main token auth threshold is required for threshold_ed25519".to_string(),
+                )
+            })?;
+            if threshold == 0 {
+                return Err(MainTokenActionAuthError::InvalidRequest(
+                    "main token auth threshold must be > 0".to_string(),
+                ));
+            }
+            validate_main_token_action_account_binding(action, account_id.as_str(), None)?;
+            if proof.participant_signatures.len() < threshold as usize {
+                return Err(MainTokenActionAuthError::InvalidRequest(format!(
+                    "main token auth participant count below threshold: participants={} threshold={threshold}",
+                    proof.participant_signatures.len()
+                )));
+            }
+            let mut signer_public_keys = Vec::with_capacity(proof.participant_signatures.len());
+            let mut seen = std::collections::BTreeSet::new();
+            for participant in &proof.participant_signatures {
+                let public_key = normalize_public_key_field(
+                    participant.public_key.as_str(),
+                    "main token auth participant public key",
+                )?;
+                if !seen.insert(public_key.clone()) {
+                    return Err(MainTokenActionAuthError::InvalidRequest(format!(
+                        "duplicate main token auth participant public key: {public_key}"
+                    )));
+                }
+                let payload = build_main_token_action_signing_payload(
+                    action,
+                    account_id.as_str(),
+                    public_key.as_str(),
+                )?;
+                verify_main_token_action_signature(
+                    action,
+                    public_key.as_str(),
+                    participant.signature.as_str(),
+                    payload.as_slice(),
+                )?;
+                signer_public_keys.push(public_key);
+            }
+            Ok(VerifiedMainTokenActionAuth {
+                account_id,
+                signer_public_keys,
+            })
+        }
+    }
 }
 
 pub fn encode_consensus_action_payload(
@@ -255,7 +391,7 @@ fn build_main_token_action_signing_payload(
 fn validate_main_token_action_account_binding(
     action: &runtime::Action,
     account_id: &str,
-    public_key: &str,
+    public_key: Option<&str>,
 ) -> Result<(), MainTokenActionAuthError> {
     match action {
         runtime::Action::TransferMainToken {
@@ -267,6 +403,11 @@ fn validate_main_token_action_account_binding(
                     from_account_id.trim()
                 )));
             }
+            let public_key = public_key.ok_or_else(|| {
+                MainTokenActionAuthError::InvalidRequest(
+                    "main token auth public key is required for transfer binding".to_string(),
+                )
+            })?;
             let expected = runtime::main_token_account_id_from_node_public_key(public_key);
             if account_id != expected {
                 return Err(MainTokenActionAuthError::AccountMismatch(format!(
@@ -282,6 +423,12 @@ fn validate_main_token_action_account_binding(
                 )));
             }
             if beneficiary.trim().starts_with("awt:pk:") {
+                let public_key = public_key.ok_or_else(|| {
+                    MainTokenActionAuthError::InvalidRequest(
+                        "main token auth public key is required for awt:pk claim binding"
+                            .to_string(),
+                    )
+                })?;
                 let expected = runtime::main_token_account_id_from_node_public_key(public_key);
                 if account_id != expected {
                     return Err(MainTokenActionAuthError::AccountMismatch(format!(
