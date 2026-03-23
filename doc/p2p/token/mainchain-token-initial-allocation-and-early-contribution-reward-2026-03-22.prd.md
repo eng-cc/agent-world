@@ -3,7 +3,7 @@
 - 对应设计文档: `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.design.md`
 - 对应项目管理文档: `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.project.md`
 
-审计轮次: 1
+审计轮次: 2
 ## 1. Executive Summary
 - Problem Statement: oasis7 已具备主链 Token 创世分配、锁仓领取与 treasury 分发能力，但尚未冻结“创世怎么分、谁控制多少、何时释放、早期玩家是否发币”的统一口径。若继续口头决策，容易在 limited playable technical preview 阶段过早流通、单人过度控盘，或误滑向 `play-to-earn`。
 - Proposed Solution: 冻结一版 producer-owned 初始分配与早期贡献奖励 PRD，明确 `10000 bps` 创世分配表、项目战略控制比例、创始人个人直持上限、低流通门禁，以及“贡献制奖励而非时长挖矿”的发放规则，并映射到现有 runtime 创世/金库能力。
@@ -13,11 +13,13 @@
   - SC-3: 协议奖励池口径固定为 `3500 bps`，且不得被计入创始人或团队可自由处置库存。
   - SC-4: 创世液态流通硬上限 `500 bps`；首 12 个月非团队外部释放目标 `100~200 bps`、硬上限 `500 bps`。
   - SC-5: 早期奖励只允许按可审计贡献发放，不允许 `play-to-earn`、`login reward`、`time played = token` 或对外宣传“来玩就有币”。
+  - SC-6: `TIGR-5` 必须把创世参数草案收成正式执行清单，固定每个 bucket 的 slot id、控制主体、签名规则、runtime 落点、amount rounding 规则与 pre-mint freeze gate。
 
 ## 2. User Experience & Functionality
 - User Personas:
   - `producer_system_designer`：需要在主网上线前冻结长期经济结构与控盘边界。
   - 金库/治理维护者：需要把创世分配映射到具体 bucket、账号、多签与 vesting 参数。
+  - `runtime_engineer`：需要把创世分配从逻辑草案推进到可执行的 pre-mint freeze sheet，而不是临场拼接参数。
   - `liveops_community`：需要为 limited preview 早期贡献奖励制定对外可执行、不过度承诺的标准。
   - `qa_engineer`：需要验证创世配置、低流通与奖励语义没有越界。
 - User Scenarios & Frequency:
@@ -72,6 +74,8 @@
   - AC-8: 分配表必须能映射到现有 runtime 能力：创世分配走 `InitializeMainTokenGenesis`，锁仓释放走 `ClaimMainTokenVesting`；`TIGR-1` 输出的 `protocol:*` recipient 当前表示 custody account，而不是直接初始化 `main_token_treasury_balances`。
   - AC-9: `TIGR-1` 必须产出 7 条创世 bucket 参数草案，明确 `recipient/start_epoch/cliff_epochs/linear_unlock_epochs/genesis_liquid/claim_policy`，并把 `node_service/staking/ecosystem/security` 的创世 custody 账户与 post-genesis treasury bucket 语义分开。
   - AC-10: `TIGR-4` 必须冻结当前执行路径为“`early_contributor_reward_reserve` 在 limited preview 期间保持 `protocol:early-contributor-reward` 多签治理执行，不并入 `ecosystem_pool`”；只有在真实奖励轮次、审计台账与治理成熟度都跑出来后，才允许另开专题重审是否合并。
+  - AC-11: `TIGR-5` 必须输出正式执行清单，至少包含 `recipient_slot_id/controller_slot_id/signer_policy/runtime_target/allocated_amount_rule/freeze_status` 六类字段，并明确当前哪些 slot 仍待真实地址绑定。
+  - AC-12: 创世金额换算必须固定为 runtime 真值：先按 `floor(initial_supply * ratio_bps / 10000)` 计算每个 bucket 的 `allocated_amount`，再按 `ratio_bps` 降序、`bucket_id` 升序分配 remainder；执行清单不得使用与 runtime 不一致的手工舍入规则。
 - Non-Goals:
   - 本专题不决定总供应量绝对数值（如 `1e8` 或 `1e9`），只冻结比例和控制边界。
   - 不在本专题给出法律意见、证券属性判断、税务结论或上市计划。
@@ -87,6 +91,7 @@
 - Integration Points:
   - `doc/p2p/token/mainchain-token-allocation-mechanism.prd.md`
   - `doc/p2p/token/mainchain-token-allocation-mechanism-phase2-governance-bridge-distribution-2026-02-26.prd.md`
+  - `doc/p2p/token/mainchain-token-genesis-parameter-freeze-sheet-2026-03-22.md`
   - `doc/game/prd.md`
   - `doc/game/gameplay/gameplay-limited-preview-execution-2026-03-22.prd.md`
   - `crates/oasis7/src/runtime/main_token.rs`
@@ -95,10 +100,15 @@
   - `TIGR-4` 当前选定 `early_contributor_reward_reserve -> protocol:early-contributor-reward -> reward multisig + producer approval` 作为 limited preview 执行路径。
   - 当前不把 early contributor reserve 合并进 `ecosystem_pool`，避免在 runtime 语义尚未直连 treasury bucket、且真实奖励轮次尚未跑完时，把“贡献奖励”与“生态 grant”混成同一个公开口径。
   - 若未来需要 fully on-chain、proposal-bound 的 contributor distribution，应在新的治理专题里同时回答“运行时映射”“审计透明度”“社区预期”三项问题后再迁移。
+- Formal Freeze Sheet Decision:
+  - `TIGR-5` 使用 slot-based execution sheet 把逻辑账户、控制主体和签名要求冻结为正式执行清单；在真实地址未绑定前，允许 `ready_pending_address_binding`，但不得宣称可直接 mint。
+  - 由于本专题仍不决定总供应绝对值，执行清单固定的是 `allocated_amount` 算法与 slot registry，而不是提前伪造最终绝对金额。
 - Edge Cases & Error Handling:
   - 若创世 bucket 比例和不为 `10000 bps`，则候选配置直接拒绝。
   - 若任一自然人直接受益份额超过 `1500 bps`，则创世配置直接退回。
   - 若把创世 recipient 误写成 treasury bucket 语义并假定 runtime 会自动记入 `main_token_treasury_balances`，则必须退回；当前实现只会记入 recipient account 的 `vested_balance`。
+  - 若 execution sheet 的 `recipient_slot_id` 已冻结，但真实 `recipient_account_id` 未绑定，则最多只能给 `conditional_draft_only`，不得进入最终 mint 执行。
+  - 若 execution sheet 使用与 runtime 不一致的 rounding 规则，则必须退回；不得靠人工补差额绕过 `allocated_sum == total_supply` 约束。
   - 若某奖励提案无法附带可审计贡献证据，则不得发放。
   - 若外部文案把奖励描述为 `play-to-earn`、`airdrop for playing` 或“来玩就有币”，则 `liveops_community` 必须退回改稿。
   - 若产品仍无 invite-only 功能，则 reward eligibility 只能依赖运营筛选与贡献审核，不得宣称链上准入门槛已存在。
@@ -130,8 +140,8 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-P2P-TOKEN-INIT-001 | TIGR-0/TIGR-1 | `test_tier_required` | 分配表、bucket/account/vesting 参数表、比例求和、单人直持上限与 `genesis_liquid=0` 审计 | 创世配置与控盘边界 |
-| PRD-P2P-TOKEN-INIT-002 | TIGR-1/TIGR-2/TIGR-4 | `test_tier_required` | runtime 映射检查、金库/多签控制路径检查、流通上限门禁 | 创世落地路径与 treasury 执行 |
+| PRD-P2P-TOKEN-INIT-001 | TIGR-0/TIGR-1/TIGR-5 | `test_tier_required` | 分配表、bucket/account/vesting 参数表、正式执行清单、比例求和、单人直持上限与 `genesis_liquid=0` 审计 | 创世配置与控盘边界 |
+| PRD-P2P-TOKEN-INIT-002 | TIGR-1/TIGR-2/TIGR-4/TIGR-5 | `test_tier_required` | runtime 映射检查、金库/多签控制路径检查、slot registry 与流通上限门禁 | 创世落地路径与 treasury 执行 |
 | PRD-P2P-TOKEN-INIT-003 | TIGR-2/TIGR-3/TIGR-4 | `test_tier_required` | 贡献证据模板、运营文案禁语检查、奖励台账抽检 | limited preview 奖励发放与外部口径 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
@@ -141,3 +151,4 @@
 | DEC-TOKEN-INIT-003 | 早期奖励采用 contribution-based reward | 开放式 play-to-earn / login reward / time-play mining | 当前阶段仍是技术预览，不能把代币激励建立在泛流量和挂机行为上。 |
 | DEC-TOKEN-INIT-004 | 协议奖励池与项目战略控制分开记账和对外表述 | 将 treasury custody 与团队库存混用 | 避免治理资产与个人/团队资产混淆。 |
 | DEC-TOKEN-INIT-005 | limited preview 期间保持 `early_contributor_reward_reserve` 独立多签治理执行，不并入 `ecosystem_pool` | 现在就把贡献奖励储备并入 `ecosystem_pool` | 当前 runtime 创世语义仍以 custody account 为主，且真实奖励轮次与治理成熟度尚不足以支撑立即合并。 |
+| DEC-TOKEN-INIT-006 | 用 slot-based 正式执行清单冻结创世参数，并把真实地址绑定留到 mint 前最后一步 | 继续只保留逻辑草案，等执行当天再临场补账号与舍入 | 创世参数一旦进入执行，需要预先冻结 slot、签名要求、runtime 落点和 rounding 规则，减少临场错误面。 |

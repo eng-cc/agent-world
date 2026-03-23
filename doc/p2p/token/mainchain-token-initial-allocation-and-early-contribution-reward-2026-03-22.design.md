@@ -48,6 +48,17 @@
 - 原因-3：`TIGR-3` 已把奖励口径固定为 contribution-based review，如果现在并入 `ecosystem_pool`，会放大对外对 grant / reward / airdrop 的语义混淆。
 - 重审条件：至少完成 1~2 轮真实贡献奖励台账、审批记录与复盘，再由新专题决定是否迁移到 fully on-chain 的治理分发路径。
 
+## 3.4 TIGR-5 正式执行清单
+- 目标：把 `TIGR-1` 的逻辑草案收成 pre-mint freeze sheet，明确每个 bucket 的 `recipient_slot_id / controller_slot_id / signer_policy / runtime_target / freeze_status`。
+- runtime 真值：
+  - `Action::InitializeMainTokenGenesis` 输入的是 `MainTokenGenesisAllocationPlan`。
+  - runtime 会先按 `floor(initial_supply * ratio_bps / 10000)` 计算 `allocated_amount`，再将 remainder 按 `ratio_bps` 降序、`bucket_id` 升序逐个补 1。
+  - 生成的 `MainTokenGenesisAllocationBucketState` 会写入 `main_token_genesis_buckets`，并把 recipient 对应账户的 `vested_balance` 初始化为聚合后的已分配金额。
+- 冻结原则：
+  - 逻辑参数、slot registry、签名规则和 rounding 规则现在冻结。
+  - 真实链上 `recipient_account_id` 与 multisig 地址允许后补，但在补齐前 freeze status 只能是 `ready_pending_address_binding`。
+  - 最终 mint 前仍必须以 QA checklist 输出 `pass`，不能把 formal sheet 当作最终放行。
+
 ## 4. 约束与边界
 - 创世分配总和必须为 `10000 bps`。
 - 项目战略控制目标为 `5000 bps`，单人直接受益硬上限为 `1500 bps`。
@@ -58,5 +69,7 @@
 ## 5. 设计演进计划
 - 先冻结比例和控制边界。
 - 再落实具体 bucket/account/vesting 参数表与审计 checklist。
+- 再输出 slot-based 正式执行清单，固定 runtime 落点与 rounding 规则。
 - limited preview 期间先按独立 reward reserve 多签执行。
-- 后续根据真实奖励轮次与治理成熟度，再决定 early contributor reserve 的长期执行载体。
+- 后续先绑定真实地址并跑 QA 最终审计，再决定是否进入 mint 准备。
+- 更后续根据真实奖励轮次与治理成熟度，再决定 early contributor reserve 的长期执行载体。

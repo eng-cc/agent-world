@@ -3,13 +3,15 @@
 - 对应设计文档: `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.design.md`
 - 对应需求文档: `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
 
-审计轮次: 4
+审计轮次: 5
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TIGR-0 (PRD-P2P-TOKEN-INIT-001/002/003) [test_tier_required]: 完成 Token 初始分配与早期贡献奖励专题 PRD / design / project 建档，并接入 `doc/p2p` 模块主追踪。
 - [x] TIGR-1 (PRD-P2P-TOKEN-INIT-001/002) [test_tier_required]: 由 `runtime_engineer` 输出创世 bucket/account/recipient/vesting 参数表草案，明确当前实现下所有创世 bucket 都先进入 recipient `vested_balance`，并区分 custody account 与 post-genesis treasury bucket 语义。
 - [x] TIGR-2 (PRD-P2P-TOKEN-INIT-002/003) [test_tier_required]: 由 `qa_engineer` 建立创世配置审计清单，覆盖 `sum=10000 bps`、单人直持上限、创世液态流通上限、首年外部释放上限与 custody/treasury 语义边界。
 - [x] TIGR-3 (PRD-P2P-TOKEN-INIT-003) [test_tier_required]: 由 `liveops_community` 输出 limited preview 早期贡献奖励评分模板、证据字段、奖励建议档位与对外禁语清单，明确该流程不依赖 invite-only、也不公开固定 token 汇率。
 - [x] TIGR-4 (PRD-P2P-TOKEN-INIT-002/003) [test_tier_required]: 由 `producer_system_designer` 基于 `TIGR-1~3` 做最终发行前评审，决定 early contributor reserve 在 limited preview 阶段保持多签治理执行，不并入 `ecosystem_pool`，并把“后续是否 fully on-chain”留给未来专题重审。
+- [x] TIGR-5 (PRD-P2P-TOKEN-INIT-001/002) [test_tier_required]: 由 `runtime_engineer` 将 `TIGR-1` 草案收成正式执行清单，固定 slot registry、控制主体、签名规则、runtime 落点、amount rounding 规则与 pre-mint freeze gate。
+- [ ] TIGR-6 (PRD-P2P-TOKEN-INIT-001/002) [test_tier_required]: 绑定真实 `recipient_account_id` / multisig 地址、补创始人个人受益拆分表，并用 QA 模板输出最终 `pass` 或 `block`。
 
 ## TIGR-1 产物（本地草案，待 review）
 | bucket_id | ratio_bps | recipient | start_epoch | cliff_epochs | linear_unlock_epochs | genesis_liquid | ownership_note |
@@ -28,6 +30,18 @@
 - 协议长期储备总和为 `3500 bps`
 - 全部 bucket `genesis_liquid=0`
 - `recipient` 当前均为 custody account 命名草案，不假装已初始化 treasury bucket
+
+## TIGR-5 正式执行清单结论
+- 产物：
+  - `doc/p2p/token/mainchain-token-genesis-parameter-freeze-sheet-2026-03-22.md`
+- 已冻结内容：
+  - 7 个 bucket 的 `recipient_slot_id / controller_slot_id / signer_policy / start_epoch / cliff_epochs / linear_unlock_epochs / claim cadence`
+  - runtime 真值落点：`InitializeMainTokenGenesis -> MainTokenGenesisAllocationBucketState -> recipient.vested_balance`
+  - `allocated_amount` 计算规则：先 `floor(initial_supply * ratio_bps / 10000)`，再按 `ratio_bps` 降序、`bucket_id` 升序分配 remainder
+- 仍待完成：
+  - 真实 `recipient_account_id` / multisig 地址绑定
+  - 创始人个人受益拆分表
+  - QA 最终 `pass`
 
 ## TIGR-4 评审结论
 - 决策：当前 limited preview 期间，`early_contributor_reward_reserve` 保持 `protocol:early-contributor-reward` 独立 reward multisig 执行路径，不并入 `ecosystem_pool`。
@@ -49,6 +63,7 @@
 - `doc/readme/governance/readme-limited-preview-contributor-reward-pack-2026-03-22.md`
 - `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.prd.md`
 - `doc/readme/governance/readme-limited-preview-contributor-reward-ledger-2026-03-22.md`
+- `doc/p2p/token/mainchain-token-genesis-parameter-freeze-sheet-2026-03-22.md`
 - `doc/p2p/prd.md`
 - `doc/game/prd.md`
 - `doc/game/gameplay/gameplay-limited-preview-execution-2026-03-22.prd.md`
@@ -56,7 +71,7 @@
 - `testing-manual.md`
 
 ## 状态
-- 当前阶段：completed
-- 下一步：基于 `readme-limited-preview-contributor-reward-ledger-2026-03-22` 模板填首轮真实贡献奖励台账；若未来要把 early contributor reserve fully on-chain 化，需新开专题。
+- 当前阶段：active
+- 下一步：执行 `TIGR-6`，绑定真实 `recipient_account_id` / multisig 地址、补创始人个人受益拆分表，并基于 QA 模板输出最终 `pass/block`。
 - 最近更新：2026-03-22
-- 备注：`TIGR-1~4` 已完成并形成当前发行前冻结结论，且真实台账模板已就绪；但仍未执行真实创世或真实对外发币。在新的治理专题明确前，不得把早期贡献奖励写成公开发币活动，也不得把 reward reserve 自动并入 `ecosystem_pool`。
+- 备注：`TIGR-1~5` 已完成并形成当前发行前冻结结论与正式执行清单；但真实地址绑定、个人拆分表和 QA 最终 `pass` 仍未完成。在新的治理专题明确前，不得把早期贡献奖励写成公开发币活动，也不得把 reward reserve 自动并入 `ecosystem_pool`。
