@@ -5,9 +5,17 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use super::*;
+use ed25519_dalek::{Signature, Signer, SigningKey};
 use oasis7_distfs::{
     public_key_hex_from_signing_key_hex, sign_feedback_create_request, FeedbackCreateRequest,
 };
+use serde::Serialize;
+use serde_json::{json, Value as JsonValue};
+
+const MAIN_TOKEN_TRANSFER_AUTH_SIGNATURE_V1_PREFIX: &str = "awttransferauth:v1:";
+const MAIN_TOKEN_CLAIM_AUTH_SIGNATURE_V1_PREFIX: &str = "awtclaimauth:v1:";
+const MAIN_TOKEN_GENESIS_AUTH_SIGNATURE_V1_PREFIX: &str = "awtgenesisauth:v1:";
+const MAIN_TOKEN_TREASURY_AUTH_SIGNATURE_V1_PREFIX: &str = "awttreasuryauth:v1:";
 
 #[derive(Clone)]
 struct RecordingExecutionHook {
@@ -35,6 +43,123 @@ impl NodeExecutionHook for RecordingExecutionHook {
             execution_state_root: format!("exec-state-{:020}", context.height),
         })
     }
+}
+
+fn token_auth_test_signer(seed: u8) -> (String, String) {
+    let private_key_hex = format!("{seed:02x}").repeat(32);
+    let public_key_hex =
+        public_key_hex_from_signing_key_hex(private_key_hex.as_str()).expect("derive pubkey");
+    (public_key_hex, private_key_hex)
+}
+
+#[derive(Serialize)]
+struct TestConsensusActionPayloadEnvelope {
+    version: u8,
+    auth: Option<TestConsensusActionAuthEnvelope>,
+    body: TestConsensusActionPayloadBody,
+}
+
+#[derive(Serialize)]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
+enum TestConsensusActionAuthEnvelope {
+    MainTokenAction(TestMainTokenActionAuthProof),
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+enum TestMainTokenActionAuthScheme {
+    Ed25519,
+}
+
+#[derive(Serialize)]
+struct TestMainTokenActionAuthProof {
+    scheme: TestMainTokenActionAuthScheme,
+    account_id: String,
+    public_key: String,
+    signature: String,
+}
+
+#[derive(Serialize)]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
+enum TestConsensusActionPayloadBody {
+    RuntimeAction { action: JsonValue },
+}
+
+#[derive(Serialize)]
+struct TestMainTokenActionSigningEnvelope<'a> {
+    version: u8,
+    operation: &'static str,
+    account_id: &'a str,
+    public_key: &'a str,
+    action: &'a JsonValue,
+}
+
+fn test_main_token_action_signature_prefix(action_kind: &str) -> &'static str {
+    match action_kind {
+        "TransferMainToken" => MAIN_TOKEN_TRANSFER_AUTH_SIGNATURE_V1_PREFIX,
+        "ClaimMainTokenVesting" => MAIN_TOKEN_CLAIM_AUTH_SIGNATURE_V1_PREFIX,
+        "InitializeMainTokenGenesis" => MAIN_TOKEN_GENESIS_AUTH_SIGNATURE_V1_PREFIX,
+        "DistributeMainTokenTreasury" => MAIN_TOKEN_TREASURY_AUTH_SIGNATURE_V1_PREFIX,
+        other => panic!("unsupported test action kind {other}"),
+    }
+}
+
+fn test_main_token_action_operation(action_kind: &str) -> &'static str {
+    match action_kind {
+        "TransferMainToken" => "transfer_main_token",
+        "ClaimMainTokenVesting" => "claim_main_token_vesting",
+        "InitializeMainTokenGenesis" => "initialize_main_token_genesis",
+        "DistributeMainTokenTreasury" => "distribute_main_token_treasury",
+        other => panic!("unsupported test action kind {other}"),
+    }
+}
+
+fn main_token_account_id_from_public_key(public_key_hex: &str) -> String {
+    format!("awt:pk:{}", public_key_hex.trim().to_ascii_lowercase())
+}
+
+fn encode_signed_main_token_runtime_payload(action: JsonValue, account_id: &str, seed: u8) -> Vec<u8> {
+    let (public_key_hex, private_key_hex) = token_auth_test_signer(seed);
+    let signing_key =
+        SigningKey::from_bytes(&hex::decode(private_key_hex).expect("decode private key").try_into().expect("32 bytes"));
+    let action_kind = action
+        .get("type")
+        .and_then(JsonValue::as_str)
+        .expect("action kind");
+    let signing_payload = serde_json::to_vec(&TestMainTokenActionSigningEnvelope {
+        version: 1,
+        operation: test_main_token_action_operation(action_kind),
+        account_id,
+        public_key: public_key_hex.as_str(),
+        action: &action,
+    })
+    .expect("encode signing payload");
+    let signature: Signature = signing_key.sign(signing_payload.as_slice());
+    let proof = TestMainTokenActionAuthProof {
+        scheme: TestMainTokenActionAuthScheme::Ed25519,
+        account_id: account_id.to_string(),
+        public_key: public_key_hex,
+        signature: format!(
+            "{}{}",
+            test_main_token_action_signature_prefix(action_kind),
+            hex::encode(signature.to_bytes())
+        ),
+    };
+    serde_cbor::to_vec(&TestConsensusActionPayloadEnvelope {
+        version: 1,
+        auth: Some(TestConsensusActionAuthEnvelope::MainTokenAction(proof)),
+        body: TestConsensusActionPayloadBody::RuntimeAction { action },
+    })
+    .expect("encode signed payload")
+}
+
+fn encode_unsigned_runtime_payload(action: JsonValue) -> Vec<u8> {
+    serde_cbor::to_vec(&TestConsensusActionPayloadEnvelope {
+        version: 1,
+        auth: None,
+        body: TestConsensusActionPayloadBody::RuntimeAction { action },
+    })
+    .expect("encode unsigned payload")
 }
 
 #[test]
@@ -310,17 +435,223 @@ fn submit_consensus_action_payload_rejects_queue_saturation() {
         .with_max_pending_consensus_actions(1)
         .expect("queue limit");
     let runtime = NodeRuntime::new(config);
+    let payload = encode_unsigned_runtime_payload(json!({
+        "type": "RegisterAgent",
+        "data": {
+            "agent_id": "queue-agent",
+            "pos": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        }
+    }));
     runtime
-        .submit_consensus_action_payload(1, vec![1_u8, 2, 3])
+        .submit_consensus_action_payload(1, payload.clone())
         .expect("first action should be accepted");
     let err = runtime
-        .submit_consensus_action_payload(2, vec![4_u8, 5, 6])
+        .submit_consensus_action_payload(2, payload)
         .expect_err("second action must fail after queue reaches limit");
     assert!(matches!(err, NodeError::Consensus { .. }));
     assert!(
         err.to_string().contains("queue saturated"),
         "unexpected error: {err}"
     );
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_unsigned_main_token_transfer_action() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new("node-token-transfer", "world-token-transfer", NodeRole::Observer)
+            .expect("config"),
+    );
+    let (public_key_hex, _) = token_auth_test_signer(0x21);
+    let payload = encode_unsigned_runtime_payload(json!({
+        "type": "TransferMainToken",
+        "data": {
+            "from_account_id": main_token_account_id_from_public_key(public_key_hex.as_str()),
+            "to_account_id": "protocol:receiver",
+            "amount": 7,
+            "nonce": 1
+        }
+    }));
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("unsigned transfer payload must fail");
+    assert!(err.to_string().contains("missing_main_token_auth"));
+}
+
+#[test]
+fn submit_consensus_action_payload_accepts_signed_main_token_transfer_action() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new("node-token-transfer-ok", "world-token-transfer-ok", NodeRole::Observer)
+            .expect("config"),
+    );
+    let (public_key_hex, _) = token_auth_test_signer(0x22);
+    let account_id = main_token_account_id_from_public_key(public_key_hex.as_str());
+    let payload = encode_signed_main_token_runtime_payload(
+        json!({
+            "type": "TransferMainToken",
+            "data": {
+                "from_account_id": account_id,
+                "to_account_id": "protocol:receiver",
+                "amount": 7,
+                "nonce": 1
+            }
+        }),
+        account_id.as_str(),
+        0x22,
+    );
+    runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect("signed transfer payload should pass");
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_unsigned_main_token_claim_action() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new("node-token-claim", "world-token-claim", NodeRole::Observer)
+            .expect("config"),
+    );
+    let payload = encode_unsigned_runtime_payload(json!({
+        "type": "ClaimMainTokenVesting",
+        "data": {
+            "bucket_id": "team_long_term_vesting",
+            "beneficiary": "protocol:team-core-vesting",
+            "nonce": 1
+        }
+    }));
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("unsigned claim payload must fail");
+    assert!(err.to_string().contains("missing_main_token_auth"));
+}
+
+#[test]
+fn submit_consensus_action_payload_accepts_signed_main_token_claim_action() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new("node-token-claim-ok", "world-token-claim-ok", NodeRole::Observer)
+            .expect("config"),
+    );
+    let payload = encode_signed_main_token_runtime_payload(
+        json!({
+            "type": "ClaimMainTokenVesting",
+            "data": {
+                "bucket_id": "team_long_term_vesting",
+                "beneficiary": "protocol:team-core-vesting",
+                "nonce": 1
+            }
+        }),
+        "protocol:team-core-vesting",
+        0x23,
+    );
+    runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect("signed claim payload should pass");
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_unsigned_main_token_genesis_action() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new("node-token-genesis", "world-token-genesis", NodeRole::Observer)
+            .expect("config"),
+    );
+    let payload = encode_unsigned_runtime_payload(json!({
+        "type": "InitializeMainTokenGenesis",
+        "data": {
+            "allocations": [{
+                "bucket_id": "team_long_term_vesting",
+                "ratio_bps": 2000,
+                "recipient": "protocol:team-core-vesting",
+                "cliff_epochs": 365,
+                "linear_unlock_epochs": 1095,
+                "start_epoch": 0
+            }]
+        }
+    }));
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("unsigned genesis payload must fail");
+    assert!(err.to_string().contains("missing_main_token_auth"));
+}
+
+#[test]
+fn submit_consensus_action_payload_accepts_signed_main_token_genesis_action() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new("node-token-genesis-ok", "world-token-genesis-ok", NodeRole::Observer)
+            .expect("config"),
+    );
+    let payload = encode_signed_main_token_runtime_payload(
+        json!({
+            "type": "InitializeMainTokenGenesis",
+            "data": {
+                "allocations": [{
+                    "bucket_id": "team_long_term_vesting",
+                    "ratio_bps": 2000,
+                    "recipient": "protocol:team-core-vesting",
+                    "cliff_epochs": 365,
+                    "linear_unlock_epochs": 1095,
+                    "start_epoch": 0
+                }]
+            }
+        }),
+        "msig.genesis.v1",
+        0x24,
+    );
+    runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect("signed genesis payload should pass");
+}
+
+#[test]
+fn submit_consensus_action_payload_rejects_unsigned_main_token_treasury_action() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new("node-token-treasury", "world-token-treasury", NodeRole::Observer)
+            .expect("config"),
+    );
+    let payload = encode_unsigned_runtime_payload(json!({
+        "type": "DistributeMainTokenTreasury",
+        "data": {
+            "proposal_id": 1,
+            "distribution_id": "treasury-1",
+            "bucket_id": "ecosystem_pool",
+            "distributions": [{
+                "account_id": "protocol:ecosystem-grant",
+                "amount": 50
+            }]
+        }
+    }));
+    let err = runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect_err("unsigned treasury payload must fail");
+    assert!(err.to_string().contains("missing_main_token_auth"));
+}
+
+#[test]
+fn submit_consensus_action_payload_accepts_signed_main_token_treasury_action() {
+    let runtime = NodeRuntime::new(
+        NodeConfig::new("node-token-treasury-ok", "world-token-treasury-ok", NodeRole::Observer)
+            .expect("config"),
+    );
+    let payload = encode_signed_main_token_runtime_payload(
+        json!({
+            "type": "DistributeMainTokenTreasury",
+            "data": {
+                "proposal_id": 1,
+                "distribution_id": "treasury-1",
+                "bucket_id": "ecosystem_pool",
+                "distributions": [{
+                    "account_id": "protocol:ecosystem-grant",
+                    "amount": 50
+                }]
+            }
+        }),
+        "msig.treasury.v1",
+        0x25,
+    );
+    runtime
+        .submit_consensus_action_payload(1, payload)
+        .expect("signed treasury payload should pass");
 }
 
 #[test]

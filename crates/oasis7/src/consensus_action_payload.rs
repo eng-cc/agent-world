@@ -1,12 +1,70 @@
 use crate::runtime;
 use crate::simulator::{Action as SimulatorAction, ActionSubmitter};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
+
+const CONSENSUS_ACTION_PAYLOAD_ENVELOPE_VERSION: u8 = 1;
+const MAIN_TOKEN_ACTION_AUTH_PAYLOAD_VERSION: u8 = 1;
+const MAIN_TOKEN_TRANSFER_AUTH_SIGNATURE_V1_PREFIX: &str = "awttransferauth:v1:";
+const MAIN_TOKEN_CLAIM_AUTH_SIGNATURE_V1_PREFIX: &str = "awtclaimauth:v1:";
+const MAIN_TOKEN_GENESIS_AUTH_SIGNATURE_V1_PREFIX: &str = "awtgenesisauth:v1:";
+const MAIN_TOKEN_TREASURY_AUTH_SIGNATURE_V1_PREFIX: &str = "awttreasuryauth:v1:";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ConsensusActionPayloadEnvelope {
     pub version: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<ConsensusActionAuthEnvelope>,
     pub body: ConsensusActionPayloadBody,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
+pub enum ConsensusActionAuthEnvelope {
+    MainTokenAction(MainTokenActionAuthProof),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MainTokenActionAuthScheme {
+    Ed25519,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MainTokenActionAuthProof {
+    pub scheme: MainTokenActionAuthScheme,
+    pub account_id: String,
+    pub public_key: String,
+    pub signature: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VerifiedMainTokenActionAuth {
+    pub account_id: String,
+    pub public_key: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MainTokenActionAuthError {
+    InvalidRequest(String),
+    InvalidSignature(String),
+    AccountMismatch(String),
+    UnsupportedAction(String),
+}
+
+impl std::fmt::Display for MainTokenActionAuthError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidRequest(message)
+            | Self::InvalidSignature(message)
+            | Self::AccountMismatch(message)
+            | Self::UnsupportedAction(message) => f.write_str(message),
+        }
+    }
+}
+
+impl std::error::Error for MainTokenActionAuthError {}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data", rename_all = "snake_case")]
@@ -21,20 +79,118 @@ pub enum ConsensusActionPayloadBody {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize)]
+struct MainTokenActionSigningEnvelope<'a> {
+    version: u8,
+    operation: &'static str,
+    account_id: &'a str,
+    public_key: &'a str,
+    action: &'a JsonValue,
+}
+
 impl ConsensusActionPayloadEnvelope {
     pub fn from_runtime_action(action: runtime::Action) -> Self {
         Self {
-            version: 1,
+            version: CONSENSUS_ACTION_PAYLOAD_ENVELOPE_VERSION,
+            auth: None,
+            body: ConsensusActionPayloadBody::RuntimeAction { action },
+        }
+    }
+
+    pub fn from_runtime_action_with_auth(
+        action: runtime::Action,
+        auth: ConsensusActionAuthEnvelope,
+    ) -> Self {
+        Self {
+            version: CONSENSUS_ACTION_PAYLOAD_ENVELOPE_VERSION,
+            auth: Some(auth),
             body: ConsensusActionPayloadBody::RuntimeAction { action },
         }
     }
 
     pub fn from_simulator_action(action: SimulatorAction, submitter: ActionSubmitter) -> Self {
         Self {
-            version: 1,
+            version: CONSENSUS_ACTION_PAYLOAD_ENVELOPE_VERSION,
+            auth: None,
             body: ConsensusActionPayloadBody::SimulatorAction { action, submitter },
         }
     }
+}
+
+pub fn main_token_action_auth_required(action: &runtime::Action) -> bool {
+    matches!(
+        action,
+        runtime::Action::TransferMainToken { .. }
+            | runtime::Action::ClaimMainTokenVesting { .. }
+            | runtime::Action::InitializeMainTokenGenesis { .. }
+            | runtime::Action::DistributeMainTokenTreasury { .. }
+    )
+}
+
+pub fn sign_main_token_runtime_action_auth(
+    action: &runtime::Action,
+    account_id: &str,
+    signer_public_key_hex: &str,
+    signer_private_key_hex: &str,
+) -> Result<MainTokenActionAuthProof, MainTokenActionAuthError> {
+    ensure_main_token_action_supported(action)?;
+    let account_id = normalize_required_field(account_id, "main token auth account_id")?;
+    let public_key = normalize_public_key_field(
+        signer_public_key_hex,
+        "main token auth signer public key",
+    )?;
+    let signing_key = signing_key_from_hex(
+        signer_private_key_hex,
+        "main token auth signer private key",
+    )?;
+    verify_keypair_match(
+        &signing_key,
+        public_key.as_str(),
+        "main token auth signer public key",
+    )?;
+    let payload = build_main_token_action_signing_payload(
+        action,
+        account_id.as_str(),
+        public_key.as_str(),
+    )?;
+    let signature: Signature = signing_key.sign(payload.as_slice());
+    Ok(MainTokenActionAuthProof {
+        scheme: MainTokenActionAuthScheme::Ed25519,
+        account_id,
+        public_key,
+        signature: format!(
+            "{}{}",
+            main_token_action_signature_prefix(action)?,
+            hex::encode(signature.to_bytes())
+        ),
+    })
+}
+
+pub fn verify_main_token_runtime_action_auth(
+    action: &runtime::Action,
+    proof: &MainTokenActionAuthProof,
+) -> Result<VerifiedMainTokenActionAuth, MainTokenActionAuthError> {
+    ensure_main_token_action_supported(action)?;
+    match proof.scheme {
+        MainTokenActionAuthScheme::Ed25519 => {}
+    }
+    let account_id =
+        normalize_required_field(proof.account_id.as_str(), "main token auth account_id")?;
+    let public_key =
+        normalize_public_key_field(proof.public_key.as_str(), "main token auth public key")?;
+    let payload =
+        build_main_token_action_signing_payload(action, account_id.as_str(), public_key.as_str())?;
+    validate_main_token_action_account_binding(action, account_id.as_str(), public_key.as_str())?;
+    verify_main_token_action_signature(
+        action,
+        public_key.as_str(),
+        proof.signature.as_str(),
+        payload.as_slice(),
+    )?;
+    Ok(VerifiedMainTokenActionAuth {
+        account_id,
+        public_key,
+    })
 }
 
 pub fn encode_consensus_action_payload(
@@ -44,24 +200,233 @@ pub fn encode_consensus_action_payload(
         .map_err(|err| format!("encode consensus action payload envelope failed: {err}"))
 }
 
-pub fn decode_consensus_action_payload(
+pub fn decode_consensus_action_payload_envelope(
     payload_cbor: &[u8],
-) -> Result<ConsensusActionPayloadBody, String> {
+) -> Result<ConsensusActionPayloadEnvelope, String> {
     match serde_cbor::from_slice::<ConsensusActionPayloadEnvelope>(payload_cbor) {
         Ok(envelope) => {
-            if envelope.version != 1 {
+            if envelope.version != CONSENSUS_ACTION_PAYLOAD_ENVELOPE_VERSION {
                 return Err(format!(
                     "unsupported consensus payload envelope version {}",
                     envelope.version
                 ));
             }
-            Ok(envelope.body)
+            Ok(envelope)
         }
         Err(envelope_err) => match serde_cbor::from_slice::<runtime::Action>(payload_cbor) {
-            Ok(action) => Ok(ConsensusActionPayloadBody::RuntimeAction { action }),
+            Ok(action) => Ok(ConsensusActionPayloadEnvelope::from_runtime_action(action)),
             Err(runtime_err) => Err(format!(
                 "decode consensus payload envelope failed ({envelope_err}); runtime fallback failed ({runtime_err})"
             )),
         },
     }
+}
+
+pub fn decode_consensus_action_payload(
+    payload_cbor: &[u8],
+) -> Result<ConsensusActionPayloadBody, String> {
+    decode_consensus_action_payload_envelope(payload_cbor).map(|envelope| envelope.body)
+}
+
+fn build_main_token_action_signing_payload(
+    action: &runtime::Action,
+    account_id: &str,
+    public_key: &str,
+) -> Result<Vec<u8>, MainTokenActionAuthError> {
+    let action_json = serde_json::to_value(action).map_err(|err| {
+        MainTokenActionAuthError::InvalidRequest(format!(
+            "encode main token auth action json failed: {err}"
+        ))
+    })?;
+    let envelope = MainTokenActionSigningEnvelope {
+        version: MAIN_TOKEN_ACTION_AUTH_PAYLOAD_VERSION,
+        operation: main_token_action_operation(action)?,
+        account_id,
+        public_key,
+        action: &action_json,
+    };
+    serde_json::to_vec(&envelope).map_err(|err| {
+        MainTokenActionAuthError::InvalidRequest(format!(
+            "encode main token auth signing payload failed: {err}"
+        ))
+    })
+}
+
+fn validate_main_token_action_account_binding(
+    action: &runtime::Action,
+    account_id: &str,
+    public_key: &str,
+) -> Result<(), MainTokenActionAuthError> {
+    match action {
+        runtime::Action::TransferMainToken {
+            from_account_id, ..
+        } => {
+            if account_id != from_account_id.trim() {
+                return Err(MainTokenActionAuthError::AccountMismatch(format!(
+                    "main token auth account_id does not match transfer from_account_id: expected={} actual={account_id}",
+                    from_account_id.trim()
+                )));
+            }
+            let expected = runtime::main_token_account_id_from_node_public_key(public_key);
+            if account_id != expected {
+                return Err(MainTokenActionAuthError::AccountMismatch(format!(
+                    "main token auth account_id does not match signer public key: expected={expected} actual={account_id}"
+                )));
+            }
+        }
+        runtime::Action::ClaimMainTokenVesting { beneficiary, .. } => {
+            if account_id != beneficiary.trim() {
+                return Err(MainTokenActionAuthError::AccountMismatch(format!(
+                    "main token auth account_id does not match claim beneficiary: expected={} actual={account_id}",
+                    beneficiary.trim()
+                )));
+            }
+            if beneficiary.trim().starts_with("awt:pk:") {
+                let expected = runtime::main_token_account_id_from_node_public_key(public_key);
+                if account_id != expected {
+                    return Err(MainTokenActionAuthError::AccountMismatch(format!(
+                        "main token auth account_id does not match signer public key: expected={expected} actual={account_id}"
+                    )));
+                }
+            }
+        }
+        runtime::Action::InitializeMainTokenGenesis { .. }
+        | runtime::Action::DistributeMainTokenTreasury { .. } => {}
+        _ => {
+            return Err(MainTokenActionAuthError::UnsupportedAction(format!(
+                "main token auth is not supported for action {action:?}"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn verify_main_token_action_signature(
+    action: &runtime::Action,
+    public_key_hex: &str,
+    signature: &str,
+    signing_payload: &[u8],
+) -> Result<(), MainTokenActionAuthError> {
+    let public_key_bytes = decode_hex_array::<32>(public_key_hex, "main token auth public key")?;
+    let prefix = main_token_action_signature_prefix(action)?;
+    let signature_hex = signature.strip_prefix(prefix).ok_or_else(|| {
+        MainTokenActionAuthError::InvalidSignature(format!(
+            "main token auth signature is not {prefix}"
+        ))
+    })?;
+    let signature_bytes = decode_hex_array::<64>(signature_hex, "main token auth signature")?;
+    let verifying_key = VerifyingKey::from_bytes(&public_key_bytes).map_err(|err| {
+        MainTokenActionAuthError::InvalidRequest(format!(
+            "parse main token auth public key failed: {err}"
+        ))
+    })?;
+    verifying_key
+        .verify(signing_payload, &Signature::from_bytes(&signature_bytes))
+        .map_err(|err| {
+            MainTokenActionAuthError::InvalidSignature(format!(
+                "verify main token auth signature failed: {err}"
+            ))
+        })
+}
+
+fn main_token_action_operation(
+    action: &runtime::Action,
+) -> Result<&'static str, MainTokenActionAuthError> {
+    match action {
+        runtime::Action::TransferMainToken { .. } => Ok("transfer_main_token"),
+        runtime::Action::ClaimMainTokenVesting { .. } => Ok("claim_main_token_vesting"),
+        runtime::Action::InitializeMainTokenGenesis { .. } => Ok("initialize_main_token_genesis"),
+        runtime::Action::DistributeMainTokenTreasury { .. } => {
+            Ok("distribute_main_token_treasury")
+        }
+        _ => Err(MainTokenActionAuthError::UnsupportedAction(format!(
+            "main token auth is not supported for action {action:?}"
+        ))),
+    }
+}
+
+fn main_token_action_signature_prefix(
+    action: &runtime::Action,
+) -> Result<&'static str, MainTokenActionAuthError> {
+    match action {
+        runtime::Action::TransferMainToken { .. } => Ok(MAIN_TOKEN_TRANSFER_AUTH_SIGNATURE_V1_PREFIX),
+        runtime::Action::ClaimMainTokenVesting { .. } => Ok(MAIN_TOKEN_CLAIM_AUTH_SIGNATURE_V1_PREFIX),
+        runtime::Action::InitializeMainTokenGenesis { .. } => {
+            Ok(MAIN_TOKEN_GENESIS_AUTH_SIGNATURE_V1_PREFIX)
+        }
+        runtime::Action::DistributeMainTokenTreasury { .. } => {
+            Ok(MAIN_TOKEN_TREASURY_AUTH_SIGNATURE_V1_PREFIX)
+        }
+        _ => Err(MainTokenActionAuthError::UnsupportedAction(format!(
+            "main token auth is not supported for action {action:?}"
+        ))),
+    }
+}
+
+fn ensure_main_token_action_supported(
+    action: &runtime::Action,
+) -> Result<(), MainTokenActionAuthError> {
+    main_token_action_operation(action).map(|_| ())
+}
+
+fn normalize_required_field(
+    raw: &str,
+    label: &str,
+) -> Result<String, MainTokenActionAuthError> {
+    let value = raw.trim();
+    if value.is_empty() {
+        return Err(MainTokenActionAuthError::InvalidRequest(format!(
+            "{label} is empty"
+        )));
+    }
+    Ok(value.to_string())
+}
+
+fn normalize_public_key_field(
+    raw: &str,
+    label: &str,
+) -> Result<String, MainTokenActionAuthError> {
+    let normalized = normalize_required_field(raw, label)?;
+    let bytes = decode_hex_array::<32>(normalized.as_str(), label)?;
+    Ok(hex::encode(bytes))
+}
+
+fn signing_key_from_hex(
+    private_key_hex: &str,
+    label: &str,
+) -> Result<SigningKey, MainTokenActionAuthError> {
+    let private_key_bytes = decode_hex_array::<32>(private_key_hex, label)?;
+    Ok(SigningKey::from_bytes(&private_key_bytes))
+}
+
+fn verify_keypair_match(
+    signing_key: &SigningKey,
+    public_key_hex: &str,
+    label: &str,
+) -> Result<(), MainTokenActionAuthError> {
+    let expected_public_key = hex::encode(signing_key.verifying_key().to_bytes());
+    if expected_public_key != public_key_hex {
+        return Err(MainTokenActionAuthError::InvalidRequest(format!(
+            "{label} does not match private key: expected={expected_public_key} actual={public_key_hex}"
+        )));
+    }
+    Ok(())
+}
+
+fn decode_hex_array<const N: usize>(
+    raw: &str,
+    label: &str,
+) -> Result<[u8; N], MainTokenActionAuthError> {
+    let bytes = hex::decode(raw).map_err(|err| {
+        MainTokenActionAuthError::InvalidRequest(format!("decode {label} failed: {err}"))
+    })?;
+    if bytes.len() != N {
+        return Err(MainTokenActionAuthError::InvalidRequest(format!(
+            "{label} length mismatch: expected {N} bytes, got {}",
+            bytes.len()
+        )));
+    }
+    let mut fixed = [0_u8; N];
+    fixed.copy_from_slice(bytes.as_slice());
+    Ok(fixed)
 }

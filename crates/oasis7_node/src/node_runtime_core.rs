@@ -2,12 +2,15 @@ use std::fmt;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Condvar, Mutex};
 
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use oasis7_distfs::{
     build_feedback_announce_from_receipt, FeedbackAppendRequest, FeedbackCreateRequest,
     FeedbackMutationReceipt, FeedbackStore, FeedbackTombstoneRequest, LocalCasStore,
 };
 use oasis7_proto::distributed_dht as proto_dht;
 use oasis7_proto::world_error::WorldError as ProtoWorldError;
+use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 
 use crate::runtime_util::now_unix_ms;
 use crate::{
@@ -34,6 +37,63 @@ impl Default for RuntimeState {
             last_error: None,
         }
     }
+}
+
+const CONSENSUS_ACTION_PAYLOAD_ENVELOPE_VERSION: u8 = 1;
+const MAIN_TOKEN_ACTION_AUTH_PAYLOAD_VERSION: u8 = 1;
+const MAIN_TOKEN_TRANSFER_AUTH_SIGNATURE_V1_PREFIX: &str = "awttransferauth:v1:";
+const MAIN_TOKEN_CLAIM_AUTH_SIGNATURE_V1_PREFIX: &str = "awtclaimauth:v1:";
+const MAIN_TOKEN_GENESIS_AUTH_SIGNATURE_V1_PREFIX: &str = "awtgenesisauth:v1:";
+const MAIN_TOKEN_TREASURY_AUTH_SIGNATURE_V1_PREFIX: &str = "awttreasuryauth:v1:";
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct LocalConsensusActionPayloadEnvelope {
+    version: u8,
+    #[serde(default)]
+    auth: Option<LocalConsensusActionAuthEnvelope>,
+    body: LocalConsensusActionPayloadBody,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
+enum LocalConsensusActionAuthEnvelope {
+    MainTokenAction(LocalMainTokenActionAuthProof),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum LocalMainTokenActionAuthScheme {
+    Ed25519,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct LocalMainTokenActionAuthProof {
+    scheme: LocalMainTokenActionAuthScheme,
+    account_id: String,
+    public_key: String,
+    signature: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
+enum LocalConsensusActionPayloadBody {
+    RuntimeAction {
+        action: JsonValue,
+    },
+    SimulatorAction {
+        action: JsonValue,
+        #[serde(default)]
+        submitter: JsonValue,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct LocalMainTokenActionSigningEnvelope<'a> {
+    version: u8,
+    operation: &'static str,
+    account_id: &'a str,
+    public_key: &'a str,
+    action: &'a JsonValue,
 }
 
 impl fmt::Debug for NodeRuntime {
@@ -144,6 +204,7 @@ impl NodeRuntime {
                 ),
             });
         }
+        validate_consensus_action_payload_auth(payload_cbor.as_slice())?;
         let action = NodeConsensusAction::from_payload(
             action_id,
             self.config.player_id.clone(),
@@ -265,6 +326,241 @@ impl NodeRuntime {
         pending.push(announce);
         Ok(())
     }
+}
+
+fn validate_consensus_action_payload_auth(payload_cbor: &[u8]) -> Result<(), NodeError> {
+    let envelope = decode_local_consensus_action_payload_envelope(payload_cbor).map_err(|err| {
+        NodeError::Consensus {
+            reason: format!("decode consensus action payload auth envelope failed: {err}"),
+        }
+    })?;
+    let LocalConsensusActionPayloadBody::RuntimeAction { action } = &envelope.body else {
+        return Ok(());
+    };
+    if !local_main_token_action_auth_required(action) {
+        return Ok(());
+    }
+    let Some(LocalConsensusActionAuthEnvelope::MainTokenAction(proof)) = envelope.auth.as_ref()
+    else {
+        return Err(NodeError::Consensus {
+            reason: format!(
+                "missing_main_token_auth for runtime action {}",
+                local_runtime_action_kind(action).unwrap_or("unknown")
+            ),
+        });
+    };
+    verify_local_main_token_action_auth(action, proof).map_err(|err| NodeError::Consensus {
+        reason: format!("main token action auth rejected: {err}"),
+    })?;
+    Ok(())
+}
+
+fn decode_local_consensus_action_payload_envelope(
+    payload_cbor: &[u8],
+) -> Result<LocalConsensusActionPayloadEnvelope, String> {
+    match serde_cbor::from_slice::<LocalConsensusActionPayloadEnvelope>(payload_cbor) {
+        Ok(envelope) => {
+            if envelope.version != CONSENSUS_ACTION_PAYLOAD_ENVELOPE_VERSION {
+                return Err(format!(
+                    "unsupported consensus payload envelope version {}",
+                    envelope.version
+                ));
+            }
+            Ok(envelope)
+        }
+        Err(_) => Ok(LocalConsensusActionPayloadEnvelope {
+            version: CONSENSUS_ACTION_PAYLOAD_ENVELOPE_VERSION,
+            auth: None,
+            body: LocalConsensusActionPayloadBody::RuntimeAction {
+                action: serde_cbor::from_slice::<JsonValue>(payload_cbor)
+                    .map_err(|err| format!("legacy runtime action decode failed: {err}"))?,
+            },
+        }),
+    }
+}
+
+fn local_main_token_action_auth_required(action: &JsonValue) -> bool {
+    matches!(
+        local_runtime_action_kind(action),
+        Some("TransferMainToken")
+            | Some("ClaimMainTokenVesting")
+            | Some("InitializeMainTokenGenesis")
+            | Some("DistributeMainTokenTreasury")
+    )
+}
+
+fn local_runtime_action_kind(action: &JsonValue) -> Option<&str> {
+    action.get("type").and_then(JsonValue::as_str)
+}
+
+fn local_runtime_action_data(action: &JsonValue) -> Result<&serde_json::Map<String, JsonValue>, String> {
+    action
+        .get("data")
+        .and_then(JsonValue::as_object)
+        .ok_or_else(|| "runtime action missing object data".to_string())
+}
+
+fn verify_local_main_token_action_auth(
+    action: &JsonValue,
+    proof: &LocalMainTokenActionAuthProof,
+) -> Result<(), String> {
+    match proof.scheme {
+        LocalMainTokenActionAuthScheme::Ed25519 => {}
+    }
+    let account_id = normalize_required_field(proof.account_id.as_str(), "main token auth account_id")?;
+    let public_key = normalize_public_key_field(proof.public_key.as_str(), "main token auth public key")?;
+    let payload = build_local_main_token_action_signing_payload(
+        action,
+        account_id.as_str(),
+        public_key.as_str(),
+    )?;
+    verify_local_main_token_action_signature(
+        action,
+        public_key.as_str(),
+        proof.signature.as_str(),
+        payload.as_slice(),
+    )?;
+    validate_local_main_token_action_account_binding(action, account_id.as_str(), public_key.as_str())
+}
+
+fn build_local_main_token_action_signing_payload(
+    action: &JsonValue,
+    account_id: &str,
+    public_key: &str,
+) -> Result<Vec<u8>, String> {
+    let envelope = LocalMainTokenActionSigningEnvelope {
+        version: MAIN_TOKEN_ACTION_AUTH_PAYLOAD_VERSION,
+        operation: local_main_token_action_operation(action)?,
+        account_id,
+        public_key,
+        action,
+    };
+    serde_json::to_vec(&envelope)
+        .map_err(|err| format!("encode main token auth signing payload failed: {err}"))
+}
+
+fn validate_local_main_token_action_account_binding(
+    action: &JsonValue,
+    account_id: &str,
+    public_key: &str,
+) -> Result<(), String> {
+    let action_kind = local_runtime_action_kind(action).unwrap_or("unknown");
+    let data = local_runtime_action_data(action)?;
+    match action_kind {
+        "TransferMainToken" => {
+            let from_account_id = data
+                .get("from_account_id")
+                .and_then(JsonValue::as_str)
+                .ok_or_else(|| "transfer action missing from_account_id".to_string())?
+                .trim();
+            if account_id != from_account_id {
+                return Err(format!(
+                    "main token auth account_id does not match transfer from_account_id: expected={from_account_id} actual={account_id}"
+                ));
+            }
+            let expected = main_token_account_id_from_public_key(public_key);
+            if account_id != expected {
+                return Err(format!(
+                    "main token auth account_id does not match signer public key: expected={expected} actual={account_id}"
+                ));
+            }
+        }
+        "ClaimMainTokenVesting" => {
+            let beneficiary = data
+                .get("beneficiary")
+                .and_then(JsonValue::as_str)
+                .ok_or_else(|| "claim action missing beneficiary".to_string())?
+                .trim();
+            if account_id != beneficiary {
+                return Err(format!(
+                    "main token auth account_id does not match claim beneficiary: expected={beneficiary} actual={account_id}"
+                ));
+            }
+            if beneficiary.starts_with("awt:pk:") {
+                let expected = main_token_account_id_from_public_key(public_key);
+                if account_id != expected {
+                    return Err(format!(
+                        "main token auth account_id does not match signer public key: expected={expected} actual={account_id}"
+                    ));
+                }
+            }
+        }
+        "InitializeMainTokenGenesis" | "DistributeMainTokenTreasury" => {}
+        other => return Err(format!("main token auth is not supported for action {other}")),
+    }
+    Ok(())
+}
+
+fn verify_local_main_token_action_signature(
+    action: &JsonValue,
+    public_key_hex: &str,
+    signature: &str,
+    signing_payload: &[u8],
+) -> Result<(), String> {
+    let public_key_bytes = decode_hex_array::<32>(public_key_hex, "main token auth public key")?;
+    let prefix = local_main_token_action_signature_prefix(action)?;
+    let signature_hex = signature
+        .strip_prefix(prefix)
+        .ok_or_else(|| format!("main token auth signature is not {prefix}"))?;
+    let signature_bytes = decode_hex_array::<64>(signature_hex, "main token auth signature")?;
+    let verifying_key = VerifyingKey::from_bytes(&public_key_bytes)
+        .map_err(|err| format!("parse main token auth public key failed: {err}"))?;
+    verifying_key
+        .verify(signing_payload, &Signature::from_bytes(&signature_bytes))
+        .map_err(|err| format!("verify main token auth signature failed: {err}"))
+}
+
+fn local_main_token_action_operation(action: &JsonValue) -> Result<&'static str, String> {
+    match local_runtime_action_kind(action) {
+        Some("TransferMainToken") => Ok("transfer_main_token"),
+        Some("ClaimMainTokenVesting") => Ok("claim_main_token_vesting"),
+        Some("InitializeMainTokenGenesis") => Ok("initialize_main_token_genesis"),
+        Some("DistributeMainTokenTreasury") => Ok("distribute_main_token_treasury"),
+        Some(other) => Err(format!("main token auth is not supported for action {other}")),
+        None => Err("runtime action missing type".to_string()),
+    }
+}
+
+fn local_main_token_action_signature_prefix(action: &JsonValue) -> Result<&'static str, String> {
+    match local_runtime_action_kind(action) {
+        Some("TransferMainToken") => Ok(MAIN_TOKEN_TRANSFER_AUTH_SIGNATURE_V1_PREFIX),
+        Some("ClaimMainTokenVesting") => Ok(MAIN_TOKEN_CLAIM_AUTH_SIGNATURE_V1_PREFIX),
+        Some("InitializeMainTokenGenesis") => Ok(MAIN_TOKEN_GENESIS_AUTH_SIGNATURE_V1_PREFIX),
+        Some("DistributeMainTokenTreasury") => Ok(MAIN_TOKEN_TREASURY_AUTH_SIGNATURE_V1_PREFIX),
+        Some(other) => Err(format!("main token auth is not supported for action {other}")),
+        None => Err("runtime action missing type".to_string()),
+    }
+}
+
+fn normalize_required_field(raw: &str, label: &str) -> Result<String, String> {
+    let value = raw.trim();
+    if value.is_empty() {
+        return Err(format!("{label} is empty"));
+    }
+    Ok(value.to_string())
+}
+
+fn normalize_public_key_field(raw: &str, label: &str) -> Result<String, String> {
+    let normalized = normalize_required_field(raw, label)?;
+    let bytes = decode_hex_array::<32>(normalized.as_str(), label)?;
+    Ok(hex::encode(bytes))
+}
+
+fn decode_hex_array<const N: usize>(raw: &str, label: &str) -> Result<[u8; N], String> {
+    let bytes = hex::decode(raw).map_err(|err| format!("decode {label} failed: {err}"))?;
+    if bytes.len() != N {
+        return Err(format!(
+            "{label} length mismatch: expected {N} bytes, got {}",
+            bytes.len()
+        ));
+    }
+    let mut fixed = [0_u8; N];
+    fixed.copy_from_slice(bytes.as_slice());
+    Ok(fixed)
+}
+
+fn main_token_account_id_from_public_key(public_key_hex: &str) -> String {
+    format!("awt:pk:{}", public_key_hex.trim().to_ascii_lowercase())
 }
 
 fn node_feedback_error(err: ProtoWorldError) -> NodeError {

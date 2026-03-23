@@ -13,7 +13,8 @@ use super::{
 };
 use ed25519_dalek::SigningKey;
 use oasis7::consensus_action_payload::{
-    decode_consensus_action_payload, ConsensusActionPayloadBody,
+    decode_consensus_action_payload, sign_main_token_runtime_action_auth,
+    ConsensusActionPayloadBody,
 };
 use oasis7::runtime::{
     main_token_account_id_from_node_public_key, Action, EconomicContractState,
@@ -122,8 +123,20 @@ fn build_signed_transfer_request_with_accounts(
         public_key,
         signature: String::new(),
     };
-    request.signature = super::sign_transfer_submit_request(&request, private_key.as_str())
-        .expect("sign transfer request");
+    let action = Action::TransferMainToken {
+        from_account_id: request.from_account_id.clone(),
+        to_account_id: request.to_account_id.clone(),
+        amount: request.amount,
+        nonce: request.nonce,
+    };
+    request.signature = sign_main_token_runtime_action_auth(
+        &action,
+        request.from_account_id.as_str(),
+        request.public_key.as_str(),
+        private_key.as_str(),
+    )
+    .expect("sign transfer request")
+    .signature;
     request
 }
 
@@ -366,11 +379,7 @@ fn transfer_submit_handler_rejects_invalid_signature() {
     )));
 
     let mut request = build_signed_transfer_request(13, 14, 7, 2);
-    request.signature = format!(
-        "{}{}",
-        super::TRANSFER_AUTH_SIGNATURE_V1_PREFIX,
-        "f".repeat(128)
-    );
+    request.signature = format!("{}{}", "awttransferauth:v1:", "f".repeat(128));
     let body = serde_json::to_string(&request).expect("serialize request");
 
     let (mut server_stream, mut client_stream) = tcp_stream_pair();

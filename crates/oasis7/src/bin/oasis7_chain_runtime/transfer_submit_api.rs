@@ -4,14 +4,13 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-#[cfg(test)]
-use ed25519_dalek::{Signer, SigningKey};
 use oasis7::consensus_action_payload::{
-    decode_consensus_action_payload, encode_consensus_action_payload, ConsensusActionPayloadBody,
-    ConsensusActionPayloadEnvelope,
+    decode_consensus_action_payload, encode_consensus_action_payload,
+    verify_main_token_runtime_action_auth, ConsensusActionAuthEnvelope,
+    ConsensusActionPayloadBody, ConsensusActionPayloadEnvelope, MainTokenActionAuthError,
+    MainTokenActionAuthProof, MainTokenActionAuthScheme,
 };
-use oasis7::runtime::{main_token_account_id_from_node_public_key, Action};
+use oasis7::runtime::Action;
 use oasis7_node::NodeRuntime;
 use serde::{Deserialize, Serialize};
 
@@ -37,9 +36,6 @@ const TRANSFER_ERROR_SUBMIT_FAILED: &str = "submit_failed";
 const TRANSFER_ERROR_NOT_FOUND: &str = "not_found";
 const TRANSFER_ERROR_INVALID_SIGNATURE: &str = "invalid_signature";
 const TRANSFER_ERROR_ACCOUNT_AUTH_MISMATCH: &str = "account_auth_mismatch";
-const TRANSFER_AUTH_PAYLOAD_VERSION: u8 = 1;
-const TRANSFER_AUTH_OPERATION: &str = "transfer_main_token_submit";
-const TRANSFER_AUTH_SIGNATURE_V1_PREFIX: &str = "awttransferauth:v1:";
 
 static NEXT_TRANSFER_ACTION_ID: AtomicU64 = AtomicU64::new(1);
 static TRANSFER_TRACKER: OnceLock<Mutex<TransferTracker>> = OnceLock::new();
@@ -63,22 +59,6 @@ pub(super) struct ChainTransferSubmitRequest {
     pub(super) nonce: u64,
     pub(super) public_key: String,
     pub(super) signature: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-struct ChainTransferSubmitSigningPayload<'a> {
-    operation: &'static str,
-    from_account_id: &'a str,
-    to_account_id: &'a str,
-    amount: u64,
-    nonce: u64,
-    public_key: &'a str,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-struct ChainTransferSubmitSigningEnvelope<'a> {
-    version: u8,
-    payload: ChainTransferSubmitSigningPayload<'a>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1066,30 +1046,11 @@ pub(super) fn parse_transfer_submit_request(
 fn verify_transfer_submit_request_auth(
     request: &ChainTransferSubmitRequest,
 ) -> Result<(), (String, String)> {
-    let expected_from_account_id =
-        main_token_account_id_from_node_public_key(request.public_key.as_str());
-    if request.from_account_id != expected_from_account_id {
-        return Err((
-            TRANSFER_ERROR_ACCOUNT_AUTH_MISMATCH.to_string(),
-            format!(
-                "transfer from_account_id does not match signer public key: expected={} actual={}",
-                expected_from_account_id, request.from_account_id
-            ),
-        ));
-    }
-
-    let signing_payload = build_transfer_submit_signing_payload(request).map_err(|err| {
-        (
-            TRANSFER_ERROR_INVALID_REQUEST.to_string(),
-            format!("build transfer auth payload failed: {err}"),
-        )
-    })?;
-    verify_transfer_submit_signature(
-        request.public_key.as_str(),
-        request.signature.as_str(),
-        signing_payload.as_slice(),
-    )
-    .map_err(|err| (TRANSFER_ERROR_INVALID_SIGNATURE.to_string(), err))
+    let action = build_transfer_submit_action(request);
+    let proof = build_transfer_submit_auth_proof(request);
+    verify_main_token_runtime_action_auth(&action, &proof)
+        .map(|_| ())
+        .map_err(map_transfer_auth_error)
 }
 
 fn parse_http_target(request_bytes: &[u8]) -> Result<String, String> {
@@ -1179,70 +1140,6 @@ fn hex_value(raw: u8) -> Option<u8> {
     }
 }
 
-fn build_transfer_submit_signing_payload(
-    request: &ChainTransferSubmitRequest,
-) -> Result<Vec<u8>, String> {
-    let envelope = ChainTransferSubmitSigningEnvelope {
-        version: TRANSFER_AUTH_PAYLOAD_VERSION,
-        payload: ChainTransferSubmitSigningPayload {
-            operation: TRANSFER_AUTH_OPERATION,
-            from_account_id: request.from_account_id.as_str(),
-            to_account_id: request.to_account_id.as_str(),
-            amount: request.amount,
-            nonce: request.nonce,
-            public_key: request.public_key.as_str(),
-        },
-    };
-    let encoded = serde_json::to_vec(&envelope)
-        .map_err(|err| format!("encode transfer auth payload failed: {err}"))?;
-    let mut payload =
-        Vec::with_capacity(TRANSFER_AUTH_SIGNATURE_V1_PREFIX.len() + encoded.len());
-    payload.extend_from_slice(TRANSFER_AUTH_SIGNATURE_V1_PREFIX.as_bytes());
-    payload.extend_from_slice(encoded.as_slice());
-    Ok(payload)
-}
-
-#[cfg(test)]
-fn sign_transfer_submit_request(
-    request: &ChainTransferSubmitRequest,
-    signer_private_key_hex: &str,
-) -> Result<String, String> {
-    let signing_key = signing_key_from_hex(signer_private_key_hex, "transfer signer private key")?;
-    verify_keypair_match(
-        &signing_key,
-        request.public_key.as_str(),
-        "transfer signer public key",
-    )?;
-    let signing_payload = build_transfer_submit_signing_payload(request)?;
-    let signature: Signature = signing_key.sign(signing_payload.as_slice());
-    Ok(format!(
-        "{TRANSFER_AUTH_SIGNATURE_V1_PREFIX}{}",
-        hex::encode(signature.to_bytes())
-    ))
-}
-
-fn verify_transfer_submit_signature(
-    public_key_hex: &str,
-    signature: &str,
-    signing_payload: &[u8],
-) -> Result<(), String> {
-    let public_key_bytes = decode_hex_array::<32>(public_key_hex, "transfer public key")?;
-    let signature_hex = signature
-        .strip_prefix(TRANSFER_AUTH_SIGNATURE_V1_PREFIX)
-        .ok_or_else(|| {
-            format!(
-                "transfer signature is not {}",
-                TRANSFER_AUTH_SIGNATURE_V1_PREFIX
-            )
-        })?;
-    let signature_bytes = decode_hex_array::<64>(signature_hex, "transfer signature")?;
-    let verifying_key = VerifyingKey::from_bytes(&public_key_bytes)
-        .map_err(|err| format!("parse transfer public key failed: {err}"))?;
-    verifying_key
-        .verify(signing_payload, &Signature::from_bytes(&signature_bytes))
-        .map_err(|err| format!("verify transfer signature failed: {err}"))
-}
-
 fn normalize_required_field(raw: &str, label: &str) -> Result<String, String> {
     let value = raw.trim();
     if value.is_empty() {
@@ -1259,27 +1156,6 @@ fn normalize_public_key_field(raw: &str, label: &str) -> Result<String, String> 
 
 fn normalize_signature_field(raw: &str, label: &str) -> Result<String, String> {
     normalize_required_field(raw, label)
-}
-
-#[cfg(test)]
-fn signing_key_from_hex(private_key_hex: &str, label: &str) -> Result<SigningKey, String> {
-    let private_key_bytes = decode_hex_array::<32>(private_key_hex, label)?;
-    Ok(SigningKey::from_bytes(&private_key_bytes))
-}
-
-#[cfg(test)]
-fn verify_keypair_match(
-    signing_key: &SigningKey,
-    public_key_hex: &str,
-    label: &str,
-) -> Result<(), String> {
-    let expected_public_key = hex::encode(signing_key.verifying_key().to_bytes());
-    if expected_public_key != public_key_hex {
-        return Err(format!(
-            "{label} does not match private key: expected={expected_public_key} actual={public_key_hex}"
-        ));
-    }
-    Ok(())
 }
 
 fn decode_hex_array<const N: usize>(raw: &str, label: &str) -> Result<[u8; N], String> {
@@ -1328,14 +1204,47 @@ fn next_transfer_action_id() -> Result<u64, String> {
 pub(super) fn build_transfer_submit_action_payload(
     request: &ChainTransferSubmitRequest,
 ) -> Result<Vec<u8>, String> {
-    let action = Action::TransferMainToken {
+    let action = build_transfer_submit_action(request);
+    let envelope = ConsensusActionPayloadEnvelope::from_runtime_action_with_auth(
+        action,
+        ConsensusActionAuthEnvelope::MainTokenAction(build_transfer_submit_auth_proof(request)),
+    );
+    encode_consensus_action_payload(&envelope)
+}
+
+fn build_transfer_submit_action(request: &ChainTransferSubmitRequest) -> Action {
+    Action::TransferMainToken {
         from_account_id: request.from_account_id.clone(),
         to_account_id: request.to_account_id.clone(),
         amount: request.amount,
         nonce: request.nonce,
-    };
-    let envelope = ConsensusActionPayloadEnvelope::from_runtime_action(action);
-    encode_consensus_action_payload(&envelope)
+    }
+}
+
+fn build_transfer_submit_auth_proof(
+    request: &ChainTransferSubmitRequest,
+) -> MainTokenActionAuthProof {
+    MainTokenActionAuthProof {
+        scheme: MainTokenActionAuthScheme::Ed25519,
+        account_id: request.from_account_id.clone(),
+        public_key: request.public_key.clone(),
+        signature: request.signature.clone(),
+    }
+}
+
+fn map_transfer_auth_error(error: MainTokenActionAuthError) -> (String, String) {
+    match error {
+        MainTokenActionAuthError::InvalidSignature(message) => {
+            (TRANSFER_ERROR_INVALID_SIGNATURE.to_string(), message)
+        }
+        MainTokenActionAuthError::AccountMismatch(message) => {
+            (TRANSFER_ERROR_ACCOUNT_AUTH_MISMATCH.to_string(), message)
+        }
+        MainTokenActionAuthError::InvalidRequest(message)
+        | MainTokenActionAuthError::UnsupportedAction(message) => {
+            (TRANSFER_ERROR_INVALID_REQUEST.to_string(), message)
+        }
+    }
 }
 
 fn write_transfer_submit_error(
