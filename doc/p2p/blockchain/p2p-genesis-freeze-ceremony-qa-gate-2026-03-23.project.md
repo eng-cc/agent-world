@@ -18,7 +18,7 @@
   - `MAINNET-3`: completed as specification gate
 - 当前 blocker:
   - freeze sheet 仍为 `logic_frozen_address_binding_pending`
-  - slot registry 与 bucket execution sheet 仍有 `TBD_BEFORE_MINT` / `pending_binding` / `ready_pending_address_binding`
+  - slot registry 与 bucket execution sheet 仍有 `TBD_BEFORE_MINT` / `pending_binding` / `ready_pending_address_binding`；虽然 controller slot 的 `threshold / allowed_public_keys` 已冻结为 `2-of-3` public-only snapshot，但真实 recipient/governance account 仍未绑定
   - QA 最终 `pass` 尚未形成
 
 ## 依赖

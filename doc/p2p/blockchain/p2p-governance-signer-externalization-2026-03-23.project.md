@@ -19,8 +19,22 @@
 - 选定方案:
   - governance truth target: `on-chain/world-state registry`
 - 当前 blocker:
-  - governance finality signer 仍由 deterministic local seed 派生
-  - controller signer policy 真值仍由 `NodeConfig` 本地配置承担
+  - governance finality signer 仍由 deterministic local seed 派生；当前只额外冻结了一版 transition `2-of-3` public signer set，尚未进入链上/world-state truth
+  - controller signer policy 真值仍由 `NodeConfig` 本地配置承担；虽然 `msig.genesis.v1` 与 7 个 treasury/controller slot 已冻结 `2-of-3` public-only signer set，但长期真值仍未上链
+
+## Transition Freeze Snapshot（public-only）
+- batch id: `oasis7-governance-batch-20260323-01`
+- producer decision: all governance/controller slots default to `threshold_ed25519 2-of-3`
+- current finality signer freeze:
+  - `governance.finality.v1`
+  - allowed_public_keys:
+    - `54e7a02919fff2d49a9c325def8cb0211ea7f7a75a9011b9d0678b9e2a7af6bc`
+    - `38dac17ff403cc19de033e47be7cf7b5354635fbc5c1976d7c532e20494aace4`
+    - `e22bd5029176296712fb1a477f91c15775e5ab858181cb4172839ced526f12c8`
+- current controller signer freeze:
+  - `msig.genesis.v1` 与 7 个 treasury/controller slot 的 public-only signer set 见 `doc/p2p/token/mainchain-token-genesis-parameter-freeze-sheet-2026-03-22.md` §3A
+- note:
+  - 上述信息只构成 transition ceremony snapshot，不构成最终 on-chain/world-state registry 完成态
 
 ## 依赖
 - `crates/oasis7/src/runtime/world/governance.rs`
@@ -39,5 +53,5 @@
 
 ## 状态
 - 当前阶段: completed
-- 下一步: 进入 execution workstream，把 governance signer long-term truth 直接迁入链上/world-state registry；链下 registry 只允许做临时迁移工具，不得作为最终完成态。
+- 下一步: 进入 execution workstream，把 `governance.finality.v1` 与各 controller slot 的 `threshold / allowed_public_keys` 直接迁入链上/world-state registry；当前这版 public-only freeze 只允许作为迁移输入，不得作为最终完成态。
 - 最近更新: 2026-03-23
