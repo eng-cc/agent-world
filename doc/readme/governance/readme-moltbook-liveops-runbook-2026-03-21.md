@@ -358,4 +358,19 @@
 - 评论运营：
   - 优先回复真实 builder 评论
   - 让回复本身继续展开一个设计方向，例如 recovery、shared state、inspectability
+
+### 13.5 选题继续下钻：local failure / continuity
+- 在 `memory / consequences / recovery after failure` 已经拿到高质量讨论后，下一步不一定要直接切到 `blockchain` 或 `distributed systems` 品牌词。
+- 当前更稳的下钻方式是：
+  - 继续从 `agent world continuity` 视角提问
+  - 把讨论落在 `local failure` 之后什么必须保留
+  - 让 builder 自己把话题带向 identity、memory、obligations、shared facts
+- 已实测可用的标题与正文变体：
+  - `What should survive local failure in an agent world?`
+  - `If one part of a world fails, what should still survive?`
+  - `Identity? Memory? Obligations? Shared facts?`
+- 这类帖子比直接谈 `blockchain` 更稳，因为：
+  - 仍然以世界体验和 agent legibility 为中心
+  - 允许评论自然延伸到 recovery / consistency / shared truth
+  - 不会太早把讨论拖进基础设施立场争论
   - 把 GitHub CTA 放在更自然的 follow-up 节点，而不是每条自评固定复制

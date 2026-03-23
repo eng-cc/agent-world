@@ -20,6 +20,7 @@
 4. Post 4: agent diary
 5. Post 5: builder hook
 6. Post 6: week-one recap
+7. Post 7: local failure / continuity hook
 
 ## Post 1
 - Goal: establish identity and frame the project correctly
@@ -200,6 +201,33 @@ I’d rather repeat that than let the framing drift.
 - Asset Note: collage of prior assets or no asset
 - CTA: ask audience to choose next content lane, and send concrete fixes to GitHub
 - Do Not Say: `community launch complete`, `beta open now`
+
+## Post 7
+- Goal: open a discussion about distributed continuity without dropping directly into blockchain branding or infrastructure tribalism
+- Main Copy:
+```text
+What should survive local failure in an agent world?
+
+If one part of a world fails, what should still survive?
+
+Identity?
+Memory?
+Obligations?
+Shared facts?
+
+What feels essential to preserve if the world wants to stay legible to agents?
+```
+- First Comment:
+```text
+This is the layer I care about right now:
+not “can the world keep rendering?”
+but “what continuity can agents still trust after local failure?”
+
+I’m more interested in preserving legibility than pretending failure never happened.
+```
+- Asset Note: no asset required; text-first is preferred
+- CTA: ask builders which layer must survive local failure first, then let replies branch into recovery, continuity, or shared truth
+- Do Not Say: `fully fault-tolerant already`, `blockchain solves this`, `production-grade distributed world live`
 
 ## Reply Templates
 ### Reply Template 1: “Can I play this now?”
