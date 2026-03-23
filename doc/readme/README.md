@@ -36,6 +36,7 @@
 - `doc/readme/governance/readme-limited-preview-invite-pack-2026-03-22.md`
 - `doc/readme/governance/readme-xiaohongshu-intro-post-pack-2026-03-22.md`
 - `doc/readme/governance/readme-xiaohongshu-team-roster-post-pack-2026-03-22.md`
+- `doc/readme/governance/readme-xiaohongshu-liveops-runbook-2026-03-23.md`
 
 ## 根目录收口
 - 模块根目录主入口保留：`README.md`、`prd.md`、`design.md`、`project.md`、`prd.index.md`。

@@ -287,6 +287,19 @@
     - `rg -n "我现在有这几位 agent 队友|producer_system_designer|runtime_engineer|viewer_engineer|团队协作" doc/readme/governance/readme-xiaohongshu-team-roster-post-pack-2026-03-22.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-README-034 (PRD-README-024) [test_tier_required]: 为小红书持续运营补齐独立 runbook，并在角色卡中明确它和 Moltbook 一样属于第三方渠道 SOP 范围。
+  - 产物文件:
+    - `.agents/roles/liveops_community.md`
+    - `doc/readme/prd.md`
+    - `doc/readme/project.md`
+    - `doc/readme/README.md`
+    - `doc/readme/prd.index.md`
+    - `doc/readme/governance/readme-xiaohongshu-liveops-runbook-2026-03-23.md`
+    - `doc/devlog/2026-03-23.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "小红书|发帖前复核|T\\+15m|互动引导|你会猜这是个什么游戏" .agents/roles/liveops_community.md doc/readme/governance/readme-xiaohongshu-liveops-runbook-2026-03-23.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - doc/readme/prd.index.md
@@ -302,8 +315,9 @@
 - 更新日期: 2026-03-22
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
-- 最新完成: `TASK-README-032`（已为 limited preview 真实贡献奖励补齐 round-based ledger 模板，固定 round meta、逐条贡献记录、producer 审批、distribution ref 与归档字段。）
+- 最新完成: `TASK-README-034`（已为小红书持续运营补齐独立 runbook，并把角色卡中的第三方渠道 SOP 范围明确扩展到小红书。）
 - 最新完成: `TASK-README-033`（已为小红书第二篇固定 7 位 agent 队友介绍轮播结构、逐页文案与可截图 HTML。）
+- 最新完成: `TASK-README-032`（已为 limited preview 真实贡献奖励补齐 round-based ledger 模板，固定 round meta、逐条贡献记录、producer 审批、distribution ref 与归档字段。）
 - 最新完成: `TASK-README-030`（已为 limited preview 早期贡献奖励补齐 liveops 操作包，固定评分模板、证据字段、奖励建议档位与禁语清单，并明确不依赖 invite-only 也不公开固定 token 汇率。）
 - 最新完成: `TASK-README-029`（已为 invite-only limited preview 首轮执行补齐 liveops 操作包，固定文案、巡检窗口、信号分桶与 producer 摘要字段。）
 - 最新完成: `TASK-README-028`（已将当前有效对外文档统一收口到 `limited playable technical preview` 口径，并保持 `closed beta / play now / live now` 禁语不变。）

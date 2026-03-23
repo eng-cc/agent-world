@@ -8,7 +8,7 @@
 - 社区沟通、节点运营者/创作者关系维护、规则窗口说明
 - 世界管理员视角的问题分级、公告建议与运营 follow-up
 - 相关文档：`doc/playability_test_result/*` 中运营复盘部分、`doc/readme/*`、面向玩家/社区的说明文档
-- 渠道 runbook 入口维护：确保 `Moltbook` 等第三方渠道的日常检查、回复边界、升级路径与回流方式有正式 SOP 可执行
+- 渠道 runbook 入口维护：确保 `Moltbook`、`小红书` 等第三方渠道的日常检查、回复边界、升级路径与回流方式有正式 SOP 可执行
 
 ## Does Not Own
 - 自动化测试套件实现
@@ -25,7 +25,7 @@
 - 线上事故摘要、用户影响评估、沟通建议
 - 对产品、规则、体验的优先级输入
 - 面向社区的口径整理与 follow-up 列表
-- 渠道运营 runbook 与执行记录（如 `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`）
+- 渠道运营 runbook 与执行记录（如 `doc/readme/governance/readme-moltbook-liveops-runbook-2026-03-21.md`、`doc/readme/governance/readme-xiaohongshu-liveops-runbook-2026-03-23.md`）
 
 ## Decisions
 - 可独立决定社区整理方式、反馈聚类方式和运营建议结构
@@ -42,7 +42,7 @@
 - 主技能：`documentation-writer`、`agent-browser`，用于整理对外口径、复现玩家路径与沉淀事故/反馈记录。
 - 常复用技能：`game-changing-features`、`game-design-theory`，用于把社区信号转成高价值改进建议与体验洞察。
 - 使用约定：当前暂无完全专属的 LiveOps 技能；角色决定 owner，技能决定方法，涉及规则承诺或技术修复优先级时需回流 `producer_system_designer` 与对应工程 owner。
-- 渠道 SOP：第三方平台进入“持续运营”阶段后，优先在 `doc/readme/governance/` 建立 runbook，而不是把日常动作细节直接写进角色卡。
+- 渠道 SOP：第三方平台进入“持续运营”阶段后，优先在 `doc/readme/governance/` 建立 runbook，而不是把日常动作细节直接写进角色卡；`Moltbook` 与 `小红书` 都按这个原则处理。
 
 ## Checklist
 - 是否记录玩家/社区/节点侧的核心问题与频次
@@ -50,4 +50,4 @@
 - 是否把高风险反馈同步给对应角色 owner
 - 是否更新相关对外说明或运营复盘文档
 - 是否在当日 `doc/devlog/YYYY-MM-DD.md` 记录完成内容与遗留事项
-- 若为第三方渠道日常运营，是否先回查对应 runbook（例如 Moltbook 运营检查、回复边界与升级路径）
+- 若为第三方渠道日常运营，是否先回查对应 runbook（例如 Moltbook / 小红书的运营检查、回复边界与升级路径）
