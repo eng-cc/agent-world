@@ -1,6 +1,6 @@
 # p2p 文档索引
 
-审计轮次: 7
+审计轮次: 8
 
 ## 入口
 - PRD: `doc/p2p/prd.md`
@@ -30,6 +30,7 @@
 - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.md`
 - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
 - `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
+- `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.prd.md`
 - `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.md`
 
 ## 根目录收口

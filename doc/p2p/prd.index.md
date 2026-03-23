@@ -1,8 +1,8 @@
 # p2p PRD 文件级索引
 
-审计轮次: 7
+审计轮次: 8
 
-更新时间：2026-03-22
+更新时间：2026-03-23
 
 ## 入口
 - 模块 PRD：`doc/p2p/prd.md`
@@ -24,6 +24,7 @@
 | `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase6.prd.md` | `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase6.design.md` | `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase6.project.md` |
 | `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.prd.md` | `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.design.md` | `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase7.project.md` |
 | `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.prd.md` | `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.design.md` | `doc/p2p/blockchain/blockchain-p2pfs-hardening-phase8.project.md` |
+| `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.prd.md` | `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.design.md` | `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.project.md` |
 | `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.md` | `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.design.md` | `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.project.md` |
 | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.prd.md` | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.design.md` | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.project.md` |
 | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.prd.md` | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.design.md` | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.project.md` |

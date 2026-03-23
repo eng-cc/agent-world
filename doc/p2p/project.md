@@ -1,6 +1,6 @@
 # p2p PRD Project
 
-审计轮次: 7
+审计轮次: 8
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-P2P-001 (PRD-P2P-001) [test_tier_required]: 完成 p2p PRD 改写，建立分布式系统设计入口。
@@ -300,6 +300,20 @@
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-P2P-031 (PRD-P2P-013) [test_tier_required]: 新增“主链 Token 初始分配与早期贡献奖励口径”专题 PRD / design / project，并把项目战略控制比例、单人直持上限、低流通与 contribution-based reward 口径纳入模块追踪。
+- [x] TASK-P2P-032 (PRD-P2P-014) [test_tier_required]: 新增“主链/共识密码学安全基线评估”专题 PRD / design / project，并把当前整体 verdict、系统级 blocker 与 mainnet-ready 路线图纳入模块追踪。
+  - 产物文件:
+    - `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.prd.md`
+    - `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.design.md`
+    - `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.project.md`
+    - `doc/p2p/prd.md`
+    - `doc/p2p/project.md`
+    - `doc/p2p/prd.index.md`
+    - `doc/p2p/README.md`
+    - `doc/devlog/2026-03-23.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "not_mainnet_grade|mainnet-grade|TransferMainToken|config.toml|deterministic local seed|TBD_BEFORE_MINT" doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.prd.md doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.design.md doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.project.md doc/p2p/prd.md doc/p2p/project.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
   - 产物文件:
     - `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
     - `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.design.md`
@@ -324,6 +338,7 @@
 - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.md`
 - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
 - `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
+- `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.prd.md`
 - `crates/oasis7/src/bin/oasis7_chain_runtime.rs`
 - `crates/oasis7/src/bin/oasis7_viewer_live.rs`
 - `oasis7_viewer_live.release.example.toml`
@@ -339,9 +354,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-22
-- 当前状态: active（ROUND-022）
-- 下一任务: 进入 `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.project.md` 的 `TIGR-6`，绑定真实创世 recipient / multisig 地址、补创始人个人受益拆分表，并跑 QA 最终审计。
+- 更新日期: 2026-03-23
+- 当前状态: active（ROUND-023）
+- 下一任务: 启动“主链 Token 签名交易鉴权”专题；在该专题收口前，`TIGR-6` 的真实创世地址绑定只能继续做准备，不作为 producer 当前第一优先级。
+- 最新完成: `TASK-P2P-032`（已完成主链/共识密码学安全基线专题建档，正式判定当前整体为 `not_mainnet_grade`，固定主链资产动作未签名授权、生产级 keystore 缺失、治理 finality signer 仍含 local seed 路径与创世 slot 未绑定四类 blocker，并把下一个优先级切到签名交易模型。）
 - 最新完成: `TASK-P2P-031`（已完成 Token 初始分配与早期贡献奖励专题建档与 `TIGR-1~5` 收口，冻结项目战略控制 `5000 bps`、单人直持硬上限 `1500 bps`、独立 reward reserve 执行路径，并新增创世参数正式执行清单与 runtime rounding 规则。）
 - 最新完成: `TASK-P2P-030`（已完成 `viewer-live` 活跃专题中旧 `oasis7*` crate/path 与 launcher 名称当前真值口径的 `oasis7*` 收口。）
 - 最新完成: `TASK-P2P-029`（已完成 `node replication / contribution / reward` 活跃专题中旧 `oasis7*` crate/path 当前真值口径的 `oasis7*` 收口。）

@@ -1,6 +1,6 @@
 # p2p PRD
 
-审计轮次: 7
+审计轮次: 8
 
 ## 目标
 - 建立 p2p 模块设计主文档，统一需求边界、技术方案与验收标准。
@@ -74,6 +74,7 @@
   - PRD-P2P-011: As a 发布维护者, I want legacy compatibility aliases removed from `oasis7_viewer_live`, so that CLI semantics are single-source and there is no dead parser path.
   - PRD-P2P-012: As a 维护者, I want historical docs to reference current source layout, so that reviewers do not chase deleted paths during audit or regression.
   - PRD-P2P-013: As a producer_system_designer, I want one frozen genesis allocation and early-contribution reward policy, so that oasis7 can issue token with low circulation, auditable control boundaries and no accidental play-to-earn framing.
+  - PRD-P2P-014: As a producer_system_designer, I want one explicit cryptographic security baseline verdict, so that oasis7 does not overclaim “mainstream public-chain-grade security” before transaction authorization, signer custody and genesis control are actually ready.
 - Critical User Flows:
   1. Flow-P2P-001: `网络拓扑变更 -> 共识联调 -> DistFS 同步 -> 节点状态一致性验证`
   2. Flow-P2P-002: `执行 S9/S10 长跑 -> 采集故障与恢复数据 -> 输出收敛报告`
@@ -88,6 +89,7 @@
   11. Flow-P2P-011: `用户误传 oasis7_viewer_live 任意 legacy 参数（含 --runtime-world） -> CLI 明确拒绝并输出迁移入口 -> 测试与手册口径一致`
   12. Flow-P2P-012: `执行历史文档巡检 -> 替换已删除源码路径到当前入口路径 -> 文档门禁 + grep 零残留校验`
   13. Flow-P2P-013: `制作人冻结创世分配表 -> runtime 映射创世桶与 vesting 参数 -> liveops/QA 审核早期贡献奖励边界 -> 创世配置与低流通门禁共同放行`
+  14. Flow-P2P-014: `盘点签名/地址/交易授权/keystore/治理 signer/创世控制真值 -> 形成 red/yellow/green 矩阵 -> producer 输出总 verdict 与 P0 blocker`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -101,6 +103,7 @@
 | 时序语义残留收敛 | `worker_poll_count`、`consensus.last_observed_tick`、`consensus.committed_height`、`slot_duration_ms` | 更新状态字段命名/文档叙述并修复过时控制面假设 | `legacy -> aligned` | 轮询指标与共识指标分离，不混用同一“tick”语义 | 运维/QA 只读；配置前必须通过校验 |
 | Viewer 控制面边界收敛 | `oasis7_viewer_live` CLI（`--bind`/`--web-bind`/`--llm`/`--no-llm`） | 仅保留观察服务参数；误传 `--release-config`、`--runtime-world`、`--node-*` 与其他 legacy 控制面参数直接拒绝 | `legacy_mixed -> observer_only_strict` | CLI 白名单固定；错误信息必须包含迁移目标 `oasis7_chain_runtime` | 运行链控制面仅限受信运维入口 |
 | Token 创世分配与低流通 | `allocation_bps`、`bucket_id`、`recipient`、`cliff_epochs`、`linear_unlock_epochs`、`founder_direct_cap_bps`、`circulation_cap_bps` | 冻结创世分配表、设定 vesting 与金库控制边界、审计早期贡献奖励准入 | `draft -> frozen -> auditable` | 分配总和必须 `10000 bps`；项目战略控制目标 `5000 bps`；协议奖励池 `3500 bps`；单人直持硬上限 `1500 bps` | 制作人定义口径；runtime 按创世配置落地；liveops/QA 仅可在已定义边界内执行与验收 |
+| 密码学安全基线评估 | `primitive_status`、`transaction_auth_status`、`account_model_status`、`key_custody_status`、`governance_signer_status`、`genesis_control_status`、`overall_verdict` | 盘点代码/文档真值并输出 system-level verdict；若 blocker 未清零则拒绝高级安全口径 | `unknown -> inventoried -> verdict_frozen` | 只要资产动作缺统一签名交易模型，整体必须保持 `not_mainnet_grade` | `producer_system_designer` 拍板，`runtime_engineer`/`qa_engineer` 联审 |
 - 三线联合验收清单（TASK-P2P-002）:
 | 线别 | 必跑命令（基线） | 联合验收门禁 | 阻断条件（任一命中即 fail） | 证据产物 |
 | --- | --- | --- | --- | --- |
@@ -127,6 +130,7 @@
   - AC-17: 历史文档中 `oasis7_viewer_live` 子目录旧路径完成迁移（对齐 `oasis7_viewer_live.rs` 与 `oasis7_chain_runtime/*` 现行布局），文档门禁通过。
   - AC-18: `doc/p2p/**` 仍可读历史专题的首行标题必须统一使用 `oasis7 Runtime` 或 `oasis7` 品牌；旧 `oasis7*` 标题仅允许保留在正文历史上下文、证据原文与兼容说明中。
   - AC-19: `mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22` 专题文档落盘并映射任务链 `TASK-P2P-031`，明确 `10000 bps` 创世分配表、项目战略控制 `5000 bps`、协议奖励池 `3500 bps`、单人直持目标/上限、低流通边界与“贡献制奖励而非 P2E”口径。
+  - AC-20: `p2p-mainnet-crypto-security-baseline-2026-03-23` 专题文档落盘并映射任务链 `TASK-P2P-032`，明确当前整体 verdict 为 `not_mainnet_grade`，固定交易授权、keystore、治理 signer 与创世控制 blocker，并给出 mainnet-ready 路线图。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -145,6 +149,7 @@
   - `doc/p2p/node/node-pos-subslot-tick-pacing-2026-03-07.prd.md`
   - `doc/p2p/node/node-pos-time-anchor-control-plane-alignment-2026-03-07.prd.md`
   - `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
+  - `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.prd.md`
   - `world-rule.md`
   - `doc/world-simulator/viewer/viewer-manual.md`
   - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md`
@@ -167,6 +172,7 @@
   - 兼容别名误用：`oasis7_viewer_live` 若收到 `--runtime-world`，必须立即失败并输出“请直接使用纯 viewer 参数”。
   - 创世控盘越界：若单人直持或项目直接液态份额超过 PRD 上限，则创世配置不得冻结。
   - 奖励语义漂移：若 early-player reward 被描述为“登录就发”或“时长挖矿”，则必须退回为 contribution-based 口径重审。
+  - 安全等级误判：若局部 `ed25519`/allowlist 能力被误写成“整体已达主流公链安全”，则必须退回并以系统级交易授权/托管/治理真值重审。
 - Non-Functional Requirements:
   - NFR-P2P-1: 多节点长跑稳定性指标持续达标并可追溯。
   - NFR-P2P-2: 共识提交与复制链路关键失败模式覆盖率 100%。
@@ -184,6 +190,7 @@
   - NFR-P2P-14: `oasis7_viewer_live` 仅保留一个生效的 CLI 解析实现；仓内不得存在与生产入口分叉的 legacy 参数解析代码路径。
   - NFR-P2P-15: 模块文档中的源码路径引用必须可解析到当前仓库存在文件，避免审计与回归排障时出现失效链接。
   - NFR-P2P-16: Token 创世分配表必须满足 `sum(allocation_bps)=10000`、项目战略控制目标 `5000 bps`、单人直持硬上限 `1500 bps`、创世液态流通硬上限 `500 bps`，且首 12 个月非团队外部释放目标 `100~200 bps`、硬上限 `500 bps`。
+  - NFR-P2P-17: 在资产动作签名交易模型、生产级 keystore、治理 signer 外部化与创世 slot 真实绑定完成前，`oasis7` 不得宣称“对标主流公链安全”或 `mainnet-grade`。
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 
 ## 5. Risks & Roadmap
@@ -213,6 +220,7 @@
 | PRD-P2P-011 | TASK-P2P-015 | `test_tier_required` | `oasis7_viewer_live` 删除 `--runtime-world` 兼容别名、移除旧 split CLI 路径并回归手册/测试口径 | CLI 单一事实源与维护成本收敛 |
 | PRD-P2P-012 | TASK-P2P-016/018 | `test_tier_required` | 历史文档旧路径替换、历史专题标题零残留校验 + 文档门禁（过程日志除外） | 文档可追溯性与维护效率 |
 | PRD-P2P-013 | TASK-P2P-031 | `test_tier_required` | 创世分配专题 PRD/project/design 建档、模块入口映射、文档门禁与差异检查 | Token 创世口径、低流通边界与早期贡献奖励策略 |
+| PRD-P2P-014 | TASK-P2P-032 | `test_tier_required` | 密码学安全基线专题 PRD/project/design 建档、代码真值盘点、模块入口映射、文档门禁与差异检查 | 安全口径、mainnet-ready blocker 与优先级治理 |
 - S9/S10 长跑结果模板（TASK-P2P-003）:
 | 字段 | 说明 | 来源 |
 | --- | --- | --- |
