@@ -107,7 +107,44 @@ struct LocalMainTokenActionSigningEnvelope<'a> {
     operation: &'static str,
     account_id: &'a str,
     public_key: &'a str,
-    action: &'a JsonValue,
+    action: LocalMainTokenActionSigningPayload<'a>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "type", content = "data")]
+enum LocalMainTokenActionSigningPayload<'a> {
+    TransferMainToken(LocalTransferMainTokenSigningData<'a>),
+    ClaimMainTokenVesting(LocalClaimMainTokenVestingSigningData<'a>),
+    InitializeMainTokenGenesis(LocalInitializeMainTokenGenesisSigningData<'a>),
+    DistributeMainTokenTreasury(LocalDistributeMainTokenTreasurySigningData<'a>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct LocalTransferMainTokenSigningData<'a> {
+    from_account_id: &'a str,
+    to_account_id: &'a str,
+    amount: u64,
+    nonce: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct LocalClaimMainTokenVestingSigningData<'a> {
+    bucket_id: &'a str,
+    beneficiary: &'a str,
+    nonce: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct LocalInitializeMainTokenGenesisSigningData<'a> {
+    allocations: &'a [JsonValue],
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct LocalDistributeMainTokenTreasurySigningData<'a> {
+    proposal_id: u64,
+    distribution_id: &'a str,
+    bucket_id: &'a str,
+    distributions: &'a [JsonValue],
 }
 
 impl fmt::Debug for NodeRuntime {
@@ -368,8 +405,8 @@ fn validate_consensus_action_payload_auth(
     };
     verify_local_main_token_action_auth(action, proof, &config.main_token_controller_binding)
         .map_err(|err| NodeError::Consensus {
-        reason: format!("main token action auth rejected: {err}"),
-    })?;
+            reason: format!("main token action auth rejected: {err}"),
+        })?;
     Ok(())
 }
 
@@ -411,7 +448,9 @@ fn local_runtime_action_kind(action: &JsonValue) -> Option<&str> {
     action.get("type").and_then(JsonValue::as_str)
 }
 
-fn local_runtime_action_data(action: &JsonValue) -> Result<&serde_json::Map<String, JsonValue>, String> {
+fn local_runtime_action_data(
+    action: &JsonValue,
+) -> Result<&serde_json::Map<String, JsonValue>, String> {
     action
         .get("data")
         .and_then(JsonValue::as_object)
@@ -423,7 +462,8 @@ fn verify_local_main_token_action_auth(
     proof: &LocalMainTokenActionAuthProof,
     controller_binding: &NodeMainTokenControllerBindingConfig,
 ) -> Result<(), String> {
-    let account_id = normalize_required_field(proof.account_id.as_str(), "main token auth account_id")?;
+    let account_id =
+        normalize_required_field(proof.account_id.as_str(), "main token auth account_id")?;
     match proof.scheme {
         LocalMainTokenActionAuthScheme::Ed25519 => {
             let public_key = normalize_public_key_field(
@@ -453,9 +493,9 @@ fn verify_local_main_token_action_auth(
             verify_local_main_token_action_signature(
                 action,
                 public_key.as_str(),
-                proof.signature
-                    .as_deref()
-                    .ok_or_else(|| "main token auth signature is required for ed25519".to_string())?,
+                proof.signature.as_deref().ok_or_else(|| {
+                    "main token auth signature is required for ed25519".to_string()
+                })?,
                 payload.as_slice(),
             )
         }
@@ -528,10 +568,93 @@ fn build_local_main_token_action_signing_payload(
         operation: local_main_token_action_operation(action)?,
         account_id,
         public_key,
-        action,
+        action: build_local_main_token_action_signing_action(action)?,
     };
     serde_json::to_vec(&envelope)
         .map_err(|err| format!("encode main token auth signing payload failed: {err}"))
+}
+
+fn build_local_main_token_action_signing_action(
+    action: &JsonValue,
+) -> Result<LocalMainTokenActionSigningPayload<'_>, String> {
+    let action_kind = local_runtime_action_kind(action)
+        .ok_or_else(|| "runtime action missing type".to_string())?;
+    let data = local_runtime_action_data(action)?;
+    match action_kind {
+        "TransferMainToken" => Ok(LocalMainTokenActionSigningPayload::TransferMainToken(
+            LocalTransferMainTokenSigningData {
+                from_account_id: data
+                    .get("from_account_id")
+                    .and_then(JsonValue::as_str)
+                    .ok_or_else(|| "transfer action missing from_account_id".to_string())?,
+                to_account_id: data
+                    .get("to_account_id")
+                    .and_then(JsonValue::as_str)
+                    .ok_or_else(|| "transfer action missing to_account_id".to_string())?,
+                amount: data
+                    .get("amount")
+                    .and_then(JsonValue::as_u64)
+                    .ok_or_else(|| "transfer action missing amount".to_string())?,
+                nonce: data
+                    .get("nonce")
+                    .and_then(JsonValue::as_u64)
+                    .ok_or_else(|| "transfer action missing nonce".to_string())?,
+            },
+        )),
+        "ClaimMainTokenVesting" => Ok(LocalMainTokenActionSigningPayload::ClaimMainTokenVesting(
+            LocalClaimMainTokenVestingSigningData {
+                bucket_id: data
+                    .get("bucket_id")
+                    .and_then(JsonValue::as_str)
+                    .ok_or_else(|| "claim action missing bucket_id".to_string())?,
+                beneficiary: data
+                    .get("beneficiary")
+                    .and_then(JsonValue::as_str)
+                    .ok_or_else(|| "claim action missing beneficiary".to_string())?,
+                nonce: data
+                    .get("nonce")
+                    .and_then(JsonValue::as_u64)
+                    .ok_or_else(|| "claim action missing nonce".to_string())?,
+            },
+        )),
+        "InitializeMainTokenGenesis" => Ok(
+            LocalMainTokenActionSigningPayload::InitializeMainTokenGenesis(
+                LocalInitializeMainTokenGenesisSigningData {
+                    allocations: data
+                        .get("allocations")
+                        .and_then(JsonValue::as_array)
+                        .map(Vec::as_slice)
+                        .ok_or_else(|| "genesis action missing allocations".to_string())?,
+                },
+            ),
+        ),
+        "DistributeMainTokenTreasury" => Ok(
+            LocalMainTokenActionSigningPayload::DistributeMainTokenTreasury(
+                LocalDistributeMainTokenTreasurySigningData {
+                    proposal_id: data
+                        .get("proposal_id")
+                        .and_then(JsonValue::as_u64)
+                        .ok_or_else(|| "treasury action missing proposal_id".to_string())?,
+                    distribution_id: data
+                        .get("distribution_id")
+                        .and_then(JsonValue::as_str)
+                        .ok_or_else(|| "treasury action missing distribution_id".to_string())?,
+                    bucket_id: data
+                        .get("bucket_id")
+                        .and_then(JsonValue::as_str)
+                        .ok_or_else(|| "treasury action missing bucket_id".to_string())?,
+                    distributions: data
+                        .get("distributions")
+                        .and_then(JsonValue::as_array)
+                        .map(Vec::as_slice)
+                        .ok_or_else(|| "treasury action missing distributions".to_string())?,
+                },
+            ),
+        ),
+        other => Err(format!(
+            "main token auth is not supported for action {other}"
+        )),
+    }
 }
 
 fn validate_local_main_token_action_account_binding(
@@ -616,7 +739,11 @@ fn validate_local_main_token_action_account_binding(
                 ));
             }
         }
-        other => return Err(format!("main token auth is not supported for action {other}")),
+        other => {
+            return Err(format!(
+                "main token auth is not supported for action {other}"
+            ))
+        }
     }
     Ok(())
 }
@@ -713,7 +840,9 @@ fn local_main_token_action_operation(action: &JsonValue) -> Result<&'static str,
         Some("ClaimMainTokenVesting") => Ok("claim_main_token_vesting"),
         Some("InitializeMainTokenGenesis") => Ok("initialize_main_token_genesis"),
         Some("DistributeMainTokenTreasury") => Ok("distribute_main_token_treasury"),
-        Some(other) => Err(format!("main token auth is not supported for action {other}")),
+        Some(other) => Err(format!(
+            "main token auth is not supported for action {other}"
+        )),
         None => Err("runtime action missing type".to_string()),
     }
 }
@@ -724,7 +853,9 @@ fn local_main_token_action_signature_prefix(action: &JsonValue) -> Result<&'stat
         Some("ClaimMainTokenVesting") => Ok(MAIN_TOKEN_CLAIM_AUTH_SIGNATURE_V1_PREFIX),
         Some("InitializeMainTokenGenesis") => Ok(MAIN_TOKEN_GENESIS_AUTH_SIGNATURE_V1_PREFIX),
         Some("DistributeMainTokenTreasury") => Ok(MAIN_TOKEN_TREASURY_AUTH_SIGNATURE_V1_PREFIX),
-        Some(other) => Err(format!("main token auth is not supported for action {other}")),
+        Some(other) => Err(format!(
+            "main token auth is not supported for action {other}"
+        )),
         None => Err("runtime action missing type".to_string()),
     }
 }

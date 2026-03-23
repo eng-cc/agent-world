@@ -2,7 +2,6 @@ use crate::runtime;
 use crate::simulator::{Action as SimulatorAction, ActionSubmitter};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 
 const CONSENSUS_ACTION_PAYLOAD_ENVELOPE_VERSION: u8 = 1;
 const MAIN_TOKEN_ACTION_AUTH_PAYLOAD_VERSION: u8 = 1;
@@ -98,7 +97,44 @@ struct MainTokenActionSigningEnvelope<'a> {
     operation: &'static str,
     account_id: &'a str,
     public_key: &'a str,
-    action: &'a JsonValue,
+    action: MainTokenActionSigningPayload<'a>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "type", content = "data")]
+enum MainTokenActionSigningPayload<'a> {
+    TransferMainToken(TransferMainTokenSigningData<'a>),
+    ClaimMainTokenVesting(ClaimMainTokenVestingSigningData<'a>),
+    InitializeMainTokenGenesis(InitializeMainTokenGenesisSigningData<'a>),
+    DistributeMainTokenTreasury(DistributeMainTokenTreasurySigningData<'a>),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+struct TransferMainTokenSigningData<'a> {
+    from_account_id: &'a str,
+    to_account_id: &'a str,
+    amount: u64,
+    nonce: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+struct ClaimMainTokenVestingSigningData<'a> {
+    bucket_id: &'a str,
+    beneficiary: &'a str,
+    nonce: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+struct InitializeMainTokenGenesisSigningData<'a> {
+    allocations: &'a [runtime::MainTokenGenesisAllocationPlan],
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+struct DistributeMainTokenTreasurySigningData<'a> {
+    proposal_id: runtime::ProposalId,
+    distribution_id: &'a str,
+    bucket_id: &'a str,
+    distributions: &'a [runtime::MainTokenTreasuryDistribution],
 }
 
 impl ConsensusActionPayloadEnvelope {
@@ -148,24 +184,17 @@ pub fn sign_main_token_runtime_action_auth(
 ) -> Result<MainTokenActionAuthProof, MainTokenActionAuthError> {
     ensure_main_token_action_supported(action)?;
     let account_id = normalize_required_field(account_id, "main token auth account_id")?;
-    let public_key = normalize_public_key_field(
-        signer_public_key_hex,
-        "main token auth signer public key",
-    )?;
-    let signing_key = signing_key_from_hex(
-        signer_private_key_hex,
-        "main token auth signer private key",
-    )?;
+    let public_key =
+        normalize_public_key_field(signer_public_key_hex, "main token auth signer public key")?;
+    let signing_key =
+        signing_key_from_hex(signer_private_key_hex, "main token auth signer private key")?;
     verify_keypair_match(
         &signing_key,
         public_key.as_str(),
         "main token auth signer public key",
     )?;
-    let payload = build_main_token_action_signing_payload(
-        action,
-        account_id.as_str(),
-        public_key.as_str(),
-    )?;
+    let payload =
+        build_main_token_action_signing_payload(action, account_id.as_str(), public_key.as_str())?;
     let signature: Signature = signing_key.sign(payload.as_slice());
     Ok(MainTokenActionAuthProof {
         scheme: MainTokenActionAuthScheme::Ed25519,
@@ -369,23 +398,72 @@ fn build_main_token_action_signing_payload(
     account_id: &str,
     public_key: &str,
 ) -> Result<Vec<u8>, MainTokenActionAuthError> {
-    let action_json = serde_json::to_value(action).map_err(|err| {
-        MainTokenActionAuthError::InvalidRequest(format!(
-            "encode main token auth action json failed: {err}"
-        ))
-    })?;
     let envelope = MainTokenActionSigningEnvelope {
         version: MAIN_TOKEN_ACTION_AUTH_PAYLOAD_VERSION,
         operation: main_token_action_operation(action)?,
         account_id,
         public_key,
-        action: &action_json,
+        action: build_main_token_action_signing_action(action)?,
     };
     serde_json::to_vec(&envelope).map_err(|err| {
         MainTokenActionAuthError::InvalidRequest(format!(
             "encode main token auth signing payload failed: {err}"
         ))
     })
+}
+
+fn build_main_token_action_signing_action(
+    action: &runtime::Action,
+) -> Result<MainTokenActionSigningPayload<'_>, MainTokenActionAuthError> {
+    match action {
+        runtime::Action::TransferMainToken {
+            from_account_id,
+            to_account_id,
+            amount,
+            nonce,
+        } => Ok(MainTokenActionSigningPayload::TransferMainToken(
+            TransferMainTokenSigningData {
+                from_account_id: from_account_id.as_str(),
+                to_account_id: to_account_id.as_str(),
+                amount: *amount,
+                nonce: *nonce,
+            },
+        )),
+        runtime::Action::ClaimMainTokenVesting {
+            bucket_id,
+            beneficiary,
+            nonce,
+        } => Ok(MainTokenActionSigningPayload::ClaimMainTokenVesting(
+            ClaimMainTokenVestingSigningData {
+                bucket_id: bucket_id.as_str(),
+                beneficiary: beneficiary.as_str(),
+                nonce: *nonce,
+            },
+        )),
+        runtime::Action::InitializeMainTokenGenesis { allocations } => {
+            Ok(MainTokenActionSigningPayload::InitializeMainTokenGenesis(
+                InitializeMainTokenGenesisSigningData {
+                    allocations: allocations.as_slice(),
+                },
+            ))
+        }
+        runtime::Action::DistributeMainTokenTreasury {
+            proposal_id,
+            distribution_id,
+            bucket_id,
+            distributions,
+        } => Ok(MainTokenActionSigningPayload::DistributeMainTokenTreasury(
+            DistributeMainTokenTreasurySigningData {
+                proposal_id: *proposal_id,
+                distribution_id: distribution_id.as_str(),
+                bucket_id: bucket_id.as_str(),
+                distributions: distributions.as_slice(),
+            },
+        )),
+        _ => Err(MainTokenActionAuthError::UnsupportedAction(format!(
+            "main token auth is not supported for action {action:?}"
+        ))),
+    }
 }
 
 fn validate_main_token_action_account_binding(
@@ -483,9 +561,7 @@ fn main_token_action_operation(
         runtime::Action::TransferMainToken { .. } => Ok("transfer_main_token"),
         runtime::Action::ClaimMainTokenVesting { .. } => Ok("claim_main_token_vesting"),
         runtime::Action::InitializeMainTokenGenesis { .. } => Ok("initialize_main_token_genesis"),
-        runtime::Action::DistributeMainTokenTreasury { .. } => {
-            Ok("distribute_main_token_treasury")
-        }
+        runtime::Action::DistributeMainTokenTreasury { .. } => Ok("distribute_main_token_treasury"),
         _ => Err(MainTokenActionAuthError::UnsupportedAction(format!(
             "main token auth is not supported for action {action:?}"
         ))),
@@ -496,8 +572,12 @@ fn main_token_action_signature_prefix(
     action: &runtime::Action,
 ) -> Result<&'static str, MainTokenActionAuthError> {
     match action {
-        runtime::Action::TransferMainToken { .. } => Ok(MAIN_TOKEN_TRANSFER_AUTH_SIGNATURE_V1_PREFIX),
-        runtime::Action::ClaimMainTokenVesting { .. } => Ok(MAIN_TOKEN_CLAIM_AUTH_SIGNATURE_V1_PREFIX),
+        runtime::Action::TransferMainToken { .. } => {
+            Ok(MAIN_TOKEN_TRANSFER_AUTH_SIGNATURE_V1_PREFIX)
+        }
+        runtime::Action::ClaimMainTokenVesting { .. } => {
+            Ok(MAIN_TOKEN_CLAIM_AUTH_SIGNATURE_V1_PREFIX)
+        }
         runtime::Action::InitializeMainTokenGenesis { .. } => {
             Ok(MAIN_TOKEN_GENESIS_AUTH_SIGNATURE_V1_PREFIX)
         }
@@ -516,10 +596,7 @@ fn ensure_main_token_action_supported(
     main_token_action_operation(action).map(|_| ())
 }
 
-fn normalize_required_field(
-    raw: &str,
-    label: &str,
-) -> Result<String, MainTokenActionAuthError> {
+fn normalize_required_field(raw: &str, label: &str) -> Result<String, MainTokenActionAuthError> {
     let value = raw.trim();
     if value.is_empty() {
         return Err(MainTokenActionAuthError::InvalidRequest(format!(
@@ -529,10 +606,7 @@ fn normalize_required_field(
     Ok(value.to_string())
 }
 
-fn normalize_public_key_field(
-    raw: &str,
-    label: &str,
-) -> Result<String, MainTokenActionAuthError> {
+fn normalize_public_key_field(raw: &str, label: &str) -> Result<String, MainTokenActionAuthError> {
     let normalized = normalize_required_field(raw, label)?;
     let bytes = decode_hex_array::<32>(normalized.as_str(), label)?;
     Ok(hex::encode(bytes))

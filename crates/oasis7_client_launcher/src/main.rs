@@ -10,9 +10,6 @@ use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::TryRecvError;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
-#[cfg(not(target_arch = "wasm32"))]
-use std::time::Instant;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use eframe::egui;
 #[cfg(not(target_arch = "wasm32"))]
@@ -26,6 +23,8 @@ use platform_ops::resolve_static_dir_path;
 use platform_ops::{resolve_chain_runtime_binary_path, resolve_launcher_binary_path};
 use serde::{Deserialize, Serialize};
 #[cfg(not(target_arch = "wasm32"))]
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+#[cfg(not(target_arch = "wasm32"))]
 use transfer_entry::TransferDraft;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::spawn_local;
@@ -34,7 +33,7 @@ use web_sys::wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
 use web_sys::HtmlCanvasElement;
 #[cfg(target_arch = "wasm32")]
-use web_time::Instant;
+use web_time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod app_process;
@@ -49,6 +48,8 @@ mod feedback_window;
 #[cfg(target_arch = "wasm32")]
 mod feedback_window_web;
 mod launcher_core;
+#[cfg(target_arch = "wasm32")]
+mod launcher_test_hook_web;
 #[cfg(not(target_arch = "wasm32"))]
 mod llm_settings;
 #[cfg(target_arch = "wasm32")]
@@ -125,7 +126,15 @@ fn default_chain_node_id() -> String {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis();
-    format!("{DEFAULT_CHAIN_NODE_ID}-fresh-{}-{now}", std::process::id())
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        return format!("{DEFAULT_CHAIN_NODE_ID}-fresh-{}-{now}", std::process::id());
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        format!("{DEFAULT_CHAIN_NODE_ID}-fresh-web-{now}")
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

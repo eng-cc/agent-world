@@ -7,9 +7,9 @@ use super::explorer_p1_api::{
 };
 use super::{
     build_transfer_submit_action_payload, maybe_handle_transfer_submit_request,
-    parse_transfer_submit_request, ChainExplorerOverviewResponse, ChainTransferHistoryResponse,
-    ChainTransferStatusResponse, ChainTransferSubmitRequest, ChainTransferSubmitResponse,
-    TransferLifecycleStatus,
+    parse_transfer_submit_request, verify_transfer_submit_request_auth,
+    ChainExplorerOverviewResponse, ChainTransferHistoryResponse, ChainTransferStatusResponse,
+    ChainTransferSubmitRequest, ChainTransferSubmitResponse, TransferLifecycleStatus,
 };
 use ed25519_dalek::SigningKey;
 use oasis7::consensus_action_payload::{
@@ -236,8 +236,7 @@ fn parse_transfer_submit_request_rejects_same_account() {
 fn build_transfer_submit_action_payload_encodes_runtime_action() {
     let request = build_signed_transfer_request(7, 8, 7, 2);
     let body = serialize_transfer_request(&request);
-    let request =
-        parse_transfer_submit_request(body.as_slice()).expect("request should parse");
+    let request = parse_transfer_submit_request(body.as_slice()).expect("request should parse");
     let payload = build_transfer_submit_action_payload(&request).expect("payload");
     let decoded = decode_consensus_action_payload(payload.as_slice()).expect("decode payload");
     match decoded {
@@ -258,6 +257,46 @@ fn build_transfer_submit_action_payload_encodes_runtime_action() {
         },
         other => panic!("expected runtime action payload, got {other:?}"),
     }
+}
+
+#[test]
+fn verify_transfer_submit_request_auth_accepts_live_browser_captured_signature() {
+    let request = ChainTransferSubmitRequest {
+        from_account_id:
+            "awt:pk:fded5085f1e8099257b7bfb2346eb6bd4194c3351d8f97686b18cfcc5969e0a3"
+                .to_string(),
+        to_account_id: "awt:pk:1111111111111111111111111111111111111111111111111111111111111111"
+            .to_string(),
+        amount: 1,
+        nonce: 1,
+        public_key: "fded5085f1e8099257b7bfb2346eb6bd4194c3351d8f97686b18cfcc5969e0a3"
+            .to_string(),
+        signature:
+            "awttransferauth:v1:72145a059bbadeec75091f9aeca47d0ee0c7c1682e311785ed808e6f6125ad5918df0c05a6fdc3cd8bb8065fae31e30eca397d4dd0ede44fde78d4dac5998c06"
+                .to_string(),
+    };
+    let body = serialize_transfer_request(&request);
+    let parsed = parse_transfer_submit_request(body.as_slice()).expect("request should parse");
+    let action = Action::TransferMainToken {
+        from_account_id: parsed.from_account_id.clone(),
+        to_account_id: parsed.to_account_id.clone(),
+        amount: parsed.amount,
+        nonce: parsed.nonce,
+    };
+    let expected_signature = sign_main_token_runtime_action_auth(
+        &action,
+        parsed.from_account_id.as_str(),
+        parsed.public_key.as_str(),
+        "c7a149783d4d97d4b36f6f97ae43eb71af7fe595b7f717d329c96be3e58fdc29",
+    )
+    .expect("runtime helper should sign")
+    .signature
+    .expect("runtime helper signature");
+    assert_eq!(
+        parsed.signature, expected_signature,
+        "runtime helper signature drift"
+    );
+    verify_transfer_submit_request_auth(&parsed).expect("browser-captured signature should verify");
 }
 
 #[test]
@@ -463,7 +502,10 @@ fn transfer_submit_handler_rejects_account_auth_mismatch() {
         decode_http_json_response(&response_bytes);
     assert_eq!(status, 400);
     assert!(!response.ok);
-    assert_eq!(response.error_code.as_deref(), Some("account_auth_mismatch"));
+    assert_eq!(
+        response.error_code.as_deref(),
+        Some("account_auth_mismatch")
+    );
 }
 
 #[test]

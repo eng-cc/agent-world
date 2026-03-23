@@ -106,7 +106,44 @@ struct TestMainTokenActionSigningEnvelope<'a> {
     operation: &'static str,
     account_id: &'a str,
     public_key: &'a str,
-    action: &'a JsonValue,
+    action: TestMainTokenActionSigningPayload<'a>,
+}
+
+#[derive(Serialize)]
+#[serde(tag = "type", content = "data")]
+enum TestMainTokenActionSigningPayload<'a> {
+    TransferMainToken(TestTransferMainTokenSigningData<'a>),
+    ClaimMainTokenVesting(TestClaimMainTokenVestingSigningData<'a>),
+    InitializeMainTokenGenesis(TestInitializeMainTokenGenesisSigningData<'a>),
+    DistributeMainTokenTreasury(TestDistributeMainTokenTreasurySigningData<'a>),
+}
+
+#[derive(Serialize)]
+struct TestTransferMainTokenSigningData<'a> {
+    from_account_id: &'a str,
+    to_account_id: &'a str,
+    amount: u64,
+    nonce: u64,
+}
+
+#[derive(Serialize)]
+struct TestClaimMainTokenVestingSigningData<'a> {
+    bucket_id: &'a str,
+    beneficiary: &'a str,
+    nonce: u64,
+}
+
+#[derive(Serialize)]
+struct TestInitializeMainTokenGenesisSigningData<'a> {
+    allocations: &'a [JsonValue],
+}
+
+#[derive(Serialize)]
+struct TestDistributeMainTokenTreasurySigningData<'a> {
+    proposal_id: u64,
+    distribution_id: &'a str,
+    bucket_id: &'a str,
+    distributions: &'a [JsonValue],
 }
 
 fn test_main_token_action_signature_prefix(action_kind: &str) -> &'static str {
@@ -133,10 +170,99 @@ fn main_token_account_id_from_public_key(public_key_hex: &str) -> String {
     format!("awt:pk:{}", public_key_hex.trim().to_ascii_lowercase())
 }
 
-fn encode_signed_main_token_runtime_payload(action: JsonValue, account_id: &str, seed: u8) -> Vec<u8> {
+fn test_main_token_signing_action(action: &JsonValue) -> TestMainTokenActionSigningPayload<'_> {
+    let action_kind = action
+        .get("type")
+        .and_then(JsonValue::as_str)
+        .expect("action kind");
+    let data = action.get("data").expect("action data");
+    match action_kind {
+        "TransferMainToken" => {
+            TestMainTokenActionSigningPayload::TransferMainToken(TestTransferMainTokenSigningData {
+                from_account_id: data
+                    .get("from_account_id")
+                    .and_then(JsonValue::as_str)
+                    .expect("transfer from_account_id"),
+                to_account_id: data
+                    .get("to_account_id")
+                    .and_then(JsonValue::as_str)
+                    .expect("transfer to_account_id"),
+                amount: data
+                    .get("amount")
+                    .and_then(JsonValue::as_u64)
+                    .expect("transfer amount"),
+                nonce: data
+                    .get("nonce")
+                    .and_then(JsonValue::as_u64)
+                    .expect("transfer nonce"),
+            })
+        }
+        "ClaimMainTokenVesting" => TestMainTokenActionSigningPayload::ClaimMainTokenVesting(
+            TestClaimMainTokenVestingSigningData {
+                bucket_id: data
+                    .get("bucket_id")
+                    .and_then(JsonValue::as_str)
+                    .expect("claim bucket_id"),
+                beneficiary: data
+                    .get("beneficiary")
+                    .and_then(JsonValue::as_str)
+                    .expect("claim beneficiary"),
+                nonce: data
+                    .get("nonce")
+                    .and_then(JsonValue::as_u64)
+                    .expect("claim nonce"),
+            },
+        ),
+        "InitializeMainTokenGenesis" => {
+            TestMainTokenActionSigningPayload::InitializeMainTokenGenesis(
+                TestInitializeMainTokenGenesisSigningData {
+                    allocations: data
+                        .get("allocations")
+                        .and_then(JsonValue::as_array)
+                        .map(Vec::as_slice)
+                        .expect("genesis allocations"),
+                },
+            )
+        }
+        "DistributeMainTokenTreasury" => {
+            TestMainTokenActionSigningPayload::DistributeMainTokenTreasury(
+                TestDistributeMainTokenTreasurySigningData {
+                    proposal_id: data
+                        .get("proposal_id")
+                        .and_then(JsonValue::as_u64)
+                        .expect("treasury proposal_id"),
+                    distribution_id: data
+                        .get("distribution_id")
+                        .and_then(JsonValue::as_str)
+                        .expect("treasury distribution_id"),
+                    bucket_id: data
+                        .get("bucket_id")
+                        .and_then(JsonValue::as_str)
+                        .expect("treasury bucket_id"),
+                    distributions: data
+                        .get("distributions")
+                        .and_then(JsonValue::as_array)
+                        .map(Vec::as_slice)
+                        .expect("treasury distributions"),
+                },
+            )
+        }
+        other => panic!("unsupported test action kind {other}"),
+    }
+}
+
+fn encode_signed_main_token_runtime_payload(
+    action: JsonValue,
+    account_id: &str,
+    seed: u8,
+) -> Vec<u8> {
     let (public_key_hex, private_key_hex) = token_auth_test_signer(seed);
-    let signing_key =
-        SigningKey::from_bytes(&hex::decode(private_key_hex).expect("decode private key").try_into().expect("32 bytes"));
+    let signing_key = SigningKey::from_bytes(
+        &hex::decode(private_key_hex)
+            .expect("decode private key")
+            .try_into()
+            .expect("32 bytes"),
+    );
     let action_kind = action
         .get("type")
         .and_then(JsonValue::as_str)
@@ -146,7 +272,7 @@ fn encode_signed_main_token_runtime_payload(action: JsonValue, account_id: &str,
         operation: test_main_token_action_operation(action_kind),
         account_id,
         public_key: public_key_hex.as_str(),
-        action: &action,
+        action: test_main_token_signing_action(&action),
     })
     .expect("encode signing payload");
     let signature: Signature = signing_key.sign(signing_payload.as_slice());
@@ -194,7 +320,7 @@ fn encode_threshold_signed_main_token_runtime_payload(
             operation: test_main_token_action_operation(action_kind),
             account_id,
             public_key: public_key_hex.as_str(),
-            action: &action,
+            action: test_main_token_signing_action(&action),
         })
         .expect("encode threshold signing payload");
         let signature: Signature = signing_key.sign(signing_payload.as_slice());
@@ -562,8 +688,12 @@ fn submit_consensus_action_payload_rejects_queue_saturation() {
 #[test]
 fn submit_consensus_action_payload_rejects_unsigned_main_token_transfer_action() {
     let runtime = NodeRuntime::new(
-        NodeConfig::new("node-token-transfer", "world-token-transfer", NodeRole::Observer)
-            .expect("config"),
+        NodeConfig::new(
+            "node-token-transfer",
+            "world-token-transfer",
+            NodeRole::Observer,
+        )
+        .expect("config"),
     );
     let (public_key_hex, _) = token_auth_test_signer(0x21);
     let payload = encode_unsigned_runtime_payload(json!({
@@ -584,8 +714,12 @@ fn submit_consensus_action_payload_rejects_unsigned_main_token_transfer_action()
 #[test]
 fn submit_consensus_action_payload_accepts_signed_main_token_transfer_action() {
     let runtime = NodeRuntime::new(
-        NodeConfig::new("node-token-transfer-ok", "world-token-transfer-ok", NodeRole::Observer)
-            .expect("config"),
+        NodeConfig::new(
+            "node-token-transfer-ok",
+            "world-token-transfer-ok",
+            NodeRole::Observer,
+        )
+        .expect("config"),
     );
     let (public_key_hex, _) = token_auth_test_signer(0x22);
     let account_id = main_token_account_id_from_public_key(public_key_hex.as_str());
@@ -630,8 +764,12 @@ fn submit_consensus_action_payload_rejects_unsigned_main_token_claim_action() {
 #[test]
 fn submit_consensus_action_payload_accepts_signed_main_token_claim_action() {
     let runtime = NodeRuntime::new(
-        NodeConfig::new("node-token-claim-ok", "world-token-claim-ok", NodeRole::Observer)
-            .expect("config"),
+        NodeConfig::new(
+            "node-token-claim-ok",
+            "world-token-claim-ok",
+            NodeRole::Observer,
+        )
+        .expect("config"),
     );
     let payload = encode_signed_main_token_runtime_payload(
         json!({
@@ -653,8 +791,12 @@ fn submit_consensus_action_payload_accepts_signed_main_token_claim_action() {
 #[test]
 fn submit_consensus_action_payload_rejects_unsigned_main_token_genesis_action() {
     let runtime = NodeRuntime::new(
-        NodeConfig::new("node-token-genesis", "world-token-genesis", NodeRole::Observer)
-            .expect("config"),
+        NodeConfig::new(
+            "node-token-genesis",
+            "world-token-genesis",
+            NodeRole::Observer,
+        )
+        .expect("config"),
     );
     let payload = encode_unsigned_runtime_payload(json!({
         "type": "InitializeMainTokenGenesis",
@@ -678,10 +820,19 @@ fn submit_consensus_action_payload_rejects_unsigned_main_token_genesis_action() 
 #[test]
 fn submit_consensus_action_payload_accepts_signed_main_token_genesis_action() {
     let runtime = NodeRuntime::new(
-        NodeConfig::new("node-token-genesis-ok", "world-token-genesis-ok", NodeRole::Observer)
-            .expect("config")
-            .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
-            .expect("controller binding"),
+        NodeConfig::new(
+            "node-token-genesis-ok",
+            "world-token-genesis-ok",
+            NodeRole::Observer,
+        )
+        .expect("config")
+        .with_main_token_controller_binding(configured_controller_binding(
+            2,
+            &[0x24, 0x28],
+            2,
+            &[0x25, 0x29],
+        ))
+        .expect("controller binding"),
     );
     let payload = encode_threshold_signed_main_token_runtime_payload(
         json!({
@@ -707,7 +858,8 @@ fn submit_consensus_action_payload_accepts_signed_main_token_genesis_action() {
 }
 
 #[test]
-fn submit_consensus_action_payload_rejects_signed_main_token_genesis_action_with_wrong_controller_slot() {
+fn submit_consensus_action_payload_rejects_signed_main_token_genesis_action_with_wrong_controller_slot(
+) {
     let runtime = NodeRuntime::new(
         NodeConfig::new(
             "node-token-genesis-wrong-slot",
@@ -715,7 +867,12 @@ fn submit_consensus_action_payload_rejects_signed_main_token_genesis_action_with
             NodeRole::Observer,
         )
         .expect("config")
-        .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
+        .with_main_token_controller_binding(configured_controller_binding(
+            2,
+            &[0x24, 0x28],
+            2,
+            &[0x25, 0x29],
+        ))
         .expect("controller binding"),
     );
     let payload = encode_threshold_signed_main_token_runtime_payload(
@@ -785,7 +942,12 @@ fn submit_consensus_action_payload_rejects_genesis_when_threshold_not_met() {
             NodeRole::Observer,
         )
         .expect("config")
-        .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
+        .with_main_token_controller_binding(configured_controller_binding(
+            2,
+            &[0x24, 0x28],
+            2,
+            &[0x25, 0x29],
+        ))
         .expect("controller binding"),
     );
     let payload = encode_threshold_signed_main_token_runtime_payload(
@@ -821,7 +983,12 @@ fn submit_consensus_action_payload_rejects_genesis_when_signer_not_allowlisted()
             NodeRole::Observer,
         )
         .expect("config")
-        .with_main_token_controller_binding(configured_controller_binding(1, &[0x24], 2, &[0x25, 0x29]))
+        .with_main_token_controller_binding(configured_controller_binding(
+            1,
+            &[0x24],
+            2,
+            &[0x25, 0x29],
+        ))
         .expect("controller binding"),
     );
     let payload = encode_signed_main_token_runtime_payload(
@@ -850,8 +1017,12 @@ fn submit_consensus_action_payload_rejects_genesis_when_signer_not_allowlisted()
 #[test]
 fn submit_consensus_action_payload_rejects_unsigned_main_token_treasury_action() {
     let runtime = NodeRuntime::new(
-        NodeConfig::new("node-token-treasury", "world-token-treasury", NodeRole::Observer)
-            .expect("config"),
+        NodeConfig::new(
+            "node-token-treasury",
+            "world-token-treasury",
+            NodeRole::Observer,
+        )
+        .expect("config"),
     );
     let payload = encode_unsigned_runtime_payload(json!({
         "type": "DistributeMainTokenTreasury",
@@ -874,10 +1045,19 @@ fn submit_consensus_action_payload_rejects_unsigned_main_token_treasury_action()
 #[test]
 fn submit_consensus_action_payload_accepts_signed_main_token_treasury_action() {
     let runtime = NodeRuntime::new(
-        NodeConfig::new("node-token-treasury-ok", "world-token-treasury-ok", NodeRole::Observer)
-            .expect("config")
-            .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
-            .expect("controller binding"),
+        NodeConfig::new(
+            "node-token-treasury-ok",
+            "world-token-treasury-ok",
+            NodeRole::Observer,
+        )
+        .expect("config")
+        .with_main_token_controller_binding(configured_controller_binding(
+            2,
+            &[0x24, 0x28],
+            2,
+            &[0x25, 0x29],
+        ))
+        .expect("controller binding"),
     );
     let payload = encode_threshold_signed_main_token_runtime_payload(
         json!({
@@ -902,7 +1082,8 @@ fn submit_consensus_action_payload_accepts_signed_main_token_treasury_action() {
 }
 
 #[test]
-fn submit_consensus_action_payload_rejects_signed_main_token_treasury_action_with_wrong_controller_slot() {
+fn submit_consensus_action_payload_rejects_signed_main_token_treasury_action_with_wrong_controller_slot(
+) {
     let runtime = NodeRuntime::new(
         NodeConfig::new(
             "node-token-treasury-wrong-slot",
@@ -910,7 +1091,12 @@ fn submit_consensus_action_payload_rejects_signed_main_token_treasury_action_wit
             NodeRole::Observer,
         )
         .expect("config")
-        .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
+        .with_main_token_controller_binding(configured_controller_binding(
+            2,
+            &[0x24, 0x28],
+            2,
+            &[0x25, 0x29],
+        ))
         .expect("controller binding"),
     );
     let payload = encode_threshold_signed_main_token_runtime_payload(
@@ -978,7 +1164,12 @@ fn submit_consensus_action_payload_rejects_treasury_when_threshold_not_met() {
             NodeRole::Observer,
         )
         .expect("config")
-        .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 2, &[0x25, 0x29]))
+        .with_main_token_controller_binding(configured_controller_binding(
+            2,
+            &[0x24, 0x28],
+            2,
+            &[0x25, 0x29],
+        ))
         .expect("controller binding"),
     );
     let payload = encode_threshold_signed_main_token_runtime_payload(
@@ -1013,7 +1204,12 @@ fn submit_consensus_action_payload_rejects_treasury_when_signer_not_allowlisted(
             NodeRole::Observer,
         )
         .expect("config")
-        .with_main_token_controller_binding(configured_controller_binding(2, &[0x24, 0x28], 1, &[0x25]))
+        .with_main_token_controller_binding(configured_controller_binding(
+            2,
+            &[0x24, 0x28],
+            1,
+            &[0x25],
+        ))
         .expect("controller binding"),
     );
     let payload = encode_signed_main_token_runtime_payload(

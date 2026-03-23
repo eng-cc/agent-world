@@ -17,6 +17,8 @@ impl eframe::App for ClientLauncherApp {
         self.poll_chain_process();
         self.maybe_auto_start_chain();
         self.update_chain_runtime_status();
+        #[cfg(target_arch = "wasm32")]
+        launcher_test_hook_web::sync_launcher_test_hook(self);
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {

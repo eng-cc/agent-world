@@ -12,9 +12,9 @@
   - [x] STRAUTH-2B [test_tier_required]: 将 genesis/treasury 的治理控制从“signed metadata”推进到正式 controller slot binding，并继续保留 signer allowlist / ceremony 后续任务。
     - [x] STRAUTH-2B1 [test_tier_required]: 为 genesis/treasury 建立正式 controller slot registry，并在 `NodeRuntime` 提交层按 `action/bucket` 绑定 `auth.account_id`。
     - [x] STRAUTH-2B2 [test_tier_required]: 将 controller slot 继续收口到本地配置 signer allowlist / threshold enforcement，并明确 ceremony / external signer 仍待后续专题。
-- [ ] STRAUTH-3 (PRD-P2P-TXAUTH-002/003) [test_tier_required + test_tier_full]: 由 `viewer_engineer` + `qa_engineer` 补齐 Web/native 转账签名提交流程、失败提示与更完整回归证据。
+- [x] STRAUTH-3 (PRD-P2P-TXAUTH-002/003) [test_tier_required + test_tier_full]: 由 `viewer_engineer` + `qa_engineer` 补齐 Web/native 转账签名提交流程、失败提示与更完整回归证据。
   - [x] STRAUTH-3A [test_tier_required]: 为 `oasis7_client_launcher` 的 Web/native 转账窗口补 signed request builder、本地 signer bootstrap 读取，以及 `oasis7_web_launcher` HTML bootstrap 注入。
-  - [ ] STRAUTH-3B [test_tier_full]: 产出 Web-first 闭环证据，至少覆盖一次 signed transfer 尝试与一次 signer/bootstrap 失败提示路径。
+  - [x] STRAUTH-3B [test_tier_full]: 产出 Web-first 闭环证据，至少覆盖一次 signed transfer 尝试与一次 signer/bootstrap 失败提示路径。
 
 ## 当前切片结论
 - 已收口:
@@ -26,9 +26,10 @@
   - `InitializeMainTokenGenesis / DistributeMainTokenTreasury` 已进入代码级 controller signer allowlist / threshold enforcement，submit-layer 会拒绝 policy missing、allowlist miss 与 threshold 不达标的 proof。
   - `oasis7_client_launcher` 的 Web/native 转账窗口已在提交前本地产出 `public_key/signature`，不再发送裸 transfer 请求。
   - `oasis7_web_launcher` 已在服务 HTML 时注入本地 signer bootstrap，使 wasm 端能够按同一协议产签。
+  - `STRAUTH-3B` 已完成 Web-first 证据闭环：agent-browser 通过 wasm test hook 驱动 canvas-only 转账窗口，已验证一次页面侧 signed submit -> runtime `action_id=1` / tracked status `confirmed`，以及一次 bootstrap 缺失 -> 本地 `转账签名失败` 且无 transfer POST 的失败提示路径。
+  - `viewer_engineer` 已修复两类真实 Web blocker：wasm `SystemTime/process::id()` 平台 panic，以及 wasm transfer canonical JSON 字节顺序与 runtime helper 不一致导致的 `invalid_signature`。
 - 仍待完成:
   - genesis/treasury 仍缺 ceremony freeze、external signer、HSM/KMS 与更长期的 world-state / governance source of truth。
-  - `STRAUTH-3B` 的 Web-first / agent-browser full 证据尚未补齐；当前工作区也没有现成 `web/dist` 静态产物可直接起浏览器闭环。
   - 生产级 keystore / signer rotation / external signer 专题。
 
 ## 依赖
@@ -41,6 +42,7 @@
 - `crates/oasis7/src/bin/oasis7_web_launcher/control_plane.rs`
 - `crates/oasis7/src/bin/oasis7_web_launcher/viewer_auth_bootstrap.rs`
 - `crates/oasis7_client_launcher/src/transfer_auth.rs`
+- `crates/oasis7_client_launcher/src/launcher_test_hook_web.rs`
 - `crates/oasis7_client_launcher/src/transfer_window.rs`
 - `crates/oasis7_client_launcher/src/transfer_window_web.rs`
 - `crates/oasis7/src/consensus_action_payload.rs`
@@ -48,6 +50,7 @@
 - `crates/oasis7_node/src/node_runtime_core.rs`
 - `crates/oasis7_node/src/tests_action_payload.rs`
 - `testing-manual.md`
+- `doc/testing/evidence/mainchain-token-signed-transfer-web-validation-2026-03-23.md`
 
 ## 验收命令（本轮）
 - `env -u RUSTC_WRAPPER cargo test -p oasis7 transfer_submit --bin oasis7_chain_runtime`
@@ -58,6 +61,7 @@
 - `env -u RUSTC_WRAPPER cargo test -p oasis7_client_launcher transfer_auth -- --nocapture`
 - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher`
 - `env -u RUSTC_WRAPPER cargo check -p oasis7_client_launcher --target wasm32-unknown-unknown`
+- `env -u NO_COLOR trunk build --dist /tmp/oasis7-strauth3b-web-launcher-4`
 - `env -u RUSTC_WRAPPER cargo check -p oasis7 --bin oasis7_chain_runtime --bin oasis7_web_launcher`
 - `env -u RUSTC_WRAPPER cargo check -p oasis7_node`
 - `./scripts/doc-governance-check.sh`
@@ -65,5 +69,5 @@
 
 ## 状态
 - 当前阶段: active
-- 下一步: 进入 `STRAUTH-3B`，由 `qa_engineer` 补 Web-first / agent-browser 闭环证据；并另开专题把 ceremony / external signer / keystore 收成长期治理真值。
+- 下一步: `STRAUTH-3` 已收口；另开专题把 ceremony / external signer / keystore 收成长期治理真值，并把当前本地 controller signer policy 升级为更长期的治理 source of truth。
 - 最近更新: 2026-03-23

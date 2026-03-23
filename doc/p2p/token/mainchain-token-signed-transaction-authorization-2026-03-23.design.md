@@ -68,6 +68,10 @@
 - `operation` 与签名前缀按 action 区分，用于域隔离。
 - transfer HTTP 入口继续沿用请求级校验，再把已有签名材料写入 shared payload auth envelope。
 - `oasis7_client_launcher` native 侧直接复用 Rust signer helper；wasm 侧必须复刻同一份 canonical JSON 与前缀，避免浏览器端与 runtime 合约漂移。
+- 对 `TransferMainToken`，wasm 侧签名前的 `action` JSON 必须与 runtime helper 的实际序列化字节一致：
+  - `action` 外层字段顺序固定为 `data` 再 `type`
+  - `data` 内字段顺序固定为 `amount/from_account_id/nonce/to_account_id`
+  - 该约束已由 `transfer_auth` 定向回归锁定，防止浏览器端因为字段顺序变化再次产出 `invalid_signature`
 
 ## Shared Auth Proof Shape（STRAUTH-2B2）
 | scheme | required fields | usage |
@@ -111,4 +115,8 @@
 ## 兼容性与后续
 - `oasis7_web_launcher` 除透传 transfer 新字段外，还需要在服务静态 HTML 时注入 `__OASIS7_VIEWER_AUTH_ENV`，让 wasm 转账窗口能读取本地 signer bootstrap。
 - `oasis7_client_launcher` 的 Web/native 转账窗口现在都必须在本地生成签名后再提交；这仍是 trusted local bootstrap，不是钱包托管或生产级 keystore。
+- 由于 launcher Web UI 当前是 canvas-only，`STRAUTH-3B` 额外引入最小 wasm test hook：
+  - `window.__OASIS7_LAUNCHER_TEST_QUEUE`
+  - `window.__OASIS7_LAUNCHER_TEST_STATE`
+  - 该钩子只用于 agent-browser/QA 自动化驱动与状态镜像，不改变 runtime 权限边界，也不替代正式玩家控制面。
 - `genesis/treasury` 在 `STRAUTH-2B2` 完成后，会进入 shared envelope + controller signer allowlist / threshold enforcement；但外部 signer、ceremony freeze、HSM/KMS 仍需后续专题完成。
