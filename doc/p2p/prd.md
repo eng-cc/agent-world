@@ -77,6 +77,7 @@
   - PRD-P2P-014: As a producer_system_designer, I want one explicit cryptographic security baseline verdict, so that oasis7 does not overclaim “mainstream public-chain-grade security” before transaction authorization, signer custody and genesis control are actually ready.
   - PRD-P2P-015: As a `runtime_engineer`, I want public main-token transfer submit to require signed account authorization, so that the first exposed asset surface no longer trusts unsigned `from_account_id` fields.
   - PRD-P2P-016: As a producer_system_designer, I want the remaining post-STRAUTH signer custody, governance signer and genesis ceremony blockers turned into formal readiness gates, so that oasis7 can truthfully stay in preview while still having one executable path toward a later mainnet-grade re-evaluation.
+  - PRD-P2P-017: As a producer_system_designer, I want one explicit production signer custody / keystore baseline, so that preview bootstrap signers are clearly separated from production signer ownership and release policy.
 - Critical User Flows:
   1. Flow-P2P-001: `网络拓扑变更 -> 共识联调 -> DistFS 同步 -> 节点状态一致性验证`
   2. Flow-P2P-002: `执行 S9/S10 长跑 -> 采集故障与恢复数据 -> 输出收敛报告`
@@ -94,6 +95,7 @@
   14. Flow-P2P-014: `盘点签名/地址/交易授权/keystore/治理 signer/创世控制真值 -> 形成 red/yellow/green 矩阵 -> producer 输出总 verdict 与 P0 blocker`
   15. Flow-P2P-015: `客户端为 transfer submit 构造 canonical payload 并签名 -> runtime 验签并比对 awt:pk 账户绑定 -> 通过后才进入余额/nonce 预检与 consensus submit`
   16. Flow-P2P-016: `STRAUTH-3 收口后复盘剩余安全缺口 -> 冻结 MAINNET-1~4 readiness gate -> signer custody/governance signer/genesis ceremony 逐项过门禁 -> producer 再决定是否重评阶段`
+  17. Flow-P2P-017: `盘点 node/viewer/governance signer 来源 -> 冻结 preview-only bootstrap 与 production target backend 边界 -> rotation/revocation/audit policy 入门禁`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -138,6 +140,7 @@
   - AC-20: `p2p-mainnet-crypto-security-baseline-2026-03-23` 专题文档落盘并映射任务链 `TASK-P2P-032`，明确当前整体 verdict 为 `not_mainnet_grade`，固定交易授权、keystore、治理 signer 与创世控制 blocker，并给出 mainnet-ready 路线图。
   - AC-21: `mainchain-token-signed-transaction-authorization-2026-03-23` 专题文档落盘并映射任务链 `TASK-P2P-033`；`POST /v1/chain/transfer/submit` 必须新增 `public_key/signature` 鉴权、绑定 `awt:pk:<public_key_hex>` 并完成 required 回归。
   - AC-22: `p2p-mainnet-grade-readiness-hardening-2026-03-23` 专题文档落盘并映射任务链 `TASK-P2P-034`，明确当前阶段只可称为 `limited playable technical preview` + `crypto-hardened preview`，并冻结 `MAINNET-1~4` readiness gate。
+  - AC-23: `p2p-production-signer-custody-keystore-2026-03-23` 专题文档落盘并映射任务链 `TASK-P2P-035`，明确 `config.toml` 明文 key、HTML 私钥注入与 env 私钥 bootstrap 只属于 preview-only signer path，不得作为 production custody 完成态。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -158,6 +161,7 @@
   - `doc/p2p/token/mainchain-token-initial-allocation-and-early-contribution-reward-2026-03-22.prd.md`
   - `doc/p2p/blockchain/p2p-mainnet-crypto-security-baseline-2026-03-23.prd.md`
   - `doc/p2p/blockchain/p2p-mainnet-grade-readiness-hardening-2026-03-23.prd.md`
+  - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
   - `world-rule.md`
   - `doc/world-simulator/viewer/viewer-manual.md`
   - `doc/world-simulator/launcher/game-client-launcher-chain-runtime-decouple-2026-02-28.prd.md`
@@ -202,6 +206,7 @@
   - NFR-P2P-17: 在资产动作签名交易模型、生产级 keystore、治理 signer 外部化与创世 slot 真实绑定完成前，`oasis7` 不得宣称“对标主流公链安全”或 `mainnet-grade`。
   - NFR-P2P-18: 公开 `transfer submit` 面不得存在无签名旁路；请求级鉴权必须在余额/nonce 预检之前完成，且 `oasis7_web_launcher` 代理结构与 runtime 保持同一字段集合。
   - NFR-P2P-19: 在 `MAINNET-1~4` readiness gate 全部通过前，公开口径最多只能使用 `limited playable technical preview` 与 `crypto-hardened preview`，不得升级到 `production mint ready`。
+  - NFR-P2P-20: 生产 signer custody 未外部化前，任何本地 `config.toml`、HTML bootstrap 或长期 env 私钥路径都不得进入 production release allowlist。
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 
 ## 5. Risks & Roadmap
@@ -234,6 +239,7 @@
 | PRD-P2P-014 | TASK-P2P-032 | `test_tier_required` | 密码学安全基线专题 PRD/project/design 建档、代码真值盘点、模块入口映射、文档门禁与差异检查 | 安全口径、mainnet-ready blocker 与优先级治理 |
 | PRD-P2P-015 | TASK-P2P-033 | `test_tier_required` | 签名交易鉴权专题 PRD/project/design 建档、transfer submit 鉴权实现、control-plane schema 同步与定向回归 | 主链 Token 首个公开资产面签名化 |
 | PRD-P2P-016 | TASK-P2P-034 | `test_tier_required` | mainnet-grade readiness 硬化专题 PRD/project/design 建档、剩余 P1/P2 gate 冻结、模块入口映射与文档门禁 | signer custody、治理 signer、创世 ceremony 与 public claims gate |
+| PRD-P2P-017 | TASK-P2P-035 | `test_tier_required` | 生产级 signer custody / keystore 专题 PRD/project/design 建档、signer inventory、环境门禁与 readiness project 回写 | signer source boundary、rotation/revocation/audit 与 release policy |
 - S9/S10 长跑结果模板（TASK-P2P-003）:
 | 字段 | 说明 | 来源 |
 | --- | --- | --- |
