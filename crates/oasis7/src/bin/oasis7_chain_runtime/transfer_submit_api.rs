@@ -6,9 +6,9 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use oasis7::consensus_action_payload::{
     decode_consensus_action_payload, encode_consensus_action_payload,
-    verify_main_token_runtime_action_auth, ConsensusActionAuthEnvelope,
-    ConsensusActionPayloadBody, ConsensusActionPayloadEnvelope, MainTokenActionAuthError,
-    MainTokenActionAuthProof, MainTokenActionAuthScheme,
+    verify_main_token_runtime_action_auth, ConsensusActionAuthEnvelope, ConsensusActionPayloadBody,
+    ConsensusActionPayloadEnvelope, MainTokenActionAuthError, MainTokenActionAuthProof,
+    MainTokenActionAuthScheme,
 };
 use oasis7::runtime::Action;
 use oasis7_node::NodeRuntime;
@@ -1028,8 +1028,10 @@ pub(super) fn parse_transfer_submit_request(
     request.from_account_id =
         normalize_account_id(request.from_account_id.as_str(), "from_account_id")?;
     request.to_account_id = normalize_account_id(request.to_account_id.as_str(), "to_account_id")?;
-    request.public_key = normalize_public_key_field(request.public_key.as_str(), "transfer public_key")?;
-    request.signature = normalize_signature_field(request.signature.as_str(), "transfer signature")?;
+    request.public_key =
+        normalize_public_key_field(request.public_key.as_str(), "transfer public_key")?;
+    request.signature =
+        normalize_signature_field(request.signature.as_str(), "transfer signature")?;
 
     if request.from_account_id == request.to_account_id {
         return Err("transfer from_account_id and to_account_id cannot be the same".to_string());

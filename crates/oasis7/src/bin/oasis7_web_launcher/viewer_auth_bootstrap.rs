@@ -18,8 +18,7 @@ pub(super) struct ViewerAuthBootstrap {
 }
 
 pub(super) fn resolve_optional_viewer_auth_bootstrap() -> Option<ViewerAuthBootstrap> {
-    resolve_from_env()
-        .or_else(|| resolve_from_path(Path::new(NODE_CONFIG_FILE_NAME)).ok())
+    resolve_from_env().or_else(|| resolve_from_path(Path::new(NODE_CONFIG_FILE_NAME)).ok())
 }
 
 pub(super) fn inject_viewer_auth_bootstrap_if_html(
@@ -66,8 +65,8 @@ fn resolve_from_env() -> Option<ViewerAuthBootstrap> {
 }
 
 fn resolve_from_path(path: &Path) -> Result<ViewerAuthBootstrap, String> {
-    let content =
-        std::fs::read_to_string(path).map_err(|err| format!("read {} failed: {err}", path.display()))?;
+    let content = std::fs::read_to_string(path)
+        .map_err(|err| format!("read {} failed: {err}", path.display()))?;
     let value: toml::Value = toml::from_str(content.as_str())
         .map_err(|err| format!("parse {} failed: {err}", path.display()))?;
     let node = value

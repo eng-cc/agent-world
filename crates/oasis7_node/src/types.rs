@@ -28,8 +28,7 @@ const DEFAULT_MAIN_TOKEN_TREASURY_CONTROLLER_STAKING_GOVERNANCE: &str =
     "msig.staking_governance.v1";
 const DEFAULT_MAIN_TOKEN_TREASURY_CONTROLLER_ECOSYSTEM_GOVERNANCE: &str =
     "msig.ecosystem_governance.v1";
-const DEFAULT_MAIN_TOKEN_TREASURY_CONTROLLER_SECURITY_COUNCIL: &str =
-    "msig.security_council.v1";
+const DEFAULT_MAIN_TOKEN_TREASURY_CONTROLLER_SECURITY_COUNCIL: &str = "msig.security_council.v1";
 const DEFAULT_MAIN_TOKEN_CONTROLLER_SIGNER_THRESHOLD: u16 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -763,7 +762,10 @@ fn normalize_ed25519_public_key_hex(raw: &str, label: &str) -> Result<String, No
     })?;
     if bytes.len() != 32 {
         return Err(NodeError::InvalidConfig {
-            reason: format!("{label} length mismatch: expected 32 bytes, got {}", bytes.len()),
+            reason: format!(
+                "{label} length mismatch: expected 32 bytes, got {}",
+                bytes.len()
+            ),
         });
     }
     Ok(hex::encode(bytes))

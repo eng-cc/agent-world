@@ -1,3 +1,6 @@
+use oasis7_launcher_ui::launcher_ui_fields_for_web;
+use oasis7_proto::storage_profile::StorageProfile;
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::env;
 use std::net::{TcpListener, TcpStream};
@@ -8,9 +11,6 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
-use oasis7_launcher_ui::launcher_ui_fields_for_web;
-use oasis7_proto::storage_profile::StorageProfile;
-use serde::{Deserialize, Serialize};
 #[path = "oasis7_web_launcher/control_plane.rs"]
 mod control_plane;
 #[path = "oasis7_web_launcher/gui_agent_api.rs"]
@@ -41,7 +41,9 @@ use runtime_paths::{
 };
 use static_files::{load_console_static_asset, StaticAsset};
 use transfer_query_proxy::query_chain_transfer_json;
-use viewer_auth_bootstrap::{inject_viewer_auth_bootstrap_if_html, resolve_optional_viewer_auth_bootstrap};
+use viewer_auth_bootstrap::{
+    inject_viewer_auth_bootstrap_if_html, resolve_optional_viewer_auth_bootstrap,
+};
 
 const DEFAULT_LISTEN_BIND: &str = "0.0.0.0:5410";
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";

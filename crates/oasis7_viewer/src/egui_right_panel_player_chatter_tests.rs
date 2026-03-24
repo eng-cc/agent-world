@@ -81,7 +81,9 @@ fn sync_agent_chatter_bubbles_filters_agent_not_found_focus_noise() {
         Some(1)
     );
 
-    state.events.push(sample_agent_not_found_rejected_event(2, 2));
+    state
+        .events
+        .push(sample_agent_not_found_rejected_event(2, 2));
     sync_agent_chatter_bubbles(&mut achievements, &state, 11.0, locale);
 
     assert_eq!(

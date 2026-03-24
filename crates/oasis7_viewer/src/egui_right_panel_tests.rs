@@ -776,7 +776,9 @@ fn sync_feedback_toasts_ignores_agent_not_found_noise() {
     sync_feedback_toasts(&mut feedback, &state, 20.0, locale);
     assert_eq!(feedback_toast_len(&feedback), 0);
 
-    state.events.push(sample_agent_not_found_rejected_event(1, 1));
+    state
+        .events
+        .push(sample_agent_not_found_rejected_event(1, 1));
     sync_feedback_toasts(&mut feedback, &state, 21.0, locale);
 
     assert_eq!(feedback_last_seen_event_id(&feedback), Some(1));
