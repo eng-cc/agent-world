@@ -72,6 +72,7 @@
 - PRD-README-022: As a `liveops_community`, I want a round-based contributor reward ledger template, so that real limited preview contributions can be reviewed, approved, distributed, and archived without falling back to ad-hoc notes.
 - PRD-README-023: As a `liveops_community`, I want a reusable Xiaohongshu team-roster post pack, so that the second post can explain the current agent team structure with human-facing clarity instead of drifting into either dry role docs or vague AI talk.
 - PRD-README-024: As a `liveops_community`, I want a Xiaohongshu liveops runbook aligned with the Moltbook model, so that human-facing channel operations can reuse a stable SOP for post checks, reply boundaries, interaction prompts, and signal feedback loops.
+- PRD-README-025: As a `liveops_community`, I want a reusable Xiaohongshu game-intro post pack, so that the third post can explain what kind of game `oasis7` is in human-facing language without collapsing into either a full world-rule dump or unsafe release claims.
 - Critical User Flows:
   1. Flow-RM-001: `阅读 README -> 跳转模块入口 -> 快速定位目标能力`
   2. Flow-RM-002: `检测口径变更 -> 更新入口文档 -> 校验链接 -> 发布同步`
@@ -86,6 +87,7 @@
   11. Flow-RM-011: `确定第二篇队友介绍轮播结构 -> 为每位 agent 收口一句专业但有人味的角色说明 -> 产出轮播卡与可截图 HTML`
   12. Flow-RM-012: `结束一轮 limited preview -> 将可计分贡献抄入 reward ledger -> producer 审批档位 -> execution owner 回填发放记录 -> 台账归档`
   13. Flow-RM-013: `发布小红书内容 -> 按 T+15m / T+1h / T+4h / T+24h 巡检 -> 按状态误解 / 过度猜想 / 高质量互动分级 -> 回流下篇选题`
+  14. Flow-RM-014: `确定第三篇“游戏是什么”表达 -> 冻结标题/正文/轮播页/互动问题 -> 用人类开发者口吻给出可想象的游戏轮廓 -> 保持 limited playable technical preview 边界`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -100,6 +102,7 @@
 | 受控预览执行包 | `round_id`、`callout_copy`、`check_slot`、`signal_bucket`、`claim_drift_flag`、`summary_field` | 把 limited preview 第一轮执行压成可直接照跑的操作包 | `draft -> execution_ready -> reused` | 先冻结文案，再冻结巡检，再冻结回流摘要 | `liveops_community` 维护，`producer_system_designer` 审核边界 |
 | 早期贡献奖励操作包 | `contribution_type`、`score_band`、`evidence_field`、`reward_recommendation`、`forbidden_phrase` | 按贡献评分模板判断是否进入奖励建议池，并约束对外表达 | `signal -> scored -> reviewed -> recommended` | 不公布固定 token/point 比率；仅按贡献审计后给 `eligible-small/medium/large` 建议 | `liveops_community` 记录与初评，`producer_system_designer` 最终审批 |
 | 贡献奖励台账 | `round_id`、`candidate_id`、`ledger_id`、`reward_account`、`recommended_band`、`review_status`、`approval_id`、`distribution_ref` | 将真实贡献逐条编目、审批、回填发放记录并归档 | `draft -> reviewed -> approved/rejected -> distributed -> archived` | 同一轮按 contributor 与 ledger id 去重；缺证据默认不得进入审批 | `liveops_community` 维护，`producer_system_designer` 审核，execution owner 回填发放记录 |
+| 小红书帖子素材包 | `post_goal`、`title`、`body`、`cover_copy`、`carousel_outline`、`interaction_prompt`、`forbidden_phrase` | 固化单篇小红书可复用文案与轮播结构 | `draft -> reviewed -> ready_for_publish -> published` | 先确定单一帖子目标，再冻结标题/正文/互动问题；正文先给人可理解轮廓，再避免 world-rule dump 与上线口径 | `liveops_community` 起草，`producer_system_designer` 审核边界 |
 - Acceptance Criteria:
   - AC-1: readme PRD 明确入口文档职责边界。
   - AC-2: readme project 文档维护同步任务与状态。
@@ -115,6 +118,7 @@
 - AC-12: 若团队进入 `limited playable technical preview` 的 invite-only 执行阶段，必须补齐受控执行包，明确 callout 文案、巡检窗口、信号分桶、claim drift 纠偏与 producer 摘要字段。
 - AC-13: 若团队决定在 limited preview 阶段使用 early contributor reward，必须补齐独立操作包，明确评分模板、证据字段、审阅链、禁语与“无固定 token/point 汇率”边界。
 - AC-14: 若团队开始记录真实贡献奖励轮次，必须补齐 round-based ledger，明确 round meta、逐条 row 状态、producer 审批引用、distribution ref 与 archive note。
+- AC-15: 若小红书进入“开始解释游戏是什么”的第三帖阶段，必须补齐独立素材包，明确标题、正文、轮播结构、互动问题与“不能写成完整设定说明书/不能暗示已上线”的边界。
 - Non-Goals:
   - 不在 readme PRD 中替代各模块详细设计。
   - 不在 readme PRD 中定义测试用例细节。
@@ -189,6 +193,7 @@
 | PRD-README-022 | TASK-README-032 | `test_tier_required` | reward ledger 模板明确 round meta、逐条贡献记录、producer 审批、distribution ref 与归档字段 | limited preview 真实贡献奖励结算闭环 |
 | PRD-README-023 | TASK-README-033 | `test_tier_required` | 小红书第二帖素材包明确 7 位 agent 队友卡文案、收束页与可截图 HTML | 渠道内容连续性与“agent 队伍”概念可理解性 |
 | PRD-README-024 | TASK-README-034 | `test_tier_required` | 小红书 runbook 明确发帖前复核、发帖后 24h 巡检、评论分级、互动引导和 `devlog` 回写要求 | 人类向渠道的持续运营一致性 |
+| PRD-README-025 | TASK-README-035 | `test_tier_required` | 小红书第三帖素材包明确“游戏是什么”的标题、正文、轮播结构、互动问题与技术预览边界 | 渠道内容从“谁在做”过渡到“在做什么游戏”的可理解性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -215,3 +220,4 @@
 | DEC-RM-021 | 第二篇采用“团队 roster 轮播卡”而非长文解释 | 继续用长文解释 agent 协作或直接贴角色职责原文 | 用户第二篇更需要快速理解“有哪些队友、为什么重要”，轮播卡比长文更适合这一层信息。 |
 | DEC-RM-022 | 用 round-based reward ledger 承接真实贡献奖励结算 | 继续靠 issue 评论、聊天记录或零散表格临场结算 | 真实发放前必须把评分、审批、执行引用和归档收进统一模板，才能保持可审计性。 |
 | DEC-RM-023 | 小红书持续运营细节独立沉淀为 runbook，而不是继续只留在素材包和角色卡 | 只补几条角色卡示例或继续靠帖子素材包驱动 | 小红书已经进入持续发帖和看反馈阶段，需要和 Moltbook 一样有稳定 SOP，才能复盘互动和误解模式。 |
+| DEC-RM-024 | 第三篇采用“轻量游戏介绍 + 猜类型互动”而非完整设定说明书 | 直接把世界规则、技术架构与完整玩法一次讲清 | 用户到了第三篇需要先建立“这是什么游戏”的可想象轮廓，而不是被文档级信息密度劝退；同时仍要保持技术预览边界。 |

@@ -10,6 +10,7 @@
 - Source Docs:
   - `doc/readme/governance/readme-xiaohongshu-intro-post-pack-2026-03-22.md`
   - `doc/readme/governance/readme-xiaohongshu-team-roster-post-pack-2026-03-22.md`
+  - `doc/readme/governance/readme-xiaohongshu-game-intro-post-pack-2026-03-24.md`
 
 ## 1. 适用范围
 - 这份文档用于 `oasis7` 在小红书进入“持续发帖与持续看反馈”阶段后的日常运营。

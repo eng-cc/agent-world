@@ -36,6 +36,7 @@
 - `doc/readme/governance/readme-limited-preview-invite-pack-2026-03-22.md`
 - `doc/readme/governance/readme-xiaohongshu-intro-post-pack-2026-03-22.md`
 - `doc/readme/governance/readme-xiaohongshu-team-roster-post-pack-2026-03-22.md`
+- `doc/readme/governance/readme-xiaohongshu-game-intro-post-pack-2026-03-24.md`
 - `doc/readme/governance/readme-xiaohongshu-liveops-runbook-2026-03-23.md`
 
 ## 根目录收口
