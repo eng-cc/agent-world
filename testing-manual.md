@@ -631,6 +631,14 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
   - `short_window_longrun=partial`
   - `rollback_target_ready=partial`
   - 因此整体仍是 `gate_result=partial`
+- 当前 short-window follow-up `shared-devnet-20260324-06` 结论：
+  - `candidate_bundle_integrity=pass`
+  - `multi_entry_closure=pass`
+  - `governance_live_drill=pass`
+  - `short_window_longrun=pass`
+  - `shared_access=partial`
+  - `rollback_target_ready=partial`
+  - 因此 shared-devnet 剩余 blocker 只收敛到 `shared_access / rollback_target_ready`
 - `--dry-run` 用于门禁编排冒烟，不执行真实命令。
 
 ### S11：去中心化模块发布运行与告警（world-runtime）

@@ -119,8 +119,9 @@
 ## RTMIN-4 当前结论
 1. first `shared_devnet` dry run 已执行完成，且已有 candidate / gate / promotion / incident 产物。
 2. follow-up window `shared-devnet-20260324-05` 已把 `multi_entry_closure` 提升到 `pass`，并证明 same-candidate `headed Web + no-ui + pure_api` 编排链路可复用。
-3. 当前 `shared_devnet` gate 结论仍为 `partial`，promotion recommendation 仍为 `hold_promotion`。
-4. 造成 `partial` 的主因已经收敛到 shared access、shared-devnet short-window longrun 和 rollback target 仍未达到 shared-grade evidence。
+3. follow-up window `shared-devnet-20260324-06` 已把 `short_window_longrun` 提升到 `pass`，并留下真实 S9/S10 short-window evidence。
+4. 当前 `shared_devnet` gate 结论仍为 `partial`，promotion recommendation 仍为 `hold_promotion`。
+5. 造成 `partial` 的主因已经只剩 shared access 与 rollback target 仍未达到 shared-grade evidence。
 
 ## Partial / Block 语义
 | 状态 | 含义 |

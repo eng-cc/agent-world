@@ -493,8 +493,8 @@
 ## 状态
 - 更新日期: 2026-03-24
 - 当前状态: completed（ROUND-024）
-- 下一任务: 继续执行 `TASK-P2P-040` 的 shared-network 实操；当前 `shared-devnet` 已在 `shared-devnet-20260324-05` 上把 `multi_entry_closure` 提升到 `pass`，下一步只剩 `shared_access / short_window_longrun / rollback_target_ready` 三条 blocker 需要补齐，再进入 `staging/canary` rehearsal；在此之前继续执行当前 preview claims policy。
-- 最新完成: `TASK-P2P-040`（已完成 `RTMIN-4A` follow-up：fresh candidate `shared-devnet-20260324-05` 已证明 same-candidate `headed Web + no-ui + pure_api` 闭环可复用，shared-devnet gate 回到 `partial`，但尚未达到 promotion-ready `pass`。）
+- 下一任务: 继续执行 `TASK-P2P-040` 的 shared-network 实操；当前 `shared-devnet` 已把 `multi_entry_closure` 与 `short_window_longrun` 都提升到 `pass`，下一步只剩 `shared_access / rollback_target_ready` 两条 blocker 需要补齐，再进入 `staging/canary` rehearsal；在此之前继续执行当前 preview claims policy。
+- 最新完成: `TASK-P2P-040`（已完成 `RTMIN-4A` short-window follow-up：`shared-devnet-20260324-06` 已在 candidate `shared-devnet-20260324-05` 上留下真实 S9/S10 evidence，shared-devnet 剩余 blocker 现仅为 `shared_access` 与 `rollback_target_ready`。）
 - 最新完成: `TASK-P2P-038`（已完成 mainnet/public claims policy 复评专题建档，正式冻结当前只允许 `limited playable technical preview` + `crypto-hardened preview`，并把 `mainnet-grade`、`production mint ready` 等口径放入 denylist。）
 - 最新完成: `TASK-P2P-039`（已完成主流公链测试体系对标专题建档，正式把 oasis7 当前 testing foundations、真实 drill 缺口、`fuzz/property` 缺口与 `shared network/release train` 缺口纳入统一矩阵。）
 - 最新完成: `TASK-P2P-037`（已完成创世 freeze / ceremony / QA gate 专题建档，正式把 `logic_frozen_address_binding_pending`、`TBD_BEFORE_MINT`、`pending_binding`、`ready_pending_address_binding` 与 QA 非 `pass` 结论全部冻结为 mint-ready blocker。）
