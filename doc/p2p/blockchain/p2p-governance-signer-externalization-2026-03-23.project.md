@@ -49,7 +49,8 @@
 - [x] 已对默认 world 目录执行 `oasis7_governance_registry_audit`，当前结果为 `overall_status=ready_for_ops_drill`
 - [x] 已新增 `./scripts/governance-registry-drill.sh`，可在 clone-world 上自动产出 baseline/pass/block 三类审计产物与 `summary.json`
 - [x] 已在 clone-world 对 `msig.foundation_ops.v1` 完成首轮 `pass + block` drill，证据见 `doc/testing/evidence/governance-registry-clone-world-drill-foundation-ops-2026-03-24.md`
-- [ ] default/live execution world 的真实 rotation / revocation / failover runbook 演练与 QA 证据仍待执行
+- [x] 已在 default/live execution world 对 `msig.foundation_ops.v1` 完成首轮真实 `pass + block + restore` drill，证据见 `doc/testing/evidence/governance-registry-live-world-drill-foundation-ops-2026-03-24.md`
+- [ ] 其余 controller slot / finality slot 的真实 rotation / revocation / failover 覆盖仍待继续扩展
 - [ ] genesis address binding / ceremony / QA pass 仍待后续 `MAINNET-3` 收口
 
 ## Operator / QA Runbook（How-to）
@@ -101,5 +102,5 @@
 ## 状态
 - 当前阶段: completed
 - 执行状态: in_progress
-- 下一步: 按本页 operator/QA runbook 执行首轮真实 rotation / revocation / failover drill，并把 QA 证据沉淀为正式 `pass/block` 结论；之后再切到 `MAINNET-3` 的真实 binding / ceremony / QA pass。
-- 最近更新: 2026-03-23
+- 下一步: 将真实 drill 从 `msig.foundation_ops.v1` 扩到更多 controller/finality slot，并继续把 QA 证据沉淀为正式 `pass/block` 结论；之后再切到 `MAINNET-3` 的真实 binding / ceremony / QA pass。
+- 最近更新: 2026-03-24
