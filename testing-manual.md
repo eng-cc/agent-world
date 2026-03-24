@@ -6,6 +6,12 @@
 - 把 `test_tier_required` 与 `test_tier_full` 放回整体测试体系中：它们是核心层基线，不等于“整应用全覆盖”。
 - 统一证据标准（命令、日志、截图、结论），保证测试可复盘、可审计。
 
+## 对标入口
+- 若当前任务涉及“主流公链测试体系一般怎么做”“oasis7 还缺哪几层才接近主流链测试成熟度”，先看：
+  - `doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.prd.md`
+  - `doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.design.md`
+- 本手册负责 oasis7 自己的执行分层与命令入口；benchmark 专题负责把这些层对位到主流公链常见 testing stack。
+
 ## 范围
 
 ### In Scope
