@@ -1,0 +1,403 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  ./scripts/shared-devnet-blocker-packet.sh \
+    --window-id <id> \
+    --candidate-bundle <bundle.json> \
+    --candidate-gate-summary <summary.md> \
+    --access-out <path> \
+    --rollback-out <path> \
+    [shared access flags...] \
+    [rollback flags...]
+
+Purpose:
+  Generate concrete markdown drafts for the last two shared-devnet blockers:
+  - shared access evidence
+  - rollback target evidence
+
+Shared access flags:
+  --viewer-url <url>
+  --live-addr <host:port>
+  --operator-contact-ref <ref>        Repeatable
+  --independent-operator-ref <ref>    Repeatable
+  --access-validated-by <text>
+  --access-validated-at <text>
+  --access-evidence-ref <ref>         Repeatable
+  --access-lane-result <pass|partial|block>
+  --access-reason <text>
+
+Rollback flags:
+  --fallback-candidate-bundle <bundle.json>
+  --fallback-gate-summary <summary.md>
+  --fallback-owner-ref <ref>
+  --restore-steps-ref <ref>           Repeatable
+  --rollback-validated-by <text>
+  --rollback-validated-at <text>
+  --restoration-scope <text>
+  --rollback-lane-result <pass|partial|block>
+  --rollback-reason <text>
+
+Examples:
+  ./scripts/shared-devnet-blocker-packet.sh \
+    --window-id shared-devnet-20260324-06 \
+    --candidate-bundle output/release-candidates/shared-devnet-20260324-05.json \
+    --candidate-gate-summary output/shared-network/shared-devnet-20260324-06/gate/shared_devnet-20260324-175501/summary.md \
+    --access-out doc/testing/evidence/shared-network-shared-devnet-shared-access-draft-2026-03-24.md \
+    --rollback-out doc/testing/evidence/shared-network-shared-devnet-rollback-target-draft-2026-03-24.md \
+    --viewer-url https://example.invalid/viewer \
+    --live-addr devnet.example.invalid:443 \
+    --operator-contact-ref doc/ops/handoff.md \
+    --independent-operator-ref doc/ops/oncall.md \
+    --fallback-candidate-bundle output/release-candidates/shared-devnet-20260324-05.json \
+    --fallback-gate-summary output/shared-network/shared-devnet-20260324-06/gate/shared_devnet-20260324-175501/summary.md \
+    --fallback-owner-ref doc/testing/evidence/shared-network-shared-devnet-short-window-promotion-record-2026-03-24.md
+USAGE
+}
+
+require_non_empty() {
+  local flag=$1
+  local value=$2
+  if [[ -z "$value" ]]; then
+    echo "error: missing required option: $flag" >&2
+    exit 2
+  fi
+}
+
+require_file() {
+  local flag=$1
+  local value=$2
+  if [[ ! -f "$value" ]]; then
+    echo "error: $flag not found: $value" >&2
+    exit 2
+  fi
+}
+
+ensure_lane_result() {
+  local flag=$1
+  local value=$2
+  case "$value" in
+    pass|partial|block) ;;
+    *)
+      echo "error: unsupported $flag: $value" >&2
+      exit 2
+      ;;
+  esac
+}
+
+bundle_field() {
+  local bundle_path=$1
+  local field=$2
+  python3 - "$bundle_path" "$field" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+value = payload
+for part in sys.argv[2].split("."):
+    value = value.get(part) if isinstance(value, dict) else None
+    if value is None:
+        break
+if value is None:
+    print("")
+elif isinstance(value, bool):
+    print("true" if value else "false")
+else:
+    print(value)
+PY
+}
+
+write_ref_block() {
+  local file_path=$1
+  shift
+  local refs=("$@")
+  if [[ "${#refs[@]}" -eq 0 ]]; then
+    printf '  - `%s`\n' "<pending>" >>"$file_path"
+    return
+  fi
+  local ref=""
+  for ref in "${refs[@]}"; do
+    printf '  - `%s`\n' "$ref" >>"$file_path"
+  done
+}
+
+window_id=""
+candidate_bundle=""
+candidate_gate_summary=""
+access_out=""
+rollback_out=""
+viewer_url=""
+live_addr=""
+access_validated_by="<qa operator / runtime operator>"
+access_validated_at="<YYYY-MM-DD HH:MM:SS TZ>"
+access_lane_result="partial"
+access_reason="shared access input is still draft; convert to pass only after independent operator access is verified"
+fallback_candidate_bundle=""
+fallback_gate_summary=""
+fallback_owner_ref=""
+rollback_validated_by="<liveops owner / runtime owner>"
+rollback_validated_at="<YYYY-MM-DD HH:MM:SS TZ>"
+restoration_scope="<runtime build | world snapshot | governance manifest>"
+rollback_lane_result="partial"
+rollback_reason="formal previous shared-devnet pass fallback is not pinned yet"
+declare -a operator_contact_refs=()
+declare -a independent_operator_refs=()
+declare -a access_evidence_refs=()
+declare -a restore_steps_refs=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --window-id)
+      window_id=${2:-}
+      shift 2
+      ;;
+    --candidate-bundle)
+      candidate_bundle=${2:-}
+      shift 2
+      ;;
+    --candidate-gate-summary)
+      candidate_gate_summary=${2:-}
+      shift 2
+      ;;
+    --access-out)
+      access_out=${2:-}
+      shift 2
+      ;;
+    --rollback-out)
+      rollback_out=${2:-}
+      shift 2
+      ;;
+    --viewer-url)
+      viewer_url=${2:-}
+      shift 2
+      ;;
+    --live-addr)
+      live_addr=${2:-}
+      shift 2
+      ;;
+    --operator-contact-ref)
+      operator_contact_refs+=("${2:-}")
+      shift 2
+      ;;
+    --independent-operator-ref)
+      independent_operator_refs+=("${2:-}")
+      shift 2
+      ;;
+    --access-validated-by)
+      access_validated_by=${2:-}
+      shift 2
+      ;;
+    --access-validated-at)
+      access_validated_at=${2:-}
+      shift 2
+      ;;
+    --access-evidence-ref)
+      access_evidence_refs+=("${2:-}")
+      shift 2
+      ;;
+    --access-lane-result)
+      access_lane_result=${2:-}
+      shift 2
+      ;;
+    --access-reason)
+      access_reason=${2:-}
+      shift 2
+      ;;
+    --fallback-candidate-bundle)
+      fallback_candidate_bundle=${2:-}
+      shift 2
+      ;;
+    --fallback-gate-summary)
+      fallback_gate_summary=${2:-}
+      shift 2
+      ;;
+    --fallback-owner-ref)
+      fallback_owner_ref=${2:-}
+      shift 2
+      ;;
+    --restore-steps-ref)
+      restore_steps_refs+=("${2:-}")
+      shift 2
+      ;;
+    --rollback-validated-by)
+      rollback_validated_by=${2:-}
+      shift 2
+      ;;
+    --rollback-validated-at)
+      rollback_validated_at=${2:-}
+      shift 2
+      ;;
+    --restoration-scope)
+      restoration_scope=${2:-}
+      shift 2
+      ;;
+    --rollback-lane-result)
+      rollback_lane_result=${2:-}
+      shift 2
+      ;;
+    --rollback-reason)
+      rollback_reason=${2:-}
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "error: unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+require_non_empty "--window-id" "$window_id"
+require_non_empty "--candidate-bundle" "$candidate_bundle"
+require_non_empty "--candidate-gate-summary" "$candidate_gate_summary"
+require_non_empty "--access-out" "$access_out"
+require_non_empty "--rollback-out" "$rollback_out"
+require_file "--candidate-bundle" "$candidate_bundle"
+require_file "--candidate-gate-summary" "$candidate_gate_summary"
+ensure_lane_result "--access-lane-result" "$access_lane_result"
+ensure_lane_result "--rollback-lane-result" "$rollback_lane_result"
+
+./scripts/release-candidate-bundle.sh validate --bundle "$candidate_bundle" >/dev/null
+candidate_id=$(bundle_field "$candidate_bundle" "candidate_id")
+
+fallback_candidate_id="<previous-pass-candidate-id>"
+if [[ -n "$fallback_candidate_bundle" ]]; then
+  require_file "--fallback-candidate-bundle" "$fallback_candidate_bundle"
+  ./scripts/release-candidate-bundle.sh validate --bundle "$fallback_candidate_bundle" >/dev/null
+  fallback_candidate_id=$(bundle_field "$fallback_candidate_bundle" "candidate_id")
+fi
+if [[ -n "$fallback_gate_summary" ]]; then
+  require_file "--fallback-gate-summary" "$fallback_gate_summary"
+fi
+
+mkdir -p "$(dirname "$access_out")" "$(dirname "$rollback_out")"
+
+cat >"$access_out" <<EOF
+# Shared Network Shared Access Check
+
+审计轮次: 1
+
+## Meta
+- \`window_id\`:
+  - \`$window_id\`
+- \`track\`:
+  - \`shared_devnet\`
+- \`candidate_id\`:
+  - \`$candidate_id\`
+- \`owner\`:
+  - \`qa_engineer\`
+
+## Shared Endpoint
+- \`viewer_url\`:
+  - \`${viewer_url:-<https://... | http://...>}\`
+- \`live_addr\`:
+  - \`${live_addr:-<host:port>}\`
+- \`operator_contact_ref\`:
+EOF
+write_ref_block "$access_out" "${operator_contact_refs[@]}"
+cat >>"$access_out" <<EOF
+- \`independent_operator_ref\`:
+EOF
+write_ref_block "$access_out" "${independent_operator_refs[@]}"
+cat >>"$access_out" <<EOF
+
+## Access Validation
+- \`access_mode\`:
+  - \`shared_multi_operator\`
+- \`validated_by\`:
+  - \`$access_validated_by\`
+- \`validated_at\`:
+  - \`$access_validated_at\`
+- \`validation_steps\`:
+  - \`independent operator opened viewer endpoint\`
+  - \`independent operator reached live endpoint\`
+  - \`candidate_id matched bundle truth\`
+- \`candidate_bundle_ref\`:
+  - \`$candidate_bundle\`
+- \`candidate_gate_summary_ref\`:
+  - \`$candidate_gate_summary\`
+- \`evidence_ref\`:
+EOF
+write_ref_block "$access_out" "${access_evidence_refs[@]}"
+cat >>"$access_out" <<EOF
+
+## Verdict
+- \`lane_result\`:
+  - \`$access_lane_result\`
+- \`reason\`:
+  - $access_reason
+
+## Notes
+- \`pass\` only if access is not single-owner local-only rehearsal.
+- \`partial\` if endpoint exists but still depends on one local operator or one private machine.
+- \`block\` if endpoint is unreachable, candidate truth mismatches, or owner handoff is missing.
+EOF
+
+cat >"$rollback_out" <<EOF
+# Shared Network Rollback Target
+
+审计轮次: 1
+
+## Meta
+- \`window_id\`:
+  - \`$window_id\`
+- \`track\`:
+  - \`shared_devnet\`
+- \`candidate_id\`:
+  - \`$candidate_id\`
+- \`owner\`:
+  - \`liveops_community\`
+
+## Current Candidate
+- \`candidate_bundle_ref\`:
+  - \`$candidate_bundle\`
+- \`candidate_gate_ref\`:
+  - \`$candidate_gate_summary\`
+
+## Fallback Candidate
+- \`fallback_candidate_id\`:
+  - \`$fallback_candidate_id\`
+- \`fallback_candidate_bundle_ref\`:
+  - \`${fallback_candidate_bundle:-<output/release-candidates/fallback.json>}\`
+- \`fallback_gate_ref\`:
+  - \`${fallback_gate_summary:-<output/shared-network/.../gate/.../summary.md>}\`
+- \`fallback_track_result\`:
+  - \`pass\`
+- \`fallback_owner_ref\`:
+  - \`${fallback_owner_ref:-<promotion record | incident review | approval record>}\`
+
+## Rollback Readiness
+- \`restore_steps_ref\`:
+EOF
+write_ref_block "$rollback_out" "${restore_steps_refs[@]}"
+cat >>"$rollback_out" <<EOF
+- \`validated_by\`:
+  - \`$rollback_validated_by\`
+- \`validated_at\`:
+  - \`$rollback_validated_at\`
+- \`restoration_scope\`:
+  - \`$restoration_scope\`
+
+## Verdict
+- \`lane_result\`:
+  - \`$rollback_lane_result\`
+- \`reason\`:
+  - $rollback_reason
+
+## Notes
+- \`pass\` only if fallback candidate is a formal previous shared-devnet \`pass\` candidate.
+- \`partial\` if there is only a local/provisional fallback but no formal shared-devnet \`pass\` history.
+- \`block\` if fallback truth is missing, inconsistent, or not restorable.
+EOF
+
+echo "shared access draft: $access_out"
+echo "rollback target draft: $rollback_out"

@@ -68,6 +68,8 @@
 ### RTMIN-4A 产物
 - `scripts/shared-devnet-rehearsal.sh`
 - `scripts/shared-devnet-rehearsal-smoke.sh`
+- `scripts/shared-devnet-blocker-packet.sh`
+- `scripts/shared-devnet-blocker-packet-smoke.sh`
 - `doc/testing/templates/shared-network-shared-access-check-template.md`
 - `doc/testing/templates/shared-network-rollback-target-template.md`
 - `doc/testing/evidence/shared-network-shared-devnet-follow-up-window-2026-03-24.md`
@@ -105,6 +107,7 @@
 - `./scripts/shared-network-track-gate.sh --track shared_devnet --candidate-bundle output/release-candidates/shared-devnet-dry-run-20260324-01.json --lanes-tsv output/shared-network/shared-devnet-dry-run-20260324-01/lanes.shared_devnet.tsv --out-dir output/shared-network/shared-devnet-dry-run-20260324-01/gate`
 - `rg -n "partial|hold_promotion|shared-devnet-dry-run-20260324-01|local-only" doc/testing/evidence/shared-network-shared-devnet-dry-run-2026-03-24.md doc/testing/evidence/shared-network-shared-devnet-promotion-record-2026-03-24.md doc/testing/evidence/shared-network-shared-devnet-incident-2026-03-24.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.design.md doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.project.md testing-manual.md`
 - `./scripts/shared-devnet-rehearsal-smoke.sh`
+- `./scripts/shared-devnet-blocker-packet-smoke.sh`
 - `./scripts/shared-network-track-gate-smoke.sh`
 - `./scripts/release-candidate-bundle-smoke.sh`
 - `./scripts/release-gate-smoke.sh`
