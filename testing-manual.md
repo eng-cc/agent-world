@@ -218,6 +218,17 @@ env -u RUSTC_WRAPPER cargo test -p oasis7_net --features runtime_bridge --lib
   --replacement-public-key <replacement_public_key_hex> \
   --out-dir output/governance-drills/<run_id>
 ```
+- finality slot 示例：
+```bash
+./scripts/governance-registry-drill.sh \
+  --source-world-dir output/chain-runtime/viewer-live-node/reward-runtime-execution-world \
+  --baseline-manifest /path/to/public_manifest.json \
+  --slot-id governance.finality.v1 \
+  --replace-signer-id signer03 \
+  --replacement-signer-id signer04 \
+  --replacement-public-key <replacement_public_key_hex> \
+  --out-dir output/governance-drills/<run_id>
+```
 - 产物约定：
   - `run_config.json`
   - `summary.json`
@@ -228,6 +239,8 @@ env -u RUSTC_WRAPPER cargo test -p oasis7_net --features runtime_bridge --lib
   - baseline / pass case 应返回 `overall_status=ready_for_ops_drill`
   - negative block case 应返回 `overall_status=failover_blocked`
   - clone-world 样本只证明 runbook/tooling 正确，不替代 default/live execution world 的最终 QA 证据
+  - controller slot 可保持原 `signer_id` 仅替换公钥；`governance.finality.v1` 不行，必须显式传入新的 `--replacement-signer-id`
+  - 若对 finality slot 复用原 `signer_id`，真实导入会命中 `GovernancePolicyInvalid`，因为 finality signer 绑定到现有 node identity
 
 ### S5：Viewer crate 单测与 wasm 编译套件（L4 前置）
 ```bash

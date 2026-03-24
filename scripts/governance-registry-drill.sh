@@ -9,6 +9,7 @@ Usage:
     --baseline-manifest <public_manifest.json> \
     --slot-id <slot_id> \
     --replace-signer-id <signer_id> \
+    [--replacement-signer-id <signer_id>] \
     --replacement-public-key <hex> \
     --out-dir <dir>
 
@@ -16,6 +17,9 @@ Description:
   Runs a clone-world governance registry drill with two cases:
   1. pass case: rotate one signer inside a slot while preserving 2-of-3
   2. block case: intentionally degrade one slot to 2-of-2
+  Note:
+  - controller slots may keep the same signer_id and replace only the public key
+  - finality slot rotation must use a new signer_id via --replacement-signer-id
 
 Artifacts:
   <out-dir>/run_config.json
@@ -57,6 +61,7 @@ SOURCE_WORLD_DIR=""
 BASELINE_MANIFEST=""
 SLOT_ID=""
 REPLACE_SIGNER_ID=""
+REPLACEMENT_SIGNER_ID=""
 REPLACEMENT_PUBLIC_KEY=""
 OUT_DIR=""
 FINALITY_SLOT_ID="governance.finality.v1"
@@ -78,6 +83,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --replace-signer-id)
       REPLACE_SIGNER_ID="$2"
+      shift 2
+      ;;
+    --replacement-signer-id)
+      REPLACEMENT_SIGNER_ID="$2"
       shift 2
       ;;
     --replacement-public-key)
@@ -103,6 +112,15 @@ done
 if [[ -z "$SOURCE_WORLD_DIR" || -z "$BASELINE_MANIFEST" || -z "$SLOT_ID" || -z "$REPLACE_SIGNER_ID" || -z "$REPLACEMENT_PUBLIC_KEY" || -z "$OUT_DIR" ]]; then
   echo "all flags are required" >&2
   usage
+  exit 1
+fi
+
+if [[ -z "$REPLACEMENT_SIGNER_ID" ]]; then
+  REPLACEMENT_SIGNER_ID="$REPLACE_SIGNER_ID"
+fi
+
+if [[ "$SLOT_ID" == "$FINALITY_SLOT_ID" && "$REPLACEMENT_SIGNER_ID" == "$REPLACE_SIGNER_ID" ]]; then
+  echo "finality slot rotation requires a new signer id; pass --replacement-signer-id for $SLOT_ID" >&2
   exit 1
 fi
 
@@ -136,6 +154,7 @@ BLOCK_MANIFEST="$MANIFEST_DIR/degraded_block_manifest.json"
 
 BASELINE_SLOT_COUNT="$(jq --arg slot "$SLOT_ID" '[.[] | select(.slot_id == $slot)] | length' "$BASELINE_MANIFEST")"
 MATCHING_SIGNER_COUNT="$(jq --arg slot "$SLOT_ID" --arg signer "$REPLACE_SIGNER_ID" '[.[] | select(.slot_id == $slot and .signer_id == $signer)] | length' "$BASELINE_MANIFEST")"
+REPLACEMENT_SIGNER_EXISTS_COUNT="$(jq --arg slot "$SLOT_ID" --arg signer "$REPLACEMENT_SIGNER_ID" '[.[] | select(.slot_id == $slot and .signer_id == $signer)] | length' "$BASELINE_MANIFEST")"
 if [[ "$BASELINE_SLOT_COUNT" != "3" ]]; then
   echo "expected exactly 3 manifest entries for slot $SLOT_ID, got $BASELINE_SLOT_COUNT" >&2
   exit 1
@@ -144,15 +163,21 @@ if [[ "$MATCHING_SIGNER_COUNT" != "1" ]]; then
   echo "expected exactly 1 manifest entry for slot $SLOT_ID signer $REPLACE_SIGNER_ID, got $MATCHING_SIGNER_COUNT" >&2
   exit 1
 fi
+if [[ "$REPLACEMENT_SIGNER_ID" != "$REPLACE_SIGNER_ID" && "$REPLACEMENT_SIGNER_EXISTS_COUNT" != "0" ]]; then
+  echo "replacement signer id already exists in slot $SLOT_ID: $REPLACEMENT_SIGNER_ID" >&2
+  exit 1
+fi
 
 jq \
   --arg slot "$SLOT_ID" \
   --arg signer "$REPLACE_SIGNER_ID" \
+  --arg replacement_signer "$REPLACEMENT_SIGNER_ID" \
   --arg replacement_public_key "$REPLACEMENT_PUBLIC_KEY" \
   '
   map(
     if .slot_id == $slot and .signer_id == $signer then
-      .public_key_hex = $replacement_public_key
+      .signer_id = $replacement_signer
+      | .public_key_hex = $replacement_public_key
       | .awt_account_id = ("awt:pk:" + $replacement_public_key)
     else
       .
@@ -233,6 +258,7 @@ jq -n \
   --arg baseline_manifest "$BASELINE_MANIFEST" \
   --arg slot_id "$SLOT_ID" \
   --arg replace_signer_id "$REPLACE_SIGNER_ID" \
+  --arg replacement_signer_id "$REPLACEMENT_SIGNER_ID" \
   --arg replacement_public_key "$REPLACEMENT_PUBLIC_KEY" \
   --arg pass_world_dir "$PASS_WORLD_DIR" \
   --arg block_world_dir "$BLOCK_WORLD_DIR" \
@@ -255,6 +281,7 @@ jq -n \
     baseline_manifest: $baseline_manifest,
     slot_id: $slot_id,
     replace_signer_id: $replace_signer_id,
+    replacement_signer_id: $replacement_signer_id,
     replacement_public_key: $replacement_public_key,
     baseline: {
       audit_rc: $baseline_audit_rc,
@@ -292,6 +319,7 @@ cat >"$OUT_DIR/run_config.json" <<EOF
   "baseline_manifest": "$BASELINE_MANIFEST",
   "slot_id": "$SLOT_ID",
   "replace_signer_id": "$REPLACE_SIGNER_ID",
+  "replacement_signer_id": "$REPLACEMENT_SIGNER_ID",
   "replacement_public_key": "$REPLACEMENT_PUBLIC_KEY",
   "out_dir": "$OUT_DIR"
 }
@@ -303,6 +331,7 @@ cat >"$OUT_DIR/summary.md" <<EOF
 - generated_at_utc: $TIMESTAMP
 - slot_id: \`$SLOT_ID\`
 - replace_signer_id: \`$REPLACE_SIGNER_ID\`
+- replacement_signer_id: \`$REPLACEMENT_SIGNER_ID\`
 - replacement_public_key: \`$REPLACEMENT_PUBLIC_KEY\`
 
 ## Baseline

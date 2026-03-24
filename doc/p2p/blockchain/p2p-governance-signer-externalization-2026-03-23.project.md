@@ -20,7 +20,7 @@
   - governance truth target: `on-chain/world-state registry`
 - 当前 blocker:
   - 默认 execution world `output/chain-runtime/viewer-live-node/reward-runtime-execution-world` 已导入 `governance.finality.v1` 与 8 个 controller slot 的 world-state registry，chain runtime 也已支持启动时优先读取 world registry，但这仍不等于 rotation / revocation / ceremony / QA gate 全部通过
-  - finality signer 的 production signing material 仍由人工离线 custody 持有；runtime 不再把 local seed 视为 registry 存在时的真值，但真实外部签名轮换与失效恢复演练仍未执行
+  - finality signer 的 production signing material 仍由人工离线 custody 持有；runtime 不再把 local seed 视为 registry 存在时的真值，且默认 world 首轮真实 finality drill 已完成，但更大范围 rotation / revocation / ceremony / QA gate 仍未收口
   - controller signer policy 虽已支持由 execution world 注入 `NodeRuntime`，但真实 governance account / recipient binding、genesis ceremony 和最终 QA `pass` 仍未完成
 
 ## Transition Freeze Snapshot（public-only）
@@ -50,7 +50,10 @@
 - [x] 已新增 `./scripts/governance-registry-drill.sh`，可在 clone-world 上自动产出 baseline/pass/block 三类审计产物与 `summary.json`
 - [x] 已在 clone-world 对 `msig.foundation_ops.v1` 完成首轮 `pass + block` drill，证据见 `doc/testing/evidence/governance-registry-clone-world-drill-foundation-ops-2026-03-24.md`
 - [x] 已在 default/live execution world 对 `msig.foundation_ops.v1` 完成首轮真实 `pass + block + restore` drill，证据见 `doc/testing/evidence/governance-registry-live-world-drill-foundation-ops-2026-03-24.md`
-- [ ] 其余 controller slot / finality slot 的真实 rotation / revocation / failover 覆盖仍待继续扩展
+- [x] 已在 clone-world 对 `governance.finality.v1` 完成 `signer03 -> signer04` 的 `pass + block` drill，确认 finality rotation 需要新的 signer node id
+- [x] 已在 default/live execution world 对 `governance.finality.v1` 完成首轮真实 `pass + block + restore` drill，证据见 `doc/testing/evidence/governance-registry-live-world-drill-finality-2026-03-24.md`
+- [x] 已确认 finality slot 不接受“同 signer_id 换公钥”语义；真实错误签名见 `output/governance-drills/20260324-finality-live-world/logs/pass_import.stderr`
+- [ ] 其余 controller slot / additional finality rotation / revocation / failover 覆盖仍待继续扩展
 - [ ] genesis address binding / ceremony / QA pass 仍待后续 `MAINNET-3` 收口
 
 ## Operator / QA Runbook（How-to）
@@ -58,6 +61,7 @@
    - `env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_governance_registry_audit -- --world-dir output/chain-runtime/viewer-live-node/reward-runtime-execution-world --public-manifest <operator-local-public-manifest.json> --strict-manifest-match --require-single-failure-tolerance`
 2. 若要做 rotation，不直接降低 threshold，也不允许先删 signer 再观望：
    - 先在离线 custody 侧生成 replacement signer
+   - controller slot 可保持原 `signer_id` 并仅替换公钥；`governance.finality.v1` 不行，必须同时换成新的 signer node id（例如 `signer03 -> signer04`）
    - 形成新的 public-only manifest，保持每个 slot 仍为 `threshold=2` 且 `3` 把有效公钥
    - 用 `oasis7_governance_registry_import` 把新 manifest 导回 target world
    - 再次执行 `oasis7_governance_registry_audit`，只有 `overall_status=ready_for_ops_drill` 才允许重启/切流
@@ -75,6 +79,7 @@
    - 若失败，明确失败签名属于 `threshold_mismatch`、`manifest_mismatch` 或 `single_failure_blocks_slot`
 6. clone-world 首轮演练可直接复用脚本：
    - `./scripts/governance-registry-drill.sh --source-world-dir output/chain-runtime/viewer-live-node/reward-runtime-execution-world --baseline-manifest <operator-local-public-manifest.json> --slot-id msig.foundation_ops.v1 --replace-signer-id signer03 --replacement-public-key <replacement_public_key_hex> --out-dir output/governance-drills/<run_id>`
+   - 若 target slot 是 `governance.finality.v1`，必须额外传 `--replacement-signer-id <new_signer_id>`，不能复用原 signer id
    - 该脚本只用于 clone-world / dry-run 证据，不替代 default/live execution world 的最终 QA 证据
 
 ## 依赖
@@ -103,4 +108,4 @@
 - 当前阶段: completed
 - 执行状态: in_progress
 - 下一步: 将真实 drill 从 `msig.foundation_ops.v1` 扩到更多 controller/finality slot，并继续把 QA 证据沉淀为正式 `pass/block` 结论；之后再切到 `MAINNET-3` 的真实 binding / ceremony / QA pass。
-- 最近更新: 2026-03-24
+- 最近更新: 2026-03-24（finality live drill signer04）
