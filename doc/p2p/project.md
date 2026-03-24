@@ -1,6 +1,6 @@
 # p2p PRD Project
 
-审计轮次: 8
+审计轮次: 9
 
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-P2P-001 (PRD-P2P-001) [test_tier_required]: 完成 p2p PRD 改写，建立分布式系统设计入口。
@@ -322,6 +322,21 @@
     - `rg -n "shared network|release train|fuzz/property|governance drill|mainstream public-chain" doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.prd.md doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.design.md doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.project.md doc/p2p/prd.md doc/p2p/project.md testing-manual.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-P2P-040 (PRD-P2P-022) [test_tier_required]: 新增“shared network / release train 最小执行形态”专题 PRD / design / project，并把 `shared_devnet/staging/canary`、`release_candidate_bundle`、promotion/freeze/rollback 与 claims gate 纳入模块追踪。
+  - 产物文件:
+    - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md`
+    - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md`
+    - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
+    - `doc/p2p/prd.md`
+    - `doc/p2p/project.md`
+    - `doc/p2p/prd.index.md`
+    - `doc/p2p/README.md`
+    - `testing-manual.md`
+    - `doc/devlog/2026-03-24.md`
+  - 验收命令 (`test_tier_required`):
+    - `rg -n "shared_devnet|staging|canary|release_candidate_bundle|specified_not_executed|release train" doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md doc/p2p/prd.md doc/p2p/project.md testing-manual.md`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
   - 产物文件:
     - `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.prd.md`
     - `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.design.md`
@@ -468,9 +483,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-23
-- 当前状态: completed（ROUND-023）
-- 下一任务: 若继续推进，应进入 execution workstreams，分别落地 `offline storage + manual multisig` signer custody、`governance truth 直接上链`、genesis binding/ceremony/QA；在这些项完成前，继续执行当前 preview claims policy。
+- 更新日期: 2026-03-24
+- 当前状态: completed（ROUND-024）
+- 下一任务: 先完成 `TASK-P2P-040` 所拆出的 `RTMIN-1~3`，把 shared network / release train 的 candidate bundle、QA gate 与 liveops runbook 定住；在 first shared-devnet dry run 前，继续执行当前 preview claims policy。
+- 最新完成: `TASK-P2P-040`（已完成 shared network / release train minimum 专题建档，正式冻结 `shared_devnet/staging/canary` 三层最小轨道、`release_candidate_bundle` 单一真值、promotion/freeze/rollback 规则与当前 `specified_not_executed` 结论。）
 - 最新完成: `TASK-P2P-038`（已完成 mainnet/public claims policy 复评专题建档，正式冻结当前只允许 `limited playable technical preview` + `crypto-hardened preview`，并把 `mainnet-grade`、`production mint ready` 等口径放入 denylist。）
 - 最新完成: `TASK-P2P-039`（已完成主流公链测试体系对标专题建档，正式把 oasis7 当前 testing foundations、真实 drill 缺口、`fuzz/property` 缺口与 `shared network/release train` 缺口纳入统一矩阵。）
 - 最新完成: `TASK-P2P-037`（已完成创世 freeze / ceremony / QA gate 专题建档，正式把 `logic_frozen_address_binding_pending`、`TBD_BEFORE_MINT`、`pending_binding`、`ready_pending_address_binding` 与 QA 非 `pass` 结论全部冻结为 mint-ready blocker。）

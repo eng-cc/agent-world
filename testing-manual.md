@@ -10,7 +10,11 @@
 - 若当前任务涉及“主流公链测试体系一般怎么做”“oasis7 还缺哪几层才接近主流链测试成熟度”，先看：
   - `doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.prd.md`
   - `doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.design.md`
+- 若当前任务涉及“shared network / release train 最小要做到什么、现在是否已具备正式共享轨道”，再看：
+  - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md`
+  - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md`
 - 本手册负责 oasis7 自己的执行分层与命令入口；benchmark 专题负责把这些层对位到主流公链常见 testing stack。
+- shared network / release train 专题负责冻结 `L5` 的目标态与 claims gate；它当前表示“已建档、未执行”，不代表仓库已经具备正式 shared devnet/staging/canary。
 
 ## 范围
 
@@ -524,6 +528,23 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
 ```
 - 默认串行执行：`ci-tests full`、`sync-m1/m4/m5 --check`、Web strict、S9/S10。
 - `--quick` 用于缩短 S9/S10 时长并关闭 Web visual baseline。
+
+### Shared Network / Release Train Minimum（Benchmark L5，规划已冻结）
+- 参考专题：
+  - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md`
+  - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
+- 当前状态：
+  - `specified_not_executed`
+  - 这表示目标态和任务链已冻结，但真实 `shared_devnet/staging/canary` rehearsal 还没执行。
+- 通过 shared-network gate 之前，以下表述都不允许：
+  - `production release train is established`
+  - `shared network validated`
+  - `mainnet-grade testing maturity`
+- 当前最小执行顺序：
+  1. 生成统一 `release_candidate_bundle`
+  2. 执行 first `shared_devnet` dry run
+  3. 执行 `staging` rehearsal
+  4. 执行 `canary` rehearsal
 - `--dry-run` 用于门禁编排冒烟，不执行真实命令。
 
 ### S11：去中心化模块发布运行与告警（world-runtime）
