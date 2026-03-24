@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
 - 对应运行手册: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md`
 
-审计轮次: 5
+审计轮次: 6
 ## 设计目标
 - 把 benchmark 中 `L5 shared network/release train` 的缺口落成正式执行模型，而不是继续停留在口头 backlog。
 - 明确 oasis7 下一阶段的最小 shared track、promotion 规则、rollback 规则与 claims gate。
@@ -79,6 +79,15 @@
   - `output/release-candidates/shared-devnet-dry-run-20260324-01.json`
   - `output/shared-network/shared-devnet-dry-run-20260324-01/release-gate/20260324-150030/release-gate-summary.md`
   - `output/shared-network/shared-devnet-dry-run-20260324-01/gate/shared_devnet-20260324-150230/summary.md`
+
+## 当前实现入口（RTMIN-4A / RTMIN-5 前置编排）
+- shared-devnet rehearsal orchestration:
+  - `./scripts/shared-devnet-rehearsal.sh`
+- orchestration smoke:
+  - `./scripts/shared-devnet-rehearsal-smoke.sh`
+- 当前设计含义:
+  - 同一条命令现在可以围绕一个 `candidate_id` 串起 `release-candidate-bundle create/validate`、可选 `release-gate --dry-run`、same-candidate `headed Web + no-ui + pure_api` 复跑或证据复用、lane scaffold、`lanes.shared_devnet.tsv` 和 `shared-network-track-gate` 输出。
+  - 它默认仍对 `shared_access`、`governance_live_drill`、`short_window_longrun`、`rollback_target_ready` 维持保守语义；编排入口本身不等于 shared-network `pass` 或 claims 升级。
 
 ## Track QA Required Lanes
 | Track | Required lanes | Gate 结论规则 |

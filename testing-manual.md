@@ -566,6 +566,20 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
   --check-git-head
 
 ./scripts/release-gate.sh --candidate-bundle output/release-candidates/shared-devnet-01.json --dry-run
+./scripts/shared-devnet-rehearsal.sh \
+  --window-id shared-devnet-20260324-02 \
+  --candidate-bundle output/release-candidates/shared-devnet-01.json \
+  --bundle-dir output/release/game-launcher-local \
+  --release-gate-mode dry-run \
+  --web-mode execute \
+  --headless-mode execute \
+  --pure-api-mode execute \
+  --longrun-mode dry-run \
+  -- \
+  --viewer-port 4174 \
+  --live-bind 127.0.0.1:5123 \
+  --web-bind 127.0.0.1:5111
+./scripts/shared-devnet-rehearsal-smoke.sh
 ./scripts/release-candidate-bundle-smoke.sh
 ./scripts/shared-network-track-gate.sh \
   --track shared_devnet \
@@ -579,6 +593,11 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
   - 固定 `git_commit`
   - 固定 `runtime_build/world_snapshot/governance_manifest` 的路径与 hash
   - 固定 `evidence_refs`
+- 当前 `shared-devnet-rehearsal` 最小职责：
+  - 复用同一 `candidate_bundle` 作为 shared-devnet 编排真值
+  - 用 execute/evidence/skip 模式统一收口 same-candidate `headed Web + no-ui + pure_api`
+  - 统一生成 `multi-entry-summary`、lane scaffold、`lanes.shared_devnet.tsv` 与 gate 输出
+  - 未提供 shared access / rollback / governance / short-window 新证据时，默认保持保守 `partial`，避免误判为已 `pass`
 - 当前 QA gate 最小职责：
   - 按 `shared_devnet / staging / canary` 校验 required lanes 是否齐全
   - 统一输出 `pass / partial / block`

@@ -4,13 +4,14 @@
 - 对应需求文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md`
 - 对应运行手册: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md`
 
-审计轮次: 5
+审计轮次: 6
 ## 任务拆解（含 PRD-ID 映射）
 - [x] RTMIN-0 (PRD-P2P-RTMIN-001/002/003/004) [test_tier_required]: 新建 shared network / release train minimum 专题 PRD / design / project，并接入 `doc/p2p` 模块主追踪与 `testing-manual`。
 - [x] RTMIN-1 (PRD-P2P-RTMIN-001/002) [test_tier_required]: `runtime_engineer` 落地 `release_candidate_bundle` 真值、版本 pinning 与 drift blocker，并把 bundle 校验接入 `release-gate` 前置步骤。
 - [x] RTMIN-2 (PRD-P2P-RTMIN-003) [test_tier_required]: `qa_engineer` 冻结 `shared_devnet/staging/canary` 的 `pass/partial/block` 证据模板与 gate 表，并落地统一 `summary.json/md` scaffold。
 - [x] RTMIN-3 (PRD-P2P-RTMIN-004) [test_tier_required]: `liveops_community` 冻结 promotion/freeze/rollback/run window/public claims runbook。
 - [x] RTMIN-4 (PRD-P2P-RTMIN-002/003) [test_tier_required + test_tier_full]: 执行 first shared-devnet dry run，落下 candidate/evidence/incident 产物。
+- [x] RTMIN-4A (PRD-P2P-RTMIN-002/003) [test_tier_required]: 新增 `shared-devnet` rehearsal orchestration，把 same-candidate 多入口复跑、lane scaffold 与 gate 聚合收敛成单命令入口。
 - [ ] RTMIN-5 (PRD-P2P-RTMIN-003/004) [test_tier_required + test_tier_full]: 执行 first staging rehearsal 与 first canary rehearsal，并做 freeze/rollback 演练。
 
 ### RTMIN-1 产物
@@ -64,6 +65,15 @@
 - `testing-manual.md`
 - `doc/devlog/2026-03-24.md`
 
+### RTMIN-4A 产物
+- `scripts/shared-devnet-rehearsal.sh`
+- `scripts/shared-devnet-rehearsal-smoke.sh`
+- `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md`
+- `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
+- `doc/p2p/project.md`
+- `testing-manual.md`
+- `doc/devlog/2026-03-24.md`
+
 ## 当前结论
 - 当前阶段:
   - 游戏阶段口径: `limited playable technical preview`
@@ -84,6 +94,7 @@
 - `./scripts/release-gate.sh --dry-run --candidate-bundle output/release-candidates/shared-devnet-dry-run-20260324-01.json --out-dir output/shared-network/shared-devnet-dry-run-20260324-01/release-gate`
 - `./scripts/shared-network-track-gate.sh --track shared_devnet --candidate-bundle output/release-candidates/shared-devnet-dry-run-20260324-01.json --lanes-tsv output/shared-network/shared-devnet-dry-run-20260324-01/lanes.shared_devnet.tsv --out-dir output/shared-network/shared-devnet-dry-run-20260324-01/gate`
 - `rg -n "partial|hold_promotion|shared-devnet-dry-run-20260324-01|local-only" doc/testing/evidence/shared-network-shared-devnet-dry-run-2026-03-24.md doc/testing/evidence/shared-network-shared-devnet-promotion-record-2026-03-24.md doc/testing/evidence/shared-network-shared-devnet-incident-2026-03-24.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.design.md doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.project.md testing-manual.md`
+- `./scripts/shared-devnet-rehearsal-smoke.sh`
 - `./scripts/shared-network-track-gate-smoke.sh`
 - `./scripts/release-candidate-bundle-smoke.sh`
 - `./scripts/release-gate-smoke.sh`
@@ -92,5 +103,5 @@
 
 ## 状态
 - 当前阶段: active
-- 下一步: 继续执行 `RTMIN-5` 前置收口，先把 `shared_devnet` 从 `partial` 提升到 `pass`，再进入 `staging/canary` rehearsal；在此之前继续维持 preview claims。
+- 下一步: 先用 `./scripts/shared-devnet-rehearsal.sh` 重跑 same-candidate `headed Web + no-ui + pure_api`，并按需补 shared access / governance / short-window / rollback lane 证据，把 `shared_devnet` 从 `partial` 提升到 `pass`；在此之前继续维持 preview claims，再进入 `staging/canary` rehearsal。
 - 最近更新: 2026-03-24
