@@ -85,15 +85,14 @@ Examples:
     --window-id shared-devnet-20260324-02 \
     --candidate-bundle output/release-candidates/shared-devnet-dry-run-20260324-01.json \
     --bundle-dir output/release/game-launcher-local \
+    --viewer-port 4174 \
+    --live-bind 127.0.0.1:5123 \
+    --web-bind 127.0.0.1:5111 \
     --release-gate-mode dry-run \
     --web-mode execute \
     --headless-mode execute \
     --pure-api-mode execute \
-    --longrun-mode dry-run \
-    -- \
-    --viewer-port 4174 \
-    --live-bind 127.0.0.1:5123 \
-    --web-bind 127.0.0.1:5111
+    --longrun-mode dry-run
 USAGE
 }
 
@@ -160,6 +159,49 @@ format_cmd() {
     fi
   done
   printf '%s' "$formatted"
+}
+
+parse_host_port() {
+  local label=$1
+  local raw=$2
+  if [[ "$raw" != *:* ]]; then
+    echo "error: $label must be in <host:port> format: $raw" >&2
+    exit 2
+  fi
+  local host=${raw%:*}
+  local port=${raw##*:}
+  if [[ -z "$host" || ! "$port" =~ ^[0-9]+$ ]] || (( port <= 0 )); then
+    echo "error: invalid $label: $raw" >&2
+    exit 2
+  fi
+  printf '%s\n%s\n' "$host" "$port"
+}
+
+offset_bind_addr() {
+  local label=$1
+  local raw=$2
+  local offset=$3
+  mapfile -t parts < <(parse_host_port "$label" "$raw")
+  local host=${parts[0]}
+  local port=${parts[1]}
+  printf '%s:%s\n' "$host" "$((port + offset))"
+}
+
+build_lane_stack_args() {
+  local offset=$1
+  local lane_viewer_port=$((viewer_port + offset))
+  local lane_live_bind
+  local lane_web_bind
+  lane_live_bind=$(offset_bind_addr "--live-bind" "$live_bind" "$offset")
+  lane_web_bind=$(offset_bind_addr "--web-bind" "$web_bind" "$offset")
+  lane_stack_args=(
+    --bundle-dir "$bundle_dir"
+    --no-llm
+    --viewer-host "$viewer_host"
+    --viewer-port "$lane_viewer_port"
+    --live-bind "$lane_live_bind"
+    --web-bind "$lane_web_bind"
+  )
 }
 
 latest_summary_path() {
@@ -450,6 +492,18 @@ ensure_positive_int "--s9-duration-secs" "$s9_duration_secs"
 ensure_positive_int "--s10-duration-secs" "$s10_duration_secs"
 ensure_positive_int "--s9-base-port" "$s9_base_port"
 ensure_positive_int "--s10-base-port" "$s10_base_port"
+ensure_positive_int "--viewer-port" "$viewer_port"
+parse_host_port "--live-bind" "$live_bind" >/dev/null
+parse_host_port "--web-bind" "$web_bind" >/dev/null
+
+for passthrough in "${passthrough_args[@]}"; do
+  case "$passthrough" in
+    --viewer-host|--viewer-port|--live-bind|--web-bind|--bundle-dir)
+      echo "error: pass lane bind overrides via top-level flags, not after -- : $passthrough" >&2
+      exit 2
+      ;;
+  esac
+done
 
 window_dir="$out_root/$window_id"
 logs_dir="$window_dir/logs"
@@ -548,17 +602,9 @@ if [[ "$pure_api_mode" == "auto" ]]; then
   fi
 fi
 
-stack_base_args=()
+declare -a lane_stack_args=()
 if [[ -n "$bundle_dir" ]]; then
   require_dir "--bundle-dir" "$bundle_dir"
-  stack_base_args=(
-    --bundle-dir "$bundle_dir"
-    --no-llm
-    --viewer-host "$viewer_host"
-    --viewer-port "$viewer_port"
-    --live-bind "$live_bind"
-    --web-bind "$web_bind"
-  )
 fi
 
 web_status="partial"
@@ -566,12 +612,13 @@ web_summary_path=""
 web_note="Web lane not executed"
 if [[ "$web_mode" == "execute" ]]; then
   require_dir "--bundle-dir" "$bundle_dir"
+  build_lane_stack_args 0
   web_root="$window_dir/multi-entry/web"
   run_capture web_lane \
     ./scripts/viewer-post-onboarding-qa.sh \
       --out-dir "$web_root" \
       --startup-timeout "$multi_entry_startup_timeout" \
-      "${stack_base_args[@]}" \
+      "${lane_stack_args[@]}" \
       "${passthrough_args[@]}"
   if [[ "$(cat "$logs_dir/web_lane.rc")" == "0" ]]; then
     web_status="pass"
@@ -593,12 +640,13 @@ headless_summary_path=""
 headless_note="no-UI lane not executed"
 if [[ "$headless_mode" == "execute" ]]; then
   require_dir "--bundle-dir" "$bundle_dir"
+  build_lane_stack_args 1
   headless_root="$window_dir/multi-entry/headless"
   run_capture headless_lane \
     ./scripts/viewer-post-onboarding-headless-smoke.sh \
       --out-dir "$headless_root" \
       --startup-timeout "$multi_entry_startup_timeout" \
-      "${stack_base_args[@]}" \
+      "${lane_stack_args[@]}" \
       "${passthrough_args[@]}"
   if [[ "$(cat "$logs_dir/headless_lane.rc")" == "0" ]]; then
     headless_status="pass"
@@ -620,13 +668,14 @@ pure_api_summary_path=""
 pure_api_note="pure API lane not executed"
 if [[ "$pure_api_mode" == "execute" ]]; then
   require_dir "--bundle-dir" "$bundle_dir"
+  build_lane_stack_args 2
   pure_api_root="$window_dir/multi-entry/pure-api"
   run_capture pure_api_lane \
     ./scripts/oasis7-pure-api-parity-smoke.sh \
       --tier required \
       --out-dir "$pure_api_root" \
       --startup-timeout "$multi_entry_startup_timeout" \
-      "${stack_base_args[@]}" \
+      "${lane_stack_args[@]}" \
       "${passthrough_args[@]}"
   if [[ "$(cat "$logs_dir/pure_api_lane.rc")" == "0" ]]; then
     pure_api_status="pass"

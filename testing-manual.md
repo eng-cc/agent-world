@@ -570,15 +570,14 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
   --window-id shared-devnet-20260324-02 \
   --candidate-bundle output/release-candidates/shared-devnet-01.json \
   --bundle-dir output/release/game-launcher-local \
+  --viewer-port 4174 \
+  --live-bind 127.0.0.1:5123 \
+  --web-bind 127.0.0.1:5111 \
   --release-gate-mode dry-run \
   --web-mode execute \
   --headless-mode execute \
   --pure-api-mode execute \
-  --longrun-mode dry-run \
-  -- \
-  --viewer-port 4174 \
-  --live-bind 127.0.0.1:5123 \
-  --web-bind 127.0.0.1:5111
+  --longrun-mode dry-run
 ./scripts/shared-devnet-rehearsal-smoke.sh
 ./scripts/release-candidate-bundle-smoke.sh
 ./scripts/shared-network-track-gate.sh \
