@@ -68,6 +68,9 @@
 ### RTMIN-4A 产物
 - `scripts/shared-devnet-rehearsal.sh`
 - `scripts/shared-devnet-rehearsal-smoke.sh`
+- `doc/testing/evidence/shared-network-shared-devnet-follow-up-window-2026-03-24.md`
+- `doc/testing/evidence/shared-network-shared-devnet-follow-up-promotion-record-2026-03-24.md`
+- `doc/testing/evidence/shared-network-shared-devnet-follow-up-incident-2026-03-24.md`
 - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md`
 - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
 - `doc/p2p/project.md`
@@ -81,6 +84,7 @@
   - shared network verdict: `partial`
 - 当前缺口:
   - `shared_devnet` 仍未到 `pass`
+  - 剩余 blocker 已收敛到 `shared_access / short_window_longrun / rollback_target_ready`
   - 没有正式 `staging/canary`
 
 ## 依赖
@@ -103,5 +107,5 @@
 
 ## 状态
 - 当前阶段: active
-- 下一步: 先用 `./scripts/shared-devnet-rehearsal.sh` 重跑 same-candidate `headed Web + no-ui + pure_api`，并按需补 shared access / governance / short-window / rollback lane 证据，把 `shared_devnet` 从 `partial` 提升到 `pass`；在此之前继续维持 preview claims，再进入 `staging/canary` rehearsal。
+- 下一步: 继续用 `./scripts/shared-devnet-rehearsal.sh` 保持 `multi_entry_closure=pass`，并优先补齐真实 `shared_access`、非 dry-run `short_window_longrun` 与 formal `rollback_target_ready`，把 `shared_devnet` 从 `partial` 提升到 `pass`；在此之前继续维持 preview claims，再进入 `staging/canary` rehearsal。
 - 最近更新: 2026-03-24

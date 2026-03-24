@@ -623,6 +623,14 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
   - `gate_result=partial`
   - `promotion_recommendation=hold_promotion`
   - 这不是 shared-network `pass`，也不允许升级 public claims
+- 当前 follow-up window `shared-devnet-20260324-05` 结论：
+  - `candidate_bundle_integrity=pass`
+  - `multi_entry_closure=pass`
+  - `governance_live_drill=pass`
+  - `shared_access=partial`
+  - `short_window_longrun=partial`
+  - `rollback_target_ready=partial`
+  - 因此整体仍是 `gate_result=partial`
 - `--dry-run` 用于门禁编排冒烟，不执行真实命令。
 
 ### S11：去中心化模块发布运行与告警（world-runtime）
