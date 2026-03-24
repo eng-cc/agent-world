@@ -72,6 +72,8 @@
 - `scripts/shared-devnet-blocker-packet-smoke.sh`
 - `doc/testing/templates/shared-network-shared-access-check-template.md`
 - `doc/testing/templates/shared-network-rollback-target-template.md`
+- `doc/testing/evidence/shared-network-shared-devnet-shared-access-draft-2026-03-24.md`
+- `doc/testing/evidence/shared-network-shared-devnet-rollback-target-draft-2026-03-24.md`
 - `doc/testing/evidence/shared-network-shared-devnet-follow-up-window-2026-03-24.md`
 - `doc/testing/evidence/shared-network-shared-devnet-follow-up-promotion-record-2026-03-24.md`
 - `doc/testing/evidence/shared-network-shared-devnet-follow-up-incident-2026-03-24.md`
@@ -93,6 +95,7 @@
 - 当前缺口:
   - `shared_devnet` 仍未到 `pass`
   - 剩余 blocker 已收敛到 `shared_access / rollback_target_ready`
+  - 对应 draft evidence 已生成，等待真实 shared operator / fallback candidate 真值填充
   - 没有正式 `staging/canary`
 
 ## 依赖
