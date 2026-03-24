@@ -3,7 +3,7 @@
 - 对应需求文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md`
 - 对应项目管理文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
 
-审计轮次: 2
+审计轮次: 3
 ## 设计目标
 - 把 benchmark 中 `L5 shared network/release train` 的缺口落成正式执行模型，而不是继续停留在口头 backlog。
 - 明确 oasis7 下一阶段的最小 shared track、promotion 规则、rollback 规则与 claims gate。
@@ -46,6 +46,31 @@
   - `release_candidate_bundle` 现在已具备机器可读 JSON 工件、路径哈希与 `git_commit` pinning。
   - `release-gate` 已可在进入 shared track 前先校验 bundle 存在性、引用路径与 hash 漂移。
   - shared 环境本身仍未建立，因此总 verdict 继续保持 `specified_not_executed`。
+
+## 当前实现入口（RTMIN-2）
+- QA gate 生成:
+  - `./scripts/shared-network-track-gate.sh`
+- QA gate smoke:
+  - `./scripts/shared-network-track-gate-smoke.sh`
+- QA 模板:
+  - `doc/testing/templates/shared-network-track-gate-template.md`
+  - `doc/testing/templates/shared-network-track-gate-lanes.shared_devnet.template.tsv`
+  - `doc/testing/templates/shared-network-track-gate-lanes.staging.template.tsv`
+  - `doc/testing/templates/shared-network-track-gate-lanes.canary.template.tsv`
+
+## Track QA Required Lanes
+| Track | Required lanes | Gate 结论规则 |
+| --- | --- | --- |
+| `shared_devnet` | `candidate_bundle_integrity` / `shared_access` / `multi_entry_closure` / `governance_live_drill` / `short_window_longrun` / `rollback_target_ready` | 缺任一 required lane 直接 `block`；全部 `pass` 才可 promotion |
+| `staging` | `candidate_bundle_integrity` / `shared_access` / `unified_candidate_gate` / `governance_live_drill` / `upgrade_rehearsal` / `rollback_rehearsal` / `incident_template` | 任一 `block` 或缺 lane 即 `block`；存在 `partial` 则整体 `partial` |
+| `canary` | `candidate_bundle_integrity` / `promotion_record` / `canary_window` / `rollback_rehearsal` / `incident_review` / `exit_decision` | 只有全部 `pass` 才能给出 `eligible_for_promotion`，否则维持 `hold_promotion` |
+
+## QA Gate 规则
+1. QA gate 只接受 `pass / partial / block` 三种 lane 状态。
+2. 缺任一 required lane 时，整体 gate 直接输出 `block`。
+3. required lanes 齐全但至少存在一条 `partial` 时，整体结论为 `partial`。
+4. 只有 required lanes 齐全且所有 lanes 都是 `pass` 时，整体结论才为 `pass`，并给出 `eligible_for_promotion`。
+5. QA gate summary 必须同时生成 `summary.json` 与 `summary.md`，不得只留口头结论。
 
 ## Promotion 规则
 1. 任何 candidate 必须先完成本地 gate，再进入 `shared_devnet`。

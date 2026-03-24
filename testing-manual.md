@@ -562,12 +562,28 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
 
 ./scripts/release-gate.sh --candidate-bundle output/release-candidates/shared-devnet-01.json --dry-run
 ./scripts/release-candidate-bundle-smoke.sh
+./scripts/shared-network-track-gate.sh \
+  --track shared_devnet \
+  --candidate-bundle output/release-candidates/shared-devnet-01.json \
+  --lanes-tsv doc/testing/templates/shared-network-track-gate-lanes.shared_devnet.template.tsv \
+  --out-dir output/shared-network-gates
+./scripts/shared-network-track-gate-smoke.sh
 ```
 - 当前 `release_candidate_bundle` 最小职责：
   - 固定 `candidate_id`
   - 固定 `git_commit`
   - 固定 `runtime_build/world_snapshot/governance_manifest` 的路径与 hash
   - 固定 `evidence_refs`
+- 当前 QA gate 最小职责：
+  - 按 `shared_devnet / staging / canary` 校验 required lanes 是否齐全
+  - 统一输出 `pass / partial / block`
+  - 统一生成 `summary.json` 与 `summary.md`
+  - 缺 required lane 时直接 `block`
+- QA 模板入口：
+  - `doc/testing/templates/shared-network-track-gate-template.md`
+  - `doc/testing/templates/shared-network-track-gate-lanes.shared_devnet.template.tsv`
+  - `doc/testing/templates/shared-network-track-gate-lanes.staging.template.tsv`
+  - `doc/testing/templates/shared-network-track-gate-lanes.canary.template.tsv`
 - `--dry-run` 用于门禁编排冒烟，不执行真实命令。
 
 ### S11：去中心化模块发布运行与告警（world-runtime）
