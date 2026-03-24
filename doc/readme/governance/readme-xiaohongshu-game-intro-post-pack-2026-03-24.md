@@ -146,6 +146,21 @@
 我想做一个会自己运转的世界
 ```
 
+### 视觉素材
+- HTML: `site/social/xiaohongshu-game-intro-world.html`
+- PNG:
+  - `site/social/xiaohongshu-game-intro-slide1.png`
+  - `site/social/xiaohongshu-game-intro-slide2.png`
+  - `site/social/xiaohongshu-game-intro-slide3.png`
+  - `site/social/xiaohongshu-game-intro-slide4.png`
+  - `site/social/xiaohongshu-game-intro-slide5.png`
+  - `site/social/xiaohongshu-game-intro-slide6.png`
+  - `site/social/xiaohongshu-game-intro-slide7.png`
+- 使用方式:
+  - 单页预览：`site/social/xiaohongshu-game-intro-world.html?slide=1`
+  - 逐页导出：`?slide=1` 到 `?slide=7`
+  - 全部连看：直接打开不带参数的页面
+
 ### 视觉方向
 - 不要做“游戏功能总览海报”。
 - 画面应更像“开发者在解释自己脑子里的世界模型”，而不是在卖一个已经成熟上线的产品。

@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xiaohongshu Game Intro World</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Noto+Serif+SC:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --space: #07131f;
+        --space-2: #0f2233;
+        --panel: rgba(11, 24, 36, 0.74);
+        --panel-strong: rgba(9, 19, 29, 0.88);
+        --ink: #edf6ff;
+        --muted: rgba(237, 246, 255, 0.72);
+        --soft: rgba(237, 246, 255, 0.48);
+        --teal: #4cc9c0;
+        --ice: #7ed7ff;
+        --amber: #ffbc6a;
+        --line: rgba(126, 215, 255, 0.12);
+        --shadow: 0 32px 70px rgba(0, 0, 0, 0.35);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, rgba(76, 201, 192, 0.18), transparent 24%),
+          radial-gradient(circle at 82% 18%, rgba(126, 215, 255, 0.18), transparent 18%),
+          radial-gradient(circle at 50% 85%, rgba(255, 188, 106, 0.14), transparent 26%),
+          linear-gradient(145deg, #03101a, #0a1623 44%, #122436 100%);
+        color: var(--ink);
+        font-family: "Manrope", sans-serif;
+      }
+
+      .gallery {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 0 72px;
+      }
+
+      .slide {
+        position: relative;
+        width: 1080px;
+        height: 1440px;
+        margin: 0 auto 28px;
+        overflow: hidden;
+        border-radius: 32px;
+        background:
+          radial-gradient(circle at top, rgba(126, 215, 255, 0.14), transparent 38%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 28%),
+          linear-gradient(160deg, rgba(5, 17, 28, 0.94), rgba(7, 26, 38, 0.9)),
+          var(--space);
+        box-shadow: var(--shadow);
+      }
+
+      .single .gallery {
+        max-width: none;
+        padding: 0;
+      }
+
+      .single .slide {
+        margin: 0 auto;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .stars,
+      .grid,
+      .orbit,
+      .fog {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .stars {
+        opacity: 0.55;
+        background-image:
+          radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.95) 0.8px, transparent 1px),
+          radial-gradient(circle at 74% 28%, rgba(255, 255, 255, 0.8) 0.7px, transparent 0.9px),
+          radial-gradient(circle at 42% 64%, rgba(126, 215, 255, 0.9) 0.8px, transparent 1px),
+          radial-gradient(circle at 82% 78%, rgba(255, 188, 106, 0.85) 0.7px, transparent 0.95px),
+          radial-gradient(circle at 22% 78%, rgba(255, 255, 255, 0.72) 0.7px, transparent 0.9px);
+        background-size: 190px 190px, 220px 220px, 260px 260px, 300px 300px, 340px 340px;
+      }
+
+      .grid {
+        background-image:
+          linear-gradient(to right, var(--line) 1px, transparent 1px),
+          linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+        background-size: 84px 84px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.32), transparent 88%);
+      }
+
+      .fog {
+        background:
+          radial-gradient(circle at 14% 12%, rgba(76, 201, 192, 0.14), transparent 24%),
+          radial-gradient(circle at 88% 24%, rgba(126, 215, 255, 0.12), transparent 18%),
+          radial-gradient(circle at 50% 88%, rgba(255, 188, 106, 0.12), transparent 26%);
+      }
+
+      .orbit::before,
+      .orbit::after {
+        content: "";
+        position: absolute;
+        border-radius: 999px;
+        border: 1px solid rgba(126, 215, 255, 0.16);
+      }
+
+      .orbit::before {
+        width: 720px;
+        height: 720px;
+        right: -140px;
+        top: -170px;
+      }
+
+      .orbit::after {
+        width: 620px;
+        height: 620px;
+        left: -220px;
+        bottom: -180px;
+      }
+
+      .asteroid {
+        position: absolute;
+        border-radius: 999px;
+        background:
+          radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.45), transparent 30%),
+          linear-gradient(155deg, rgba(126, 215, 255, 0.32), rgba(11, 24, 36, 0.95));
+        border: 1px solid rgba(126, 215, 255, 0.18);
+        box-shadow:
+          0 0 0 8px rgba(126, 215, 255, 0.04),
+          0 18px 34px rgba(0, 0, 0, 0.2);
+      }
+
+      .asteroid.a1 {
+        width: 74px;
+        height: 74px;
+        top: 220px;
+        right: 180px;
+      }
+
+      .asteroid.a2 {
+        width: 42px;
+        height: 42px;
+        top: 474px;
+        right: 320px;
+      }
+
+      .asteroid.a3 {
+        width: 56px;
+        height: 56px;
+        bottom: 304px;
+        left: 154px;
+      }
+
+      .asteroid.a4 {
+        width: 30px;
+        height: 30px;
+        bottom: 250px;
+        right: 120px;
+      }
+
+      .header {
+        position: absolute;
+        top: 68px;
+        left: 74px;
+        right: 74px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 22px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 800;
+      }
+
+      .header .meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        color: var(--soft);
+      }
+
+      .header .meta::before {
+        content: "";
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: var(--amber);
+        box-shadow: 0 0 0 8px rgba(255, 188, 106, 0.1);
+      }
+
+      .hero,
+      .story {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+      }
+
+      .hero {
+        top: 168px;
+      }
+
+      .story {
+        top: 184px;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 28px;
+        align-items: start;
+      }
+
+      .eyebrow,
+      .tag {
+        color: var(--teal);
+        font-size: 24px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 800;
+      }
+
+      .eyebrow {
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 860px;
+        font-family: "Noto Serif SC", serif;
+        font-size: 88px;
+        line-height: 1.08;
+        letter-spacing: -0.04em;
+      }
+
+      h1 .accent,
+      .accent {
+        color: var(--amber);
+      }
+
+      .hero p,
+      .copy p,
+      .panel p,
+      .panel li {
+        font-size: 25px;
+        line-height: 1.56;
+        color: var(--muted);
+      }
+
+      .hero p {
+        margin: 28px 0 0;
+        max-width: 760px;
+      }
+
+      .panel {
+        position: relative;
+        border-radius: 30px;
+        border: 1px solid rgba(126, 215, 255, 0.12);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .panel::before {
+        content: "";
+        position: absolute;
+        top: 22px;
+        left: 24px;
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.18);
+        box-shadow:
+          28px 0 0 rgba(255, 255, 255, 0.1),
+          56px 0 0 rgba(255, 255, 255, 0.1);
+      }
+
+      .deck {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+        bottom: 112px;
+        display: grid;
+        grid-template-columns: 1.12fr 0.88fr;
+        gap: 28px;
+        align-items: end;
+      }
+
+      .summary,
+      .notes,
+      .badge,
+      .card {
+        min-height: 324px;
+        padding: 62px 28px 28px;
+      }
+
+      .summary {
+        transform: rotate(-1.8deg);
+      }
+
+      .notes {
+        transform: rotate(2.2deg);
+      }
+
+      .tag {
+        display: inline-block;
+        margin-bottom: 20px;
+        font-size: 19px;
+      }
+
+      .line {
+        padding: 16px 0;
+        border-top: 1px solid rgba(126, 215, 255, 0.12);
+      }
+
+      .line:first-of-type {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .line strong,
+      .card strong,
+      .badge strong {
+        display: block;
+        margin-bottom: 10px;
+        font-size: 31px;
+        line-height: 1.24;
+      }
+
+      .signal {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(76, 201, 192, 0.12);
+        color: var(--teal);
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .signal::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--amber);
+      }
+
+      .copy h1 {
+        font-size: 72px;
+      }
+
+      .copy p {
+        margin: 24px 0 0;
+      }
+
+      .badge {
+        min-height: 368px;
+        background: var(--panel-strong);
+      }
+
+      .card {
+        min-height: 354px;
+      }
+
+      .list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .list li {
+        display: grid;
+        grid-template-columns: 28px 1fr;
+        gap: 14px;
+        padding: 10px 0;
+      }
+
+      .list li::before {
+        content: "•";
+        color: var(--amber);
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .hud {
+        position: absolute;
+        right: 84px;
+        top: 294px;
+        width: 280px;
+        padding: 24px 24px 22px;
+        border-radius: 26px;
+        border: 1px solid rgba(126, 215, 255, 0.18);
+        background: rgba(7, 19, 31, 0.56);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+        backdrop-filter: blur(16px);
+      }
+
+      .hud .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 0;
+        border-top: 1px solid rgba(126, 215, 255, 0.12);
+        font-size: 18px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .hud .row:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .hud .label {
+        color: var(--soft);
+      }
+
+      .hud .value {
+        color: var(--ink);
+        font-weight: 800;
+      }
+
+      .footer {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+        bottom: 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 20px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 800;
+        color: var(--soft);
+      }
+
+      .footer .brand {
+        color: var(--ink);
+      }
+
+      .is-hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="gallery">
+      <section class="slide" data-slide="1">
+        <div class="stars"></div>
+        <div class="grid"></div>
+        <div class="orbit"></div>
+        <div class="fog"></div>
+        <div class="asteroid a1"></div>
+        <div class="asteroid a2"></div>
+        <div class="asteroid a3"></div>
+        <div class="asteroid a4"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">world post / 003</span>
+        </div>
+        <div class="hero">
+          <div class="eyebrow">Game Intro</div>
+          <h1>我想做的，不是一个<br />写死剧情的<span class="accent">游戏</span></h1>
+          <p>更像一个会自己持续运转的世界。你给它规则、资源、空间和压力，然后看秩序会不会真的长出来。</p>
+        </div>
+        <div class="hud">
+          <div class="row">
+            <span class="label">setting</span>
+            <span class="value">asteroid belt</span>
+          </div>
+          <div class="row">
+            <span class="label">actors</span>
+            <span class="value">silicon agents</span>
+          </div>
+          <div class="row">
+            <span class="label">player</span>
+            <span class="value">indirect guide</span>
+          </div>
+        </div>
+        <div class="deck">
+          <div class="panel summary">
+            <div class="tag">What This Means</div>
+            <div class="line">
+              <strong>不是先写好所有答案。</strong>
+              <p>我想看的是世界自己慢慢变复杂，而不是玩家照着固定脚本过关。</p>
+            </div>
+            <div class="line">
+              <strong>重点在规则和约束。</strong>
+              <p>资源、空间、交易和协作压力，比“预设剧情”更重要。</p>
+            </div>
+          </div>
+          <div class="panel notes">
+            <div class="tag">Core Signals</div>
+            <p>persistent world</p>
+            <p>resource pressure</p>
+            <p>emergent order</p>
+            <p>human + agent build loop</p>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">a world, not a script</span>
+          <span>1 / 7</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="2">
+        <div class="stars"></div>
+        <div class="grid"></div>
+        <div class="orbit"></div>
+        <div class="fog"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">world shape</span>
+        </div>
+        <div class="story">
+          <div class="copy">
+            <div class="eyebrow">Slide 02</div>
+            <h1>我更想做一个<br />会自己持续运转的世界</h1>
+            <p>不是玩家上线时世界才开始动，也不是所有变化都靠人工触发。这个世界应该在规则之下自己推进。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">World Signal</div>
+            <div class="signal">persistent simulation</div>
+            <strong>它先是一个系统，再是一组内容。</strong>
+            <p>先让世界成立，再让里面的关系、组织和冲突慢慢出现。</p>
+          </div>
+        </div>
+        <div class="deck">
+          <div class="panel card">
+            <div class="tag">Why I Care</div>
+            <strong>我想看的不是“通关路线”。</strong>
+            <p>而是一个世界在没有预写答案的情况下，能不能长出自己的秩序感。</p>
+          </div>
+          <div class="panel card">
+            <div class="tag">What Changes</div>
+            <ul class="list">
+              <li>故事不再完全靠手写推进。</li>
+              <li>系统关系会比任务清单更重要。</li>
+              <li>玩家看到的是世界的演化，不只是关卡顺序。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">world shape</span>
+          <span>2 / 7</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="3">
+        <div class="stars"></div>
+        <div class="grid"></div>
+        <div class="orbit"></div>
+        <div class="fog"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">rule stack</span>
+        </div>
+        <div class="story">
+          <div class="copy">
+            <div class="eyebrow">Slide 03</div>
+            <h1>给它资源约束、空间约束、交易规则和协作压力</h1>
+            <p>真正有意思的，不是“它会不会表现得像人”，而是当规则开始互相顶住时，会不会出现稳定的分工和真实的冲突。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">Constraint Model</div>
+            <div class="signal">pressure drives behavior</div>
+            <strong>秩序不是讲出来的。</strong>
+            <p>它要在资源有限、位置有限、协作有成本的情况下，自己变得有必要。</p>
+          </div>
+        </div>
+        <div class="deck">
+          <div class="panel card">
+            <div class="tag">Pressure Sources</div>
+            <ul class="list">
+              <li>能源和数据不是无限的。</li>
+              <li>空间占用和移动都要付代价。</li>
+              <li>交易和合作不是默认成功。</li>
+            </ul>
+          </div>
+          <div class="panel card">
+            <div class="tag">What I Want To See</div>
+            <strong>当约束叠起来，秩序才会开始长。</strong>
+            <p>分工、组织和冲突都应该是被系统逼出来的，而不是被文案塞进去的。</p>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">constraint first</span>
+          <span>3 / 7</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="4">
+        <div class="stars"></div>
+        <div class="grid"></div>
+        <div class="orbit"></div>
+        <div class="fog"></div>
+        <div class="asteroid a1"></div>
+        <div class="asteroid a3"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">setting frame</span>
+        </div>
+        <div class="story">
+          <div class="copy">
+            <div class="eyebrow">Slide 04</div>
+            <h1>背景会更接近一片<br />小行星带</h1>
+            <p>里面不是传统的人类城镇，而是一群硅基智能体，靠能源、算力、数据这些东西活下去。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">Setting Signal</div>
+            <div class="signal">hard sci-fi habitat</div>
+            <strong>这个背景不是为了“酷”。</strong>
+            <p>它本身就更适合把资源稀缺、空间关系和制度演化讲清楚。</p>
+          </div>
+        </div>
+        <div class="deck">
+          <div class="panel card">
+            <div class="tag">Why Asteroids</div>
+            <strong>因为这里天然有距离、轨道、基础设施和争夺。</strong>
+            <p>很多我想要的压力，在这个环境里会显得更自然，也更系统化。</p>
+          </div>
+          <div class="panel card">
+            <div class="tag">Life Support</div>
+            <ul class="list">
+              <li>能源决定持续性。</li>
+              <li>算力决定行动能力。</li>
+              <li>数据决定记忆与协作质量。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">asteroid belt setting</span>
+          <span>4 / 7</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="5">
+        <div class="stars"></div>
+        <div class="grid"></div>
+        <div class="orbit"></div>
+        <div class="fog"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">player position</span>
+        </div>
+        <div class="story">
+          <div class="copy">
+            <div class="eyebrow">Slide 05</div>
+            <h1>玩家不是直接操控角色<br />更像是在世界外面给方向的人</h1>
+            <p>你可以影响它，但不能直接替它行动。玩家的乐趣不是“附身控制”，而是长期引导和结构塑形。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">Player Model</div>
+            <div class="signal">indirect control</div>
+            <strong>我不想把它做成木偶戏。</strong>
+            <p>玩家不是按按钮替世界做决定，而是在边界里慢慢改变它的发展方向。</p>
+          </div>
+        </div>
+        <div class="deck">
+          <div class="panel card">
+            <div class="tag">Player Can</div>
+            <ul class="list">
+              <li>给目标和长期方向。</li>
+              <li>调整策略和发展路线。</li>
+              <li>帮助世界扩展能力。</li>
+            </ul>
+          </div>
+          <div class="panel card">
+            <div class="tag">Player Cannot</div>
+            <ul class="list">
+              <li>直接替某个角色按下一步动作。</li>
+              <li>跳过世界规则改结果。</li>
+              <li>把复杂系统拍扁成单角色操作。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">player as guide</span>
+          <span>5 / 7</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="6">
+        <div class="stars"></div>
+        <div class="grid"></div>
+        <div class="orbit"></div>
+        <div class="fog"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">emergent change</span>
+        </div>
+        <div class="story">
+          <div class="copy">
+            <div class="eyebrow">Slide 06</div>
+            <h1>我想看的不是固定答案<br />而是一个世界怎么慢慢长出分工、组织和冲突</h1>
+            <p>我最想要的，不是漂亮设定先行，而是系统真的把这些变化逼出来，然后被人看见、介入、影响。</p>
+          </div>
+          <div class="panel badge">
+            <div class="tag">End State</div>
+            <div class="signal">order emerges</div>
+            <strong>真正迷人的地方在“长出来”。</strong>
+            <p>如果一切都预写好了，世界就只是被表演；只有在规则里长出来，它才真的像活的。</p>
+          </div>
+        </div>
+        <div class="deck">
+          <div class="panel card">
+            <div class="tag">What Emerges</div>
+            <ul class="list">
+              <li>分工不是职位表，而是压力下的选择。</li>
+              <li>组织不是设定词，而是协作成本的结果。</li>
+              <li>冲突不是剧情按钮，而是利益和边界的碰撞。</li>
+            </ul>
+          </div>
+          <div class="panel card">
+            <div class="tag">Why This Project</div>
+            <strong>所以前面那支 agent 队伍不是噱头。</strong>
+            <p>因为我要做的，本来就是一个更适合用系统和协作一起推进的游戏。</p>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">emergence over script</span>
+          <span>6 / 7</span>
+        </div>
+      </section>
+
+      <section class="slide" data-slide="7">
+        <div class="stars"></div>
+        <div class="grid"></div>
+        <div class="orbit"></div>
+        <div class="fog"></div>
+        <div class="header">
+          <span class="brand">oasis7</span>
+          <span class="meta">closing card</span>
+        </div>
+        <div class="hero">
+          <div class="eyebrow">Question Back</div>
+          <h1>如果只听到这里<br />你会把它猜成什么类型的<span class="accent">游戏</span>？</h1>
+          <p>这篇先讲到“能想象出来”为止，不把完整世界规则一次塞满。后面再慢慢拆玩家边界、世界背景和资源压力。</p>
+        </div>
+        <div class="deck">
+          <div class="panel summary">
+            <div class="tag">This Post Ends Here</div>
+            <div class="line">
+              <strong>先让人看懂轮廓。</strong>
+              <p>不是马上把所有世界设定、玩法系统和技术结构讲完。</p>
+            </div>
+            <div class="line">
+              <strong>真正重要的是把讨论拉出来。</strong>
+              <p>让大家先猜类型，再决定下一篇该沿着哪个问题继续展开。</p>
+            </div>
+          </div>
+          <div class="panel notes">
+            <div class="tag">Next Threads</div>
+            <p>玩家为什么不能直接控制角色？</p>
+            <p>为什么会是小行星带？</p>
+            <p>这到底算模拟、策略还是沙盒？</p>
+          </div>
+        </div>
+        <div class="footer">
+          <span class="brand">guess the genre</span>
+          <span>7 / 7</span>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        const slide = params.get("slide");
+        if (!slide || slide === "all") {
+          return;
+        }
+        document.body.classList.add("single");
+        document.querySelectorAll("[data-slide]").forEach((node) => {
+          if (node.getAttribute("data-slide") !== slide) {
+            node.classList.add("is-hidden");
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

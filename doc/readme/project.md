@@ -308,6 +308,14 @@
     - `doc/readme/prd.index.md`
     - `doc/readme/governance/readme-xiaohongshu-liveops-runbook-2026-03-23.md`
     - `doc/readme/governance/readme-xiaohongshu-game-intro-post-pack-2026-03-24.md`
+    - `site/social/xiaohongshu-game-intro-world.html`
+    - `site/social/xiaohongshu-game-intro-slide1.png`
+    - `site/social/xiaohongshu-game-intro-slide2.png`
+    - `site/social/xiaohongshu-game-intro-slide3.png`
+    - `site/social/xiaohongshu-game-intro-slide4.png`
+    - `site/social/xiaohongshu-game-intro-slide5.png`
+    - `site/social/xiaohongshu-game-intro-slide6.png`
+    - `site/social/xiaohongshu-game-intro-slide7.png`
     - `doc/devlog/2026-03-24.md`
   - 验收命令 (`test_tier_required`):
     - `rg -n "我想做的，不是一个写死剧情的游戏|会自己持续运转的世界|硅基智能体|如果只听到这里，你会把它猜成什么类型的游戏" doc/readme/governance/readme-xiaohongshu-game-intro-post-pack-2026-03-24.md`
