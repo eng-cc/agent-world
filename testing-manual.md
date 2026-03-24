@@ -204,6 +204,31 @@ env -u RUSTC_WRAPPER cargo test -p oasis7_net --features libp2p --lib
 env -u RUSTC_WRAPPER cargo test -p oasis7_net --features runtime_bridge --lib
 ```
 
+### S4B：Governance Registry Drill（L4 前置 / L4）
+- 适用场景：
+  - 治理 signer rotation / revocation / failover runbook 首轮验证
+  - `MAINNET-2` / `BENCH-G1` 需要留下 `pass + block` 审计证据时
+- 推荐入口：
+```bash
+./scripts/governance-registry-drill.sh \
+  --source-world-dir output/chain-runtime/viewer-live-node/reward-runtime-execution-world \
+  --baseline-manifest /path/to/public_manifest.json \
+  --slot-id msig.foundation_ops.v1 \
+  --replace-signer-id signer03 \
+  --replacement-public-key <replacement_public_key_hex> \
+  --out-dir output/governance-drills/<run_id>
+```
+- 产物约定：
+  - `run_config.json`
+  - `summary.json`
+  - `summary.md`
+  - `manifests/{rotated_pass_manifest.json,degraded_block_manifest.json}`
+  - `logs/*`
+- 判定口径：
+  - baseline / pass case 应返回 `overall_status=ready_for_ops_drill`
+  - negative block case 应返回 `overall_status=failover_blocked`
+  - clone-world 样本只证明 runbook/tooling 正确，不替代 default/live execution world 的最终 QA 证据
+
 ### S5：Viewer crate 单测与 wasm 编译套件（L4 前置）
 ```bash
 env -u RUSTC_WRAPPER cargo test -p oasis7_viewer

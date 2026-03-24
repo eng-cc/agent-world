@@ -18,7 +18,7 @@
 - 当前 benchmark 结论:
   - `L0/L1/L3`: 已有正式基础
   - `L2`: 已有基础，但仍偏库测/长跑，缺 shared network 维度
-  - `L4`: 长跑已有，真实 governance drill/ceremony 证据未完成
+  - `L4`: 长跑已有，clone-world governance drill 证据已完成，但 default/live execution world 证据未完成
   - `L5`: shared network / release train 缺失
 
 ## 依赖
@@ -35,5 +35,5 @@
 
 ## 状态
 - 当前阶段: completed
-- 下一步: 先按 `BENCH-G1` 执行首轮真实 governance drill/negative drill 证据闭环，再定义 `shared network / release train` 的最小执行形态；在此之前，不升级“对标主流公链测试成熟度”相关口径。
+- 下一步: 将 `BENCH-G1` 从 clone-world 样本推进到 default/live execution world 正式证据，再定义 `shared network / release train` 的最小执行形态；在此之前，不升级“对标主流公链测试成熟度”相关口径。
 - 最近更新: 2026-03-24

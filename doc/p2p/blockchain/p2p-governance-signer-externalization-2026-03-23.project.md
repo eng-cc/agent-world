@@ -47,7 +47,9 @@
 - [x] 已将默认 world 目录 `output/chain-runtime/viewer-live-node/reward-runtime-execution-world` 导入为 world-state registry 真值
 - [x] rotation / revocation / failover 的 operator/QA 执行命令链已固化到本 project 文档
 - [x] 已对默认 world 目录执行 `oasis7_governance_registry_audit`，当前结果为 `overall_status=ready_for_ops_drill`
-- [ ] rotation / revocation / failover 的真实 runbook 演练与 QA 证据仍待执行
+- [x] 已新增 `./scripts/governance-registry-drill.sh`，可在 clone-world 上自动产出 baseline/pass/block 三类审计产物与 `summary.json`
+- [x] 已在 clone-world 对 `msig.foundation_ops.v1` 完成首轮 `pass + block` drill，证据见 `doc/testing/evidence/governance-registry-clone-world-drill-foundation-ops-2026-03-24.md`
+- [ ] default/live execution world 的真实 rotation / revocation / failover runbook 演练与 QA 证据仍待执行
 - [ ] genesis address binding / ceremony / QA pass 仍待后续 `MAINNET-3` 收口
 
 ## Operator / QA Runbook（How-to）
@@ -70,6 +72,9 @@
    - 导入后 JSON
    - QA 结论：`pass` / `block`
    - 若失败，明确失败签名属于 `threshold_mismatch`、`manifest_mismatch` 或 `single_failure_blocks_slot`
+6. clone-world 首轮演练可直接复用脚本：
+   - `./scripts/governance-registry-drill.sh --source-world-dir output/chain-runtime/viewer-live-node/reward-runtime-execution-world --baseline-manifest <operator-local-public-manifest.json> --slot-id msig.foundation_ops.v1 --replace-signer-id signer03 --replacement-public-key <replacement_public_key_hex> --out-dir output/governance-drills/<run_id>`
+   - 该脚本只用于 clone-world / dry-run 证据，不替代 default/live execution world 的最终 QA 证据
 
 ## 依赖
 - `crates/oasis7/src/runtime/world/governance.rs`
