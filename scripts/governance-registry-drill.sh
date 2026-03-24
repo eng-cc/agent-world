@@ -15,9 +15,11 @@ Usage:
     --out-dir <dir>
 
 Description:
-  Runs a clone-world governance registry drill with two cases:
+  Runs a clone-world governance registry drill with pass/block cases and,
+  when the degraded block manifest is still importable, one rejoin case:
   1. pass case: rotate one signer inside a slot while preserving 2-of-3
   2. block case: intentionally degrade one slot to 2-of-2 or worse
+  3. rejoin case: re-import the 2-of-3 pass manifest on top of the degraded world
   Note:
   - controller slots may keep the same signer_id and replace only the public key
   - finality slot rotation must use a new signer_id via --replacement-signer-id
@@ -158,8 +160,9 @@ MANIFEST_DIR="$OUT_DIR/manifests"
 LOG_DIR="$OUT_DIR/logs"
 PASS_WORLD_DIR="$OUT_DIR/pass-world"
 BLOCK_WORLD_DIR="$OUT_DIR/block-world"
+REJOIN_WORLD_DIR="$OUT_DIR/rejoin-world"
 mkdir -p "$MANIFEST_DIR" "$LOG_DIR"
-rm -rf "$PASS_WORLD_DIR" "$BLOCK_WORLD_DIR"
+rm -rf "$PASS_WORLD_DIR" "$BLOCK_WORLD_DIR" "$REJOIN_WORLD_DIR"
 
 PASS_MANIFEST="$MANIFEST_DIR/rotated_pass_manifest.json"
 BLOCK_MANIFEST="$MANIFEST_DIR/degraded_block_manifest.json"
@@ -235,6 +238,7 @@ fi
 
 cp -a "$SOURCE_WORLD_DIR" "$PASS_WORLD_DIR"
 cp -a "$SOURCE_WORLD_DIR" "$BLOCK_WORLD_DIR"
+cp -a "$SOURCE_WORLD_DIR" "$REJOIN_WORLD_DIR"
 
 run_and_capture baseline_audit \
   env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_governance_registry_audit -- \
@@ -273,12 +277,46 @@ run_and_capture block_audit \
     --strict-manifest-match \
     --require-single-failure-tolerance
 
+if [[ "$BLOCK_ENFORCEMENT_STAGE" == "audit_failover_gate" ]]; then
+  run_and_capture rejoin_import \
+    env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_governance_registry_import -- \
+      --world-dir "$REJOIN_WORLD_DIR" \
+      --public-manifest "$BLOCK_MANIFEST"
+
+  run_and_capture rejoin_to_pass_import \
+    env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_governance_registry_import -- \
+      --world-dir "$REJOIN_WORLD_DIR" \
+      --public-manifest "$PASS_MANIFEST"
+
+  run_and_capture rejoin_audit \
+    env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_governance_registry_audit -- \
+      --world-dir "$REJOIN_WORLD_DIR" \
+      --public-manifest "$PASS_MANIFEST" \
+      --finality-slot-id "$FINALITY_SLOT_ID" \
+      --expected-threshold "$EXPECTED_THRESHOLD" \
+      --strict-manifest-match \
+      --require-single-failure-tolerance
+else
+  printf '%s\n' 0 >"$LOG_DIR/rejoin_import.rc"
+  printf '%s\n' 0 >"$LOG_DIR/rejoin_to_pass_import.rc"
+  printf '%s\n' 0 >"$LOG_DIR/rejoin_audit.rc"
+  printf 'rejoin skipped: block case rejected at import stage\n' >"$LOG_DIR/rejoin_import.stdout"
+  : >"$LOG_DIR/rejoin_import.stderr"
+  printf 'rejoin skipped: no degraded registry was written\n' >"$LOG_DIR/rejoin_to_pass_import.stdout"
+  : >"$LOG_DIR/rejoin_to_pass_import.stderr"
+  printf '{"overall_status":"rejoin_skipped"}\n' >"$LOG_DIR/rejoin_audit.stdout"
+  : >"$LOG_DIR/rejoin_audit.stderr"
+fi
+
 TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 PASS_AUDIT_RC="$(cat "$LOG_DIR/pass_audit.rc")"
 BLOCK_AUDIT_RC="$(cat "$LOG_DIR/block_audit.rc")"
 BASELINE_AUDIT_RC="$(cat "$LOG_DIR/baseline_audit.rc")"
 PASS_IMPORT_RC="$(cat "$LOG_DIR/pass_import.rc")"
 BLOCK_IMPORT_RC="$(cat "$LOG_DIR/block_import.rc")"
+REJOIN_IMPORT_RC="$(cat "$LOG_DIR/rejoin_import.rc")"
+REJOIN_TO_PASS_IMPORT_RC="$(cat "$LOG_DIR/rejoin_to_pass_import.rc")"
+REJOIN_AUDIT_RC="$(cat "$LOG_DIR/rejoin_audit.rc")"
 
 jq -n \
   --arg generated_at_utc "$TIMESTAMP" \
@@ -292,6 +330,7 @@ jq -n \
   --arg replacement_public_key "$REPLACEMENT_PUBLIC_KEY" \
   --arg pass_world_dir "$PASS_WORLD_DIR" \
   --arg block_world_dir "$BLOCK_WORLD_DIR" \
+  --arg rejoin_world_dir "$REJOIN_WORLD_DIR" \
   --arg pass_manifest "$PASS_MANIFEST" \
   --arg block_manifest "$BLOCK_MANIFEST" \
   --argjson baseline_audit_rc "$BASELINE_AUDIT_RC" \
@@ -299,11 +338,17 @@ jq -n \
   --argjson pass_audit_rc "$PASS_AUDIT_RC" \
   --argjson block_import_rc "$BLOCK_IMPORT_RC" \
   --argjson block_audit_rc "$BLOCK_AUDIT_RC" \
+  --argjson rejoin_import_rc "$REJOIN_IMPORT_RC" \
+  --argjson rejoin_to_pass_import_rc "$REJOIN_TO_PASS_IMPORT_RC" \
+  --argjson rejoin_audit_rc "$REJOIN_AUDIT_RC" \
   --slurpfile baseline_audit_json "$LOG_DIR/baseline_audit.stdout" \
   --slurpfile pass_import_json "$LOG_DIR/pass_import.stdout" \
   --slurpfile pass_audit_json "$LOG_DIR/pass_audit.stdout" \
   --slurpfile block_import_json "$LOG_DIR/block_import.stdout" \
   --slurpfile block_audit_json "$LOG_DIR/block_audit.stdout" \
+  --slurpfile rejoin_import_json "$LOG_DIR/rejoin_import.stdout" \
+  --slurpfile rejoin_to_pass_import_json "$LOG_DIR/rejoin_to_pass_import.stdout" \
+  --slurpfile rejoin_audit_json "$LOG_DIR/rejoin_audit.stdout" \
   '
   {
     generated_at_utc: $generated_at_utc,
@@ -344,6 +389,23 @@ jq -n \
           ($block_import_rc == 0 and $block_audit_rc == 2 and $block_audit_json[0].overall_status == "failover_blocked")
         end
       )
+    },
+    rejoin_case: {
+      world_dir: $rejoin_world_dir,
+      applicable: ($block_enforcement_stage == "audit_failover_gate"),
+      degraded_import_rc: $rejoin_import_rc,
+      degraded_import_summary: $rejoin_import_json[0],
+      rejoin_import_rc: $rejoin_to_pass_import_rc,
+      rejoin_import_summary: $rejoin_to_pass_import_json[0],
+      audit_rc: $rejoin_audit_rc,
+      audit_report: $rejoin_audit_json[0],
+      expectation_met: (
+        if $block_enforcement_stage == "audit_failover_gate" then
+          ($rejoin_import_rc == 0 and $rejoin_to_pass_import_rc == 0 and $rejoin_audit_rc == 0 and $rejoin_audit_json[0].overall_status == "ready_for_ops_drill")
+        else
+          ($rejoin_audit_json[0].overall_status == "rejoin_skipped")
+        end
+      )
     }
   }
   ' >"$OUT_DIR/summary.json"
@@ -351,6 +413,7 @@ jq -n \
 BASELINE_STATUS="$(jq -r '.baseline.audit_report.overall_status' "$OUT_DIR/summary.json")"
 PASS_STATUS="$(jq -r '.pass_case.audit_report.overall_status' "$OUT_DIR/summary.json")"
 BLOCK_STATUS="$(jq -r '.block_case.audit_report.overall_status' "$OUT_DIR/summary.json")"
+REJOIN_STATUS="$(jq -r '.rejoin_case.audit_report.overall_status' "$OUT_DIR/summary.json")"
 
 cat >"$OUT_DIR/run_config.json" <<EOF
 {
@@ -394,6 +457,13 @@ cat >"$OUT_DIR/summary.md" <<EOF
 - import_rc: \`$BLOCK_IMPORT_RC\`
 - audit_rc: \`$BLOCK_AUDIT_RC\`
 - overall_status: \`$BLOCK_STATUS\`
+
+## Rejoin Case
+- world_dir: \`$REJOIN_WORLD_DIR\`
+- degraded_import_rc: \`$REJOIN_IMPORT_RC\`
+- rejoin_import_rc: \`$REJOIN_TO_PASS_IMPORT_RC\`
+- audit_rc: \`$REJOIN_AUDIT_RC\`
+- overall_status: \`$REJOIN_STATUS\`
 
 ## Logs
 - logs dir: \`$LOG_DIR\`

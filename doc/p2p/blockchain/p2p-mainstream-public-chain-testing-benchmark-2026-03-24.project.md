@@ -18,7 +18,7 @@
 - 当前 benchmark 结论:
   - `L0/L1/L3`: 已有正式基础
   - `L2`: 已有基础，但仍偏库测/长跑，缺 shared network 维度
-  - `L4`: 长跑已有，controller slot 与 finality slot 的 clone-world / default-live 首轮 governance drill 已完成；finality 已补到两条独立 single-signer recovery 样本，并新增一条 multi-signer loss import-policy reject 样本，但覆盖范围仍有限
+  - `L4`: 长跑已有，controller slot 与 finality slot 的 clone-world / default-live 首轮 governance drill 已完成；finality 已补到两条独立 single-signer recovery 样本、一条 multi-signer loss import-policy reject 样本，以及一条 `2-of-2 -> 2-of-3` non-baseline rejoin 样本，但覆盖范围仍有限
   - `L5`: shared network / release train 缺失
 
 ## 依赖
@@ -35,5 +35,5 @@
 
 ## 状态
 - 当前阶段: completed
-- 下一步: 扩更多 governance slot / finality non-baseline rejoin 的真实 drill 覆盖，并定义 `shared network / release train` 的最小执行形态；在此之前，不升级“对标主流公链测试成熟度”相关口径。
+- 下一步: 扩更多 governance slot / finality rejoin 变体的真实 drill 覆盖，并定义 `shared network / release train` 的最小执行形态；在此之前，不升级“对标主流公链测试成熟度”相关口径。
 - 最近更新: 2026-03-24
