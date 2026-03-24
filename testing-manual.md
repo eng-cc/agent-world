@@ -584,6 +584,18 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
   - `doc/testing/templates/shared-network-track-gate-lanes.shared_devnet.template.tsv`
   - `doc/testing/templates/shared-network-track-gate-lanes.staging.template.tsv`
   - `doc/testing/templates/shared-network-track-gate-lanes.canary.template.tsv`
+- LiveOps runbook 入口：
+  - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md`
+- LiveOps 模板入口：
+  - `doc/testing/templates/shared-network-promotion-record-template.md`
+  - `doc/testing/templates/shared-network-incident-template.md`
+  - `doc/testing/templates/shared-network-incident-review-template.md`
+  - `doc/testing/templates/shared-network-exit-decision-template.md`
+- 当前 liveops 最小职责：
+  - 每个窗口固定 `window_id/candidate_id/fallback_candidate_id/owners_on_duty/claim_envelope`
+  - 发现真值漂移、QA `block`、共享访问失效或 preview 口径越界时立即 `freeze`
+  - `rollback` 只能回到最近一次 `pass` 的 candidate bundle
+  - 没有 `promotion_record`、`incident_review`、`exit_decision` 的 track 不得记完成
 - `--dry-run` 用于门禁编排冒烟，不执行真实命令。
 
 ### S11：去中心化模块发布运行与告警（world-runtime）

@@ -2,8 +2,9 @@
 
 - 对应需求文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md`
 - 对应项目管理文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
+- 对应运行手册: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md`
 
-审计轮次: 3
+审计轮次: 4
 ## 设计目标
 - 把 benchmark 中 `L5 shared network/release train` 的缺口落成正式执行模型，而不是继续停留在口头 backlog。
 - 明确 oasis7 下一阶段的最小 shared track、promotion 规则、rollback 规则与 claims gate。
@@ -58,6 +59,15 @@
   - `doc/testing/templates/shared-network-track-gate-lanes.staging.template.tsv`
   - `doc/testing/templates/shared-network-track-gate-lanes.canary.template.tsv`
 
+## 当前实现入口（RTMIN-3）
+- LiveOps runbook:
+  - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md`
+- LiveOps 模板:
+  - `doc/testing/templates/shared-network-promotion-record-template.md`
+  - `doc/testing/templates/shared-network-incident-template.md`
+  - `doc/testing/templates/shared-network-incident-review-template.md`
+  - `doc/testing/templates/shared-network-exit-decision-template.md`
+
 ## Track QA Required Lanes
 | Track | Required lanes | Gate 结论规则 |
 | --- | --- | --- |
@@ -77,6 +87,13 @@
 2. 只有上一轨道结论为 `pass`，才允许 promotion 到下一轨道。
 3. 一旦发现 commit/world/governance 真值漂移，立即 `freeze` 并退回重新编号。
 4. `rollback` 目标必须是最近一次通过的 candidate bundle。
+
+## LiveOps Window 规则
+1. 每个 track 必须冻结唯一 `window_id`、`candidate_id`、`fallback_candidate_id`、`owners_on_duty` 和 `claim_envelope`。
+2. `shared_devnet` 必须先留下 `promotion_record`，再开共享访问窗口。
+3. `staging` 必须有独立的 upgrade window、incident template 和 rollback rehearsal 记录。
+4. `canary` 必须有固定观察窗、`incident_review` 和 `exit_decision`，否则只能维持 `hold`。
+5. 若共享访问失效、owner 值班断档或 public claims 越过 preview 边界，窗口立即转为 `frozen`。
 
 ## Partial / Block 语义
 | 状态 | 含义 |
