@@ -614,6 +614,8 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
   - `doc/testing/templates/shared-network-incident-template.md`
   - `doc/testing/templates/shared-network-incident-review-template.md`
   - `doc/testing/templates/shared-network-exit-decision-template.md`
+  - `doc/testing/templates/shared-network-shared-access-check-template.md`
+  - `doc/testing/templates/shared-network-rollback-target-template.md`
 - 当前 liveops 最小职责：
   - 每个窗口固定 `window_id/candidate_id/fallback_candidate_id/owners_on_duty/claim_envelope`
   - 发现真值漂移、QA `block`、共享访问失效或 preview 口径越界时立即 `freeze`

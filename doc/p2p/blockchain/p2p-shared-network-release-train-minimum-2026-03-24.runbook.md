@@ -4,7 +4,7 @@
 - 对应设计文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md`
 - 对应项目管理文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
 
-审计轮次: 2
+审计轮次: 3
 
 ## Meta
 - Owner Role: `liveops_community`
@@ -123,6 +123,8 @@
 - `doc/testing/templates/shared-network-incident-template.md`
 - `doc/testing/templates/shared-network-incident-review-template.md`
 - `doc/testing/templates/shared-network-exit-decision-template.md`
+- `doc/testing/templates/shared-network-shared-access-check-template.md`
+- `doc/testing/templates/shared-network-rollback-target-template.md`
 
 ## 7. 对外口径执行
 - 没有 producer 新批复前，不因单次 shared window 或单次 canary 观察而升级 public claim。
@@ -152,4 +154,7 @@
   - liveops promotion/freeze/rollback/run window/public claims runbook
   - first `shared_devnet` dry-run candidate / gate / promotion / incident 产物
 - shared-network 总 verdict 当前是 `partial`，不是 `pass`。
-- 下一步不是升级 public claims，也不是直接进 `staging`，而是先把 `shared_devnet` 提升到 `pass`。
+- shared-devnet 剩余 blocker 当前只收敛到：
+  - `shared_access`
+  - `rollback_target_ready`
+- 下一步不是升级 public claims，也不是直接进 `staging`，而是先把这两条 lane 提升到 `pass`。

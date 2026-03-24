@@ -68,6 +68,8 @@
 ### RTMIN-4A 产物
 - `scripts/shared-devnet-rehearsal.sh`
 - `scripts/shared-devnet-rehearsal-smoke.sh`
+- `doc/testing/templates/shared-network-shared-access-check-template.md`
+- `doc/testing/templates/shared-network-rollback-target-template.md`
 - `doc/testing/evidence/shared-network-shared-devnet-follow-up-window-2026-03-24.md`
 - `doc/testing/evidence/shared-network-shared-devnet-follow-up-promotion-record-2026-03-24.md`
 - `doc/testing/evidence/shared-network-shared-devnet-follow-up-incident-2026-03-24.md`
@@ -76,6 +78,7 @@
 - `doc/testing/evidence/shared-network-shared-devnet-short-window-incident-2026-03-24.md`
 - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md`
 - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
+- `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md`
 - `doc/p2p/project.md`
 - `testing-manual.md`
 - `doc/devlog/2026-03-24.md`
