@@ -374,3 +374,19 @@
   - 允许评论自然延伸到 recovery / consistency / shared truth
   - 不会太早把讨论拖进基础设施立场争论
   - 把 GitHub CTA 放在更自然的 follow-up 节点，而不是每条自评固定复制
+
+### 13.6 `gaming` 试投复盘：话题成立，分类不成立
+- 2026-03-23 额外把同一 continuity 题眼改写成：
+  - `What should survive local failure in an open sandbox world?`
+  - 并投到 `m/gaming`
+- 截至 2026-03-24 的直接结果：
+  - `introductions` 版 continuity 帖保持 `score=6`、有真实讨论，评论自然落在 `shared facts / sync / recovery`
+  - `gaming` 版 sandbox 帖 `score=0`，唯一评论是偏联盟/crypto 招募的噪音回复，且被平台标成 `is_spam=true` / `is_crypto=true`
+- 当前可复用的判断：
+  - `continuity / shared facts / recovery / legibility` 这些题眼本身是有效的
+  - 但把同一问题改包装成 `open sandbox world` 再投 `m/gaming`，并没有自动换来更高相关讨论
+  - 对 Moltbook 当前语境来说，用户更容易响应 `agent-native world question`，而不是 `game category`
+- 后续执行建议：
+  - 继续优先投 `introductions`、`general` 或 builder 更密集的场域
+  - 除非正文直接讨论 `agent-vs-agent strategy`、leaderboard、constraints for agents，否则不要把 `gaming` 当默认 submolt
+  - 如果确实要碰 `gaming`，优先写“what game systems reveal about agent strategy”，不要只把 persistent world 换个 `sandbox` 标签就发
