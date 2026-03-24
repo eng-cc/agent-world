@@ -264,6 +264,16 @@ env -u RUSTC_WRAPPER cargo test -p oasis7_net --features runtime_bridge --lib
   --replacement-public-key <replacement_public_key_hex> \
   --out-dir output/governance-drills/<run_id>
 ```
+- finality baseline rejoin 示例：
+```bash
+./scripts/governance-registry-live-drill.sh \
+  --source-world-dir output/chain-runtime/viewer-live-node/reward-runtime-execution-world \
+  --baseline-manifest /path/to/public_manifest.json \
+  --slot-id governance.finality.v1 \
+  --pass-manifest-mode baseline \
+  --replace-signer-id signer02 \
+  --out-dir output/governance-drills/<run_id>
+```
 - 产物约定：
   - `run_config.json`
   - `summary.json`
@@ -277,6 +287,7 @@ env -u RUSTC_WRAPPER cargo test -p oasis7_net --features runtime_bridge --lib
     - `audit_failover_gate`: `block_import_rc=0` 且 `overall_status=failover_blocked`
     - `import_policy_reject`: `block_import_rc!=0` 且后续对 block manifest 的审计表现为 `manifest_mismatch`
   - 若 `block_enforcement_stage=audit_failover_gate`，脚本还会继续产出 `rejoin_case`；其期望结果是 `overall_status=ready_for_ops_drill`
+  - `pass_manifest_mode=baseline` 适用于 temporary offline / same-signer rejoin；`pass_manifest_mode=rotate` 适用于 replacement / revocation 恢复
   - clone-world 样本只证明 runbook/tooling 正确，不替代 default/live execution world 的最终 QA 证据
   - `governance-registry-live-drill.sh` 会在真实默认 world 上自动执行 `baseline -> pass -> block -> restore`
   - 当 block case 仍可导入时，`governance-registry-drill.sh` / `governance-registry-live-drill.sh` 会额外执行 `rejoin`

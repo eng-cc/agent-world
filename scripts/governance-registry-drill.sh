@@ -8,10 +8,11 @@ Usage:
     --source-world-dir <dir> \
     --baseline-manifest <public_manifest.json> \
     --slot-id <slot_id> \
+    [--pass-manifest-mode <rotate|baseline>] \
     --replace-signer-id <signer_id> \
     [--replacement-signer-id <signer_id>] \
     [--block-remove-signer-id <signer_id>] \
-    --replacement-public-key <hex> \
+    [--replacement-public-key <hex>] \
     --out-dir <dir>
 
 Description:
@@ -21,6 +22,8 @@ Description:
   2. block case: intentionally degrade one slot to 2-of-2 or worse
   3. rejoin case: re-import the 2-of-3 pass manifest on top of the degraded world
   Note:
+  - --pass-manifest-mode rotate is default
+  - --pass-manifest-mode baseline reuses the baseline manifest as pass/rejoin target
   - controller slots may keep the same signer_id and replace only the public key
   - finality slot rotation must use a new signer_id via --replacement-signer-id
   - --block-remove-signer-id may be repeated to model multi-signer loss
@@ -64,6 +67,7 @@ run_and_capture() {
 SOURCE_WORLD_DIR=""
 BASELINE_MANIFEST=""
 SLOT_ID=""
+PASS_MANIFEST_MODE="rotate"
 REPLACE_SIGNER_ID=""
 REPLACEMENT_SIGNER_ID=""
 BLOCK_REMOVE_SIGNER_IDS=()
@@ -85,6 +89,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --slot-id)
       SLOT_ID="$2"
+      shift 2
+      ;;
+    --pass-manifest-mode)
+      PASS_MANIFEST_MODE="$2"
       shift 2
       ;;
     --replace-signer-id)
@@ -119,9 +127,19 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$SOURCE_WORLD_DIR" || -z "$BASELINE_MANIFEST" || -z "$SLOT_ID" || -z "$REPLACE_SIGNER_ID" || -z "$REPLACEMENT_PUBLIC_KEY" || -z "$OUT_DIR" ]]; then
+if [[ -z "$SOURCE_WORLD_DIR" || -z "$BASELINE_MANIFEST" || -z "$SLOT_ID" || -z "$REPLACE_SIGNER_ID" || -z "$OUT_DIR" ]]; then
   echo "all flags are required" >&2
   usage
+  exit 1
+fi
+
+if [[ "$PASS_MANIFEST_MODE" != "rotate" && "$PASS_MANIFEST_MODE" != "baseline" ]]; then
+  echo "pass manifest mode must be rotate or baseline" >&2
+  exit 1
+fi
+
+if [[ "$PASS_MANIFEST_MODE" == "rotate" && -z "$REPLACEMENT_PUBLIC_KEY" ]]; then
+  echo "--replacement-public-key is required when --pass-manifest-mode=rotate" >&2
   exit 1
 fi
 
@@ -133,7 +151,7 @@ if [[ "${#BLOCK_REMOVE_SIGNER_IDS[@]}" -eq 0 ]]; then
   BLOCK_REMOVE_SIGNER_IDS=("$REPLACE_SIGNER_ID")
 fi
 
-if [[ "$SLOT_ID" == "$FINALITY_SLOT_ID" && "$REPLACEMENT_SIGNER_ID" == "$REPLACE_SIGNER_ID" ]]; then
+if [[ "$PASS_MANIFEST_MODE" == "rotate" && "$SLOT_ID" == "$FINALITY_SLOT_ID" && "$REPLACEMENT_SIGNER_ID" == "$REPLACE_SIGNER_ID" ]]; then
   echo "finality slot rotation requires a new signer id; pass --replacement-signer-id for $SLOT_ID" >&2
   exit 1
 fi
@@ -150,7 +168,7 @@ if [[ ! -f "$BASELINE_MANIFEST" ]]; then
   echo "baseline manifest does not exist: $BASELINE_MANIFEST" >&2
   exit 1
 fi
-if [[ ! "$REPLACEMENT_PUBLIC_KEY" =~ ^[0-9a-fA-F]{64}$ ]]; then
+if [[ -n "$REPLACEMENT_PUBLIC_KEY" && ! "$REPLACEMENT_PUBLIC_KEY" =~ ^[0-9a-fA-F]{64}$ ]]; then
   echo "replacement public key must be 32-byte hex" >&2
   exit 1
 fi
@@ -178,7 +196,7 @@ if [[ "$MATCHING_SIGNER_COUNT" != "1" ]]; then
   echo "expected exactly 1 manifest entry for slot $SLOT_ID signer $REPLACE_SIGNER_ID, got $MATCHING_SIGNER_COUNT" >&2
   exit 1
 fi
-if [[ "$REPLACEMENT_SIGNER_ID" != "$REPLACE_SIGNER_ID" && "$REPLACEMENT_SIGNER_EXISTS_COUNT" != "0" ]]; then
+if [[ "$PASS_MANIFEST_MODE" == "rotate" && "$REPLACEMENT_SIGNER_ID" != "$REPLACE_SIGNER_ID" && "$REPLACEMENT_SIGNER_EXISTS_COUNT" != "0" ]]; then
   echo "replacement signer id already exists in slot $SLOT_ID: $REPLACEMENT_SIGNER_ID" >&2
   exit 1
 fi
@@ -194,23 +212,32 @@ if [[ "$BLOCK_REMOVE_MATCHING_COUNT" != "${#BLOCK_REMOVE_SIGNER_IDS[@]}" ]]; the
   exit 1
 fi
 
-jq \
-  --arg slot "$SLOT_ID" \
-  --arg signer "$REPLACE_SIGNER_ID" \
-  --arg replacement_signer "$REPLACEMENT_SIGNER_ID" \
-  --arg replacement_public_key "$REPLACEMENT_PUBLIC_KEY" \
-  '
-  map(
-    if .slot_id == $slot and .signer_id == $signer then
-      .signer_id = $replacement_signer
-      | .public_key_hex = $replacement_public_key
-      | .awt_account_id = ("awt:pk:" + $replacement_public_key)
-    else
-      .
-    end
-  )
-  ' \
-  "$BASELINE_MANIFEST" >"$PASS_MANIFEST"
+if [[ "$PASS_MANIFEST_MODE" == "baseline" ]]; then
+  cp "$BASELINE_MANIFEST" "$PASS_MANIFEST"
+  REPLACEMENT_PUBLIC_KEY="$(jq -r \
+    --arg slot "$SLOT_ID" \
+    --arg signer "$REPLACE_SIGNER_ID" \
+    '.[] | select(.slot_id == $slot and .signer_id == $signer) | .public_key_hex' \
+    "$BASELINE_MANIFEST")"
+else
+  jq \
+    --arg slot "$SLOT_ID" \
+    --arg signer "$REPLACE_SIGNER_ID" \
+    --arg replacement_signer "$REPLACEMENT_SIGNER_ID" \
+    --arg replacement_public_key "$REPLACEMENT_PUBLIC_KEY" \
+    '
+    map(
+      if .slot_id == $slot and .signer_id == $signer then
+        .signer_id = $replacement_signer
+        | .public_key_hex = $replacement_public_key
+        | .awt_account_id = ("awt:pk:" + $replacement_public_key)
+      else
+        .
+      end
+    )
+    ' \
+    "$BASELINE_MANIFEST" >"$PASS_MANIFEST"
+fi
 
 jq \
   --arg slot "$SLOT_ID" \
@@ -323,6 +350,7 @@ jq -n \
   --arg source_world_dir "$SOURCE_WORLD_DIR" \
   --arg baseline_manifest "$BASELINE_MANIFEST" \
   --arg slot_id "$SLOT_ID" \
+  --arg pass_manifest_mode "$PASS_MANIFEST_MODE" \
   --arg replace_signer_id "$REPLACE_SIGNER_ID" \
   --arg replacement_signer_id "$REPLACEMENT_SIGNER_ID" \
   --argjson block_remove_signer_ids "$BLOCK_REMOVE_SIGNER_IDS_JSON" \
@@ -355,6 +383,7 @@ jq -n \
     source_world_dir: $source_world_dir,
     baseline_manifest: $baseline_manifest,
     slot_id: $slot_id,
+    pass_manifest_mode: $pass_manifest_mode,
     replace_signer_id: $replace_signer_id,
     replacement_signer_id: $replacement_signer_id,
     block_remove_signer_ids: $block_remove_signer_ids,
@@ -420,6 +449,7 @@ cat >"$OUT_DIR/run_config.json" <<EOF
   "source_world_dir": "$SOURCE_WORLD_DIR",
   "baseline_manifest": "$BASELINE_MANIFEST",
   "slot_id": "$SLOT_ID",
+  "pass_manifest_mode": "$PASS_MANIFEST_MODE",
   "replace_signer_id": "$REPLACE_SIGNER_ID",
   "replacement_signer_id": "$REPLACEMENT_SIGNER_ID",
   "block_remove_signer_ids": $BLOCK_REMOVE_SIGNER_IDS_JSON,
@@ -434,6 +464,7 @@ cat >"$OUT_DIR/summary.md" <<EOF
 
 - generated_at_utc: $TIMESTAMP
 - slot_id: \`$SLOT_ID\`
+- pass_manifest_mode: \`$PASS_MANIFEST_MODE\`
 - replace_signer_id: \`$REPLACE_SIGNER_ID\`
 - replacement_signer_id: \`$REPLACEMENT_SIGNER_ID\`
 - block_remove_signer_ids: \`$(printf '%s ' "${BLOCK_REMOVE_SIGNER_IDS[@]}" | sed 's/[[:space:]]*$//')\`
