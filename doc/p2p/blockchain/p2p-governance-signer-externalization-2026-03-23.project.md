@@ -54,7 +54,8 @@
 - [x] 已在 default/live execution world 对 `governance.finality.v1` 完成首轮真实 `pass + block + restore` drill，证据见 `doc/testing/evidence/governance-registry-live-world-drill-finality-2026-03-24.md`
 - [x] 已确认 finality slot 不接受“同 signer_id 换公钥”语义；真实错误签名见 `output/governance-drills/20260324-finality-live-world/logs/pass_import.stderr`
 - [x] 已补 additional finality revocation coverage：`signer02 -> signer05` 在 clone-world 与 default/live execution world 均完成 `pass + block(+restore)`，证据见 `doc/testing/evidence/governance-registry-live-world-drill-finality-revocation-signer02-2026-03-24.md`
-- [ ] 其余 controller slot / additional finality failover / multi-signer loss / rejoin 覆盖仍待继续扩展
+- [x] 已补 finality multi-signer loss / rejoin coverage：`signer01 + signer02` dual-loss 在 clone-world 与 default/live execution world 均被 `import_policy_reject` 拦截，restore 后 world 回到 baseline，证据见 `doc/testing/evidence/governance-registry-live-world-drill-finality-multi-loss-rejoin-2026-03-24.md`
+- [ ] 其余 controller slot / additional finality failover / non-baseline rejoin 覆盖仍待继续扩展
 - [ ] genesis address binding / ceremony / QA pass 仍待后续 `MAINNET-3` 收口
 
 ## Operator / QA Runbook（How-to）
@@ -68,7 +69,8 @@
    - 再次执行 `oasis7_governance_registry_audit`，只有 `overall_status=ready_for_ops_drill` 才允许重启/切流
 3. 若要做 revocation，按是否还能维持 `2-of-3` 分两类处理：
    - 单 signer compromise / 离岗：必须在同一次导入里完成“替换 compromised signer -> 保持 2-of-3 -> 审计通过”
-   - 两把及以上 signer 同时不可用：该 slot 直接视为 `failover_blocked`，不得宣称 governance gate 通过；需要 producer/runtime/QA 联合阻断并进入事故处理
+   - 两把及以上 signer 同时不可用：若导出的 finality registry 让 `signer_count < threshold`，会在 import 阶段直接命中 `GovernancePolicyInvalid`；若还能写入但失去单 signer 容忍，则在 audit 阶段记为 `failover_blocked`
+   - 无论是 `import_policy_reject` 还是 `failover_blocked`，都不得宣称 governance gate 通过；需要 producer/runtime/QA 联合阻断并进入事故处理
 4. failover QA 不做口头判断，只看审计结果：
    - 任一 slot `tolerated_failures=0` 或 threshold 不符，记为 `block`
    - 只有 finality slot 与全部 controller slot 都满足 `single_failure_tolerant=true`，才能记录为“可进入真实演练”
@@ -84,6 +86,7 @@
    - 该脚本只用于 clone-world / dry-run 证据，不替代 default/live execution world 的最终 QA 证据
 7. 若要在默认 execution world 留正式 QA 证据，可直接复用 live-world 脚本：
    - `./scripts/governance-registry-live-drill.sh --source-world-dir output/chain-runtime/viewer-live-node/reward-runtime-execution-world --baseline-manifest <operator-local-public-manifest.json> --slot-id governance.finality.v1 --replace-signer-id signer02 --replacement-signer-id signer05 --replacement-public-key <replacement_public_key_hex> --out-dir output/governance-drills/<run_id>`
+   - 对 multi-signer loss，可额外重复传 `--block-remove-signer-id`
    - 该脚本会自动执行 backup、baseline audit、pass import/audit、block import/audit、restore import/audit，并产出 `summary.json/md`
 
 ## 依赖
@@ -111,5 +114,5 @@
 ## 状态
 - 当前阶段: completed
 - 执行状态: in_progress
-- 下一步: 将真实 drill 从 `msig.foundation_ops.v1` 与两条 finality single-signer recovery 样本继续扩到更多 controller slot / finality multi-signer loss / rejoin 覆盖；之后再切到 `MAINNET-3` 的真实 binding / ceremony / QA pass。
-- 最近更新: 2026-03-24（finality revocation signer02->signer05）
+- 下一步: 将真实 drill 从 `msig.foundation_ops.v1` 与当前 finality single-signer / multi-loss 样本继续扩到更多 controller slot / finality non-baseline rejoin 覆盖；之后再切到 `MAINNET-3` 的真实 binding / ceremony / QA pass。
+- 最近更新: 2026-03-24（finality multi-loss import-policy gate）

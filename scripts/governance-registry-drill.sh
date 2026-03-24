@@ -10,16 +10,18 @@ Usage:
     --slot-id <slot_id> \
     --replace-signer-id <signer_id> \
     [--replacement-signer-id <signer_id>] \
+    [--block-remove-signer-id <signer_id>] \
     --replacement-public-key <hex> \
     --out-dir <dir>
 
 Description:
   Runs a clone-world governance registry drill with two cases:
   1. pass case: rotate one signer inside a slot while preserving 2-of-3
-  2. block case: intentionally degrade one slot to 2-of-2
+  2. block case: intentionally degrade one slot to 2-of-2 or worse
   Note:
   - controller slots may keep the same signer_id and replace only the public key
   - finality slot rotation must use a new signer_id via --replacement-signer-id
+  - --block-remove-signer-id may be repeated to model multi-signer loss
 
 Artifacts:
   <out-dir>/run_config.json
@@ -62,10 +64,12 @@ BASELINE_MANIFEST=""
 SLOT_ID=""
 REPLACE_SIGNER_ID=""
 REPLACEMENT_SIGNER_ID=""
+BLOCK_REMOVE_SIGNER_IDS=()
 REPLACEMENT_PUBLIC_KEY=""
 OUT_DIR=""
 FINALITY_SLOT_ID="governance.finality.v1"
 EXPECTED_THRESHOLD="2"
+BLOCK_ENFORCEMENT_STAGE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -87,6 +91,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --replacement-signer-id)
       REPLACEMENT_SIGNER_ID="$2"
+      shift 2
+      ;;
+    --block-remove-signer-id)
+      BLOCK_REMOVE_SIGNER_IDS+=("$2")
       shift 2
       ;;
     --replacement-public-key)
@@ -117,6 +125,10 @@ fi
 
 if [[ -z "$REPLACEMENT_SIGNER_ID" ]]; then
   REPLACEMENT_SIGNER_ID="$REPLACE_SIGNER_ID"
+fi
+
+if [[ "${#BLOCK_REMOVE_SIGNER_IDS[@]}" -eq 0 ]]; then
+  BLOCK_REMOVE_SIGNER_IDS=("$REPLACE_SIGNER_ID")
 fi
 
 if [[ "$SLOT_ID" == "$FINALITY_SLOT_ID" && "$REPLACEMENT_SIGNER_ID" == "$REPLACE_SIGNER_ID" ]]; then
@@ -168,6 +180,17 @@ if [[ "$REPLACEMENT_SIGNER_ID" != "$REPLACE_SIGNER_ID" && "$REPLACEMENT_SIGNER_E
   exit 1
 fi
 
+BLOCK_REMOVE_SIGNER_IDS_JSON="$(printf '%s\n' "${BLOCK_REMOVE_SIGNER_IDS[@]}" | jq -R . | jq -s .)"
+BLOCK_REMOVE_MATCHING_COUNT="$(jq \
+  --arg slot "$SLOT_ID" \
+  --argjson signers "$BLOCK_REMOVE_SIGNER_IDS_JSON" \
+  '[.[] | select(.slot_id == $slot and (.signer_id as $id | $signers | index($id)) != null)] | length' \
+  "$BASELINE_MANIFEST")"
+if [[ "$BLOCK_REMOVE_MATCHING_COUNT" != "${#BLOCK_REMOVE_SIGNER_IDS[@]}" ]]; then
+  echo "each --block-remove-signer-id must exist exactly once in slot $SLOT_ID" >&2
+  exit 1
+fi
+
 jq \
   --arg slot "$SLOT_ID" \
   --arg signer "$REPLACE_SIGNER_ID" \
@@ -188,9 +211,9 @@ jq \
 
 jq \
   --arg slot "$SLOT_ID" \
-  --arg signer "$REPLACE_SIGNER_ID" \
+  --argjson signers "$BLOCK_REMOVE_SIGNER_IDS_JSON" \
   '
-  map(select(.slot_id != $slot or .signer_id != $signer))
+  map(select(.slot_id != $slot or ((.signer_id as $id | $signers | index($id)) == null)))
   ' \
   "$BASELINE_MANIFEST" >"$BLOCK_MANIFEST"
 
@@ -200,9 +223,14 @@ if [[ "$PASS_SLOT_COUNT" != "3" ]]; then
   echo "pass manifest must keep 3 entries for slot $SLOT_ID, got $PASS_SLOT_COUNT" >&2
   exit 1
 fi
-if [[ "$BLOCK_SLOT_COUNT" != "2" ]]; then
-  echo "block manifest must degrade slot $SLOT_ID to 2 entries, got $BLOCK_SLOT_COUNT" >&2
+if [[ "$BLOCK_SLOT_COUNT" -ge 3 ]]; then
+  echo "block manifest must degrade slot $SLOT_ID below 3 entries, got $BLOCK_SLOT_COUNT" >&2
   exit 1
+fi
+if (( BLOCK_SLOT_COUNT < EXPECTED_THRESHOLD )); then
+  BLOCK_ENFORCEMENT_STAGE="import_policy_reject"
+else
+  BLOCK_ENFORCEMENT_STAGE="audit_failover_gate"
 fi
 
 cp -a "$SOURCE_WORLD_DIR" "$PASS_WORLD_DIR"
@@ -259,6 +287,8 @@ jq -n \
   --arg slot_id "$SLOT_ID" \
   --arg replace_signer_id "$REPLACE_SIGNER_ID" \
   --arg replacement_signer_id "$REPLACEMENT_SIGNER_ID" \
+  --argjson block_remove_signer_ids "$BLOCK_REMOVE_SIGNER_IDS_JSON" \
+  --arg block_enforcement_stage "$BLOCK_ENFORCEMENT_STAGE" \
   --arg replacement_public_key "$REPLACEMENT_PUBLIC_KEY" \
   --arg pass_world_dir "$PASS_WORLD_DIR" \
   --arg block_world_dir "$BLOCK_WORLD_DIR" \
@@ -282,6 +312,8 @@ jq -n \
     slot_id: $slot_id,
     replace_signer_id: $replace_signer_id,
     replacement_signer_id: $replacement_signer_id,
+    block_remove_signer_ids: $block_remove_signer_ids,
+    block_enforcement_stage: $block_enforcement_stage,
     replacement_public_key: $replacement_public_key,
     baseline: {
       audit_rc: $baseline_audit_rc,
@@ -298,13 +330,20 @@ jq -n \
       expectation_met: ($pass_import_rc == 0 and $pass_audit_rc == 0 and $pass_audit_json[0].overall_status == "ready_for_ops_drill")
     },
     block_case: {
+      enforcement_stage: $block_enforcement_stage,
       world_dir: $block_world_dir,
       manifest: $block_manifest,
       import_rc: $block_import_rc,
       import_summary: $block_import_json[0],
       audit_rc: $block_audit_rc,
       audit_report: $block_audit_json[0],
-      expectation_met: ($block_import_rc == 0 and $block_audit_rc == 2 and $block_audit_json[0].overall_status == "failover_blocked")
+      expectation_met: (
+        if $block_enforcement_stage == "import_policy_reject" then
+          ($block_import_rc != 0 and $block_audit_rc == 2 and $block_audit_json[0].overall_status == "manifest_mismatch")
+        else
+          ($block_import_rc == 0 and $block_audit_rc == 2 and $block_audit_json[0].overall_status == "failover_blocked")
+        end
+      )
     }
   }
   ' >"$OUT_DIR/summary.json"
@@ -320,6 +359,8 @@ cat >"$OUT_DIR/run_config.json" <<EOF
   "slot_id": "$SLOT_ID",
   "replace_signer_id": "$REPLACE_SIGNER_ID",
   "replacement_signer_id": "$REPLACEMENT_SIGNER_ID",
+  "block_remove_signer_ids": $BLOCK_REMOVE_SIGNER_IDS_JSON,
+  "block_enforcement_stage": "$BLOCK_ENFORCEMENT_STAGE",
   "replacement_public_key": "$REPLACEMENT_PUBLIC_KEY",
   "out_dir": "$OUT_DIR"
 }
@@ -332,6 +373,8 @@ cat >"$OUT_DIR/summary.md" <<EOF
 - slot_id: \`$SLOT_ID\`
 - replace_signer_id: \`$REPLACE_SIGNER_ID\`
 - replacement_signer_id: \`$REPLACEMENT_SIGNER_ID\`
+- block_remove_signer_ids: \`$(printf '%s ' "${BLOCK_REMOVE_SIGNER_IDS[@]}" | sed 's/[[:space:]]*$//')\`
+- block_enforcement_stage: \`$BLOCK_ENFORCEMENT_STAGE\`
 - replacement_public_key: \`$REPLACEMENT_PUBLIC_KEY\`
 
 ## Baseline

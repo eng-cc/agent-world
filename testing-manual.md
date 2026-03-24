@@ -240,6 +240,19 @@ env -u RUSTC_WRAPPER cargo test -p oasis7_net --features runtime_bridge --lib
   --replacement-public-key <replacement_public_key_hex> \
   --out-dir output/governance-drills/<run_id>
 ```
+- finality multi-signer loss / rejoin 示例：
+```bash
+./scripts/governance-registry-live-drill.sh \
+  --source-world-dir output/chain-runtime/viewer-live-node/reward-runtime-execution-world \
+  --baseline-manifest /path/to/public_manifest.json \
+  --slot-id governance.finality.v1 \
+  --replace-signer-id signer02 \
+  --replacement-signer-id signer05 \
+  --block-remove-signer-id signer01 \
+  --block-remove-signer-id signer02 \
+  --replacement-public-key <replacement_public_key_hex> \
+  --out-dir output/governance-drills/<run_id>
+```
 - 产物约定：
   - `run_config.json`
   - `summary.json`
@@ -249,10 +262,13 @@ env -u RUSTC_WRAPPER cargo test -p oasis7_net --features runtime_bridge --lib
   - live-world 额外包含 `world-backup-pre-drill/*`
 - 判定口径：
   - baseline / pass case 应返回 `overall_status=ready_for_ops_drill`
-  - negative block case 应返回 `overall_status=failover_blocked`
+  - negative block case 可能有两种合法阻断结果：
+    - `audit_failover_gate`: `block_import_rc=0` 且 `overall_status=failover_blocked`
+    - `import_policy_reject`: `block_import_rc!=0` 且后续对 block manifest 的审计表现为 `manifest_mismatch`
   - clone-world 样本只证明 runbook/tooling 正确，不替代 default/live execution world 的最终 QA 证据
   - `governance-registry-live-drill.sh` 会在真实默认 world 上自动执行 `baseline -> pass -> block -> restore`
   - controller slot 可保持原 `signer_id` 仅替换公钥；`governance.finality.v1` 不行，必须显式传入新的 `--replacement-signer-id`
+  - `--block-remove-signer-id` 可重复使用；当 block manifest 让 `finality signer_count < threshold` 时，默认预期是 `import_policy_reject`
   - 若对 finality slot 复用原 `signer_id`，真实导入会命中 `GovernancePolicyInvalid`，因为 finality signer 绑定到现有 node identity
 
 ### S5：Viewer crate 单测与 wasm 编译套件（L4 前置）
