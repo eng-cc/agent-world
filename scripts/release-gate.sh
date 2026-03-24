@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_root"
 
-all_steps=(ci_full sync_m1 sync_m4 sync_m5 web_strict s9 s10)
+all_steps=(candidate_bundle ci_full sync_m1 sync_m4 sync_m5 web_strict s9 s10)
 
 usage() {
   cat <<'USAGE'
@@ -19,6 +19,7 @@ Purpose:
 
 Options:
   --out-dir <path>               Output root (default: .tmp/release_gate)
+  --candidate-bundle <path>      Validate one release candidate bundle before running gate
   --quick                        Quick profile: shorter S9/S10 durations + skip web visual baseline
   --dry-run                      Print and record commands only (no execution)
   --dry-run-fail-step <step>     Simulate a failure step in dry-run mode for hint validation
@@ -39,7 +40,7 @@ Options:
   -h, --help                     Show help
 
 Steps:
-  ci_full | sync_m1 | sync_m4 | sync_m5 | web_strict | s9 | s10
+  candidate_bundle | ci_full | sync_m1 | sync_m4 | sync_m5 | web_strict | s9 | s10
 USAGE
 }
 
@@ -87,6 +88,7 @@ dry_run=0
 dry_run_fail_step=""
 out_dir=".tmp/release_gate"
 quick=0
+candidate_bundle=""
 
 skip_ci_full=0
 skip_sync=0
@@ -113,6 +115,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --out-dir)
       out_dir=${2:-}
+      shift 2
+      ;;
+    --candidate-bundle)
+      candidate_bundle=${2:-}
       shift 2
       ;;
     --quick)
@@ -231,6 +237,9 @@ summary_path="$run_dir/release-gate-summary.md"
 mkdir -p "$run_dir"
 
 selected_steps=()
+if [[ -n "$candidate_bundle" ]]; then
+  selected_steps+=(candidate_bundle)
+fi
 if [[ "$skip_ci_full" -eq 0 ]]; then
   selected_steps+=(ci_full)
 fi
@@ -324,6 +333,7 @@ write_summary() {
     echo "- Run dir: \`$run_dir\`"
     echo "- Dry run: \`$dry_run\`"
     echo "- Quick: \`$quick\`"
+    echo "- Candidate bundle: \`${candidate_bundle:-none}\`"
     echo "- Overall: $overall_label"
     echo ""
     echo "## Step Status"
@@ -350,6 +360,15 @@ emit_failure_hints() {
 failed_step=""
 for step in "${selected_steps[@]}"; do
   case "$step" in
+    candidate_bundle)
+      cmd=(
+        ./scripts/release-candidate-bundle.sh
+        validate
+        --bundle "$candidate_bundle"
+        --check-git-head
+        --check-clean-worktree
+      )
+      ;;
     ci_full)
       cmd=(./scripts/ci-tests.sh full)
       ;;
@@ -431,4 +450,3 @@ if [[ -n "$failed_step" ]]; then
   emit_failure_hints "$failed_step"
   exit 1
 fi
-

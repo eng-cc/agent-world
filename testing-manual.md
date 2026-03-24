@@ -545,6 +545,29 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
   2. 执行 first `shared_devnet` dry run
   3. 执行 `staging` rehearsal
   4. 执行 `canary` rehearsal
+- 当前 runtime 入口：
+```bash
+./scripts/release-candidate-bundle.sh create \
+  --bundle output/release-candidates/shared-devnet-01.json \
+  --candidate-id shared-devnet-01 \
+  --track shared_devnet \
+  --runtime-build-ref <runtime-build-path> \
+  --world-snapshot-ref <world-snapshot-path> \
+  --governance-manifest-ref <governance-manifest-path> \
+  --evidence-ref <evidence-path>
+
+./scripts/release-candidate-bundle.sh validate \
+  --bundle output/release-candidates/shared-devnet-01.json \
+  --check-git-head
+
+./scripts/release-gate.sh --candidate-bundle output/release-candidates/shared-devnet-01.json --dry-run
+./scripts/release-candidate-bundle-smoke.sh
+```
+- 当前 `release_candidate_bundle` 最小职责：
+  - 固定 `candidate_id`
+  - 固定 `git_commit`
+  - 固定 `runtime_build/world_snapshot/governance_manifest` 的路径与 hash
+  - 固定 `evidence_refs`
 - `--dry-run` 用于门禁编排冒烟，不执行真实命令。
 
 ### S11：去中心化模块发布运行与告警（world-runtime）

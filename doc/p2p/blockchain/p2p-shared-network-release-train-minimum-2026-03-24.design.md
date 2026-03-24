@@ -3,7 +3,7 @@
 - 对应需求文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md`
 - 对应项目管理文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
 
-审计轮次: 1
+审计轮次: 2
 ## 设计目标
 - 把 benchmark 中 `L5 shared network/release train` 的缺口落成正式执行模型，而不是继续停留在口头 backlog。
 - 明确 oasis7 下一阶段的最小 shared track、promotion 规则、rollback 规则与 claims gate。
@@ -32,6 +32,20 @@
 | `world_snapshot_ref` | world 真值引用 |
 | `governance_manifest_ref` | governance 真值引用 |
 | `evidence_refs` | 本地 gate、drill、QA 文档引用 |
+
+## 当前实现入口（RTMIN-1）
+- 候选真值生成:
+  - `./scripts/release-candidate-bundle.sh create`
+- 候选真值校验:
+  - `./scripts/release-candidate-bundle.sh validate`
+- 最小 smoke:
+  - `./scripts/release-candidate-bundle-smoke.sh`
+- release gate 接线:
+  - `./scripts/release-gate.sh --candidate-bundle <bundle.json>`
+- 当前设计含义:
+  - `release_candidate_bundle` 现在已具备机器可读 JSON 工件、路径哈希与 `git_commit` pinning。
+  - `release-gate` 已可在进入 shared track 前先校验 bundle 存在性、引用路径与 hash 漂移。
+  - shared 环境本身仍未建立，因此总 verdict 继续保持 `specified_not_executed`。
 
 ## Promotion 规则
 1. 任何 candidate 必须先完成本地 gate，再进入 `shared_devnet`。

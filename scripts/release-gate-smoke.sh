@@ -27,15 +27,35 @@ ensure_file_contains() {
 smoke_root=".tmp/release_gate_smoke"
 pass_root="$smoke_root/pass"
 fail_root="$smoke_root/fail"
+candidate_root="$smoke_root/candidate"
 mkdir -p "$pass_root" "$fail_root"
+mkdir -p "$candidate_root/runtime" "$candidate_root/world" "$candidate_root/evidence"
 
-run ./scripts/release-gate.sh --dry-run --out-dir "$pass_root"
+printf 'runtime-build-v1\n' >"$candidate_root/runtime/runtime.bin"
+printf 'snapshot\n' >"$candidate_root/world/state.txt"
+printf '{"signers":["signer01"]}\n' >"$candidate_root/world/public_manifest.json"
+printf '# gate smoke evidence\n' >"$candidate_root/evidence/evidence.md"
+
+candidate_bundle="$candidate_root/candidate.json"
+run ./scripts/release-candidate-bundle.sh create \
+  --bundle "$candidate_bundle" \
+  --candidate-id "release-gate-smoke-01" \
+  --track "shared_devnet" \
+  --runtime-build-ref "$candidate_root/runtime/runtime.bin" \
+  --world-snapshot-ref "$candidate_root/world" \
+  --governance-manifest-ref "$candidate_root/world/public_manifest.json" \
+  --evidence-ref "$candidate_root/evidence/evidence.md" \
+  --allow-dirty-worktree
+
+run ./scripts/release-gate.sh --dry-run --candidate-bundle "$candidate_bundle" --out-dir "$pass_root"
 pass_summary=$(latest_summary "$pass_root")
 if [[ -z "$pass_summary" ]]; then
   echo "error: pass summary not found under $pass_root" >&2
   exit 1
 fi
 ensure_file_contains "$pass_summary" "- Overall: PASS"
+ensure_file_contains "$pass_summary" "- Candidate bundle: \`$candidate_bundle\`"
+ensure_file_contains "$pass_summary" "- candidate_bundle: passed \\(dry_run\\)"
 ensure_file_contains "$pass_summary" "- web_strict: passed \\(dry_run\\)"
 ensure_file_contains "$pass_summary" "- s10: passed \\(dry_run\\)"
 
@@ -43,6 +63,7 @@ failure_log="$fail_root/failure.log"
 set +e
 ./scripts/release-gate.sh \
   --dry-run \
+  --candidate-bundle "$candidate_bundle" \
   --dry-run-fail-step web_strict \
   --out-dir "$fail_root" \
   >"$failure_log" 2>&1
