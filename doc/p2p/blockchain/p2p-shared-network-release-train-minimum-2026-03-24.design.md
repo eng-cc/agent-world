@@ -4,7 +4,7 @@
 - 对应项目管理文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
 - 对应运行手册: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md`
 
-审计轮次: 4
+审计轮次: 5
 ## 设计目标
 - 把 benchmark 中 `L5 shared network/release train` 的缺口落成正式执行模型，而不是继续停留在口头 backlog。
 - 明确 oasis7 下一阶段的最小 shared track、promotion 规则、rollback 规则与 claims gate。
@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | local required/full + S6 + S9/S10 | 已具备 | `present` |
 | governance drill clone/live evidence | 已具备基础 | `present_with_limited_coverage` |
-| shared_devnet/staging/canary | 未正式建立 | `specified_not_executed` |
+| shared_devnet/staging/canary | 已执行 first `shared_devnet` local-only dry run，但仍缺 shared access / staging / canary 正式证据 | `partial` |
 | public claims | 仍受 preview policy 限制 | `limited playable technical preview` + `crypto-hardened preview` |
 
 ## 三层 shared track
@@ -68,6 +68,18 @@
   - `doc/testing/templates/shared-network-incident-review-template.md`
   - `doc/testing/templates/shared-network-exit-decision-template.md`
 
+## 当前实现入口（RTMIN-4）
+- first `shared_devnet` dry run evidence:
+  - `doc/testing/evidence/shared-network-shared-devnet-dry-run-2026-03-24.md`
+- promotion record:
+  - `doc/testing/evidence/shared-network-shared-devnet-promotion-record-2026-03-24.md`
+- incident / hold record:
+  - `doc/testing/evidence/shared-network-shared-devnet-incident-2026-03-24.md`
+- actual gate outputs:
+  - `output/release-candidates/shared-devnet-dry-run-20260324-01.json`
+  - `output/shared-network/shared-devnet-dry-run-20260324-01/release-gate/20260324-150030/release-gate-summary.md`
+  - `output/shared-network/shared-devnet-dry-run-20260324-01/gate/shared_devnet-20260324-150230/summary.md`
+
 ## Track QA Required Lanes
 | Track | Required lanes | Gate 结论规则 |
 | --- | --- | --- |
@@ -94,6 +106,11 @@
 3. `staging` 必须有独立的 upgrade window、incident template 和 rollback rehearsal 记录。
 4. `canary` 必须有固定观察窗、`incident_review` 和 `exit_decision`，否则只能维持 `hold`。
 5. 若共享访问失效、owner 值班断档或 public claims 越过 preview 边界，窗口立即转为 `frozen`。
+
+## RTMIN-4 当前结论
+1. first `shared_devnet` dry run 已执行完成，且已有 candidate / gate / promotion / incident 产物。
+2. 当前 `shared_devnet` gate 结论为 `partial`，promotion recommendation 为 `hold_promotion`。
+3. 造成 `partial` 的主因不是 runtime 事故，而是 shared access、multi-entry closure、shared-devnet short-window longrun 和 rollback target 仍未达到 shared-grade evidence。
 
 ## Partial / Block 语义
 | 状态 | 含义 |

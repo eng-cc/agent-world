@@ -3,7 +3,7 @@
 - 对应需求文档: `doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.prd.md`
 - 对应项目管理文档: `doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.project.md`
 
-审计轮次: 1
+审计轮次: 2
 ## 设计目标
 - 把“主流公链怎么测”从泛泛经验，收成 oasis7 可执行的对标矩阵。
 - 明确当前已有测试层、关键缺口和 producer 下一步优先级。
@@ -26,14 +26,14 @@
 | `L2 distributed system` | 已具备基础，但以库测和长跑为主 | `S4`、`S9`、`S10`、node/net/consensus/distfs tests | `present_with_gap` |
 | `L3 user-facing closure` | 已具备 | `S6` Web-first UI 闭环、producer playtest 手册 | `present` |
 | `L4 longrun/chaos/drill` | 长跑具备，治理真实 drill 证据缺失 | `S9/S10` 已有；governance import/audit/runbook 已有；真实 pass/block 证据未回写 | `partial` |
-| `L5 shared network/release train` | 缺失 | 仓库内未冻结正式 `devnet/testnet/canary` 共享环境执行层 | `missing` |
+| `L5 shared network/release train` | 已有首轮 `shared_devnet` dry run，但仍缺 shared access `pass`、staging 与 canary | `partial` |
 
 ## 当前高优先级缺口
 | Gap ID | 缺口 | 严重度 | owner | 下一步 |
 | --- | --- | --- | --- | --- |
 | `BENCH-G1` | 真实 governance drill / negative drill / QA evidence 未完成 | `high` | `qa_engineer` + `runtime_engineer` | 先做 clone-world 证据，再做 default/live execution world 正式留档 |
 | `BENCH-G2` | fuzz/property-based gate 缺失 | `medium` | `runtime_engineer` + `qa_engineer` | 先定义最小 fuzz/property 切入面，再决定工具 |
-| `BENCH-G3` | shared network / release train 缺失 | `high` | `producer_system_designer` + `liveops_community` + `runtime_engineer` | 定义 shared execution world / canary / 升级演练最小形态 |
+| `BENCH-G3` | shared network / release train 只有首轮 local-only dry run，仍未到 `pass` | `high` | `producer_system_designer` + `liveops_community` + `runtime_engineer` | 把 `shared_devnet` 从 `partial` 提升到 `pass`，再进入 `staging/canary` |
 | `BENCH-G4` | 多客户端公链的“独立实现差分测试”在 oasis7 无等价替代 gate | `medium` | `runtime_engineer` | 评估独立 replay/verifier 或只读审计器路径 |
 
 ## Producer 结论

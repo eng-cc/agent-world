@@ -328,6 +328,9 @@
     - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md`
     - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
     - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md`
+    - `doc/testing/evidence/shared-network-shared-devnet-dry-run-2026-03-24.md`
+    - `doc/testing/evidence/shared-network-shared-devnet-promotion-record-2026-03-24.md`
+    - `doc/testing/evidence/shared-network-shared-devnet-incident-2026-03-24.md`
     - `doc/testing/templates/shared-network-promotion-record-template.md`
     - `doc/testing/templates/shared-network-incident-template.md`
     - `doc/testing/templates/shared-network-incident-review-template.md`
@@ -339,7 +342,7 @@
     - `testing-manual.md`
     - `doc/devlog/2026-03-24.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "shared_devnet|staging|canary|release_candidate_bundle|specified_not_executed|runbook|promotion_record|incident_review|exit_decision|release train" doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md doc/p2p/prd.md doc/p2p/project.md testing-manual.md`
+    - `rg -n "shared_devnet|staging|canary|release_candidate_bundle|partial|runbook|promotion_record|incident_review|exit_decision|release train" doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md doc/testing/evidence/shared-network-shared-devnet-dry-run-2026-03-24.md doc/testing/evidence/shared-network-shared-devnet-promotion-record-2026-03-24.md doc/testing/evidence/shared-network-shared-devnet-incident-2026-03-24.md doc/p2p/prd.md doc/p2p/project.md testing-manual.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
   - 产物文件:
@@ -490,8 +493,8 @@
 ## 状态
 - 更新日期: 2026-03-24
 - 当前状态: completed（ROUND-024）
-- 下一任务: 执行 `TASK-P2P-040` 下的 `RTMIN-4`，完成 first `shared_devnet` dry run，并把同一 `candidate_id` 的 promotion/gate/incident evidence 留全；在此之前继续执行当前 preview claims policy。
-- 最新完成: `TASK-P2P-040`（已完成 `RTMIN-1~3`：正式冻结 `release_candidate_bundle`、shared-network QA gate scaffold 与 liveops promotion/freeze/rollback/run window/public claims runbook；shared-network 当前结论仍为 `specified_not_executed`。）
+- 下一任务: 继续执行 `TASK-P2P-040` 的 shared-network 实操，把 first `shared_devnet` dry run 的 `partial` 提升到 `pass`，再进入 `staging/canary` rehearsal；在此之前继续执行当前 preview claims policy。
+- 最新完成: `TASK-P2P-040`（已完成 `RTMIN-4`：first `shared_devnet` dry run 已留正式 candidate/gate/promotion/incident evidence，当前 shared-network 结论从 `specified_not_executed` 更新为 `partial`，但仍未达到 promotion-ready `pass`。）
 - 最新完成: `TASK-P2P-038`（已完成 mainnet/public claims policy 复评专题建档，正式冻结当前只允许 `limited playable technical preview` + `crypto-hardened preview`，并把 `mainnet-grade`、`production mint ready` 等口径放入 denylist。）
 - 最新完成: `TASK-P2P-039`（已完成主流公链测试体系对标专题建档，正式把 oasis7 当前 testing foundations、真实 drill 缺口、`fuzz/property` 缺口与 `shared network/release train` 缺口纳入统一矩阵。）
 - 最新完成: `TASK-P2P-037`（已完成创世 freeze / ceremony / QA gate 专题建档，正式把 `logic_frozen_address_binding_pending`、`TBD_BEFORE_MINT`、`pending_binding`、`ready_pending_address_binding` 与 QA 非 `pass` 结论全部冻结为 mint-ready blocker。）

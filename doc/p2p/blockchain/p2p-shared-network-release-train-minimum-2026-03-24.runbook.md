@@ -4,7 +4,7 @@
 - 对应设计文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md`
 - 对应项目管理文档: `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
 
-审计轮次: 1
+审计轮次: 2
 
 ## Meta
 - Owner Role: `liveops_community`
@@ -16,12 +16,12 @@
   - `testing-manual.md`
 
 ## 1. 适用范围
-- 本 runbook 只定义 shared-network / release-train 的执行方法，不表示共享环境已经真实跑通。
-- 当前总 verdict 仍是 `specified_not_executed`。
+- 本 runbook 只定义 shared-network / release-train 的执行方法；当前虽然已有 first `shared_devnet` dry run，但共享执行仍未达 `pass`。
+- 当前总 verdict 已更新为 `partial`。
 - 在 `RTMIN-4/5` 真实 rehearsal 留证据前，对外只允许：
   - `limited playable technical preview`
   - `crypto-hardened preview`
-  - `shared network / release train is specified but not yet executed`
+  - `first shared_devnet dry run is recorded, but shared execution remains partial`
 
 ## 2. 开窗前输入
 每次开任何 track 窗口前，必须先固定以下输入：
@@ -133,7 +133,7 @@
 - 外部追问统一回到：
   - `当前仍是 limited playable technical preview。`
   - `安全与治理硬化在推进，但仍是 crypto-hardened preview。`
-  - `shared network / release train 已建档，真实执行证据仍在补。`
+  - `shared network / release train 已有首轮 shared_devnet dry run，但 shared execution 仍是 partial。`
 
 ## 8. 回写要求
 - 每个窗口至少回写一次：
@@ -146,9 +146,10 @@
   - 下一步是 `promote`、`hold` 还是 `rollback`
 
 ## 9. 当前结论
-- `RTMIN-3` 完成后，oasis7 已具备：
+- 当前 oasis7 已具备：
   - candidate bundle 真值
   - QA gate scaffold
   - liveops promotion/freeze/rollback/run window/public claims runbook
-- shared-network 总 verdict 仍保持 `specified_not_executed`。
-- 下一步是 first `shared_devnet` dry run，而不是升级 public claims。
+  - first `shared_devnet` dry-run candidate / gate / promotion / incident 产物
+- shared-network 总 verdict 当前是 `partial`，不是 `pass`。
+- 下一步不是升级 public claims，也不是直接进 `staging`，而是先把 `shared_devnet` 提升到 `pass`。

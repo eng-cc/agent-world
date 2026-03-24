@@ -529,22 +529,27 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
 - 默认串行执行：`ci-tests full`、`sync-m1/m4/m5 --check`、Web strict、S9/S10。
 - `--quick` 用于缩短 S9/S10 时长并关闭 Web visual baseline。
 
-### Shared Network / Release Train Minimum（Benchmark L5，规划已冻结）
+### Shared Network / Release Train Minimum（Benchmark L5，首轮 dry run 已落地）
 - 参考专题：
   - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md`
   - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md`
 - 当前状态：
-  - `specified_not_executed`
-  - 这表示目标态和任务链已冻结，但真实 `shared_devnet/staging/canary` rehearsal 还没执行。
+  - `partial`
+  - 这表示 first `shared_devnet` dry run 已完成并留有正式 evidence，但 shared access / multi-entry / longrun / rollback target 仍未达到 promotion-ready `pass`，`staging/canary` 也尚未执行。
 - 通过 shared-network gate 之前，以下表述都不允许：
   - `production release train is established`
   - `shared network validated`
   - `mainnet-grade testing maturity`
 - 当前最小执行顺序：
   1. 生成统一 `release_candidate_bundle`
-  2. 执行 first `shared_devnet` dry run
-  3. 执行 `staging` rehearsal
-  4. 执行 `canary` rehearsal
+  2. 执行 first `shared_devnet` dry run（当前已完成，结论 `partial`）
+  3. 把 `shared_devnet` 从 `partial` 提升到 `pass`
+  4. 执行 `staging` rehearsal
+  5. 执行 `canary` rehearsal
+- 当前 evidence 入口：
+  - `doc/testing/evidence/shared-network-shared-devnet-dry-run-2026-03-24.md`
+  - `doc/testing/evidence/shared-network-shared-devnet-promotion-record-2026-03-24.md`
+  - `doc/testing/evidence/shared-network-shared-devnet-incident-2026-03-24.md`
 - 当前 runtime 入口：
 ```bash
 ./scripts/release-candidate-bundle.sh create \
@@ -596,6 +601,10 @@ env -u RUSTC_WRAPPER cargo test -p oasis7 --features test_tier_required longrun_
   - 发现真值漂移、QA `block`、共享访问失效或 preview 口径越界时立即 `freeze`
   - `rollback` 只能回到最近一次 `pass` 的 candidate bundle
   - 没有 `promotion_record`、`incident_review`、`exit_decision` 的 track 不得记完成
+- 当前 `shared_devnet` dry-run 结论：
+  - `gate_result=partial`
+  - `promotion_recommendation=hold_promotion`
+  - 这不是 shared-network `pass`，也不允许升级 public claims
 - `--dry-run` 用于门禁编排冒烟，不执行真实命令。
 
 ### S11：去中心化模块发布运行与告警（world-runtime）
