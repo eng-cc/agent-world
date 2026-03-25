@@ -12,6 +12,7 @@
 - 维护 P2P、共识、DistFS、节点奖励与网络桥接等核心链路口径。
 - 汇总 blockchain / distfs / node / observer / token / viewer-live / consensus / distributed / network 九类专题。
 - 承接跨 runtime、launcher、viewer-live 的分布式运行与发布约束收口。
+- 承接 hosted world 玩家接入、网页会话鉴权、public/control/signer 平面边界等跨模块 Web/P2P 口径。
 
 ## 主题目录
 - `distfs/`：DistFS 设计与稳定性加固。
