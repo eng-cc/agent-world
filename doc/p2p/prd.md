@@ -1,6 +1,6 @@
 # p2p PRD
 
-审计轮次: 10
+审计轮次: 11
 
 ## 目标
 - 建立 p2p 模块设计主文档，统一需求边界、技术方案与验收标准。
@@ -45,6 +45,7 @@
   - SC-13: `oasis7_viewer_live` 移除 legacy 参数兼容层，不再接受 `--runtime-world` 等历史别名；代码库中不再保留未接入生产入口的旧 CLI 解析路径。
   - SC-14: 历史 PRD/project 文档中的 `oasis7_viewer_live` 旧文件路径完成替换，不再指向已删除的 `src/bin/oasis7_viewer_live/` 子目录文件。
   - SC-15: 主链 Token 创世分配与早期贡献奖励口径具备可审计分桶、低流通边界、单人直持上限与贡献制发放约束，能够直接映射到现有 runtime 创世/金库机制。
+  - SC-16: hosted world 玩家访问模型具备 `public player plane / private control plane / signer plane` 三层边界与 `guest/player/strong-auth` 会话梯度定义，明确浏览器不得再承载长期 signer 真值。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -53,6 +54,8 @@
   - 安全评审者：需要签名、治理、资产流转的可审计证据。
   - 移动端玩家：需要低算力设备可持续在线并获得正确最终性反馈。
   - 制作人与金库治理维护者：需要在创世前冻结主链 Token 分配结构，避免过早流通、单人过度控盘或“玩就发币”的错误口径。
+  - hosted world host / operator：需要把可公开分享的 join URL 与私有世界控制面拆开，避免分享试玩地址时连控制权一起暴露。
+  - hosted world 远程玩家：需要通过网页先建立 session 再游玩，而不是直接继承 host 节点 signer。
 - User Scenarios & Frequency:
   - 协议演进评审：每次共识或网络协议改动前执行。
   - 多节点长跑：按周执行并记录稳定性与恢复结果。
@@ -60,6 +63,7 @@
   - 安全审计复核：关键资产链路改动后立即触发。
   - 轻客户端接入验收：每次移动端协议调整后执行输入/最终性/重连验证。
   - 创世发行前评审：每次准备冻结 Token 创世配置或早期奖励口径时执行一次。
+  - hosted world 架构复核：每次准备让“玩家部署服务给其他玩家通过网页进入”进入公开测试前执行一次。
 - User Stories:
   - PRD-P2P-001: As a 协议工程师, I want explicit protocol boundaries, so that multi-crate changes remain coherent.
   - PRD-P2P-002: As a 节点运营者, I want reliable longrun validation, so that production confidence increases.
@@ -83,6 +87,7 @@
   - PRD-P2P-020: As a producer_system_designer, I want one final public claims policy re-evaluation after MAINNET readiness planning, so that outward language stays aligned with execution reality rather than spec completeness.
   - PRD-P2P-021: As a producer_system_designer, I want one explicit benchmark against mainstream public-chain testing systems, so that oasis7 testing maturity is judged by layered evidence rather than isolated green checks.
   - PRD-P2P-022: As a producer_system_designer, I want one explicit shared network / release train minimum model, so that oasis7 can turn `L5` from a known gap into an executable workstream without overclaiming it is already in place.
+  - PRD-P2P-023: As a producer_system_designer, I want one explicit hosted-world player access and session-auth model, so that oasis7 can support one player hosting and another joining by web without exposing host node or governance signer truth to the browser.
 - Critical User Flows:
   1. Flow-P2P-001: `网络拓扑变更 -> 共识联调 -> DistFS 同步 -> 节点状态一致性验证`
   2. Flow-P2P-002: `执行 S9/S10 长跑 -> 采集故障与恢复数据 -> 输出收敛报告`
@@ -105,6 +110,7 @@
   19. Flow-P2P-019: `读取 genesis freeze sheet -> 绑定 slot/bucket 真值 -> 执行 ceremony checklist -> QA 审核 evidence bundle -> 决定是否允许 mint-ready 口径`
   20. Flow-P2P-020: `读取 MAINNET-1~3 当前状态 -> 判断哪些仅为 spec gate、哪些已 execution complete -> 冻结 claim allowlist/denylist 与未来升级条件`
   21. Flow-P2P-021: `读取 testing-manual 与安全/readiness 专题 -> 映射 oasis7 当前测试层 -> 对照主流公链 testing benchmark -> 冻结 gap matrix 与下一步验证优先级`
+  22. Flow-P2P-022: `host 启动 hosted world -> 发布 public join URL -> 远程访客建 guest/player session -> runtime 按 capability 绑定实体与动作 -> 资产/治理类动作再升级 strong auth`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -121,6 +127,7 @@
 | 密码学安全基线评估 | `primitive_status`、`transaction_auth_status`、`account_model_status`、`key_custody_status`、`governance_signer_status`、`genesis_control_status`、`overall_verdict` | 盘点代码/文档真值并输出 system-level verdict；若 blocker 未清零则拒绝高级安全口径 | `unknown -> inventoried -> verdict_frozen` | 只要资产动作缺统一签名交易模型，整体必须保持 `not_mainnet_grade` | `producer_system_designer` 拍板，`runtime_engineer`/`qa_engineer` 联审 |
 | 主链 Token 签名交易鉴权 | `from_account_id/to_account_id/amount/nonce/public_key/signature` | runtime 先验签并校验 `awt:pk:` 账户绑定，再进入既有余额/nonce 预检与 consensus submit | `unsigned_surface -> transfer_signed_surface` | transfer submit 必须带固定版本签名；`from_account_id` 必须等于 `awt:pk:<public_key_hex>`；其他资产动作仍待后续专题 | `runtime_engineer` 牵头实现，`viewer_engineer`/`qa_engineer` 跟进客户端与回归 |
 | 主流公链测试体系对标 | `layer_id/current_coverage/evidence_paths/gap_status/next_action` | 将 oasis7 suites/evidence 对位到主流公链测试分层，并冻结缺口矩阵与执行优先级 | `draft -> mapped -> prioritized` | 若缺共享网络、真实 drill 证据或 fuzz/property gate，则不得宣称“主流公链级测试成熟度” | `producer_system_designer` 拍板，`qa_engineer` 联审 |
+| Hosted world 玩家访问与会话鉴权 | `join_url/guest_session/player_session/strong_auth/capability_set/operator_bind` | 拆分 public player plane、private control plane 与 signer plane；远程玩家先建 session 再游玩，敏感动作再升级强鉴权 | `specified -> implemented -> validated` | 浏览器不得持有长期 signer；public player origin 不得默认可达 start/stop/chain control | `producer_system_designer` 牵头，`runtime_engineer`/`viewer_engineer`/`agent_engineer`/`qa_engineer`/`liveops_community` 联动 |
 - 三线联合验收清单（TASK-P2P-002）:
 | 线别 | 必跑命令（基线） | 联合验收门禁 | 阻断条件（任一命中即 fail） | 证据产物 |
 | --- | --- | --- | --- | --- |
@@ -156,6 +163,7 @@
   - AC-26: `p2p-mainnet-public-claims-policy-2026-03-23` 专题文档落盘并映射任务链 `TASK-P2P-038`，明确 `MAINNET-1~3` 当前仅完成 spec gate、整体 verdict 仍为 `not_mainnet_grade`，并冻结 allowlist/denylist 与 future upgrade conditions。
   - AC-27: `p2p-mainstream-public-chain-testing-benchmark-2026-03-24` 专题文档落盘并映射任务链 `TASK-P2P-039`，明确主流公链测试分层模型、oasis7 当前映射、`fuzz/property` 与 `shared network/release train` 缺口，以及真实 governance drill 证据的当前优先级。
   - AC-28: `p2p-shared-network-release-train-minimum-2026-03-24` 专题文档落盘并映射任务链 `TASK-P2P-040`，明确 `shared_devnet/staging/canary` 三层最小轨道、`release_candidate_bundle` 真值、promotion/freeze/rollback 规则、liveops runbook 入口与当前 `specified_not_executed` 结论。
+  - AC-29: `p2p-hosted-world-player-access-and-session-auth-2026-03-25` 专题文档落盘并映射任务链 `TASK-P2P-041`，明确 hosted world 的 `public player plane / private control plane / signer plane`、`guest/player/strong-auth` 会话梯度、敏感动作能力矩阵，以及“无需 invite-only 也不能把长期 signer 暴露给浏览器”的边界。
 - Non-Goals:
   - 不在本 PRD 细化 viewer UI 交互。
   - 不替代 runtime 内核的模块执行细节设计。
@@ -182,6 +190,7 @@
   - `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.prd.md`
   - `doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.prd.md`
   - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md`
+  - `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.prd.md`
   - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md`
   - `world-rule.md`
   - `doc/world-simulator/viewer/viewer-manual.md`
@@ -207,6 +216,9 @@
   - 奖励语义漂移：若 early-player reward 被描述为“登录就发”或“时长挖矿”，则必须退回为 contribution-based 口径重审。
   - 安全等级误判：若局部 `ed25519`/allowlist 能力被误写成“整体已达主流公链安全”，则必须退回并以系统级交易授权/托管/治理真值重审。
   - 阶段误升级：若 `STRAUTH-3` 已完成但生产级 keystore、治理 signer 外部化或创世 ceremony 仍未通过，就把安全阶段升级为 `mainnet-grade`，必须直接阻断并回到 readiness gate 检查。
+  - hosted world 误暴露：若 public join URL 仍可命中 world 启停、链控制或 GUI operator action 等管理接口，则必须直接判定为架构越界而非部署细节问题。
+  - 浏览器 signer 泄露：若 HTML bootstrap、JS 全局对象或任意 public API 仍返回长期 signer 私钥、seed 或等价真值，则 hosted-world 路径必须直接阻断。
+  - 权限混层：若 guest/player session 在没有强鉴权的情况下能执行资产转账、治理或高风险 prompt/control，则必须回退到 hosted-world 权限设计审查。
 - Non-Functional Requirements:
   - NFR-P2P-1: 多节点长跑稳定性指标持续达标并可追溯。
   - NFR-P2P-2: 共识提交与复制链路关键失败模式覆盖率 100%。
@@ -232,6 +244,8 @@
   - NFR-P2P-22: 在 genesis slot/bucket 真值、ceremony evidence bundle 与 QA `pass` 完成前，任何 `mint_ready` 或 `production mint ready` 口径都不得进入 public claims allowlist。
   - NFR-P2P-23: 在 `MAINNET-1~3` 仍停留于 spec gate 而 execution blockers 未清零时，任何高于 `crypto-hardened preview` 的 public claims 都必须被 denylist 拒绝。
   - NFR-P2P-24: 在 `shared_devnet/staging/canary` 仍未形成正式 shared-network evidence 前，任何 `release train established`、`shared network validated` 或“对标主流公链测试成熟度已完成”的表述都必须被 denylist 拒绝。
+  - NFR-P2P-25: hosted world public player plane 在任何 HTML/JS/bootstrap/API 响应中都不得暴露长期 signer 私钥、seed 或等价真值。
+  - NFR-P2P-26: hosted world public join origin 默认不得暴露 world start/stop、chain start/stop 或 operator-only GUI action 入口；能力不足时前后端都必须拒绝。
 - Security & Privacy: 需保证节点身份、签名、账本与反馈数据链路的完整性；所有关键动作必须具备可审计记录。
 
 ## 5. Risks & Roadmap
@@ -270,6 +284,7 @@
 | PRD-P2P-020 | TASK-P2P-038 | `test_tier_required` | public claims policy 复评专题 PRD/project/design 建档、allowlist/denylist 冻结、future upgrade condition 与 readiness 完结回写 | 对外口径、阶段复评与后续升级条件 |
 | PRD-P2P-021 | TASK-P2P-039 | `test_tier_required` | 主流公链测试体系 benchmark 专题 PRD/project/design 建档、testing-manual 映射、gap matrix 与执行优先级冻结 | 测试成熟度口径、QA 证据体系与后续 hardening 排序 |
 | PRD-P2P-022 | TASK-P2P-040 | `test_tier_required` | shared network / release train minimum 专题 PRD/project/design/runbook 建档、three-track model、candidate bundle、claims gate 与 `testing-manual` 入口冻结 | shared-network 执行模型、release train 口径与后续 rehearsal 排序 |
+| PRD-P2P-023 | TASK-P2P-041 | `test_tier_required` | hosted-world player access / session-auth 专题 PRD/project/design 建档、plane split、session ladder、sensitive-action capability 与 claims boundary 冻结 | hosted web multiplayer 边界、浏览器 signer 暴露风险与后续实现排序 |
 - S9/S10 长跑结果模板（TASK-P2P-003）:
 | 字段 | 说明 | 来源 |
 | --- | --- | --- |
@@ -319,3 +334,4 @@
 | DEC-P2P-014 | `oasis7_viewer_live` 删除 `--runtime-world` 兼容别名与 legacy split CLI 代码，保留单一生产入口 `oasis7_viewer_live.rs` | 继续保留兼容别名和未接入入口的旧解析代码 | 避免“文档/测试改了但真实入口不生效”的双轨风险，降低后续维护和误判成本。 |
 | DEC-P2P-015 | 统一将历史文档中的 `oasis7_viewer_live` 旧文件路径替换为当前源码布局路径（`oasis7_viewer_live.rs` / `oasis7_chain_runtime/*`） | 保留旧路径并依赖读者自行映射 | 降低审计误导与排障成本，确保文档可直接定位现行实现。 |
 | DEC-P2P-016 | 先冻结“项目战略控制 50% + 协议奖励池 35% + 低流通 + 贡献制奖励”口径，再决定具体创世账户与执行节奏 | 先广泛发币或直接采用开放式 play-to-earn | 当前阶段仍是 `limited playable technical preview`，需要先守住低流通、可审计与反滥用边界。 |
+| DEC-P2P-017 | hosted world 采用 `public player plane / private control plane / signer plane` + `guest/player/strong-auth` 梯度 | 继续把 join/control/signer 混在单一 web bootstrap 里，或用 invite-only 代替安全边界 | hosted world 的核心问题是信任面混层，不先拆平面和能力就无法安全支持“一个玩家部署、另一个玩家通过网页进入”。 |

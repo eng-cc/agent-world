@@ -1,6 +1,6 @@
 # p2p 文档索引
 
-审计轮次: 11
+审计轮次: 12
 
 ## 入口
 - PRD: `doc/p2p/prd.md`
@@ -40,6 +40,7 @@
 - `doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.prd.md`
 - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md`
 - `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md`
+- `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.prd.md`
 - `doc/p2p/distfs/distfs-feedback-node-runtime-integration-2026-03-01.prd.md`
 
 ## 根目录收口

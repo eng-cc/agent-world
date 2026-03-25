@@ -1,8 +1,8 @@
 # p2p PRD 文件级索引
 
-审计轮次: 11
+审计轮次: 12
 
-更新时间：2026-03-24
+更新时间：2026-03-25
 
 ## 入口
 - 模块 PRD：`doc/p2p/prd.md`
@@ -32,6 +32,7 @@
 | `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.prd.md` | `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.design.md` | `doc/p2p/blockchain/p2p-mainnet-public-claims-policy-2026-03-23.project.md` |
 | `doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.prd.md` | `doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.design.md` | `doc/p2p/blockchain/p2p-mainstream-public-chain-testing-benchmark-2026-03-24.project.md` |
 | `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md` | `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md` | `doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md` |
+| `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.prd.md` | `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.design.md` | `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.project.md` |
 | `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.prd.md` | `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.design.md` | `doc/p2p/blockchain/p2p-blockchain-security-hardening-2026-02-23.project.md` |
 | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.prd.md` | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.design.md` | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phaseb-consensus-execution.project.md` |
 | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.prd.md` | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.design.md` | `doc/p2p/blockchain/production-grade-blockchain-p2pfs-phasec-distfs-proof-network.project.md` |
