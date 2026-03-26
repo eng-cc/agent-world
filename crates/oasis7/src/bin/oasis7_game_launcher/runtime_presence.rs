@@ -1,11 +1,9 @@
 use super::*;
-use oasis7::simulator::{WorldEvent, WorldEventKind, WorldSnapshot};
-use oasis7::viewer::{ViewerRequest, ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION};
+use oasis7::simulator::WorldSnapshot;
+use oasis7::viewer::{ViewerRequest, ViewerResponse, VIEWER_PROTOCOL_VERSION};
 
 const HOSTED_SESSION_RUNTIME_PROBE_TIMEOUT_MS: u64 = 300;
 const HOSTED_SESSION_RUNTIME_PROBE_INTERVAL_MS: u64 = 1_000;
-const HOSTED_SESSION_RUNTIME_MONITOR_READ_TIMEOUT_MS: u64 = 100;
-const RUNTIME_PRESENCE_MONITOR_CLIENT: &str = "oasis7_game_launcher_runtime_presence_monitor";
 const RUNTIME_PRESENCE_PROBE_CLIENT: &str = "oasis7_game_launcher_hosted_session_probe";
 
 pub(super) fn run_runtime_presence_monitor(
@@ -13,45 +11,12 @@ pub(super) fn run_runtime_presence_monitor(
     live_bind: Arc<String>,
     hosted_session_issuer: Arc<Mutex<HostedPlayerSessionIssuer>>,
 ) {
-    let reconnect_backoff = Duration::from_millis(250);
-    while !stop_requested.load(Ordering::SeqCst) {
-        let result =
-            RuntimePresenceMonitorClient::connect(live_bind.as_str()).and_then(|mut client| {
-                observe_runtime_presence_snapshot(&hosted_session_issuer, client.active_players());
-                let mut next_snapshot_at = Instant::now()
-                    + Duration::from_millis(HOSTED_SESSION_RUNTIME_PROBE_INTERVAL_MS);
-                loop {
-                    if stop_requested.load(Ordering::SeqCst) {
-                        return Ok(());
-                    }
-                    if Instant::now() >= next_snapshot_at {
-                        client.request_snapshot_sync()?;
-                        observe_runtime_presence_snapshot(
-                            &hosted_session_issuer,
-                            client.active_players(),
-                        );
-                        next_snapshot_at = Instant::now()
-                            + Duration::from_millis(HOSTED_SESSION_RUNTIME_PROBE_INTERVAL_MS);
-                        continue;
-                    }
-                    if client.poll_once()? {
-                        observe_runtime_presence_snapshot(
-                            &hosted_session_issuer,
-                            client.active_players(),
-                        );
-                    }
-                }
-            });
-        if stop_requested.load(Ordering::SeqCst) {
-            return;
-        }
-        if let Err(err) = result {
-            if let Ok(mut issuer) = hosted_session_issuer.lock() {
-                issuer.record_runtime_probe_failure(err);
-            }
-            thread::sleep(reconnect_backoff);
-        }
-    }
+    run_runtime_presence_monitor_with_interval(
+        stop_requested,
+        live_bind,
+        hosted_session_issuer,
+        Duration::from_millis(HOSTED_SESSION_RUNTIME_PROBE_INTERVAL_MS),
+    );
 }
 
 pub(super) fn query_runtime_bound_players(live_bind: &str) -> Result<BTreeSet<String>, String> {
@@ -64,125 +29,34 @@ pub(super) fn query_runtime_bound_players(live_bind: &str) -> Result<BTreeSet<St
     client.wait_for_snapshot()
 }
 
+fn run_runtime_presence_monitor_with_interval(
+    stop_requested: Arc<AtomicBool>,
+    live_bind: Arc<String>,
+    hosted_session_issuer: Arc<Mutex<HostedPlayerSessionIssuer>>,
+    probe_interval: Duration,
+) {
+    while !stop_requested.load(Ordering::SeqCst) {
+        let probe_started_at = Instant::now();
+        match query_runtime_bound_players(live_bind.as_str()) {
+            Ok(active_players) => {
+                observe_runtime_presence_snapshot(&hosted_session_issuer, &active_players);
+            }
+            Err(err) => {
+                if let Ok(mut issuer) = hosted_session_issuer.lock() {
+                    issuer.record_runtime_probe_failure(err);
+                }
+            }
+        }
+        sleep_until_next_probe(stop_requested.as_ref(), probe_started_at, probe_interval);
+    }
+}
+
 fn observe_runtime_presence_snapshot(
     hosted_session_issuer: &Arc<Mutex<HostedPlayerSessionIssuer>>,
     active_players: &BTreeSet<String>,
 ) {
     if let Ok(mut issuer) = hosted_session_issuer.lock() {
         issuer.observe_runtime_active_players(active_players.iter().map(String::as_str));
-    }
-}
-
-struct RuntimePresenceMonitorClient {
-    probe: ViewerRuntimeProbeClient,
-    active_players: BTreeSet<String>,
-    subscription_mode: Option<RuntimePresenceSubscriptionMode>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum RuntimePresenceSubscriptionMode {
-    EventsOnly,
-    EventsAndSnapshot,
-}
-
-impl RuntimePresenceMonitorClient {
-    fn connect(live_bind: &str) -> Result<Self, String> {
-        let probe = ViewerRuntimeProbeClient::connect(
-            live_bind,
-            Duration::from_millis(HOSTED_SESSION_RUNTIME_MONITOR_READ_TIMEOUT_MS),
-            RUNTIME_PRESENCE_MONITOR_CLIENT,
-        )?;
-        let mut client = Self {
-            probe,
-            active_players: BTreeSet::new(),
-            subscription_mode: None,
-        };
-        client.request_snapshot_sync()?;
-        Ok(client)
-    }
-
-    fn active_players(&self) -> &BTreeSet<String> {
-        &self.active_players
-    }
-
-    fn poll_once(&mut self) -> Result<bool, String> {
-        match self.probe.read_response_line()? {
-            ViewerResponseLine::Response(response) => Ok(self.apply_response(response)),
-            ViewerResponseLine::Timeout => Ok(false),
-            ViewerResponseLine::Closed => {
-                Err("runtime presence connection closed unexpectedly".to_string())
-            }
-        }
-    }
-
-    fn request_snapshot_sync(&mut self) -> Result<(), String> {
-        self.set_subscription_mode(RuntimePresenceSubscriptionMode::EventsAndSnapshot)?;
-        self.probe.request_snapshot()?;
-        let snapshot = loop {
-            match self.probe.read_response_line()? {
-                ViewerResponseLine::Response(response) => {
-                    if let Some(snapshot_players) = runtime_players_from_response(&response) {
-                        self.active_players = snapshot_players.clone();
-                        break snapshot_players;
-                    }
-                    self.apply_response(response);
-                }
-                ViewerResponseLine::Timeout => {
-                    return Err(
-                        "runtime presence monitor timed out waiting for snapshot".to_string()
-                    )
-                }
-                ViewerResponseLine::Closed => {
-                    return Err(
-                        "runtime presence connection closed before snapshot sync completed"
-                            .to_string(),
-                    )
-                }
-            }
-        };
-        self.active_players = snapshot;
-        self.set_subscription_mode(RuntimePresenceSubscriptionMode::EventsOnly)?;
-        Ok(())
-    }
-
-    fn set_subscription_mode(
-        &mut self,
-        mode: RuntimePresenceSubscriptionMode,
-    ) -> Result<(), String> {
-        if self.subscription_mode == Some(mode) {
-            return Ok(());
-        }
-        let streams = match mode {
-            RuntimePresenceSubscriptionMode::EventsOnly => vec![ViewerStream::Events],
-            RuntimePresenceSubscriptionMode::EventsAndSnapshot => {
-                vec![ViewerStream::Events, ViewerStream::Snapshot]
-            }
-        };
-        self.probe.write_request_line(&ViewerRequest::Subscribe {
-            streams,
-            event_kinds: Vec::new(),
-        })?;
-        self.subscription_mode = Some(mode);
-        Ok(())
-    }
-
-    fn apply_response(&mut self, response: ViewerResponse) -> bool {
-        if let Some(snapshot_players) = runtime_players_from_response(&response) {
-            self.active_players = snapshot_players;
-            return true;
-        }
-        match response {
-            ViewerResponse::Event { event } => match runtime_players_from_event(&event) {
-                Some(RuntimePlayerPresenceDelta::Bound(player_id)) => {
-                    self.active_players.insert(player_id)
-                }
-                Some(RuntimePlayerPresenceDelta::Unbound(player_id)) => {
-                    self.active_players.remove(player_id.as_str())
-                }
-                None => false,
-            },
-            _ => false,
-        }
     }
 }
 
@@ -290,11 +164,6 @@ enum ViewerResponseLine {
     Closed,
 }
 
-enum RuntimePlayerPresenceDelta {
-    Bound(String),
-    Unbound(String),
-}
-
 fn runtime_players_from_response(response: &ViewerResponse) -> Option<BTreeSet<String>> {
     let ViewerResponse::Snapshot { snapshot } = response else {
         return None;
@@ -313,22 +182,6 @@ fn runtime_players_from_snapshot(snapshot: &WorldSnapshot) -> BTreeSet<String> {
         .collect()
 }
 
-fn runtime_players_from_event(event: &WorldEvent) -> Option<RuntimePlayerPresenceDelta> {
-    match &event.kind {
-        WorldEventKind::AgentPlayerBound { player_id, .. } => {
-            let player_id = player_id.trim();
-            (!player_id.is_empty())
-                .then(|| RuntimePlayerPresenceDelta::Bound(player_id.to_string()))
-        }
-        WorldEventKind::AgentPlayerUnbound { player_id, .. } => {
-            let player_id = player_id.trim();
-            (!player_id.is_empty())
-                .then(|| RuntimePlayerPresenceDelta::Unbound(player_id.to_string()))
-        }
-        _ => None,
-    }
-}
-
 fn is_timeout_error(err: &std::io::Error) -> bool {
     matches!(
         err.kind(),
@@ -336,16 +189,35 @@ fn is_timeout_error(err: &std::io::Error) -> bool {
     )
 }
 
+fn sleep_until_next_probe(
+    stop_requested: &AtomicBool,
+    probe_started_at: Instant,
+    probe_interval: Duration,
+) {
+    let Some(remaining) = probe_interval.checked_sub(probe_started_at.elapsed()) else {
+        return;
+    };
+    let sleep_chunk = Duration::from_millis(50);
+    let deadline = Instant::now() + remaining;
+    while !stop_requested.load(Ordering::SeqCst) {
+        let now = Instant::now();
+        if now >= deadline {
+            return;
+        }
+        thread::sleep(std::cmp::min(sleep_chunk, deadline - now));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use oasis7::simulator::{WorldConfig, WorldModel};
     use std::io::{BufRead, BufReader, BufWriter, Write};
-    use std::net::TcpListener;
+    use std::net::{TcpListener, TcpStream};
     use std::thread;
 
     #[test]
-    fn runtime_presence_monitor_client_merges_event_and_snapshot_correction() {
+    fn query_runtime_bound_players_reads_snapshot() {
         let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind mock");
         let addr = listener.local_addr().expect("local addr");
         let handle = thread::spawn(move || {
@@ -372,99 +244,104 @@ mod tests {
                     control_profile: oasis7::viewer::ViewerControlProfile::Live,
                 },
             );
-
-            expect_subscribe(&mut reader, &[ViewerStream::Events, ViewerStream::Snapshot]);
             expect_request_type(&mut reader, |request| {
                 matches!(request, ViewerRequest::RequestSnapshot)
             });
             write_response(
                 &mut writer,
                 &ViewerResponse::Snapshot {
-                    snapshot: world_snapshot(["player-a"]),
+                    snapshot: world_snapshot(["player-a", "player-b"]),
                 },
             );
-            expect_subscribe(&mut reader, &[ViewerStream::Events]);
-
-            write_response(
-                &mut writer,
-                &ViewerResponse::Event {
-                    event: WorldEvent {
-                        id: 1,
-                        time: 1,
-                        kind: WorldEventKind::AgentPlayerBound {
-                            agent_id: "agent-b".to_string(),
-                            player_id: "player-b".to_string(),
-                            public_key: None,
-                        },
-                        runtime_event: None,
-                    },
-                },
-            );
-            write_response(
-                &mut writer,
-                &ViewerResponse::Event {
-                    event: WorldEvent {
-                        id: 2,
-                        time: 2,
-                        kind: WorldEventKind::AgentPlayerUnbound {
-                            agent_id: "agent-a".to_string(),
-                            player_id: "player-a".to_string(),
-                            public_key: None,
-                        },
-                        runtime_event: None,
-                    },
-                },
-            );
-
-            expect_subscribe(&mut reader, &[ViewerStream::Events, ViewerStream::Snapshot]);
-            expect_request_type(&mut reader, |request| {
-                matches!(request, ViewerRequest::RequestSnapshot)
-            });
-            write_response(
-                &mut writer,
-                &ViewerResponse::Snapshot {
-                    snapshot: world_snapshot(["player-b"]),
-                },
-            );
-            expect_subscribe(&mut reader, &[ViewerStream::Events]);
         });
 
-        let mut client =
-            RuntimePresenceMonitorClient::connect(format!("{addr}").as_str()).expect("connect");
+        let active_players =
+            query_runtime_bound_players(format!("{addr}").as_str()).expect("read snapshot");
         assert_eq!(
-            client.active_players(),
-            &BTreeSet::from(["player-a".to_string()])
-        );
-
-        assert!(client.poll_once().expect("poll event"));
-        assert_eq!(
-            client.active_players(),
-            &BTreeSet::from(["player-a".to_string(), "player-b".to_string()])
-        );
-
-        assert!(client.poll_once().expect("poll unbind event"));
-        assert_eq!(
-            client.active_players(),
-            &BTreeSet::from(["player-b".to_string()])
-        );
-
-        client.request_snapshot_sync().expect("snapshot sync");
-        assert_eq!(
-            client.active_players(),
-            &BTreeSet::from(["player-b".to_string()])
+            active_players,
+            BTreeSet::from(["player-a".to_string(), "player-b".to_string()])
         );
 
         handle.join().expect("join mock");
     }
 
-    fn expect_subscribe(reader: &mut BufReader<TcpStream>, expected_streams: &[ViewerStream]) {
-        expect_request_type(reader, |request| match request {
-            ViewerRequest::Subscribe {
-                streams,
-                event_kinds,
-            } => streams == expected_streams && event_kinds.is_empty(),
-            _ => false,
+    #[test]
+    fn runtime_presence_monitor_uses_short_lived_snapshot_probes() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind mock");
+        let addr = listener.local_addr().expect("local addr");
+        let (accept_tx, accept_rx) = mpsc::channel();
+        let server = thread::spawn(move || {
+            for _ in 0..2 {
+                let (stream, _) = listener.accept().expect("accept");
+                let reader_stream = stream.try_clone().expect("clone");
+                let mut reader = BufReader::new(reader_stream);
+                let mut writer = BufWriter::new(stream);
+
+                expect_request_type(&mut reader, |request| {
+                    matches!(
+                        request,
+                        ViewerRequest::Hello {
+                            version: VIEWER_PROTOCOL_VERSION,
+                            ..
+                        }
+                    )
+                });
+                write_response(
+                    &mut writer,
+                    &ViewerResponse::HelloAck {
+                        server: "oasis7".to_string(),
+                        version: VIEWER_PROTOCOL_VERSION,
+                        world_id: "test-world".to_string(),
+                        control_profile: oasis7::viewer::ViewerControlProfile::Live,
+                    },
+                );
+                expect_request_type(&mut reader, |request| {
+                    matches!(request, ViewerRequest::RequestSnapshot)
+                });
+                write_response(
+                    &mut writer,
+                    &ViewerResponse::Snapshot {
+                        snapshot: world_snapshot(["player-a"]),
+                    },
+                );
+                accept_tx.send(()).expect("send accept");
+            }
         });
+
+        let stop_requested = Arc::new(AtomicBool::new(false));
+        let live_bind = Arc::new(addr.to_string());
+        let hosted_session_issuer = Arc::new(Mutex::new(HostedPlayerSessionIssuer::default()));
+        let monitor = {
+            let stop_requested = Arc::clone(&stop_requested);
+            let live_bind = Arc::clone(&live_bind);
+            let hosted_session_issuer = Arc::clone(&hosted_session_issuer);
+            thread::spawn(move || {
+                run_runtime_presence_monitor_with_interval(
+                    stop_requested,
+                    live_bind,
+                    hosted_session_issuer,
+                    Duration::from_millis(20),
+                )
+            })
+        };
+
+        accept_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("first probe");
+        accept_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("second probe");
+        stop_requested.store(true, Ordering::SeqCst);
+
+        monitor.join().expect("join monitor");
+        server.join().expect("join server");
+
+        let admission = hosted_session_issuer
+            .lock()
+            .expect("lock issuer")
+            .admission(DeploymentMode::HostedPublicJoin);
+        assert_eq!(admission.admission.runtime_bound_player_sessions, 1);
+        assert_eq!(admission.admission.runtime_probe_status, "ok");
     }
 
     fn expect_request_type<F>(reader: &mut BufReader<TcpStream>, predicate: F)

@@ -31,7 +31,9 @@ use runtime_paths::{
     resolve_oasis7_chain_runtime_binary, resolve_oasis7_viewer_live_binary,
     resolve_viewer_static_dir, resolve_viewer_static_dir_with_override, viewer_dev_dist_candidates,
 };
-use runtime_presence::{query_runtime_bound_players, run_runtime_presence_monitor};
+#[cfg(test)]
+use runtime_presence::query_runtime_bound_players;
+use runtime_presence::run_runtime_presence_monitor;
 use static_http::{
     build_viewer_auth_bootstrap_script, content_type_for_path, handle_http_connection,
     resolve_static_asset_path, resolve_viewer_auth_bootstrap_for_embedded_server,
