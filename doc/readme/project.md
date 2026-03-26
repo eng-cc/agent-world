@@ -356,7 +356,7 @@
     - `site/social/xiaohongshu-ai-laziness-game-mode-slide5.png`
     - `doc/devlog/2026-03-26.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "AI时代，你变\"懒\"了么|重复劳动|做决定|先做什么|资源给谁|赌不赌" doc/readme/governance/readme-xiaohongshu-ai-laziness-game-mode-post-pack-2026-03-26.md site/social/xiaohongshu-ai-laziness-game-mode.html`
+    - `rg -n "AI时代，你变\"懒\"了么|异星工厂|缺氧|补带子|拉管线|先扩哪边|先保哪边|要不要大改" doc/readme/governance/readme-xiaohongshu-ai-laziness-game-mode-post-pack-2026-03-26.md site/social/xiaohongshu-ai-laziness-game-mode.html`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 
