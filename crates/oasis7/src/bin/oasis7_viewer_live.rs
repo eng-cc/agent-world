@@ -11,6 +11,7 @@ use oasis7::viewer::{
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
 const DEFAULT_BIND: &str = "127.0.0.1:5023";
 const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
+const DEFAULT_DEPLOYMENT_MODE: &str = "trusted_local_only";
 const REMOVAL_HINT: &str =
     "embedded node flags were removed from oasis7_viewer_live; use oasis7_chain_runtime (normally launched by oasis7_game_launcher)";
 const RUNTIME_ALIAS_REMOVAL_HINT: &str =
@@ -22,6 +23,7 @@ struct CliOptions {
     bind_addr: String,
     web_bind_addr: Option<String>,
     llm_mode: bool,
+    deployment_mode: String,
 }
 
 impl Default for CliOptions {
@@ -31,6 +33,7 @@ impl Default for CliOptions {
             bind_addr: DEFAULT_BIND.to_string(),
             web_bind_addr: Some(DEFAULT_WEB_BIND.to_string()),
             llm_mode: false,
+            deployment_mode: DEFAULT_DEPLOYMENT_MODE.to_string(),
         }
     }
 }
@@ -73,6 +76,7 @@ fn run_viewer(options: CliOptions) -> Result<(), String> {
 
     let config = ViewerRuntimeLiveServerConfig::new(options.scenario)
         .with_bind_addr(options.bind_addr)
+        .with_hosted_public_join_mode(options.deployment_mode == "hosted_public_join")
         .with_decision_mode(if options.llm_mode {
             ViewerLiveDecisionMode::Llm
         } else {
@@ -116,6 +120,10 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
             "--no-llm" => {
                 options.llm_mode = false;
             }
+            "--deployment-mode" => {
+                let raw = parse_required_value(&mut iter, "--deployment-mode")?;
+                options.deployment_mode = parse_deployment_mode(raw.as_str())?.to_string();
+            }
             "--runtime-world" => {
                 return Err(RUNTIME_ALIAS_REMOVAL_HINT.to_string());
             }
@@ -147,8 +155,20 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
     if let Some(web_bind_addr) = options.web_bind_addr.as_deref() {
         parse_socket_addr(web_bind_addr, "--web-bind")?;
     }
+    let _ = parse_deployment_mode(options.deployment_mode.as_str())?;
 
     Ok(options)
+}
+
+fn parse_deployment_mode(raw: &str) -> Result<&'static str, String> {
+    match raw.trim() {
+        "trusted_local_only" => Ok("trusted_local_only"),
+        "hosted_public_join" => Ok("hosted_public_join"),
+        _ => Err(format!(
+            "--deployment-mode must be one of trusted_local_only|hosted_public_join, got `{}`",
+            raw.trim()
+        )),
+    }
 }
 
 fn parse_required_value<'a, I>(
@@ -197,6 +217,7 @@ Options:\n\
   --no-web-bind             disable websocket bridge\n\
   --llm                     enable llm mode\n\
   --no-llm                  disable llm mode (default)\n\
+  --deployment-mode <mode>  trusted_local_only|hosted_public_join (default: {DEFAULT_DEPLOYMENT_MODE})\n\
   -h, --help                show help\n\n\
 Removed:\n\
   --release-config, --runtime-world, all --node-*, --topology, --triad-*, --reward-runtime-*, --no-node, --viewer-no-consensus-gate\n\
@@ -215,6 +236,7 @@ mod tests {
         assert_eq!(options.bind_addr, DEFAULT_BIND);
         assert_eq!(options.web_bind_addr.as_deref(), Some(DEFAULT_WEB_BIND));
         assert!(!options.llm_mode);
+        assert_eq!(options.deployment_mode, DEFAULT_DEPLOYMENT_MODE);
     }
 
     #[test]
@@ -227,6 +249,8 @@ mod tests {
                 "--web-bind",
                 "127.0.0.1:6300",
                 "--llm",
+                "--deployment-mode",
+                "hosted_public_join",
             ]
             .into_iter(),
         )
@@ -235,6 +259,7 @@ mod tests {
         assert_eq!(options.bind_addr, "127.0.0.1:6200");
         assert_eq!(options.web_bind_addr.as_deref(), Some("127.0.0.1:6300"));
         assert!(options.llm_mode);
+        assert_eq!(options.deployment_mode, "hosted_public_join");
     }
 
     #[test]
@@ -247,6 +272,13 @@ mod tests {
     fn parse_options_rejects_invalid_bind() {
         let err = parse_options(["--bind", "bad-bind"].into_iter()).expect_err("invalid bind");
         assert!(err.contains("--bind"));
+    }
+
+    #[test]
+    fn parse_options_rejects_invalid_deployment_mode() {
+        let err = parse_options(["--deployment-mode", "invalid"].into_iter())
+            .expect_err("invalid deployment mode");
+        assert!(err.contains("--deployment-mode"));
     }
 
     #[test]

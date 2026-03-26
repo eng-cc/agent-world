@@ -385,6 +385,7 @@ pub struct ViewerRuntimeLiveServerConfig {
     pub world_id: String,
     pub decision_mode: ViewerLiveDecisionMode,
     pub play_step_interval: Duration,
+    pub hosted_public_join_mode: bool,
 }
 
 impl ViewerRuntimeLiveServerConfig {
@@ -395,6 +396,7 @@ impl ViewerRuntimeLiveServerConfig {
             scenario,
             decision_mode: ViewerLiveDecisionMode::Script,
             play_step_interval: Duration::from_millis(800),
+            hosted_public_join_mode: false,
         }
     }
 
@@ -424,6 +426,11 @@ impl ViewerRuntimeLiveServerConfig {
 
     pub fn with_play_step_interval(mut self, interval: Duration) -> Self {
         self.play_step_interval = interval.max(Duration::from_millis(50));
+        self
+    }
+
+    pub fn with_hosted_public_join_mode(mut self, enabled: bool) -> Self {
+        self.hosted_public_join_mode = enabled;
         self
     }
 }
@@ -510,6 +517,10 @@ impl ViewerRuntimeLiveServer {
         let listener = TcpListener::bind(&self.config.bind_addr)?;
         let (stream, _) = listener.accept()?;
         self.serve_stream(stream)
+    }
+
+    fn hosted_public_join_mode(&self) -> bool {
+        self.config.hosted_public_join_mode
     }
 
     fn serve_stream(&mut self, stream: TcpStream) -> Result<(), ViewerRuntimeLiveServerError> {

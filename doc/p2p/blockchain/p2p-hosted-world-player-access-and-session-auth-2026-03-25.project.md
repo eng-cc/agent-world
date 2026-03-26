@@ -114,10 +114,16 @@
   - `RuntimeSessionPolicy::validate_known_session_key` 现会在未注册 session 时返回 `session_not_found`，不再把未注册玩家默认为 epoch 0 放行。
   - runtime 现额外维护 `player_id -> agent_id` 单实体占用真值；同一 player 不能静默切到第二个 agent，必须等待后续显式 rebind 设计。
   - `ReconnectSync` / `SessionRegistered` / `SessionRotated` ack 已带回当前 `agent_id`，`RevokeSession` 会清掉该 player 的绑定与 nonce/replay 痕迹，保持“撤销即失效、需重新注册”的 hosted v1 语义。
+- 已实现的 `TASK-P2P-041-D` strong-auth barrier first slice:
+  - `oasis7_web_launcher` 在 `deployment_mode=hosted_public_join` 下会显式拒绝 `POST /api/chain/transfer`，返回结构化 `strong_auth_required`，不再让 public join 路径继续借用 trusted-local signer bootstrap。
+  - `oasis7_game_launcher -> oasis7_viewer_live -> runtime-live` 现已透传 hosted deployment mode；在 `hosted_public_join` 下，`prompt_control preview/apply/rollback` 会统一返回 `strong_auth_required`，避免敏感 prompt/control 继续凭 `player_session` 直接穿过 hosted 公共玩家面。
+  - `software_safe.js` 现会把 `prompt_control` 明确标成 `strong_auth_required`：在 hosted public join 推断路径下不再继续展示成“只差 player_session”，在 remote-origin legacy bootstrap 下也不再把 preview bootstrap 误当成 hosted-ready prompt/control 能力。
+  - `oasis7_client_launcher` 已把 `deployment_mode` 透传到启动参数，并在转账窗口对 `hosted_public_join` 显示同口径 strong-auth barrier，不再继续尝试 trusted-local signer bootstrap 提交。
 - 当前 blocker:
   - `guest session -> player session` 的 session issue / resume / revoke 仍未实现；当前 viewer 只是把梯度与禁用原因显式化，并未真正落会话签发/恢复。
   - `session_register` 目前仍是 runtime-live 内显式注册，不等于完整 hosted guest/player issuer；rollback / host restart 之后仍按 v1 规则要求重新注册。
-  - runtime 还未对 `main token transfer`、敏感 prompt/control 等动作执行 `strong_auth` 分级校验。
+  - 当前只实现了 hosted `strong_auth` barrier first slice，而不是完整 `strong_auth` challenge/proof/verification lane；`main token transfer` 与 `prompt_control` 现在是显式拒绝/禁用而非 hosted-ready 放行。
+  - `agent_chat` 仍归 `player_session` 级低风险交互；更细的 hosted action matrix、resume issuer 与真正 strong-auth proof 仍待后续专题收口。
   - hosted operator 目前仅支持 loopback private control plane；远程 operator URL / tunnel / runbook 仍待 `TASK-P2P-041-F` 收口。
 
 ## 依赖
@@ -139,5 +145,5 @@
 
 ## 状态
 - 当前状态: active
-- 下一步: 在 `TASK-P2P-041-C` / `TASK-P2P-041-D` 上继续推进，把现有 `session_register + one-player-one-agent` 接到真实 hosted session issuer / resume UX，再补 `strong_auth` action list 与 `main token transfer` / 敏感 prompt-control 分级校验。
+- 下一步: 在 `TASK-P2P-041-C` / `TASK-P2P-041-D` 上继续推进，把现有 `session_register + one-player-one-agent` 接到真实 hosted session issuer / resume UX，并把当前 `strong_auth_required` barrier 升级成正式 challenge/proof/verification lane 与完整 action matrix。
 - 最近更新: 2026-03-26

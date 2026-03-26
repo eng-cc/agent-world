@@ -90,6 +90,7 @@ const DEFAULT_CHAIN_POS_TICKS_PER_SLOT: &str = "10";
 const DEFAULT_CHAIN_POS_PROPOSAL_TICK_PHASE: &str = "9";
 const DEFAULT_CHAIN_POS_SLOT_CLOCK_GENESIS_UNIX_MS: &str = "";
 const DEFAULT_CHAIN_POS_MAX_PAST_SLOT_LAG: &str = "256";
+const DEFAULT_DEPLOYMENT_MODE: &str = "trusted_local_only";
 const MAX_LOG_LINES: usize = 2000;
 const OASIS7_CJK_FONT_NAME: &str = "oasis7-cjk";
 const EGUI_CJK_FONT_BYTES: &[u8] = include_bytes!("../../oasis7_viewer/assets/fonts/ms-yahei.ttf");
@@ -339,6 +340,7 @@ impl UiLanguage {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 struct LaunchConfig {
+    deployment_mode: String,
     scenario: String,
     live_bind: String,
     web_bind: String,
@@ -385,6 +387,7 @@ impl Default for LaunchConfig {
         let viewer_static_dir = resolve_static_dir_path().to_string_lossy().to_string();
 
         Self {
+            deployment_mode: DEFAULT_DEPLOYMENT_MODE.to_string(),
             scenario: DEFAULT_SCENARIO.to_string(),
             live_bind: DEFAULT_LIVE_BIND.to_string(),
             web_bind: DEFAULT_WEB_BIND.to_string(),

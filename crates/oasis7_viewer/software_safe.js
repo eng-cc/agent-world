@@ -238,9 +238,14 @@ function strongAuthReason() {
   return "strong auth is still a separate follow-up; software_safe does not issue asset/governance proofs yet";
 }
 
+function isStrongAuthSensitiveAction(actionId) {
+  return actionId === "prompt_control";
+}
+
 function buildSemanticCapability(actionId) {
   const observerOnly = selectedAgentInteractionMode() === "observer_only";
   const deploymentHint = authDeploymentHint(state.auth);
+  const strongAuthSensitive = isStrongAuthSensitiveAction(actionId);
   if (observerOnly) {
     return {
       actionId,
@@ -248,6 +253,22 @@ function buildSemanticCapability(actionId) {
       code: "observer_only",
       reason:
         "selected agent runs through OpenClaw(Local HTTP); software_safe stays observer-only for prompt/chat on this lane",
+    };
+  }
+  if (strongAuthSensitive && deploymentHint === "hosted_public_join_likely") {
+    return {
+      actionId,
+      enabled: false,
+      code: "strong_auth_required",
+      reason: `${actionId} requires strong_auth on the hosted public join path; this browser is still guest_session only and the strong-auth upgrade lane is not implemented yet`,
+    };
+  }
+  if (strongAuthSensitive && state.auth.available && deploymentHint === "remote_origin_legacy_bootstrap") {
+    return {
+      actionId,
+      enabled: false,
+      code: "strong_auth_required",
+      reason: `${actionId} is blocked on remote-origin legacy bootstrap; hosted/public prompt control must move to strong_auth or private operator plane`,
     };
   }
   if (!state.auth.available) {
@@ -265,7 +286,9 @@ function buildSemanticCapability(actionId) {
     actionId,
     enabled: true,
     code: null,
-    reason: "player_session is active via legacy viewer auth bootstrap preview",
+    reason: strongAuthSensitive
+      ? "prompt_control stays enabled only in trusted_local_preview via legacy viewer auth bootstrap; hosted/public strong_auth remains pending"
+      : "player_session is active via legacy viewer auth bootstrap preview",
   };
 }
 

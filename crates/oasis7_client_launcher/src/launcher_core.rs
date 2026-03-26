@@ -360,6 +360,16 @@ pub(super) fn build_launcher_args(config: &LaunchConfig) -> Result<Vec<String>, 
     if config.scenario.trim().is_empty() {
         return Err("scenario cannot be empty".to_string());
     }
+    let deployment_mode = match config.deployment_mode.trim() {
+        "trusted_local_only" => "trusted_local_only",
+        "hosted_public_join" => "hosted_public_join",
+        _ => {
+            return Err(format!(
+                "deployment mode must be one of trusted_local_only|hosted_public_join, got `{}`",
+                config.deployment_mode.trim()
+            ))
+        }
+    };
     parse_host_port(config.live_bind.as_str(), "live bind")?;
     parse_host_port(config.web_bind.as_str(), "web bind")?;
     let viewer_port = parse_port(config.viewer_port.as_str(), "viewer port")?;
@@ -371,6 +381,8 @@ pub(super) fn build_launcher_args(config: &LaunchConfig) -> Result<Vec<String>, 
     }
 
     let mut args = vec![
+        "--deployment-mode".to_string(),
+        deployment_mode.to_string(),
         "--scenario".to_string(),
         config.scenario.trim().to_string(),
         "--live-bind".to_string(),

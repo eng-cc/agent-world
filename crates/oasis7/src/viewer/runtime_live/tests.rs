@@ -489,6 +489,51 @@ fn runtime_prompt_control_script_mode_requires_llm_mode() {
 }
 
 #[test]
+fn runtime_prompt_control_hosted_public_join_requires_strong_auth() {
+    let _guard = lock_test_llm_env();
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm)
+            .with_hosted_public_join_mode(true),
+    )
+    .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let (public_key, private_key) = test_signer(27);
+    let request = signed_prompt_control_apply_request(
+        crate::viewer::PromptControlApplyRequest {
+            agent_id: agent_id.clone(),
+            player_id: "player-a".to_string(),
+            public_key: None,
+            auth: None,
+            expected_version: Some(0),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        },
+        crate::viewer::PromptControlAuthIntent::Apply,
+        27,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+    let err = server
+        .handle_prompt_control(crate::viewer::PromptControlCommand::Apply { request })
+        .expect_err("hosted public join should require strong auth");
+    assert_eq!(err.code, "strong_auth_required");
+    assert!(err
+        .message
+        .contains("prompt_control requires hosted strong auth"));
+    assert!(server.llm_sidecar.prompt_profiles.is_empty());
+}
+
+#[test]
 fn runtime_prompt_control_openclaw_mode_reports_unsupported() {
     let _guard = runtime_openclaw_env_lock().lock().expect("env lock");
     clear_runtime_openclaw_env();

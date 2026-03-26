@@ -47,6 +47,20 @@ pub(super) fn submit_chain_transfer(
         state.mark_updated();
         return response;
     }
+    if matches!(
+        deployment_mode_from_config(&state.config),
+        DeploymentMode::HostedPublicJoin
+    ) {
+        let response = ChainTransferSubmitResponse::error(
+            "strong_auth_required",
+            "hosted public join blocks main token transfer until the dedicated strong-auth lane lands; legacy viewer signer bootstrap is preview-only",
+        );
+        state.append_log(
+            "chain transfer submit rejected: hosted_public_join requires strong_auth/private plane",
+        );
+        state.mark_updated();
+        return response;
+    }
 
     let chain_status_bind = state.config.chain_status_bind.clone();
     match submit_chain_transfer_remote(chain_status_bind.as_str(), request) {
@@ -1364,10 +1378,12 @@ fn send_interrupt_signal(child: &Child) -> Result<(), String> {
 mod tests {
     use super::{
         parse_chain_feedback_request, parse_chain_transfer_request, submit_chain_feedback_remote,
-        submit_chain_transfer_remote, ChainFeedbackSubmitRequest, ChainTransferSubmitRequest,
+        submit_chain_transfer, submit_chain_transfer_remote, ChainFeedbackSubmitRequest,
+        ChainTransferSubmitRequest, LauncherConfig, ServiceState,
     };
     use std::io::{Read, Write};
     use std::net::TcpListener;
+    use std::path::Path;
     use std::time::Duration;
 
     fn read_http_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
@@ -1507,6 +1523,44 @@ mod tests {
         assert_eq!(response.error_code.as_deref(), Some("invalid_request"));
         assert_eq!(response.error.as_deref(), Some("bad payload"));
         server.join().expect("server thread should finish");
+    }
+
+    #[test]
+    fn submit_chain_transfer_requires_strong_auth_for_hosted_public_join() {
+        let mut state = ServiceState::new(
+            "launcher".to_string(),
+            "chain".to_string(),
+            Path::new(".").to_path_buf(),
+            LauncherConfig {
+                deployment_mode: "hosted_public_join".to_string(),
+                chain_enabled: true,
+                ..LauncherConfig::default()
+            },
+        );
+        let request = ChainTransferSubmitRequest {
+            from_account_id: "awt:pk:alice".to_string(),
+            to_account_id: "protocol:treasury".to_string(),
+            amount: 7,
+            nonce: 2,
+            public_key: "1111111111111111111111111111111111111111111111111111111111111111"
+                .to_string(),
+            signature: concat!(
+                "awttransferauth:v1:",
+                "2222222222222222222222222222222222222222222222222222222222222222",
+                "2222222222222222222222222222222222222222222222222222222222222222"
+            )
+            .to_string(),
+        };
+
+        let response = submit_chain_transfer(&mut state, &request);
+
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("strong_auth_required"));
+        assert!(response
+            .error
+            .as_deref()
+            .is_some_and(|message| message.contains("hosted public join blocks main token transfer")));
+        assert!(state.logs.iter().any(|line| line.contains("strong_auth/private plane")));
     }
 
     #[test]

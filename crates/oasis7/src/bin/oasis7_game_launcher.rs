@@ -288,7 +288,9 @@ fn spawn_oasis7_viewer_live(path: &Path, options: &CliOptions) -> Result<Child, 
         .arg("--bind")
         .arg(options.live_bind.as_str())
         .arg("--web-bind")
-        .arg(options.web_bind.as_str());
+        .arg(options.web_bind.as_str())
+        .arg("--deployment-mode")
+        .arg(options.deployment_mode.as_str());
     for env_name in [
         VIEWER_AGENT_PROVIDER_MODE_ENV,
         VIEWER_OPENCLAW_BASE_URL_ENV,

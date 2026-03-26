@@ -118,6 +118,18 @@ fn parse_positive_u64(raw: &str) -> Option<u64> {
     raw.trim().parse::<u64>().ok().filter(|value| *value > 0)
 }
 
+pub(super) fn hosted_public_join_transfer_blocked(config: &LaunchConfig) -> bool {
+    config.deployment_mode.trim() == "hosted_public_join"
+}
+
+fn hosted_public_join_transfer_block_message(app: &ClientLauncherApp) -> String {
+    app.tr(
+        "转账提交失败：hosted public join 当前仍要求 strong auth，不能继续使用 trusted-local signer bootstrap",
+        "Transfer submit failed: hosted public join still requires strong auth and cannot reuse trusted-local signer bootstrap",
+    )
+    .to_string()
+}
+
 pub(super) fn transfer_amount_presets() -> &'static [u64] {
     &TRANSFER_AMOUNT_PRESETS
 }
@@ -565,6 +577,13 @@ impl ClientLauncherApp {
             return;
         }
 
+        if hosted_public_join_transfer_blocked(&self.config) {
+            let message = hosted_public_join_transfer_block_message(self);
+            self.append_log(message.clone());
+            self.transfer_submit_state = TransferSubmitState::Failed(message);
+            return;
+        }
+
         if !self.config.chain_enabled {
             let message = self
                 .tr(
@@ -667,7 +686,9 @@ impl ClientLauncherApp {
             self.transfer_panel_state.nonce_mode,
             self.transfer_panel_state.auto_nonce_hint,
         );
+        let strong_auth_barrier = hosted_public_join_transfer_blocked(&self.config);
         let submit_enabled = issues.is_empty()
+            && !strong_auth_barrier
             && self.is_feedback_available()
             && !self.web_request_inflight_for(WebRequestDomain::TransferSubmit);
 
@@ -868,6 +889,12 @@ impl ClientLauncherApp {
                             "Transfer submit is unavailable until blockchain is ready",
                         ))
                         .color(egui::Color32::from_rgb(196, 84, 84)),
+                    );
+                }
+                if strong_auth_barrier {
+                    ui.small(
+                        egui::RichText::new(hosted_public_join_transfer_block_message(self))
+                            .color(egui::Color32::from_rgb(196, 84, 84)),
                     );
                 }
                 if !issues.is_empty() {

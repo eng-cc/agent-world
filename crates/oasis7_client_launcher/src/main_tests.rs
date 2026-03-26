@@ -18,8 +18,9 @@ use super::{
     self_guided_blocked_actions::resolve_disabled_cta_plan,
     self_guided_preflight::{resolve_chain_runtime_preflight_state, PreflightCheckState},
     transfer_window::{
-        recommend_default_from_account, recommend_transfer_account_ids, resolve_transfer_timeline,
-        transfer_amount_presets, TransferTimelineState, WebTransferAccountEntry,
+        hosted_public_join_transfer_blocked, recommend_default_from_account,
+        recommend_transfer_account_ids, resolve_transfer_timeline, transfer_amount_presets,
+        TransferTimelineState, WebTransferAccountEntry,
         WebTransferLifecycleStatus,
     },
     ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, GlossaryTerm, LaunchConfig, LauncherStatus,
@@ -66,6 +67,8 @@ fn build_launcher_args_contains_llm_and_no_open_switches() {
     assert!(args.contains(&"--with-llm".to_string()));
     assert!(args.contains(&"--agent-provider-mode".to_string()));
     assert!(args.contains(&"builtin_llm".to_string()));
+    assert!(args.contains(&"--deployment-mode".to_string()));
+    assert!(args.contains(&"trusted_local_only".to_string()));
     assert!(args.contains(&"--no-open-browser".to_string()));
     assert!(args.contains(&"--viewer-static-dir".to_string()));
     assert!(args.contains(&"--chain-disable".to_string()));
@@ -102,6 +105,15 @@ fn build_launcher_args_includes_openclaw_profile_flags() {
     assert!(args.contains(&"3000".to_string()));
     assert!(args.contains(&"--openclaw-agent-profile".to_string()));
     assert!(args.contains(&"oasis7_p0_low_freq_npc".to_string()));
+}
+
+#[test]
+fn hosted_public_join_transfer_barrier_tracks_deployment_mode() {
+    assert!(hosted_public_join_transfer_blocked(&LaunchConfig {
+        deployment_mode: "hosted_public_join".to_string(),
+        ..LaunchConfig::default()
+    }));
+    assert!(!hosted_public_join_transfer_blocked(&LaunchConfig::default()));
 }
 #[test]
 fn build_game_url_rewrites_zero_host() {

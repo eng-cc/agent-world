@@ -51,6 +51,27 @@ impl ViewerRuntimeLiveServer {
         &mut self,
         command: PromptControlCommand,
     ) -> Result<PromptControlAck, PromptControlError> {
+        if self.hosted_public_join_mode() {
+            let (agent_id, current_version) = match &command {
+                PromptControlCommand::Preview { request }
+                | PromptControlCommand::Apply { request } => (
+                    request.agent_id.clone(),
+                    self.current_prompt_version(request.agent_id.as_str()),
+                ),
+                PromptControlCommand::Rollback { request } => (
+                    request.agent_id.clone(),
+                    self.current_prompt_version(request.agent_id.as_str()),
+                ),
+            };
+            return Err(PromptControlError {
+                code: "strong_auth_required".to_string(),
+                message:
+                    "prompt_control requires hosted strong auth on hosted_public_join; trusted local preview bootstrap is not accepted on this lane"
+                        .to_string(),
+                agent_id: Some(agent_id),
+                current_version,
+            });
+        }
         if !self.llm_sidecar.is_llm_mode() {
             let (agent_id, message) = match command {
                 PromptControlCommand::Preview { request }
