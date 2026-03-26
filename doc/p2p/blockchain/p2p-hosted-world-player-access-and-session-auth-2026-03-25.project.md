@@ -125,6 +125,7 @@
   - `ReconnectSync` / `SessionRegistered` / `SessionRotated` ack 已带回当前 `agent_id`，`RevokeSession` 会清掉该 player 的绑定与 nonce/replay 痕迹，保持“撤销即失效、需重新注册”的 hosted v1 语义。
   - public player plane 的 `refresh/release` 现已收紧为 `player_id + release_token` 双绑定校验，并补充 `player_id_required/player_id_mismatch` 单测，避免 token-only 误归还或误续租其他玩家 slot。
   - `oasis7_game_launcher` 的 public player plane 现在会启动独立 runtime presence monitor 线程，维持到 `live_bind` 的常驻连接，先订阅 runtime 事件流消费 `AgentPlayerBound` 增量，再周期性 `RequestSnapshot` 做全量纠偏；public route 不再自己临时短连 probe。凡是“曾经已在 runtime 里出现过、现在又从 runtime binding 中消失”的 player slot，会被 issuer 立即回收，并对旧 browser session 返回 `session_revoked`，让 operator kick / remote revoke 能更快回流到 `world_full` 判定。
+  - hosted admission 的 `world_full` 现不再只看 issuer active slot：`HostedPlayerSessionAdmissionSnapshot` 新增 `effective_player_sessions/runtime_only_player_sessions`，会把 runtime 当前已绑定但不在 issuer 内的 runtime-only occupancy 一并计入有效占用，避免 host restart / issuer 漂移后继续超发 player session。
 - 已实现的 `TASK-P2P-041-D` strong-auth barrier + backend reauth preview slice:
   - `oasis7_web_launcher` 在 `deployment_mode=hosted_public_join` 下会显式拒绝 `POST /api/chain/transfer`，返回结构化 `strong_auth_required`，不再让 public join 路径继续借用 trusted-local signer bootstrap。
   - `oasis7_game_launcher` 的 public player plane 现已新增 `/api/public/strong-auth/grant/prompt-control`：会先校验 `player_id + release_token` 仍对应有效 hosted player session，再要求后端 `approval_code` 正确，最后用服务端环境变量中的 signer 生成短期 `HostedStrongAuthGrant`。
@@ -133,7 +134,7 @@
   - `/api/public/state` 的 `hosted_access` contract 现已导出动态 `action_matrix`：若 `OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY/PRIVATE_KEY/APPROVAL_CODE` 已配置，则 `prompt_control_*` 会从 `blocked_until_strong_auth` 升为 `public_player_plane_with_backend_reauth_preview`；`main_token_transfer` 仍保持 `blocked_until_strong_auth`。
   - 这条 hosted `prompt_control` strong-auth lane 仍明确属于 preview-grade backend reauth：后端 signer 当前只支持 env 托管 + approval code，不是 production signer custody，也不代表资产动作已具备 hosted-ready 安全级别。
 - 当前 blocker:
-  - `guest session -> player session` 的最小 issuer 已落成，且 `max_player_sessions` 已开始在 public issue 面按 active slot + lease TTL 生效；public player plane 现在也会通过独立后台 runtime presence 常驻连接把已消失的历史绑定玩家回收到 issuer slot；但 `world_full/kick_policy` 仍未完全等价于 runtime authoritative presence，因为 runtime 还没有面向所有客户端的通用 unbind/revoke 广播，而且也还没覆盖“刚 issue 尚未 register”“纯 runtime occupancy 无 issuer slot”的全部状态。
+  - `guest session -> player session` 的最小 issuer 已落成，且 `max_player_sessions` 已开始在 public issue 面按“issuer active slot + runtime-only occupancy”的有效占用生效；public player plane 现在也会通过独立后台 runtime presence 常驻连接把已消失的历史绑定玩家回收到 issuer slot；但 `world_full/kick_policy` 仍未完全等价于 runtime authoritative presence，因为 runtime 还没有面向所有客户端的通用 unbind/revoke 广播，也还没覆盖“刚 issue 尚未 register”的全部状态。
   - hosted v1 目前已支持浏览器本地 player session issue + reconnect/register + local release/logout，并能通过周期性 `reconnect_sync` 探针发现部分 remote revoke；但 operator kick 的公开玩家面即时回流、显式 rebind 流程与更稳定的 resume token 仍未收口。
   - `session_register` 目前仍是 runtime-live 内显式注册；host restart / rollback 之后按 v1 规则仍要求重新注册，不是持久化 session registry。
   - 当前只为 `prompt_control_*` 实现了 preview-grade backend reauth slice，而不是完整 `strong_auth` challenge/proof/verification lane；后端 signer 仍是 env 托管 + `approval_code`，`main token transfer` 继续显式阻断，尚未进入 hosted-ready 放行范围。

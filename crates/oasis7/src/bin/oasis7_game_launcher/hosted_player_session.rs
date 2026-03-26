@@ -15,7 +15,9 @@ pub(super) struct HostedPlayerSessionAdmissionSnapshot {
     pub(super) issue_rate_limit_per_minute: u64,
     pub(super) max_player_sessions: u64,
     pub(super) active_player_sessions: u64,
+    pub(super) effective_player_sessions: u64,
     pub(super) runtime_bound_player_sessions: u64,
+    pub(super) runtime_only_player_sessions: u64,
     pub(super) runtime_probe_status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) runtime_probe_error: Option<String>,
@@ -83,6 +85,7 @@ pub(super) struct HostedPlayerSessionIssuer {
     last_observed_runtime_bound_player_sessions: u64,
     last_runtime_probe_unix_ms: Option<u64>,
     last_runtime_probe_error: Option<String>,
+    last_runtime_active_players: BTreeSet<String>,
     runtime_seen_players: BTreeSet<String>,
     runtime_revoked_players: BTreeSet<String>,
 }
@@ -100,6 +103,7 @@ impl HostedPlayerSessionIssuer {
             .filter(|player_id| !player_id.is_empty())
             .map(ToOwned::to_owned)
             .collect();
+        self.last_runtime_active_players = runtime_active_players.clone();
         self.last_observed_runtime_bound_player_sessions = runtime_active_players.len() as u64;
         self.last_runtime_probe_unix_ms = Some(now_unix_ms());
         self.last_runtime_probe_error = None;
@@ -276,12 +280,12 @@ impl HostedPlayerSessionIssuer {
                 grant: None,
             };
         }
-        if admission.active_player_sessions >= admission.max_player_sessions {
+        if admission.effective_player_sessions >= admission.max_player_sessions {
             return HostedPlayerSessionIssueResponse {
                 ok: false,
                 error_code: Some("world_full".to_string()),
                 error: Some(
-                    "hosted player-session active slots are full; wait for a player to leave"
+                    "hosted player-session effective occupancy is full; wait for a player to leave"
                         .to_string(),
                 ),
                 deployment_mode: deployment_mode.as_str().to_string(),
@@ -464,6 +468,18 @@ impl HostedPlayerSessionIssuer {
         max_player_sessions: u64,
     ) -> HostedPlayerSessionAdmissionSnapshot {
         let issued_in_current_window = self.issue_timestamps_unix_ms.len() as u64;
+        let active_player_sessions = self.active_release_tokens_by_player.len() as u64;
+        let runtime_only_player_sessions = self
+            .last_runtime_active_players
+            .iter()
+            .filter(|player_id| {
+                !self
+                    .active_release_tokens_by_player
+                    .contains_key(player_id.as_str())
+            })
+            .count() as u64;
+        let effective_player_sessions =
+            active_player_sessions.saturating_add(runtime_only_player_sessions);
         let runtime_probe_status = if self.last_runtime_probe_unix_ms.is_none() {
             "not_started"
         } else if self.last_runtime_probe_error.is_some() {
@@ -474,8 +490,10 @@ impl HostedPlayerSessionIssuer {
         HostedPlayerSessionAdmissionSnapshot {
             issue_rate_limit_per_minute,
             max_player_sessions,
-            active_player_sessions: self.active_release_tokens_by_player.len() as u64,
+            active_player_sessions,
+            effective_player_sessions,
             runtime_bound_player_sessions: self.last_observed_runtime_bound_player_sessions,
+            runtime_only_player_sessions,
             runtime_probe_status: runtime_probe_status.to_string(),
             runtime_probe_error: self.last_runtime_probe_error.clone(),
             last_runtime_probe_unix_ms: self.last_runtime_probe_unix_ms,
@@ -521,6 +539,7 @@ mod tests {
         assert_eq!(grant.auth_mode, "browser_local_ephemeral_ed25519");
         assert!(grant.release_token.starts_with("hosted-release-"));
         assert_eq!(response.admission.active_player_sessions, 1);
+        assert_eq!(response.admission.effective_player_sessions, 1);
         assert_eq!(response.admission.issued_players_total, 1);
         assert_eq!(response.admission.issued_in_current_window, 1);
     }
@@ -548,6 +567,30 @@ mod tests {
         assert!(!response.ok);
         assert_eq!(response.error_code.as_deref(), Some("world_full"));
         assert_eq!(response.admission.active_player_sessions, 8);
+        assert_eq!(response.admission.effective_player_sessions, 8);
+    }
+
+    #[test]
+    fn hosted_player_session_issue_counts_runtime_only_occupancy_toward_world_full() {
+        let mut issuer = HostedPlayerSessionIssuer::default();
+        issuer.observe_runtime_active_players([
+            "runtime-player-1",
+            "runtime-player-2",
+            "runtime-player-3",
+            "runtime-player-4",
+            "runtime-player-5",
+            "runtime-player-6",
+            "runtime-player-7",
+            "runtime-player-8",
+        ]);
+
+        let response = issuer.issue(DeploymentMode::HostedPublicJoin);
+        assert!(!response.ok);
+        assert_eq!(response.error_code.as_deref(), Some("world_full"));
+        assert_eq!(response.admission.active_player_sessions, 0);
+        assert_eq!(response.admission.runtime_bound_player_sessions, 8);
+        assert_eq!(response.admission.runtime_only_player_sessions, 8);
+        assert_eq!(response.admission.effective_player_sessions, 8);
     }
 
     #[test]
@@ -572,8 +615,10 @@ mod tests {
         let response = issuer.admission(DeploymentMode::HostedPublicJoin);
         assert!(response.ok);
         assert_eq!(response.admission.active_player_sessions, 1);
+        assert_eq!(response.admission.effective_player_sessions, 1);
         assert_eq!(response.admission.max_player_sessions, 8);
         assert_eq!(response.admission.runtime_bound_player_sessions, 0);
+        assert_eq!(response.admission.runtime_only_player_sessions, 0);
         assert_eq!(response.admission.runtime_probe_status, "not_started");
         assert_eq!(response.admission.runtime_probe_error, None);
         assert_eq!(response.admission.slot_lease_ttl_ms, SLOT_LEASE_TTL_MS);
@@ -602,6 +647,7 @@ mod tests {
         );
         assert!(response.ok);
         assert_eq!(response.admission.active_player_sessions, 1);
+        assert_eq!(response.admission.effective_player_sessions, 1);
     }
 
     #[test]
@@ -646,13 +692,17 @@ mod tests {
         issuer.observe_runtime_active_players([grant.player_id.as_str()]);
         let admission = issuer.admission(DeploymentMode::HostedPublicJoin);
         assert_eq!(admission.admission.active_player_sessions, 1);
+        assert_eq!(admission.admission.effective_player_sessions, 1);
         assert_eq!(admission.admission.runtime_bound_player_sessions, 1);
+        assert_eq!(admission.admission.runtime_only_player_sessions, 0);
         assert_eq!(admission.admission.runtime_probe_status, "ok");
 
         issuer.observe_runtime_active_players(std::iter::empty::<&str>());
         let admission = issuer.admission(DeploymentMode::HostedPublicJoin);
         assert_eq!(admission.admission.active_player_sessions, 0);
+        assert_eq!(admission.admission.effective_player_sessions, 0);
         assert_eq!(admission.admission.runtime_bound_player_sessions, 0);
+        assert_eq!(admission.admission.runtime_only_player_sessions, 0);
         assert_eq!(admission.admission.released_players_total, 1);
 
         let refresh = issuer.refresh(
@@ -675,5 +725,20 @@ mod tests {
             Some("connect runtime live failed")
         );
         assert!(response.admission.last_runtime_probe_unix_ms.is_some());
+    }
+
+    #[test]
+    fn hosted_player_session_admission_reports_runtime_only_occupancy_separately() {
+        let mut issuer = HostedPlayerSessionIssuer::default();
+        let issue = issuer.issue(DeploymentMode::HostedPublicJoin);
+        let grant = issue.grant.expect("grant");
+        issuer.observe_runtime_active_players([grant.player_id.as_str(), "runtime-player-extra"]);
+
+        let response = issuer.admission(DeploymentMode::HostedPublicJoin);
+        assert!(response.ok);
+        assert_eq!(response.admission.active_player_sessions, 1);
+        assert_eq!(response.admission.runtime_bound_player_sessions, 2);
+        assert_eq!(response.admission.runtime_only_player_sessions, 1);
+        assert_eq!(response.admission.effective_player_sessions, 2);
     }
 }
