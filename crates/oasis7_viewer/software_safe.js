@@ -2888,6 +2888,7 @@ function renderInteractionPanel() {
   const promptCapability = authSurface.capabilities.prompt_control;
   const chatCapability = authSurface.capabilities.agent_chat;
   const mainTokenTransferCapability = authSurface.capabilities.main_token_transfer;
+  const mainTokenTransferPolicy = hostedActionPolicy("main_token_transfer");
   const interactionEnabled = promptCapability.enabled;
   const strongAuthGrantHint = authSurface.capabilities.prompt_control.enabled
     && String(state.hostedAccess?.deployment_mode || "").trim() === "hosted_public_join"
@@ -2905,6 +2906,10 @@ function renderInteractionPanel() {
   const chatHistory = state.chatHistory
     .filter((entry) => entry.agentId === agentId || entry.targetAgentId === agentId)
     .slice(0, 12);
+  const assetLaneStatusText = mainTokenTransferCapability.enabled ? "preview_only" : mainTokenTransferCapability.code || "blocked";
+  const assetLaneDetail = mainTokenTransferCapability.enabled
+    ? "Contract marks main_token_transfer as strong_auth-capable on this lane, but software_safe still exposes no transfer form here."
+    : mainTokenTransferCapability.reason;
 
   return `
     <div class="stack">
@@ -2919,9 +2924,9 @@ function renderInteractionPanel() {
         <span class="badge">boundKey=${escapeHtml(binding?.publicKey ? `${binding.publicKey.slice(0, 10)}…` : "-")}</span>
         <span class="${promptCapability.enabled ? "badge badge--good" : "badge badge--warn"}">prompt=${escapeHtml(promptCapability.enabled ? "enabled" : promptCapability.code)}</span>
         <span class="${chatCapability.enabled ? "badge badge--good" : "badge badge--warn"}">chat=${escapeHtml(chatCapability.enabled ? "enabled" : chatCapability.code)}</span>
-        <span class="badge badge--warn">mainToken=${escapeHtml(mainTokenTransferCapability.code)}</span>
+        <span class="${mainTokenTransferCapability.enabled ? "badge badge--good" : "badge badge--warn"}">mainToken=${escapeHtml(assetLaneStatusText)}</span>
       </div>
-      <div class="empty">${escapeHtml(mainTokenTransferCapability.reason)}</div>
+      <div class="empty">${escapeHtml(assetLaneDetail)}</div>
       <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
         <div class="panel__header"><div class="panel__title">Prompt Overrides</div></div>
         <div class="panel__body stack">
@@ -2959,6 +2964,21 @@ function renderInteractionPanel() {
           ${state.strongAuth.lastGrantError
             ? `<div class="empty" style="color:var(--bad);">${escapeHtml(state.strongAuth.lastGrantError)}</div>`
             : ""}
+        </div>
+      </div>
+      <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
+        <div class="panel__header"><div class="panel__title">Asset / Governance Lane</div></div>
+        <div class="panel__body stack">
+          <div class="badge-row">
+            <span class="${mainTokenTransferCapability.enabled ? "badge badge--good" : "badge badge--warn"}">main_token_transfer=${escapeHtml(assetLaneStatusText)}</span>
+            <span class="badge">required_auth=${escapeHtml(mainTokenTransferPolicy?.required_auth || "-")}</span>
+            <span class="badge">availability=${escapeHtml(mainTokenTransferPolicy?.availability || "-")}</span>
+          </div>
+          <div class="empty">${escapeHtml(assetLaneDetail)}</div>
+          <div class="empty">${escapeHtml(mainTokenTransferPolicy?.reason || "No hosted action policy is available for main_token_transfer on this lane.")}</div>
+          <div class="toolbar">
+            <button disabled>Main Token Transfer (Not Exposed Here Yet)</button>
+          </div>
         </div>
       </div>
       <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">

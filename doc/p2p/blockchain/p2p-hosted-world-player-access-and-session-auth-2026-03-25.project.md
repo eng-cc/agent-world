@@ -143,6 +143,7 @@
   - `software_safe.js` 现会在 hosted public join 的 `prompt_control` lane 显示 `Backend Approval Code`，并改走同源通用 strong-auth grant route；`__AW_TEST__.getState()` 也会回出 `strongAuthApprovalCodeConfigured/strongAuthLastGrant*` 供 QA 取证。
   - `software_safe.js` 的 `authSurface.capabilities` 与页面 badge 现会显式导出 `main_token_transfer`，不再继续用 `strong_auth_actions` 这类代理概念代指真实资产动作；即便前端仍未开放资产操作，QA 也能直接看到真实 action_id 的 hosted verdict。
   - viewer summary 现已新增可读的 `Hosted Action Matrix` 面板，并把同一份结果同步暴露到 `__AW_TEST__.getState().hostedActionMatrix`；QA 不必再手抄 `hostedAccess.action_matrix` JSON 或靠按钮状态倒推 hosted verdict。
+  - 交互区现已新增独立的 `Asset / Governance Lane` 面板：会单独展示 `main_token_transfer` 的 `required_auth/availability`、当前阻断原因，并给出禁用 CTA，避免资产动作仍只是一行 badge 或 buried 在 action matrix 里。
   - `/api/public/state` 的 `hosted_access` contract 现已导出动态 `action_matrix`：若 `OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY/PRIVATE_KEY/APPROVAL_CODE` 已配置，则 `prompt_control_*` 会从 `blocked_until_strong_auth` 升为 `public_player_plane_with_backend_reauth_preview`；`main_token_transfer` 仍保持 `blocked_until_strong_auth`。
   - 当前 grant route 虽已泛化到 `action_id` 维度，但 allowlist 仍只放行 `prompt_control_*`；若请求 `main_token_transfer`，public player plane 会显式返回 `strong_auth_action_not_enabled`，避免 route 泛化后被误读成 hosted 资产动作已可用。
   - 这条 hosted `prompt_control` strong-auth lane 仍明确属于 preview-grade backend reauth：后端 signer 当前只支持 env 托管 + approval code，不是 production signer custody，也不代表资产动作已具备 hosted-ready 安全级别。
