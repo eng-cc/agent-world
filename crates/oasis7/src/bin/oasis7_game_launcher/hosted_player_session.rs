@@ -8,6 +8,7 @@ pub(super) const HOSTED_PLAYER_SESSION_RELEASE_ROUTE: &str = "/api/public/player
 pub(super) const HOSTED_PLAYER_SESSION_ADMISSION_ROUTE: &str = "/api/public/player-session/admission";
 pub(super) const HOSTED_PLAYER_SESSION_REFRESH_ROUTE: &str = "/api/public/player-session/refresh";
 const ISSUE_WINDOW_MS: u64 = 60_000;
+const PENDING_REGISTRATION_TTL_MS: u64 = 30_000;
 const SLOT_LEASE_TTL_MS: u64 = 120_000;
 
 #[derive(Debug, Clone, Serialize)]
@@ -24,6 +25,7 @@ pub(super) struct HostedPlayerSessionAdmissionSnapshot {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) last_runtime_probe_unix_ms: Option<u64>,
     pub(super) slot_lease_ttl_ms: u64,
+    pub(super) pending_registration_ttl_ms: u64,
     pub(super) issued_players_total: u64,
     pub(super) released_players_total: u64,
     pub(super) issued_in_current_window: u64,
@@ -141,6 +143,7 @@ impl HostedPlayerSessionIssuer {
     ) -> HostedPlayerSessionAdmissionResponse {
         let contract = hosted_player_access_contract(deployment_mode);
         self.prune_old_timestamps();
+        self.prune_expired_slots();
         HostedPlayerSessionAdmissionResponse {
             ok: true,
             error_code: None,
@@ -427,10 +430,19 @@ impl HostedPlayerSessionIssuer {
     }
 
     fn prune_expired_slots(&mut self) {
-        let cutoff = now_unix_ms().saturating_sub(SLOT_LEASE_TTL_MS);
+        let now_unix_ms = now_unix_ms();
         let mut expired_tokens = Vec::new();
         for (token, last_seen) in &self.last_seen_unix_ms_by_release_token {
-            if *last_seen < cutoff {
+            let Some(player_id) = self.active_players_by_release_token.get(token.as_str()) else {
+                expired_tokens.push(token.clone());
+                continue;
+            };
+            let ttl_ms = if self.runtime_seen_players.contains(player_id.as_str()) {
+                SLOT_LEASE_TTL_MS
+            } else {
+                PENDING_REGISTRATION_TTL_MS
+            };
+            if now_unix_ms.saturating_sub(*last_seen) > ttl_ms {
                 expired_tokens.push(token.clone());
             }
         }
@@ -498,6 +510,7 @@ impl HostedPlayerSessionIssuer {
             runtime_probe_error: self.last_runtime_probe_error.clone(),
             last_runtime_probe_unix_ms: self.last_runtime_probe_unix_ms,
             slot_lease_ttl_ms: SLOT_LEASE_TTL_MS,
+            pending_registration_ttl_ms: PENDING_REGISTRATION_TTL_MS,
             issued_players_total: self.issued_players_total,
             released_players_total: self.released_players_total,
             issued_in_current_window,
@@ -622,6 +635,10 @@ mod tests {
         assert_eq!(response.admission.runtime_probe_status, "not_started");
         assert_eq!(response.admission.runtime_probe_error, None);
         assert_eq!(response.admission.slot_lease_ttl_ms, SLOT_LEASE_TTL_MS);
+        assert_eq!(
+            response.admission.pending_registration_ttl_ms,
+            PENDING_REGISTRATION_TTL_MS
+        );
     }
 
     #[test]
@@ -740,5 +757,45 @@ mod tests {
         assert_eq!(response.admission.runtime_bound_player_sessions, 2);
         assert_eq!(response.admission.runtime_only_player_sessions, 1);
         assert_eq!(response.admission.effective_player_sessions, 2);
+    }
+
+    #[test]
+    fn hosted_player_session_pending_registration_slots_expire_before_full_lease_ttl() {
+        let mut issuer = HostedPlayerSessionIssuer::default();
+        let issue = issuer.issue(DeploymentMode::HostedPublicJoin);
+        let grant = issue.grant.expect("grant");
+        let token = grant.release_token;
+        let stale_seen_at = now_unix_ms()
+            .saturating_sub(PENDING_REGISTRATION_TTL_MS)
+            .saturating_sub(1);
+        issuer
+            .last_seen_unix_ms_by_release_token
+            .insert(token.clone(), stale_seen_at);
+
+        let response = issuer.admission(DeploymentMode::HostedPublicJoin);
+        assert!(response.ok);
+        assert_eq!(response.admission.active_player_sessions, 0);
+        assert_eq!(response.admission.effective_player_sessions, 0);
+        assert_eq!(response.admission.released_players_total, 1);
+    }
+
+    #[test]
+    fn hosted_player_session_runtime_seen_slots_keep_full_lease_ttl() {
+        let mut issuer = HostedPlayerSessionIssuer::default();
+        let issue = issuer.issue(DeploymentMode::HostedPublicJoin);
+        let grant = issue.grant.expect("grant");
+        issuer.observe_runtime_active_players([grant.player_id.as_str()]);
+        let token = grant.release_token;
+        let still_alive_seen_at = now_unix_ms()
+            .saturating_sub(PENDING_REGISTRATION_TTL_MS)
+            .saturating_sub(1);
+        issuer
+            .last_seen_unix_ms_by_release_token
+            .insert(token.clone(), still_alive_seen_at);
+
+        let response = issuer.admission(DeploymentMode::HostedPublicJoin);
+        assert!(response.ok);
+        assert_eq!(response.admission.active_player_sessions, 1);
+        assert_eq!(response.admission.effective_player_sessions, 1);
     }
 }
