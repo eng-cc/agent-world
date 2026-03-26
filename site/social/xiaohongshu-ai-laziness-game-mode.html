@@ -625,6 +625,7 @@
 
       .ladder-main {
         display: grid;
+        align-content: start;
         gap: 18px;
       }
 
@@ -661,6 +662,7 @@
 
       .question-side {
         display: grid;
+        align-content: start;
         gap: 18px;
       }
 
@@ -784,23 +786,23 @@
         {
           kind: "cover",
           title: 'AI时代，<br />你变<span class="accent">"懒"</span>了么',
-          subtitle: "我这阵子有个变化挺明显。不只写东西卡住会先问 AI，打游戏卡关也开始想先看答案。",
+          subtitle: "我这阵子有个变化挺明显。不只写东西想省事，打游戏的时候我也越来越想把时间留给做决定。",
           noteTitle: "这事我自己也有",
-          noteBody: "以前会先乱试几把。现在有时候第一反应已经是：要不要先看一眼攻略？",
+          noteBody: "我想省掉的不是决策。是那些重复、机械、明知道还得做很多遍的事。",
           compareLeft: "以前卡关会先自己试一会儿",
-          compareRight: "现在更容易先查攻略 / 问 AI",
-          prompt: "如果攻略和答案越来越容易拿到手，游戏还该留什么给人？",
+          compareRight: "现在更想把时间留给做决定",
+          prompt: "如果重复劳动都能被省掉，游戏还该留什么给人？",
         },
         {
           kind: "chat",
           title: "我发现自己会偷懒",
           stickyTitle: "先承认这件事",
-          stickyBody: "整理、改字会先找 AI。连打游戏卡关，我现在也更容易先查攻略。",
+          stickyBody: "整理、改字会先找 AI。连打游戏，我现在也越来越不想把时间耗在重复操作上。",
           userTitle: "以前的停顿",
-          userBody: '<span class="strike">等等，我先自己试一下</span>',
+          userBody: '<span class="strike">重复刷 / 重复跑 / 重复点</span>',
           aiTitle: "现在更常见的反应",
-          aiBody: "先搜攻略，或者先让 AI 把配装和路线捋一下。",
-          tail: "省事当然爽。可要是连自己试都省了，游戏那口气也会淡。",
+          aiBody: "这些要是能被系统接走，我更想把时间留给决定怎么打。",
+          tail: "省掉重复劳动我完全接受。关键是，做决定这件事别一起被省掉。",
         },
         {
           kind: "allowed",
@@ -821,48 +823,48 @@
             },
           ],
           summary: "这些懒没问题",
-          summaryBody: "因为被省掉的主要还是体力活，不是那个“我自己来试”的劲。",
+          summaryBody: "因为被省掉的主要还是体力活，这样时间才留得下来给判断和取舍。",
           list: ["整理", "改字", "刷材料"],
         },
         {
           kind: "question",
-          title: "但如果连自己试都被省掉了",
-          body: "连“先自己试试”“先自己判断一下”这两步都被跳过去了，那游戏还剩什么是一定要你自己来的？",
+          title: "重复劳动可以少一点",
+          body: "如果系统能把刷、跑、点这些重复事接过去，那玩家最该保留下来的，是不是就该是决策？",
           ladder: [
             {
-              label: "先被接走的",
-              title: "动作",
-              body: "点一下、改一下、补一下，效率确实上来了。",
+              label: "可以被省掉的",
+              title: "重复劳动",
+              body: "刷、跑、点、做很多次一样的事，这些真的很耗时间。",
             },
             {
-              label: "我开始警惕的",
-              title: "自己试 + 自己判断",
-              body: "什么时候该停、怎么试、怎么选，这部分一丢，游戏就容易只剩答案。",
+              label: "最好留下来的",
+              title: "关键决策",
+              body: "先做什么、资源给谁、这步赌不赌，这些我还是想自己定。",
             },
           ],
           sideTitle: "我在意的是",
-          sideBody: "有些地方还是得留给玩家自己试、自己选、自己吃后果。不然太像照着答案抄。",
-          tokens: ["自己试", "自己判断", "自己吃后果"],
+          sideBody: "我想要的不是全自动通关。是少做重复事，把时间留给判断。",
+          tokens: ["先做什么", "资源给谁", "赌不赌"],
         },
         {
           kind: "closing",
-          title: "你最不想省掉的<br />到底是哪一步？",
-          body: "如果攻略、配装、答案都越来越容易拿到手，你最不想省掉哪一步？",
+          title: "如果游戏能替你省事<br />你最想自己留下什么决定？",
+          body: "如果重复劳动都能被接走，你最想自己保留哪一类决策？",
           options: [
             {
-              title: "自己试",
-              body: "先自己试、自己绕、自己踩坑，这口气不能一下全没了。",
+              title: "先做什么",
+              body: "第一步先投哪里、先做哪边，这个我想自己定。",
             },
             {
-              title: "自己判断",
-              body: "这会儿该怎么选，最好还是你自己定。",
+              title: "资源给谁",
+              body: "资源先砸哪、先保守还是先冒险，我来选。",
             },
             {
-              title: "自己吃后果",
-              body: "选错了也得自己吃到，这样才像自己打的。",
+              title: "赌不赌",
+              body: "这步要不要冒险、要不要梭进去，我想自己拍板。",
             },
           ],
-          footer: "我现在最舍不得省掉的，是后两步。你呢？",
+          footer: "我想省掉的是重复劳动，不是决策本身。你呢？",
         },
       ];
 
@@ -1032,9 +1034,13 @@
                     <p style="margin-top: 18px;">${slide.sideBody}</p>
                   </div>
                   <div class="token-cloud">
-                    <span class="token">自己试</span>
-                    <span class="token hot">自己判断</span>
-                    <span class="token soft">自己吃后果</span>
+                    ${slide.tokens
+                      .map(
+                        (token, tokenIndex) => `
+                    <span class="token${tokenIndex === 1 ? " hot" : tokenIndex === 2 ? " soft" : ""}">${token}</span>
+                  `,
+                      )
+                      .join("")}
                   </div>
                 </div>
               </div>
