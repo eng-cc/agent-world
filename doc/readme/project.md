@@ -337,7 +337,7 @@
     - `site/social/xiaohongshu-player-boundary-slide5.png`
     - `doc/devlog/2026-03-25.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "为什么我不想让玩家直接操控角色|玩家不是直接操控角色|指定目标|提供提示词|影响组织结构|你会更想直接操控角色" doc/readme/governance/readme-xiaohongshu-player-boundary-post-pack-2026-03-25.md`
+    - `rg -n "玩家为什么不能直接控制角色|你不是去附身一个角色|你不是去操控一个人|定目标|给提示|直接控一个角色" doc/readme/governance/readme-xiaohongshu-player-boundary-post-pack-2026-03-25.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 - [x] TASK-README-037 (PRD-README-027) [test_tier_required]: 为小红书第五篇“AI时代，你变\"懒\"了么”补齐独立素材包，固定标题、正文、轮播结构、互动问题与游戏模式讨论收口。
