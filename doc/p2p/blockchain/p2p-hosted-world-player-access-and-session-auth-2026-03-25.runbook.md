@@ -103,6 +103,9 @@
 - `claims_frozen`
 - `follow_up_owner`
 
+模板入口：
+- `doc/testing/templates/hosted-world-operator-incident-template.md`
+
 推荐把结论同步回：
 - `doc/devlog/YYYY-MM-DD.md`
 - 当前 topic 的 `project.md`
