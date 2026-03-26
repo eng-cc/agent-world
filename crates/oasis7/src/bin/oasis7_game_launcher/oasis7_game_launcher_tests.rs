@@ -300,12 +300,14 @@ fn parse_host_port_rejects_zero_port() {
 fn build_game_url_rewrites_zero_bind_host_to_loopback() {
     let options = CliOptions {
         viewer_host: "0.0.0.0".to_string(),
+        deployment_mode: "hosted_public_join".to_string(),
         viewer_port: 4173,
         web_bind: "0.0.0.0:5011".to_string(),
         ..CliOptions::default()
     };
     let url = build_game_url(&options);
-    assert_eq!(url, "http://127.0.0.1:4173/?ws=ws://127.0.0.1:5011");
+    assert!(url.starts_with("http://127.0.0.1:4173/?ws=ws%3A%2F%2F127.0.0.1%3A5011&hosted_access="));
+    assert!(url.contains("%22deployment_mode%22%3A%22hosted_public_join%22"));
 }
 
 #[test]
@@ -317,7 +319,8 @@ fn build_game_url_brackets_ipv6_hosts() {
         ..CliOptions::default()
     };
     let url = build_game_url(&options);
-    assert_eq!(url, "http://[::1]:4173/?ws=ws://[::1]:5011");
+    assert!(url.starts_with("http://[::1]:4173/?ws=ws%3A%2F%2F%5B%3A%3A1%5D%3A5011&hosted_access="));
+    assert!(url.contains("%22deployment_mode%22%3A%22trusted_local_only%22"));
 }
 
 #[test]

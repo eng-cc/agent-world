@@ -725,10 +725,43 @@ fn build_game_url(options: &CliOptions) -> String {
         .unwrap_or_else(|_| ("127.0.0.1".to_string(), 5011));
     let bridge_host = normalize_bind_host_for_local_access(bridge_host.as_str());
     let bridge_host = host_for_url(bridge_host.as_str());
+    let ws_url = format!("ws://{bridge_host}:{bridge_port}");
+    let hosted_access_hint = serde_json::to_string(&hosted_access::hosted_viewer_access_hint(
+        deployment_mode_from_options(options),
+    ))
+    .unwrap_or_else(|_| "{}".to_string());
     format!(
-        "http://{viewer_host}:{}/?ws=ws://{bridge_host}:{bridge_port}",
-        options.viewer_port
+        "http://{viewer_host}:{}/?{}&{}",
+        options.viewer_port,
+        encoded_query_pair("ws", ws_url.as_str()),
+        encoded_query_pair("hosted_access", hosted_access_hint.as_str()),
     )
+}
+
+fn encode_query_value(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            encoded.push(byte as char);
+        } else {
+            encoded.push('%');
+            encoded.push(hex_upper(byte >> 4));
+            encoded.push(hex_upper(byte & 0x0f));
+        }
+    }
+    encoded
+}
+
+fn encoded_query_pair(key: &str, value: &str) -> String {
+    format!("{key}={}", encode_query_value(value))
+}
+
+fn hex_upper(nibble: u8) -> char {
+    match nibble {
+        0..=9 => (b'0' + nibble) as char,
+        10..=15 => (b'A' + (nibble - 10)) as char,
+        _ => '0',
+    }
 }
 
 fn normalize_http_target(host: &str, port: u16, label: &str) -> Result<(String, u16), String> {

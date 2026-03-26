@@ -523,8 +523,94 @@ pub(super) fn build_game_url(config: &LaunchConfig) -> String {
         .unwrap_or(("127.0.0.1".to_string(), 5011));
     let web_host = normalize_host_for_url(web_host.as_str());
     let web_host = host_for_url(web_host.as_str());
+    let ws_url = format!("ws://{web_host}:{web_port}");
+    let hosted_access_hint = serde_json::json!({
+        "deployment_mode": config.deployment_mode.trim(),
+        "verdict": "specified_not_implemented",
+        "browser_signer_bootstrap": if config.deployment_mode.trim() == "hosted_public_join" {
+            "disabled_for_public_player_plane"
+        } else {
+            "trusted_local_bootstrap_allowed"
+        },
+        "session_ladder": ["guest_session", "player_session", "strong_auth"],
+        "action_matrix": [
+            {
+                "action_id": "gameplay_action",
+                "required_auth": "player_session",
+                "availability": "public_player_plane",
+                "reason": "core gameplay input stays on the player_session lane",
+            },
+            {
+                "action_id": "agent_chat",
+                "required_auth": "player_session",
+                "availability": "public_player_plane",
+                "reason": "agent chat currently stays on the low-risk player_session lane",
+            },
+            {
+                "action_id": "prompt_control_preview",
+                "required_auth": "strong_auth",
+                "availability": if config.deployment_mode.trim() == "hosted_public_join" {
+                    "blocked_until_strong_auth"
+                } else {
+                    "trusted_local_preview_only"
+                },
+                "reason": if config.deployment_mode.trim() == "hosted_public_join" {
+                    "hosted public join keeps this action behind strong_auth/private plane until the dedicated proof lane lands"
+                } else {
+                    "trusted local preview may still use preview bootstrap; hosted/public strong-auth lane remains pending"
+                },
+            },
+            {
+                "action_id": "prompt_control_apply",
+                "required_auth": "strong_auth",
+                "availability": if config.deployment_mode.trim() == "hosted_public_join" {
+                    "blocked_until_strong_auth"
+                } else {
+                    "trusted_local_preview_only"
+                },
+                "reason": if config.deployment_mode.trim() == "hosted_public_join" {
+                    "hosted public join keeps this action behind strong_auth/private plane until the dedicated proof lane lands"
+                } else {
+                    "trusted local preview may still use preview bootstrap; hosted/public strong-auth lane remains pending"
+                },
+            },
+            {
+                "action_id": "prompt_control_rollback",
+                "required_auth": "strong_auth",
+                "availability": if config.deployment_mode.trim() == "hosted_public_join" {
+                    "blocked_until_strong_auth"
+                } else {
+                    "trusted_local_preview_only"
+                },
+                "reason": if config.deployment_mode.trim() == "hosted_public_join" {
+                    "hosted public join keeps this action behind strong_auth/private plane until the dedicated proof lane lands"
+                } else {
+                    "trusted local preview may still use preview bootstrap; hosted/public strong-auth lane remains pending"
+                },
+            },
+            {
+                "action_id": "main_token_transfer",
+                "required_auth": "strong_auth",
+                "availability": if config.deployment_mode.trim() == "hosted_public_join" {
+                    "blocked_until_strong_auth"
+                } else {
+                    "trusted_local_preview_only"
+                },
+                "reason": if config.deployment_mode.trim() == "hosted_public_join" {
+                    "hosted public join keeps this action behind strong_auth/private plane until the dedicated proof lane lands"
+                } else {
+                    "trusted local preview may still use preview bootstrap; hosted/public strong-auth lane remains pending"
+                },
+            },
+        ],
+    })
+    .to_string();
 
-    format!("http://{viewer_host}:{viewer_port}/?ws=ws://{web_host}:{web_port}")
+    format!(
+        "http://{viewer_host}:{viewer_port}/?{}&{}",
+        encoded_query_pair("ws", ws_url.as_str()),
+        encoded_query_pair("hosted_access", hosted_access_hint.as_str()),
+    )
 }
 
 #[cfg(not(target_arch = "wasm32"))]
