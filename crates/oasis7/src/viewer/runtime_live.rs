@@ -1767,7 +1767,9 @@ impl ViewerRuntimeLiveServer {
     }
 
     fn apply_session_revoke_binding(&mut self, player_id: &str, _revoked_pubkey: &str) {
-        let _ = self.llm_sidecar.clear_player_binding(player_id);
+        if let Some(event) = self.llm_sidecar.clear_player_binding(player_id) {
+            self.enqueue_virtual_event(event);
+        }
     }
 
     fn apply_session_rotate_binding(

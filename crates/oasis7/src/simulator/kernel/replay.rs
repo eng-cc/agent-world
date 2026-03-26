@@ -543,6 +543,56 @@ impl WorldKernel {
                     }
                 }
             }
+            WorldEventKind::AgentPlayerUnbound {
+                agent_id,
+                player_id,
+                public_key,
+            } => {
+                if !self.model.agents.contains_key(agent_id) {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("agent not found for player unbinding: {}", agent_id),
+                    });
+                }
+                if player_id.trim().is_empty() {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("empty player_id for agent unbinding: {}", agent_id),
+                    });
+                }
+                let normalized_public_key = public_key
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(ToOwned::to_owned);
+                if public_key.is_some() && normalized_public_key.is_none() {
+                    return Err(PersistError::ReplayConflict {
+                        message: format!("empty public_key for agent unbinding: {}", agent_id),
+                    });
+                }
+                if let Some(bound_player_id) = self.model.agent_player_bindings.get(agent_id) {
+                    if bound_player_id != player_id {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "player unbinding mismatch for agent {}: expected={} actual={}",
+                                agent_id, bound_player_id, player_id
+                            ),
+                        });
+                    }
+                }
+                if let Some(existing_public_key) =
+                    self.model.agent_player_public_key_bindings.get(agent_id)
+                {
+                    if normalized_public_key.as_deref() != Some(existing_public_key.as_str()) {
+                        return Err(PersistError::ReplayConflict {
+                            message: format!(
+                                "public_key mismatch for agent unbinding: {}",
+                                agent_id
+                            ),
+                        });
+                    }
+                }
+                self.model.agent_player_bindings.remove(agent_id);
+                self.model.agent_player_public_key_bindings.remove(agent_id);
+            }
             WorldEventKind::SocialFactPublished { fact } => {
                 self.replay_social_fact_published(fact)
                     .map_err(|message| PersistError::ReplayConflict { message })?;

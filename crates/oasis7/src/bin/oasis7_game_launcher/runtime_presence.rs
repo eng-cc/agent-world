@@ -170,9 +170,15 @@ impl RuntimePresenceMonitorClient {
             return true;
         }
         match response {
-            ViewerResponse::Event { event } => runtime_players_from_event(&event)
-                .map(|player_id| self.active_players.insert(player_id))
-                .unwrap_or(false),
+            ViewerResponse::Event { event } => match runtime_players_from_event(&event) {
+                Some(RuntimePlayerPresenceDelta::Bound(player_id)) => {
+                    self.active_players.insert(player_id)
+                }
+                Some(RuntimePlayerPresenceDelta::Unbound(player_id)) => {
+                    self.active_players.remove(player_id.as_str())
+                }
+                None => false,
+            },
             _ => false,
         }
     }
@@ -282,6 +288,11 @@ enum ViewerResponseLine {
     Closed,
 }
 
+enum RuntimePlayerPresenceDelta {
+    Bound(String),
+    Unbound(String),
+}
+
 fn runtime_players_from_response(response: &ViewerResponse) -> Option<BTreeSet<String>> {
     let ViewerResponse::Snapshot { snapshot } = response else {
         return None;
@@ -300,11 +311,15 @@ fn runtime_players_from_snapshot(snapshot: &WorldSnapshot) -> BTreeSet<String> {
         .collect()
 }
 
-fn runtime_players_from_event(event: &WorldEvent) -> Option<String> {
+fn runtime_players_from_event(event: &WorldEvent) -> Option<RuntimePlayerPresenceDelta> {
     match &event.kind {
         WorldEventKind::AgentPlayerBound { player_id, .. } => {
             let player_id = player_id.trim();
-            (!player_id.is_empty()).then(|| player_id.to_string())
+            (!player_id.is_empty()).then(|| RuntimePlayerPresenceDelta::Bound(player_id.to_string()))
+        }
+        WorldEventKind::AgentPlayerUnbound { player_id, .. } => {
+            let player_id = player_id.trim();
+            (!player_id.is_empty()).then(|| RuntimePlayerPresenceDelta::Unbound(player_id.to_string()))
         }
         _ => None,
     }
@@ -381,6 +396,21 @@ mod tests {
                     },
                 },
             );
+            write_response(
+                &mut writer,
+                &ViewerResponse::Event {
+                    event: WorldEvent {
+                        id: 2,
+                        time: 2,
+                        kind: WorldEventKind::AgentPlayerUnbound {
+                            agent_id: "agent-a".to_string(),
+                            player_id: "player-a".to_string(),
+                            public_key: None,
+                        },
+                        runtime_event: None,
+                    },
+                },
+            );
 
             expect_subscribe(&mut reader, &[ViewerStream::Events, ViewerStream::Snapshot]);
             expect_request_type(&mut reader, |request| {
@@ -406,6 +436,12 @@ mod tests {
         assert_eq!(
             client.active_players(),
             &BTreeSet::from(["player-a".to_string(), "player-b".to_string()])
+        );
+
+        assert!(client.poll_once().expect("poll unbind event"));
+        assert_eq!(
+            client.active_players(),
+            &BTreeSet::from(["player-b".to_string()])
         );
 
         client.request_snapshot_sync().expect("snapshot sync");

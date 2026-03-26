@@ -346,12 +346,16 @@ impl RuntimeLlmSidecar {
     pub(in crate::viewer::runtime_live) fn clear_player_binding(
         &mut self,
         player_id: &str,
-    ) -> Option<String> {
+    ) -> Option<WorldEventKind> {
         let player_id = player_id.trim();
         let agent_id = self.player_agent_bindings.remove(player_id)?;
         self.agent_player_bindings.remove(agent_id.as_str());
-        self.agent_public_key_bindings.remove(agent_id.as_str());
-        Some(agent_id)
+        let public_key = self.agent_public_key_bindings.remove(agent_id.as_str());
+        Some(WorldEventKind::AgentPlayerUnbound {
+            agent_id,
+            player_id: player_id.to_string(),
+            public_key,
+        })
     }
 
     pub(in crate::viewer::runtime_live) fn bind_agent_player(
