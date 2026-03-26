@@ -153,12 +153,14 @@
   - `oasis7_web_launcher::server` 现已补 remote private-control-plane matrix 回归，覆盖 `/api/state`、`/api/start|stop`、`/api/chain/start|stop`、`/api/gui-agent/*` 与 `/api/ui/schema` 的远端拒绝路径，要求统一返回 `operator_plane_only` 且只携带 public snapshot，避免误分享 operator URL 时把私有控制面状态直接暴露给公网访客。
   - `oasis7_hosted_access` 现已补 capability bypass 定向测试：即使 `OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY/PRIVATE_KEY/APPROVAL_CODE` 全部就绪、`prompt_control_*` 已升到 `public_player_plane_with_backend_reauth_preview`，`main_token_transfer` 仍必须保持 `blocked_until_strong_auth`，不能被 prompt lane 的 preview reauth 环境顺带打开。
   - `oasis7_web_launcher::server` 现已补 public snapshot 组合态回归：在同一份 env-ready snapshot 里，`prompt_control_apply` 必须显示 `public_player_plane_with_backend_reauth_preview`，而 `main_token_transfer` 仍必须显示 `blocked_until_strong_auth`，确保对外 contract 不会导出自相矛盾的 hosted verdict。
+  - 现已新增浏览器侧证据 `doc/testing/evidence/hosted-world-browser-auth-surface-2026-03-26.md`：通过真实 `agent-browser` 会话确认 `Hosted Action Matrix`、`Asset / Governance Lane`、`Hosted Recovery` 与 `pending_registration_ttl_ms/release_token` 绑定都能在页面上稳定复现；同时验证 detached/agentless 页面下 `prompt_control_*` 仍不会误签发 grant、`main_token_transfer` 仍返回 `strong_auth_action_not_enabled`。
 - 已实现的 `TASK-P2P-041-F` runbook first slice:
   - 已新增 `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`，冻结 hosted operator 的最小执行法：区分 `public join URL / private control plane / signer path`，并明确分享前检查、误分享后的第一响应、incident 最小记录字段与 public claims freeze 边界。
   - 已新增 `doc/testing/templates/hosted-world-operator-incident-template.md`，把误分享 operator URL / private control plane 暴露的 incident 记录字段统一成可复用模板，避免 liveops/QA 各写各的事故摘要。
 - 当前 blocker:
   - `guest session -> player session` 的最小 issuer 已落成，且 `max_player_sessions` 已开始在 public issue 面按“issuer active slot + runtime-only occupancy”的有效占用生效；未完成 register 的 pending slot 也会按更短 TTL 自动回收。public player plane 现在也会通过独立后台 runtime presence 常驻连接把已消失的历史绑定玩家回收到 issuer slot；revoke、same-agent rebind 与 same-player explicit rebind 都已有最小事件/恢复链路，但更完整的 operator kick / hosted handoff product flow 仍未收口。
   - hosted v1 目前已支持浏览器本地 player session issue + reconnect/register + local release/logout，并能通过周期性 `reconnect_sync` 探针发现部分 remote revoke；同一玩家切换 agent 时也已具备最小 `force_rebind` 自动恢复、register-ack gating、进行中提示与成功提示，但更完整的确认 UI、operator kick 的公开玩家面即时回流与更稳定的 resume token 仍未收口。
+  - 当前 browser evidence 运行栈仍是 `oasis7_game_launcher --deployment-mode hosted_public_join --chain-disable` + `oasis7_viewer_live llm_bootstrap --no-llm`；页面会稳定停在 `debugViewer=detached / No agents in current snapshot`。因此本轮只能验证 `prompt_control_*` 的“不会越权误签发”与 `agent_id` 前置条件，还没有 runtime-attached `prompt_control` success evidence。
   - `session_register` 目前仍是 runtime-live 内显式注册；host restart / rollback 之后按 v1 规则仍要求重新注册，不是持久化 session registry。
   - 当前只为 `prompt_control_*` 实现了 preview-grade backend reauth slice，而不是完整 `strong_auth` challenge/proof/verification lane；后端 signer 仍是 env 托管 + `approval_code`，`main token transfer` 继续显式阻断，尚未进入 hosted-ready 放行范围。
   - `agent_chat` 仍归 `player_session` 级低风险交互；更细的 hosted action matrix、resume issuer 与真正 strong-auth proof 仍待后续专题收口。
@@ -169,6 +171,7 @@
 - `doc/p2p/prd.md`
 - `doc/p2p/project.md`
 - `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`
+- `doc/testing/evidence/hosted-world-browser-auth-surface-2026-03-26.md`
 - `doc/testing/templates/hosted-world-operator-incident-template.md`
 - `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
