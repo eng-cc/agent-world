@@ -345,7 +345,7 @@
     - `rg -n "shared_devnet|staging|canary|release_candidate_bundle|partial|runbook|promotion_record|incident_review|exit_decision|release train" doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.prd.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.design.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.project.md doc/p2p/blockchain/p2p-shared-network-release-train-minimum-2026-03-24.runbook.md doc/testing/evidence/shared-network-shared-devnet-dry-run-2026-03-24.md doc/testing/evidence/shared-network-shared-devnet-promotion-record-2026-03-24.md doc/testing/evidence/shared-network-shared-devnet-incident-2026-03-24.md doc/p2p/prd.md doc/p2p/project.md testing-manual.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
-- [x] TASK-P2P-041 (PRD-P2P-023) [test_tier_required]: 新增“hosted world 玩家访问与会话鉴权”专题 PRD / design / project，并把 `public player plane/private control plane/signer plane`、`guest/player/strong-auth` 梯度、敏感动作能力矩阵与 hosted-world claims boundary 纳入模块追踪。
+- [x] TASK-P2P-041 (PRD-P2P-023) [test_tier_required]: 新增“hosted world 玩家访问与会话鉴权”专题 PRD / design / project，并把 `public player plane/private control plane/signer plane`、`guest/player/strong-auth` 梯度、`gui-agent` split、join admission control 与 hosted-world claims boundary 纳入模块追踪。
   - 产物文件:
     - `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.prd.md`
     - `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.design.md`
@@ -356,7 +356,7 @@
     - `doc/p2p/README.md`
     - `doc/devlog/2026-03-25.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "public player plane|private control plane|signer plane|guest session|player session|strong auth|invite-only" doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.prd.md doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.design.md doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.project.md doc/p2p/prd.md doc/p2p/project.md`
+    - `rg -n "public player plane|private control plane|signer plane|guest session|player session|strong auth|invite-only|gui-agent/action|admission control|specified_not_implemented" doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.prd.md doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.design.md doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.project.md doc/p2p/prd.md doc/p2p/project.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 
@@ -394,8 +394,8 @@
 ## 状态
 - 更新日期: 2026-03-25
 - 当前状态: active（ROUND-025）
-- 下一任务: 继续执行 `TASK-P2P-041` 的 `HPAUTH-1`，优先把 hosted world 的 public join / private control / signer plane 做硬拆分，并让浏览器路径停止接收长期 signer bootstrap；其后再进入 session/capability/strong-auth 实装。
-- 最新完成: `TASK-P2P-041`（已完成 hosted-world player access / session-auth 专题建档，正式冻结 `public player plane/private control plane/signer plane`、`guest/player/strong-auth`、无需 invite-only 的 base hosted-world 边界，以及“浏览器不得承载长期 signer 真值”的口径。）
+- 下一任务: 继续执行 `TASK-P2P-041-A`，优先把 hosted world 的 public join / private control / signer plane 做硬拆分，冻结 `/api/gui-agent/action` split 与 admission control，并让浏览器路径停止接收长期 signer bootstrap；其后再进入 session/capability/strong-auth 实装。
+- 最新完成: `TASK-P2P-041`（已完成 hosted-world player access / session-auth 专题建档，正式冻结 `public player plane/private control plane/signer plane`、`guest/player/strong-auth`、无需 invite-only 的 base hosted-world 边界、`gui-agent` split 与 `specified_not_implemented` 口径。）
 - 最新完成: `TASK-P2P-040`（已完成 `RTMIN-4A` short-window follow-up：`shared-devnet-20260324-06` 已在 candidate `shared-devnet-20260324-05` 上留下真实 S9/S10 evidence，shared-devnet 剩余 blocker 现仅为 `shared_access` 与 `rollback_target_ready`。）
 - 最新完成: `TASK-P2P-038`（已完成 mainnet/public claims policy 复评专题建档，正式冻结当前只允许 `limited playable technical preview` + `crypto-hardened preview`，并把 `mainnet-grade`、`production mint ready` 等口径放入 denylist。）
 - 最新完成: `TASK-P2P-039`（已完成主流公链测试体系对标专题建档，正式把 oasis7 当前 testing foundations、真实 drill 缺口、`fuzz/property` 缺口与 `shared network/release train` 缺口纳入统一矩阵。）

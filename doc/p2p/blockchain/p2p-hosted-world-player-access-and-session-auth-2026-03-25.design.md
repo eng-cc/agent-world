@@ -61,10 +61,19 @@
 | --- | --- | --- |
 | `/api/start` `/api/stop` | `private control plane` | hosted world 公开 join 场景不应直连 |
 | `/api/chain/start` `/api/chain/stop` | `private control plane` | 节点生命周期属于 operator 权限 |
-| `/api/gui-agent/action` | 默认 `private control plane` | 除非后续拆出明确的 player-safe 子集，否则不能默认公网开放 |
+| `/api/gui-agent/action` | `legacy private control plane`，目标拆成 `/api/player/agent-action` + `/api/operator/gui-agent/action` | hosted-ready 前不允许继续作为 shared public surface |
 | `/api/state` | 拆成 `public player snapshot` 与 `private operator state` | 玩家可见状态与管理状态需要分离 |
 | 玩家 WebSocket / world 输入 | `public player plane` | 必须由 session/capability 驱动 |
 | `/api/chain/transfer` | `public player plane` + `strong auth` | 不再接受浏览器长期私钥 bootstrap |
+
+## Join Admission Control
+| 字段 | 作用 | 最小规则 |
+| --- | --- | --- |
+| `max_guest_sessions` | 限制公开 guest 观察者数量 | 达上限时新 guest 直接返回 `world_full` 或 `guest_limit_reached` |
+| `max_player_sessions` | 限制可玩的 player session 数量 | player slot 满后不得继续签发可写 session |
+| `issue_rate_limit` | 限制单位时间 session 发放速率 | 超限时返回 `rate_limited` 并记录审计 |
+| `world_full_policy` | 满员时的公开行为 | 必须冻结为 `reject/queue/observe_only` 之一 |
+| `kick_policy` | host/operator 如何回收占位 | 必须可审计、可回放，且不允许静默踢出后继续保留旧 capability |
 
 ## Web 行为能力矩阵
 | 行为 | guest | player session | strong auth | operator private plane |
@@ -78,19 +87,19 @@
 | world 启停 / 配置 | 否 | 否 | 否 | 可 |
 
 ## 迁移顺序
-1. HPAUTH-1
+1. TASK-P2P-041-A
    - 先把 public/private plane taxonomy 和接口边界冻结。
    - public join 场景中去掉 browser private-key bootstrap。
-2. HPAUTH-2
+2. TASK-P2P-041-B
    - viewer 落 `guest session -> player session` UX。
    - 没有 session 或能力不足时，按钮明确禁用并显示原因。
-3. HPAUTH-3
+3. TASK-P2P-041-C
    - runtime 落 session 校验、entity bind、resume/revoke。
    - `agent_engineer` 明确玩家实体 ownership 与并发抢占规则。
-4. HPAUTH-4
+4. TASK-P2P-041-D
    - 资产与敏感动作接 strong auth。
    - 不再接受 host node key 作为 web 玩家动作默认 signer。
-5. HPAUTH-5/6
+5. TASK-P2P-041-E/F
    - QA 落 abuse suite。
    - LiveOps 落 hosted operator runbook、分享规范和 claims gate。
 
@@ -98,7 +107,7 @@
 - 当前允许：
   - `limited playable technical preview`
   - `crypto-hardened preview`
-  - `hosted-world player access model is specified, not yet executed`
+  - `hosted-world player access model is specified_not_implemented`
 - 当前禁止：
   - `public hosted web multiplayer is already safe by default`
   - `join URL can be shared publicly without additional architecture work`

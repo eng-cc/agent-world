@@ -6,13 +6,14 @@
 审计轮次: 1
 ## 1. Executive Summary
 - Problem Statement: oasis7 当前 Web hosted 路径把 host/operator/player/node signer 混在一起处理。公开网页可直达管理接口，浏览器还会收到从 `config.toml` 或环境变量导出的长期私钥，这让“某个玩家部署服务，另一个玩家直接打开网页游玩”在安全边界上仍是不成立的。
-- Proposed Solution: 冻结一套 producer-owned 的 hosted world 访问与会话鉴权方案，拆分 `public player plane / private control plane / signer plane` 三层平面，并引入 `guest session -> player session -> strong auth` 的鉴权梯度，让浏览器只持有可过期的会话/能力，不再持有长期 signer 私钥。
+- Proposed Solution: 冻结一套 producer-owned 的 hosted world 访问与会话鉴权方案，拆分 `public player plane / private control plane / signer plane` 三层平面，并引入 `guest session -> player session -> strong auth` 的鉴权梯度，让浏览器只持有可过期的会话/能力，不再持有长期 signer 私钥；同时把 `/api/gui-agent/action` 从共享控制面拆成 player-safe surface 与 operator-only surface，并为公开 join URL 增加 admission control。
 - Success Criteria:
   - SC-1: hosted world 正式方案明确禁止把 `node` 或治理 signer 的长期私钥注入浏览器 HTML/JS/bootstrap。
   - SC-2: hosted world 对外访问明确区分 public join URL 与 private operator/control URL，避免共享玩家入口与管理入口复用同一信任面。
   - SC-3: 远程玩家最少可完成 `打开 join URL -> 建 guest/player session -> 绑定玩家实体 -> 重连恢复` 的闭环定义。
-  - SC-4: Web 侧敏感动作至少区分三档权限：普通游玩、受限交互、强鉴权资产/治理动作。
-  - SC-5: `doc/p2p/project.md` 建立可执行任务链，覆盖 `runtime_engineer`、`viewer_engineer`、`agent_engineer`、`qa_engineer`、`liveops_community` 的 owner 和测试层级。
+  - SC-4: Web 侧敏感动作至少区分三档权限：普通游玩、受限交互、强鉴权资产/治理动作，且 `/api/gui-agent/action` 不再作为 shared hosted public surface 保留。
+  - SC-5: 公开 join URL 必须具备最小 admission control，至少冻结 `max_guest_sessions/max_player_sessions/issue_rate_limit/world_full_policy`。
+  - SC-6: `doc/p2p/project.md` 建立可执行任务链，覆盖 `runtime_engineer`、`viewer_engineer`、`agent_engineer`、`qa_engineer`、`liveops_community` 的 owner 和测试层级。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -26,18 +27,18 @@
   - 运营或 QA 复核 hosted world 可公开访问边界时，每个候选版本至少做一次。
   - 发生链接泄露、会话劫持、误把管理口开放到公网时，必须立即触发回滚/撤销/runbook。
 - User Stories:
-  - PRD-P2P-HOSTAUTH-001: As a `producer_system_designer`, I want hosted world access split into explicit trust planes, so that public multiplayer access stops depending on preview-only trust shortcuts.
-  - PRD-P2P-HOSTAUTH-002: As a remote player, I want to join a hosted world through the web without receiving the host's long-lived signer, so that I can play safely.
-  - PRD-P2P-HOSTAUTH-003: As a host operator, I want a public join flow separated from admin/control operations, so that sharing the game URL does not hand out control authority.
-  - PRD-P2P-HOSTAUTH-004: As a `viewer_engineer`, I want a session ladder with explicit UI capability states, so that login, reconnect and disabled actions are predictable.
-  - PRD-P2P-HOSTAUTH-005: As a `qa_engineer` / `liveops_community`, I want abuse cases, revocation flow and public-claims boundaries frozen, so that hosted access can be validated and operated.
+  - PRD-P2P-023-A: As a `producer_system_designer`, I want hosted world access split into explicit trust planes, so that public multiplayer access stops depending on preview-only trust shortcuts.
+  - PRD-P2P-023-B: As a remote player, I want to join a hosted world through the web without receiving the host's long-lived signer, so that I can play safely.
+  - PRD-P2P-023-C: As a host operator, I want a public join flow separated from admin/control operations, so that sharing the game URL does not hand out control authority.
+  - PRD-P2P-023-D: As a `viewer_engineer`, I want a session ladder with explicit UI capability states, so that login, reconnect and disabled actions are predictable.
+  - PRD-P2P-023-E: As a `qa_engineer` / `liveops_community`, I want abuse cases, revocation flow and public-claims boundaries frozen, so that hosted access can be validated and operated.
 - Critical User Flows:
-  1. Flow-P2P-HOSTAUTH-001: `host 启动 hosted world -> 生成 public join URL + private operator URL -> 仅公开 join URL`
-  2. Flow-P2P-HOSTAUTH-002: `远程访客打开 join URL -> 获得 guest session -> 浏览/观战/读取世界快照`
-  3. Flow-P2P-HOSTAUTH-003: `访客点击开始游玩 -> 建立 player session -> 绑定 player_id / entity slot / capability set -> 开始低风险交互`
-  4. Flow-P2P-HOSTAUTH-004: `玩家尝试高风险动作 -> 系统要求 strong auth -> 鉴权通过后才放行资产/治理相关动作`
-  5. Flow-P2P-HOSTAUTH-005: `session 过期/被撤销/host 重启 -> 客户端收到明确错误 -> 走 reconnect 或重新登录`
-  6. Flow-P2P-HOSTAUTH-006: `host 或 operator 误把管理面暴露到公网 -> QA/LiveOps runbook 判定越界 -> 立即 freeze public claims 并要求整改`
+  1. Flow-P2P-023-001: `host 启动 hosted world -> 生成 public join URL + private operator URL -> 仅公开 join URL`
+  2. Flow-P2P-023-002: `远程访客打开 join URL -> 获得 guest session -> 浏览/观战/读取世界快照`
+  3. Flow-P2P-023-003: `访客点击开始游玩 -> 建立 player session -> 绑定 player_id / entity slot / capability set -> 开始低风险交互`
+  4. Flow-P2P-023-004: `玩家尝试高风险动作 -> 系统要求 strong auth -> 鉴权通过后才放行资产/治理相关动作`
+  5. Flow-P2P-023-005: `session 过期/被撤销/host 重启 -> 客户端收到明确错误 -> 走 reconnect 或重新登录`
+  6. Flow-P2P-023-006: `host 或 operator 误把管理面暴露到公网 -> QA/LiveOps runbook 判定越界 -> 立即 freeze public claims 并要求整改`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 动作行为 | 状态转换 | 计算/判定规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -47,17 +48,20 @@
 | Guest session | `session_id/world_id/expires_at/device_hint` | 允许打开网页、观战、查看世界基本状态 | `issued -> active -> expired/revoked` | 默认时效有限；不能转义为资产权限 | 未登录访客可获得 |
 | Player session | `session_id/player_id/entity_id/capability_set/resume_token` | 允许移动、普通交互、低风险聊天和玩家内玩法输入 | `pending_bind -> active -> suspended/revoked` | 必须完成 `player_id -> entity` 绑定后才可写入世界输入 | 仅登录后的玩家会话可持有 |
 | Strong auth | `session_id/auth_level/challenge_id/proof_ref/proof_expiry` | 对资产转账、治理、敏感 prompt/control 类动作做二次鉴权 | `required -> challenged -> authorized -> expired` | 强鉴权必须独立于普通 player session；失效后自动回落 | 仅被授权的玩家或 operator 可触发 |
+| Join admission control | `max_guest_sessions/max_player_sessions/issue_rate_limit/world_full_policy/kick_policy` | 对 guest/player session 签发、占位、满员和踢出做准入判定 | `open -> rate_limited/world_full -> reopened` | 公开 join 默认不是无限制发 session；超限时必须返回结构化拒绝 | 由 host/operator 配置，runtime 执行 |
 | Entity 绑定与断线恢复 | `player_id/entity_id/resume_token/last_seen_tick/revoke_epoch` | 重连时恢复到原玩家实体或显式拒绝 | `unbound -> bound -> resumed/rebound` | `resume_token` 失效或 `revoke_epoch` 变化时必须重新登录 | 玩家只可恢复自己的实体 |
+| Agent action surface split | `action_surface_id/action_class/player_safe/operator_only` | 将 `gui-agent` 入口拆成 player-safe 子集和 operator-only 子集 | `legacy_shared -> split_enforced` | 在拆分完成前，`/api/gui-agent/action` 默认视为 private control plane | 玩家只能命中显式 allowlist 的 player-safe action |
 | Web 敏感动作降级 | `action_id/action_class/required_auth/ui_state/reject_reason` | 前端根据能力显示、隐藏或禁用按钮 | `hidden -> disabled -> enabled` | `agent chat`、`prompt control`、`main token transfer` 至少三档区分 | 缺能力时前后端都必须拒绝 |
 - Acceptance Criteria:
   - AC-1: 本专题必须明确 hosted world 的三层平面：`public player plane`、`private control plane`、`signer plane`。
   - AC-2: 本专题必须明确 hosted world 的会话梯度：`guest session`、`player session`、`strong auth`，并说明每档可做/不可做的动作。
   - AC-3: 本专题必须明确当前 Web 侧敏感动作分类，至少覆盖 `agent chat`、`prompt control`、`main token transfer` 三类。
   - AC-4: 本专题必须明确：hosted world 公网 join 场景下，浏览器不得再接收 `node.private_key`、治理 signer 私钥或任何长期 signer 真值。
-  - AC-5: 本专题必须明确：`/api/start`、`/api/stop`、`/api/chain/start`、`/api/chain/stop`、`/api/gui-agent/action` 这类控制面动作不得继续作为 public player origin 的默认可达入口。
-  - AC-6: 本专题必须明确 invite-only 不是当前 base requirement；基础方案以 `public join + session/capability` 为主，不把 allowlist/invite 当成安全替代。
-  - AC-7: 本专题必须明确 hosted world 当前仍属于 preview 设计扩展，不会单靠建档就升级 `limited playable technical preview` 或 `crypto-hardened preview` 口径。
-  - AC-8: `doc/p2p/project.md` 必须建立 `TASK-P2P-041` 任务链，并拆出 runtime/viewer/agent/QA/LiveOps 的后续 owner。
+  - AC-5: 本专题必须明确：`/api/start`、`/api/stop`、`/api/chain/start`、`/api/chain/stop` 这类控制面动作不得继续作为 public player origin 的默认可达入口；`/api/gui-agent/action` 要么拆分，要么整体留在 private control plane。
+  - AC-6: 本专题必须明确 guest/player session 的 admission control，至少覆盖发放速率、世界满员、会话上限和踢出策略。
+  - AC-7: 本专题必须明确 invite-only 不是当前 base requirement；基础方案以 `public join + session/capability` 为主，不把 allowlist/invite 当成安全替代。
+  - AC-8: 本专题必须明确 hosted world 当前 verdict 为 `specified_not_implemented`，不会单靠建档就升级 `limited playable technical preview` 或 `crypto-hardened preview` 口径。
+  - AC-9: `doc/p2p/project.md` 必须建立 `TASK-P2P-041` 任务链，并拆出 runtime/viewer/agent/QA/LiveOps 的后续 owner。
 - Non-Goals:
   - 不在本专题内直接实现钱包接入、第三方 OAuth 或完整账户系统。
   - 不在本专题内继续支持 invite-only 作为首版 hosted world 访问前提。
@@ -83,17 +87,19 @@
   - 若 HTML bootstrap、JS 全局对象或任意 `/api/*` 返回体中仍出现长期私钥、助记词或 signer 原文，则 hosted world 直接 `block_security_boundary`。
   - 若 guest session 尝试发送 player-only 输入，必须返回明确的 `auth_level_insufficient`，同时前端按钮保持禁用。
   - 若 player session 尝试执行 `main token transfer` 或其他强鉴权动作但没有额外 proof，必须返回 `strong_auth_required`，不得静默降级到 node signer 代签。
+  - 若公开 join URL 的 guest/player session 发放超过 `issue_rate_limit`、已达 `max_guest_sessions/max_player_sessions` 或 world 已满，必须返回结构化 `rate_limited/world_full`，而不是继续无界签发 session。
   - 若 host 重启 world、撤销玩家、或 rotate session secret，旧 `resume_token` 必须立即失效并要求重新登录。
   - 若同一 `player_id` 从多个浏览器并发恢复同一实体，必须有单一 owner 规则；冲突者进入 `suspended` 或重绑流程。
   - 若 host 错把 operator URL 当 join URL 分享，runbook 必须要求立即 rotate bind/secret、撤销会话并回收 public claims。
 - Non-Functional Requirements:
-  - NFR-P2P-HOSTAUTH-1: hosted world public player plane 在任何 HTML/JS/bootstrap/API 响应中都不得暴露长期私钥或 signer seed。
-  - NFR-P2P-HOSTAUTH-2: public player origin 默认不得暴露 world start/stop、chain start/stop、GUI operator action 等管理入口。
-  - NFR-P2P-HOSTAUTH-3: guest/player/strong-auth 三档能力必须在前端和后端双重生效，不能只做 UI 隐藏。
-  - NFR-P2P-HOSTAUTH-4: session 必须可过期、可撤销、可重连；默认 session TTL 必须是有限值，且不得等同于长期 signer 生命周期。
-  - NFR-P2P-HOSTAUTH-5: 所有 hosted world 敏感拒绝路径必须返回可归类错误码，如 `auth_level_insufficient`、`session_revoked`、`strong_auth_required`、`operator_plane_only`。
-  - NFR-P2P-HOSTAUTH-6: 在 hosted world 方案真正实现前，对外口径不得声称“玩家可安全把网页公开给任何人并共玩”，最多只能描述为 `design specified, not yet executed`。
-  - NFR-P2P-HOSTAUTH-7: QA required 套件必须覆盖 session replay、expired token、revocation、admin/public URL 混淆和敏感按钮降级。
+  - NFR-P2P-023-1: hosted world public player plane 在任何 HTML/JS/bootstrap/API 响应中都不得暴露长期私钥或 signer seed。
+  - NFR-P2P-023-2: public player origin 默认不得暴露 world start/stop、chain start/stop、GUI operator action 等管理入口。
+  - NFR-P2P-023-3: guest/player/strong-auth 三档能力必须在前端和后端双重生效，不能只做 UI 隐藏。
+  - NFR-P2P-023-4: session 必须可过期、可撤销、可重连；默认 session TTL 必须是有限值，且不得等同于长期 signer 生命周期。
+  - NFR-P2P-023-5: 所有 hosted world 敏感拒绝路径必须返回可归类错误码，如 `auth_level_insufficient`、`session_revoked`、`strong_auth_required`、`operator_plane_only`。
+  - NFR-P2P-023-6: hosted world 公开 join 面必须有有界 admission control；未达到上限前可签发，会话达到上限或 world 满员时必须显式拒绝并可审计。
+  - NFR-P2P-023-7: 在 hosted world 方案真正实现前，对外口径不得声称“玩家可安全把网页公开给任何人并共玩”，统一只能描述为 `specified_not_implemented`。
+  - NFR-P2P-023-8: QA required 套件必须覆盖 session replay、expired token、revocation、admin/public URL 混淆、admission limit 和敏感按钮降级。
 - Security & Privacy: 浏览器应被视为不可信执行面。hosted world 的根安全原则是“浏览器拿 session，不拿长期 signer；玩家入口管游玩，不管运维；强鉴权单独升级，不依赖 host node key 代签”。
 
 ## 5. Risks & Roadmap
@@ -111,15 +117,16 @@
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-P2P-HOSTAUTH-001 | HPAUTH-0/1 | `test_tier_required` | PRD/design/project 建档，public/private/signer plane 与 endpoint taxonomy 冻结 | hosted world 架构边界、部署口径 |
-| PRD-P2P-HOSTAUTH-002 | HPAUTH-1/2/3 | `test_tier_required` + `test_tier_full` | 浏览器 bootstrap 脱敏、guest/player session、entity bind/reconnect/revoke 回归 | Web join、session 生命周期、玩家身份 |
-| PRD-P2P-HOSTAUTH-003 | HPAUTH-1/4 | `test_tier_required` + `test_tier_full` | public/control plane 隔离、敏感接口拒绝、strong auth 升级验证 | 运维安全、资产与治理动作边界 |
-| PRD-P2P-HOSTAUTH-004 | HPAUTH-2/4 | `test_tier_required` | viewer login/session UX、按钮降级和错误反馈回归 | Web 体验、敏感功能显隐 |
-| PRD-P2P-HOSTAUTH-005 | HPAUTH-5/6 | `test_tier_required` + `test_tier_full` | abuse suite、撤销/runbook、claims review 与 shared-host evidence | QA 阻断、LiveOps 事故处理、对外口径 |
+| PRD-P2P-023-A | TASK-P2P-041-A | `test_tier_required` | plane split、`gui-agent` surface split 策略与 hosted verdict 冻结 | hosted world 架构边界、部署口径 |
+| PRD-P2P-023-B | TASK-P2P-041-A/B/C | `test_tier_required` + `test_tier_full` | 浏览器 bootstrap 脱敏、guest/player session、entity bind/reconnect/revoke 回归 | Web join、session 生命周期、玩家身份 |
+| PRD-P2P-023-C | TASK-P2P-041-A/E | `test_tier_required` + `test_tier_full` | public/control plane 隔离、admission control、operator/public URL 拒绝与 runbook 验证 | 运维安全、公开分享边界 |
+| PRD-P2P-023-D | TASK-P2P-041-B/D | `test_tier_required` | viewer login/session UX、按钮降级和错误反馈回归 | Web 体验、敏感功能显隐 |
+| PRD-P2P-023-E | TASK-P2P-041-E/F | `test_tier_required` + `test_tier_full` | abuse suite、撤销/runbook、claims review 与 shared-host evidence | QA 阻断、LiveOps 事故处理、对外口径 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
-| DEC-P2P-HOSTAUTH-001 | 把 hosted world 拆成 `public player plane / private control plane / signer plane` | 继续让 join、control、signer 共享单一 web launcher 入口 | 玩家公开访问和 operator 管理属于不同信任域，不拆平面就无法稳定支持他人通过网页进入。 |
-| DEC-P2P-HOSTAUTH-002 | 浏览器持有短期 session / capability，不持有长期 signer 私钥 | 继续通过 HTML/bootstrap 注入 `node.private_key` 或治理 signer | 浏览器是最弱信任面，长期 signer 一旦进入 HTML/JS，就不再具备 hosted-world 可分享前提。 |
-| DEC-P2P-HOSTAUTH-003 | 采用 `guest -> player -> strong auth` 梯度 | 要么所有动作都不登录，要么所有动作都要求强钱包鉴权 | 游玩、社交、资产、治理风险不同，梯度式鉴权才能兼顾可玩性和风险隔离。 |
-| DEC-P2P-HOSTAUTH-004 | base hosted-world 方案不依赖 invite-only，先做公开 join + session/capability | 把 invite/allowlist 当成第一版安全替代 | invite-only 只能缩小访问面，不能替代私钥隔离、平面拆分和能力校验。 |
+| DEC-P2P-023-001 | 把 hosted world 拆成 `public player plane / private control plane / signer plane` | 继续让 join、control、signer 共享单一 web launcher 入口 | 玩家公开访问和 operator 管理属于不同信任域，不拆平面就无法稳定支持他人通过网页进入。 |
+| DEC-P2P-023-002 | 浏览器持有短期 session / capability，不持有长期 signer 私钥 | 继续通过 HTML/bootstrap 注入 `node.private_key` 或治理 signer | 浏览器是最弱信任面，长期 signer 一旦进入 HTML/JS，就不再具备 hosted-world 可分享前提。 |
+| DEC-P2P-023-003 | 采用 `guest -> player -> strong auth` 梯度 | 要么所有动作都不登录，要么所有动作都要求强钱包鉴权 | 游玩、社交、资产、治理风险不同，梯度式鉴权才能兼顾可玩性和风险隔离。 |
+| DEC-P2P-023-004 | base hosted-world 方案不依赖 invite-only，先做公开 join + session/capability | 把 invite/allowlist 当成第一版安全替代 | invite-only 只能缩小访问面，不能替代私钥隔离、平面拆分和能力校验。 |
+| DEC-P2P-023-005 | `/api/gui-agent/action` 在 hosted-ready 前必须拆成 player-safe surface 与 operator-only surface，未拆分前默认算 private control plane | 继续把 `gui-agent/action` 视为单一共享入口，靠调用方自觉区分 | 这条接口同时承载玩家语义和 operator 语义，不先拆分就会把 hosted-world 权限边界重新混回去。 |
