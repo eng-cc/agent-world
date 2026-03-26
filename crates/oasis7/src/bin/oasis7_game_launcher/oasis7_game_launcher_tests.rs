@@ -6,11 +6,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use super::{
     build_game_url, build_oasis7_chain_runtime_args, build_viewer_auth_bootstrap_script,
     content_type_for_path, parse_host_port, parse_options, resolve_static_asset_path,
-    resolve_viewer_auth_bootstrap_from_path, resolve_viewer_static_dir_with_override,
-    sanitize_index_html_for_embedded_server, sanitize_relative_request_path,
+    resolve_viewer_auth_bootstrap_for_embedded_server, resolve_viewer_auth_bootstrap_from_path,
+    resolve_viewer_static_dir_with_override, sanitize_index_html_for_embedded_server,
+    sanitize_relative_request_path,
     viewer_dev_dist_candidates, CliOptions, ViewerAuthBootstrap, BUILTIN_LLM_PROVIDER_MODE,
-    DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_LIVE_BIND,
-    DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO, DEFAULT_VIEWER_STATIC_DIR,
+    DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_DEPLOYMENT_MODE,
+    DEFAULT_LIVE_BIND, DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO,
+    DEFAULT_VIEWER_STATIC_DIR,
     GAME_STATIC_DIR_ENV, OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT,
     VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
 };
@@ -44,6 +46,7 @@ fn parse_options_defaults() {
     let options = parse_options(std::iter::empty()).expect("parse should succeed");
     assert_eq!(options.scenario, DEFAULT_SCENARIO);
     assert_eq!(options.live_bind, DEFAULT_LIVE_BIND);
+    assert_eq!(options.deployment_mode, DEFAULT_DEPLOYMENT_MODE);
     assert!(!options.with_llm);
     assert_eq!(options.agent_provider_mode, BUILTIN_LLM_PROVIDER_MODE);
     assert_eq!(
@@ -77,6 +80,8 @@ fn parse_options_accepts_overrides() {
         [
             "--scenario",
             "twin_region_bootstrap",
+            "--deployment-mode",
+            "hosted_public_join",
             "--live-bind",
             "127.0.0.1:6200",
             "--web-bind",
@@ -132,6 +137,7 @@ fn parse_options_accepts_overrides() {
     .expect("parse should succeed");
 
     assert_eq!(options.scenario, "twin_region_bootstrap");
+    assert_eq!(options.deployment_mode, "hosted_public_join");
     assert_eq!(options.live_bind, "127.0.0.1:6200");
     assert_eq!(options.web_bind, "127.0.0.1:6201");
     assert_eq!(options.viewer_host, "0.0.0.0");
@@ -176,6 +182,13 @@ fn parse_options_accepts_overrides() {
 fn parse_options_accepts_chain_disable() {
     let options = parse_options(["--chain-disable"].into_iter()).expect("parse should succeed");
     assert!(!options.chain_enabled);
+}
+
+#[test]
+fn parse_options_rejects_unknown_deployment_mode() {
+    let err = parse_options(["--deployment-mode", "invalid"].into_iter())
+        .expect_err("invalid deployment mode should fail");
+    assert!(err.contains("trusted_local_only"));
 }
 
 #[test]
@@ -485,6 +498,27 @@ fn resolve_viewer_auth_bootstrap_from_path_reads_node_keypair() {
     assert_eq!(auth.public_key, "public-key-hex");
     assert_eq!(auth.private_key, "private-key-hex");
     assert!(!auth.player_id.trim().is_empty());
+    let _ = fs::remove_dir_all(temp_dir);
+}
+
+#[test]
+fn hosted_public_join_disables_viewer_auth_bootstrap_resolution() {
+    let temp_dir = make_temp_dir("hosted_public_join_no_bootstrap");
+    let config_path = temp_dir.join("config.toml");
+    fs::write(
+        &config_path,
+        "[node]\nprivate_key = \"private-key-hex\"\npublic_key = \"public-key-hex\"\n",
+    )
+    .expect("write config");
+
+    let old_cwd = env::current_dir().expect("cwd");
+    env::set_current_dir(&temp_dir).expect("chdir");
+    let auth = resolve_viewer_auth_bootstrap_for_embedded_server(
+        super::DeploymentMode::HostedPublicJoin,
+    );
+    env::set_current_dir(old_cwd).expect("restore cwd");
+
+    assert!(auth.is_none());
     let _ = fs::remove_dir_all(temp_dir);
 }
 

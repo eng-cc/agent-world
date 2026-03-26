@@ -20,6 +20,15 @@ pub struct LauncherUiField {
 
 const LAUNCHER_UI_FIELDS: &[LauncherUiField] = &[
     LauncherUiField {
+        id: "deployment_mode",
+        section: "game_core",
+        kind: LauncherUiFieldKind::Text,
+        label_zh: "部署模式",
+        label_en: "Deployment Mode",
+        web_visible: true,
+        native_visible: true,
+    },
+    LauncherUiField {
         id: "scenario",
         section: "game_core",
         kind: LauncherUiFieldKind::Text,

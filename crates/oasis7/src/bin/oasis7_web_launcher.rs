@@ -3,24 +3,26 @@ use oasis7_proto::storage_profile::StorageProfile;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::env;
-use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::process::{self, Child};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 #[path = "oasis7_web_launcher/control_plane.rs"]
 mod control_plane;
 #[path = "oasis7_web_launcher/gui_agent_api.rs"]
 mod gui_agent_api;
+#[path = "oasis7_hosted_access.rs"]
+mod hosted_access;
 #[path = "oasis7_web_launcher/http_codec.rs"]
 mod http_codec;
 #[path = "oasis7_web_launcher/parse_utils.rs"]
 mod parse_utils;
 #[path = "oasis7_web_launcher/runtime_paths.rs"]
 mod runtime_paths;
+#[path = "oasis7_web_launcher/server.rs"]
+mod server;
 #[path = "oasis7_web_launcher/static_files.rs"]
 mod static_files;
 #[path = "oasis7_web_launcher/transfer_query_proxy.rs"]
@@ -30,6 +32,7 @@ mod viewer_auth_bootstrap;
 
 use control_plane::*;
 use gui_agent_api::{execute_gui_agent_action, gui_agent_capabilities_response};
+use hosted_access::{hosted_player_access_contract, DeploymentMode, DEFAULT_DEPLOYMENT_MODE};
 use http_codec::{read_http_request, write_http_response, write_json_response};
 use parse_utils::{
     next_value, parse_chain_role, parse_chain_validators, parse_host_port, parse_non_negative_u64,
@@ -39,6 +42,7 @@ use runtime_paths::{
     normalize_bind_host_for_local_access, now_unix_ms, resolve_console_static_dir_path,
     resolve_oasis7_game_launcher_binary, resolve_static_dir_path,
 };
+use server::{remap_transfer_runtime_target, run_server};
 use static_files::{load_console_static_asset, StaticAsset};
 use transfer_query_proxy::query_chain_transfer_json;
 use viewer_auth_bootstrap::{
@@ -81,6 +85,7 @@ static SIGNAL_HANDLER_INSTALL: OnceLock<Result<(), String>> = OnceLock::new();
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 struct LauncherConfig {
+    deployment_mode: String,
     scenario: String,
     live_bind: String,
     web_bind: String,
@@ -110,6 +115,7 @@ struct LauncherConfig {
 impl Default for LauncherConfig {
     fn default() -> Self {
         Self {
+            deployment_mode: DEFAULT_DEPLOYMENT_MODE.to_string(),
             scenario: DEFAULT_SCENARIO.to_string(),
             live_bind: DEFAULT_LIVE_BIND.to_string(),
             web_bind: DEFAULT_WEB_BIND.to_string(),
@@ -337,9 +343,19 @@ struct StateSnapshot {
     chain_runtime_bin: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     chain_recovery: Option<ChainRecoverySnapshot>,
+    hosted_access: hosted_access::HostedPlayerAccessContract,
     game_url: String,
     config: LauncherConfig,
     logs: Vec<String>,
+    updated_at_unix_ms: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct PublicStateSnapshot {
+    hosted_access: hosted_access::HostedPlayerAccessContract,
+    game_url: String,
+    status: String,
+    chain_status: String,
     updated_at_unix_ms: u64,
 }
 
@@ -450,6 +466,7 @@ fn print_help() {
         "Usage: oasis7_web_launcher [options]\n\n\
 Options:\n\
   --listen-bind <host:port>       web console listen bind (default: {DEFAULT_LISTEN_BIND})\n\
+  --deployment-mode <mode>        trusted_local_only|hosted_public_join\n\
   --launcher-bin <path>           oasis7_game_launcher binary path\n\
   --chain-runtime-bin <path>      oasis7_chain_runtime binary path\n\
   --console-static-dir <path>     launcher web static directory (default: ../web-launcher)\n\
@@ -479,70 +496,6 @@ Options:\n\
     );
 }
 
-fn run_server(options: CliOptions) -> Result<(), String> {
-    install_signal_handler()?;
-    TERMINATION_REQUESTED.store(false, Ordering::SeqCst);
-
-    let (listen_host, listen_port) =
-        parse_host_port(options.listen_bind.as_str(), "--listen-bind")?;
-    let listener = TcpListener::bind((listen_host.as_str(), listen_port)).map_err(|err| {
-        format!(
-            "failed to bind oasis7_web_launcher at {}:{}: {}",
-            listen_host, listen_port, err
-        )
-    })?;
-    listener
-        .set_nonblocking(true)
-        .map_err(|err| format!("failed to set listener nonblocking: {err}"))?;
-
-    let state = Arc::new(Mutex::new(ServiceState::new(
-        options.launcher_bin,
-        options.chain_runtime_bin,
-        options.console_static_dir,
-        options.initial_config,
-    )));
-
-    println!("oasis7_web_launcher started");
-    println!(
-        "- console: http://{}:{}",
-        normalize_bind_host_for_local_access(listen_host.as_str()),
-        listen_port
-    );
-    println!("- listen bind: {listen_host}:{listen_port}");
-    println!(
-        "- console static dir: {}",
-        lock_state(&state).console_static_dir.display()
-    );
-    println!("Press Ctrl+C to stop.");
-
-    loop {
-        if TERMINATION_REQUESTED.load(Ordering::SeqCst) {
-            break;
-        }
-
-        match listener.accept() {
-            Ok((stream, _addr)) => {
-                let shared = Arc::clone(&state);
-                thread::spawn(move || {
-                    if let Err(err) = handle_connection(stream, shared) {
-                        eprintln!("warning: oasis7_web_launcher request failed: {err}");
-                    }
-                });
-            }
-            Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
-                thread::sleep(Duration::from_millis(30));
-            }
-            Err(err) => return Err(format!("accept failed: {err}")),
-        }
-    }
-
-    let mut state_guard = lock_state(&state);
-    poll_service_state(&mut state_guard);
-    let _ = stop_process(&mut state_guard);
-    let _ = stop_chain_process(&mut state_guard);
-    Ok(())
-}
-
 fn install_signal_handler() -> Result<(), String> {
     SIGNAL_HANDLER_INSTALL
         .get_or_init(|| {
@@ -554,453 +507,10 @@ fn install_signal_handler() -> Result<(), String> {
         .clone()
 }
 
-fn handle_connection(
-    mut stream: TcpStream,
-    shared_state: Arc<Mutex<ServiceState>>,
-) -> Result<(), String> {
-    let request = read_http_request(&mut stream)?;
-    let path = strip_query(request.path.as_str());
-
-    match (request.method.as_str(), path) {
-        ("GET", "/healthz") => {
-            write_http_response(&mut stream, 200, "text/plain; charset=utf-8", b"ok", false)?;
-            Ok(())
-        }
-        ("GET", "/api/state") => {
-            let request_host = extract_host_header(request.headers.as_slice());
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let snapshot = snapshot_from_state(&state, request_host.as_deref());
-            write_json_response(&mut stream, 200, &snapshot)
-        }
-        ("GET", "/api/gui-agent/capabilities") => {
-            let response = gui_agent_capabilities_response();
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/gui-agent/state") => {
-            let request_host = extract_host_header(request.headers.as_slice());
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let snapshot = snapshot_from_state(&state, request_host.as_deref());
-            write_json_response(&mut stream, 200, &snapshot)
-        }
-        ("POST", "/api/gui-agent/action") => {
-            let request_host = extract_host_header(request.headers.as_slice());
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let response = execute_gui_agent_action(
-                &mut state,
-                request.body.as_slice(),
-                request_host.as_deref(),
-            );
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/ui/schema") => {
-            let schema: Vec<_> = launcher_ui_fields_for_web().copied().collect();
-            write_json_response(&mut stream, 200, &schema)
-        }
-        ("POST", "/api/start") => {
-            let request_host = extract_host_header(request.headers.as_slice());
-            let config = parse_config_request(request.body.as_slice(), "start")?;
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let outcome = start_process(&mut state, config);
-            let snapshot = snapshot_from_state(&state, request_host.as_deref());
-            let response = ApiResponse {
-                ok: outcome.is_ok(),
-                error_code: None,
-                error: outcome.err(),
-                data: None,
-                state: snapshot,
-            };
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("POST", "/api/stop") => {
-            let request_host = extract_host_header(request.headers.as_slice());
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let outcome = stop_process(&mut state);
-            poll_service_state(&mut state);
-            let snapshot = snapshot_from_state(&state, request_host.as_deref());
-            let response = ApiResponse {
-                ok: outcome.is_ok(),
-                error_code: None,
-                error: outcome.err(),
-                data: None,
-                state: snapshot,
-            };
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("POST", "/api/chain/start") => {
-            let request_host = extract_host_header(request.headers.as_slice());
-            let config = parse_config_request(request.body.as_slice(), "chain start")?;
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let outcome = start_chain_process(&mut state, config);
-            poll_service_state(&mut state);
-            let outcome = finalize_chain_start_outcome(&state, outcome);
-            let snapshot = snapshot_from_state(&state, request_host.as_deref());
-            let error = outcome.err();
-            let error_code = error
-                .as_deref()
-                .map(|detail| chain_error_code_for_state(&state, detail).to_string());
-            let data = if error.is_some() {
-                chain_error_data_for_state(&state)
-            } else {
-                None
-            };
-            let response = ApiResponse {
-                ok: error.is_none(),
-                error_code,
-                error,
-                data,
-                state: snapshot,
-            };
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("POST", "/api/chain/stop") => {
-            let request_host = extract_host_header(request.headers.as_slice());
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let outcome = stop_chain_process(&mut state);
-            poll_service_state(&mut state);
-            let snapshot = snapshot_from_state(&state, request_host.as_deref());
-            let response = ApiResponse {
-                ok: outcome.is_ok(),
-                error_code: None,
-                error: outcome.err(),
-                data: None,
-                state: snapshot,
-            };
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("POST", "/api/chain/transfer") => {
-            let submit_request = match parse_chain_transfer_request(request.body.as_slice()) {
-                Ok(request) => request,
-                Err(err) => {
-                    let response = ChainTransferSubmitResponse::error("invalid_request", err);
-                    return write_json_response(&mut stream, 200, &response);
-                }
-            };
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let response = submit_chain_transfer(&mut state, &submit_request);
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/transfer/accounts") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let response = query_chain_transfer_json(&mut state, "/v1/chain/transfer/accounts");
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/transfer/status") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/transfer/status",
-                "/v1/chain/transfer/status",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/transfer/history") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/transfer/history",
-                "/v1/chain/transfer/history",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/overview") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let response = query_chain_transfer_json(&mut state, "/v1/chain/explorer/overview");
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/transactions") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/transactions",
-                "/v1/chain/explorer/transactions",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/transaction") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/transaction",
-                "/v1/chain/explorer/transaction",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/blocks") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/blocks",
-                "/v1/chain/explorer/blocks",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/block") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/block",
-                "/v1/chain/explorer/block",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/txs") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/txs",
-                "/v1/chain/explorer/txs",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/tx") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/tx",
-                "/v1/chain/explorer/tx",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/search") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/search",
-                "/v1/chain/explorer/search",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/address") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/address",
-                "/v1/chain/explorer/address",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/contracts") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/contracts",
-                "/v1/chain/explorer/contracts",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/contract") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/contract",
-                "/v1/chain/explorer/contract",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/assets") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/assets",
-                "/v1/chain/explorer/assets",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("GET", "/api/chain/explorer/mempool") => {
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let runtime_target = remap_transfer_runtime_target(
-                request.path.as_str(),
-                "/api/chain/explorer/mempool",
-                "/v1/chain/explorer/mempool",
-            );
-            let response = query_chain_transfer_json(&mut state, runtime_target.as_str());
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("POST", "/api/chain/feedback") => {
-            let submit_request = match parse_chain_feedback_request(request.body.as_slice()) {
-                Ok(request) => request,
-                Err(err) => {
-                    let response = ChainFeedbackSubmitResponse::error(err);
-                    return write_json_response(&mut stream, 200, &response);
-                }
-            };
-            let mut state = lock_state(&shared_state);
-            poll_service_state(&mut state);
-            let response = submit_chain_feedback(&mut state, &submit_request);
-            write_json_response(&mut stream, 200, &response)
-        }
-        ("OPTIONS", _) => {
-            write_http_response(&mut stream, 204, "text/plain", b"", false)?;
-            Ok(())
-        }
-        ("GET", request_path) if !request_path.starts_with("/api/") => {
-            serve_console_static_request(&mut stream, request_path, &shared_state)
-        }
-        (method, "/api/state")
-        | (method, "/api/gui-agent/capabilities")
-        | (method, "/api/gui-agent/state")
-        | (method, "/api/gui-agent/action")
-        | (method, "/api/start")
-        | (method, "/api/stop")
-        | (method, "/api/chain/start")
-        | (method, "/api/chain/stop")
-        | (method, "/api/chain/transfer")
-        | (method, "/api/chain/transfer/accounts")
-        | (method, "/api/chain/transfer/status")
-        | (method, "/api/chain/transfer/history")
-        | (method, "/api/chain/explorer/overview")
-        | (method, "/api/chain/explorer/transactions")
-        | (method, "/api/chain/explorer/transaction")
-        | (method, "/api/chain/explorer/blocks")
-        | (method, "/api/chain/explorer/block")
-        | (method, "/api/chain/explorer/txs")
-        | (method, "/api/chain/explorer/tx")
-        | (method, "/api/chain/explorer/search")
-        | (method, "/api/chain/explorer/address")
-        | (method, "/api/chain/explorer/contracts")
-        | (method, "/api/chain/explorer/contract")
-        | (method, "/api/chain/explorer/assets")
-        | (method, "/api/chain/explorer/mempool")
-        | (method, "/api/chain/feedback")
-            if method != "GET" && method != "POST" =>
-        {
-            write_http_response(
-                &mut stream,
-                405,
-                "text/plain; charset=utf-8",
-                b"Method Not Allowed",
-                false,
-            )?;
-            Ok(())
-        }
-        _ => {
-            write_http_response(
-                &mut stream,
-                404,
-                "text/plain; charset=utf-8",
-                b"Not Found",
-                false,
-            )?;
-            Ok(())
-        }
-    }
-}
-
 fn lock_state(shared: &Arc<Mutex<ServiceState>>) -> std::sync::MutexGuard<'_, ServiceState> {
     shared
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-}
-
-fn serve_console_static_request(
-    stream: &mut TcpStream,
-    request_path: &str,
-    shared_state: &Arc<Mutex<ServiceState>>,
-) -> Result<(), String> {
-    let console_static_dir = {
-        let state = lock_state(shared_state);
-        state.console_static_dir.clone()
-    };
-    let viewer_auth_bootstrap = resolve_optional_viewer_auth_bootstrap();
-
-    match load_console_static_asset(console_static_dir.as_path(), request_path) {
-        StaticAsset::Ok { content_type, body } => {
-            let body = inject_viewer_auth_bootstrap_if_html(
-                body.as_slice(),
-                content_type,
-                viewer_auth_bootstrap.as_ref(),
-            );
-            write_http_response(stream, 200, content_type, body.as_slice(), false)
-        }
-        StaticAsset::NotFound => write_http_response(
-            stream,
-            404,
-            "text/plain; charset=utf-8",
-            b"Not Found",
-            false,
-        ),
-        StaticAsset::InvalidPath => write_http_response(
-            stream,
-            400,
-            "text/plain; charset=utf-8",
-            b"Bad Request",
-            false,
-        ),
-    }
-}
-
-fn strip_query(path: &str) -> &str {
-    path.split('?').next().unwrap_or(path)
-}
-
-fn remap_transfer_runtime_target(
-    request_path: &str,
-    api_prefix: &str,
-    runtime_prefix: &str,
-) -> String {
-    let suffix = request_path.strip_prefix(api_prefix).unwrap_or_default();
-    format!("{runtime_prefix}{suffix}")
-}
-
-fn extract_host_header(headers: &[(String, String)]) -> Option<String> {
-    headers
-        .iter()
-        .find(|(name, _)| name == "host")
-        .map(|(_, value)| normalize_host_header(value.as_str()))
-        .filter(|value| !value.is_empty())
-}
-
-fn normalize_host_header(raw: &str) -> String {
-    let value = raw.trim();
-    if value.starts_with('[') {
-        if let Some((host, _)) = value.rsplit_once(']') {
-            return host.trim_start_matches('[').to_string();
-        }
-    }
-    if let Some((host, _port)) = value.rsplit_once(':') {
-        if host.contains(':') {
-            return value.to_string();
-        }
-        return host.to_string();
-    }
-    value.to_string()
 }
 
 fn parse_options<'a, I>(args: I) -> Result<CliOptions, String>
@@ -1013,6 +523,10 @@ where
 
     while let Some(arg) = iter.next() {
         match arg {
+            "--deployment-mode" => {
+                options.initial_config.deployment_mode =
+                    next_value(&mut iter, "--deployment-mode")?;
+            }
             "--listen-bind" => {
                 options.listen_bind = next_value(&mut iter, "--listen-bind")?;
             }
@@ -1131,6 +645,10 @@ where
     options.initial_config.chain_runtime_bin = options.chain_runtime_bin.trim().to_string();
 
     parse_host_port(options.listen_bind.as_str(), "--listen-bind")?;
+    DeploymentMode::parse(
+        options.initial_config.deployment_mode.as_str(),
+        "--deployment-mode",
+    )?;
     parse_port(options.initial_config.viewer_port.as_str(), "--viewer-port")?;
     parse_host_port(options.initial_config.live_bind.as_str(), "--live-bind")?;
     parse_host_port(options.initial_config.web_bind.as_str(), "--web-bind")?;
@@ -1193,6 +711,24 @@ where
     }
 
     Ok(options)
+}
+
+fn deployment_mode_from_config(config: &LauncherConfig) -> DeploymentMode {
+    DeploymentMode::parse(config.deployment_mode.as_str(), "deployment_mode")
+        .unwrap_or(DeploymentMode::TrustedLocalOnly)
+}
+
+fn public_snapshot_from_state(
+    state: &ServiceState,
+    request_host: Option<&str>,
+) -> PublicStateSnapshot {
+    PublicStateSnapshot {
+        hosted_access: hosted_player_access_contract(deployment_mode_from_config(&state.config)),
+        game_url: build_game_url(&state.config, request_host),
+        status: state.process_state.code().to_string(),
+        chain_status: state.chain_runtime_status.code().to_string(),
+        updated_at_unix_ms: state.updated_at_unix_ms,
+    }
 }
 
 #[cfg(test)]

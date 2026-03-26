@@ -126,6 +126,7 @@ pub(super) fn write_http_response(
         200 => "OK",
         204 => "No Content",
         400 => "Bad Request",
+        403 => "Forbidden",
         404 => "Not Found",
         405 => "Method Not Allowed",
         _ => "Internal Server Error",

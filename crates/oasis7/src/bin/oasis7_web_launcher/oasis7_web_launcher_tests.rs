@@ -20,6 +20,7 @@ use oasis7_proto::storage_profile::StorageProfile;
 fn parse_options_defaults() {
     let options = parse_options(std::iter::empty()).expect("parse options");
     assert_eq!(options.listen_bind, DEFAULT_LISTEN_BIND);
+    assert_eq!(options.initial_config.deployment_mode, "trusted_local_only");
     assert_eq!(options.initial_config.scenario, DEFAULT_SCENARIO);
     assert_eq!(
         options.initial_config.chain_status_bind,
@@ -57,6 +58,8 @@ fn parse_options_accepts_overrides() {
         [
             "--listen-bind",
             "127.0.0.1:7510",
+            "--deployment-mode",
+            "hosted_public_join",
             "--launcher-bin",
             "/tmp/oasis7_game_launcher",
             "--chain-runtime-bin",
@@ -97,6 +100,7 @@ fn parse_options_accepts_overrides() {
     .expect("parse overrides");
 
     assert_eq!(options.listen_bind, "127.0.0.1:7510");
+    assert_eq!(options.initial_config.deployment_mode, "hosted_public_join");
     assert_eq!(options.launcher_bin, "/tmp/oasis7_game_launcher");
     assert_eq!(options.chain_runtime_bin, "/tmp/oasis7_chain_runtime");
     assert_eq!(
@@ -164,6 +168,13 @@ fn parse_options_rejects_unknown_option() {
 }
 
 #[test]
+fn parse_options_rejects_unknown_deployment_mode() {
+    let err = parse_options(["--deployment-mode", "invalid"].into_iter())
+        .expect_err("invalid deployment mode should fail");
+    assert!(err.contains("trusted_local_only"));
+}
+
+#[test]
 fn parse_options_rejects_out_of_range_chain_pos_proposal_tick_phase() {
     let err = parse_options(
         [
@@ -206,11 +217,14 @@ fn parse_chain_validators_rejects_invalid_format() {
 #[test]
 fn build_launcher_args_includes_chain_disable_when_off() {
     let config = LauncherConfig {
+        deployment_mode: "hosted_public_join".to_string(),
         chain_enabled: false,
         viewer_static_dir: ".".to_string(),
         ..LauncherConfig::default()
     };
     let args = build_launcher_args(&config).expect("args");
+    assert!(args.contains(&"--deployment-mode".to_string()));
+    assert!(args.contains(&"hosted_public_join".to_string()));
     assert!(args.contains(&"--chain-disable".to_string()));
     assert!(!args.contains(&"--no-llm".to_string()));
     assert!(!args.contains(&"--with-llm".to_string()));

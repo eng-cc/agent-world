@@ -793,6 +793,7 @@ pub(super) fn snapshot_from_state(
             state.chain_runtime_bin.as_str(),
         ),
         chain_recovery: state.chain_recovery.clone(),
+        hosted_access: hosted_player_access_contract(deployment_mode_from_config(&state.config)),
         game_url,
         config: state.config.clone(),
         logs: state.logs.iter().cloned().collect(),
@@ -912,6 +913,11 @@ pub(super) fn validate_game_config_with_launcher_bin(
     launcher_bin: &str,
 ) -> Vec<String> {
     let mut issues = Vec::new();
+    if DeploymentMode::parse(config.deployment_mode.as_str(), "deployment mode").is_err() {
+        issues.push(
+            "deployment mode must be one of: trusted_local_only|hosted_public_join".to_string(),
+        );
+    }
     if config.scenario.trim().is_empty() {
         issues.push("scenario is required".to_string());
     }
@@ -1057,6 +1063,8 @@ pub(super) fn build_launcher_args_with_launcher_bin(
             })?;
 
     let mut args = vec![
+        "--deployment-mode".to_string(),
+        config.deployment_mode.trim().to_string(),
         "--scenario".to_string(),
         config.scenario.trim().to_string(),
         "--live-bind".to_string(),

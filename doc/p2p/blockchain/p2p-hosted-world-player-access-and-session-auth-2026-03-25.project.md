@@ -16,8 +16,12 @@
 ### TASK-P2P-041-A / runtime_engineer
 - 输入:
   - `crates/oasis7/src/bin/oasis7_web_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_web_launcher/server.rs`
   - `crates/oasis7/src/bin/oasis7_web_launcher/control_plane.rs`
   - `crates/oasis7/src/bin/oasis7_web_launcher/viewer_auth_bootstrap.rs`
+  - `crates/oasis7/src/bin/oasis7_game_launcher.rs`
+  - `crates/oasis7/src/bin/oasis7_game_launcher/static_http.rs`
+  - `crates/oasis7/src/bin/oasis7_hosted_access.rs`
   - `crates/oasis7/src/bin/oasis7_chain_runtime/node_keypair_config.rs`
 - 输出:
   - public/private plane endpoint 清单
@@ -96,10 +100,15 @@
   - 游戏阶段口径: `limited playable technical preview`
   - 安全阶段口径: `crypto-hardened preview`
   - hosted-world player access verdict: `specified_not_implemented`
+- 已实现的 `TASK-P2P-041-A` P0 收口:
+  - `oasis7_game_launcher --deployment-mode hosted_public_join` 会停止向公开 viewer HTML 注入长期 signer bootstrap。
+  - `oasis7_web_launcher --deployment-mode hosted_public_join` 会把 `/api/state`、`/api/start`、`/api/stop`、`/api/chain/start`、`/api/chain/stop`、`/api/gui-agent/*` 与 console static 路径收口为 loopback-only private control plane。
+  - 新增 `/api/public/state`，对外只暴露 join 级 public snapshot，不再把 operator state / logs / config 作为默认公共面。
+  - launcher snapshot 现已冻结 `deployment_mode`、hosted verdict、`gui-agent` surface 状态与 admission contract 默认值，供后续 viewer/runtime/QA 接续。
 - 当前 blocker:
-  - browser 仍会收到长期 signer bootstrap
-  - public player access 与 control plane 仍未拆分
-  - Web 敏感动作尚未切到 session/capability/strong-auth 模型
+  - `guest session -> player session` 的 session issue / resume / revoke 仍未实现，当前 public join 仍缺正式会话层。
+  - runtime 还未对玩家输入、entity ownership、`/api/chain/transfer` 等动作执行 capability / strong-auth 校验。
+  - hosted operator 目前仅支持 loopback private control plane；远程 operator URL / tunnel / runbook 仍待 `TASK-P2P-041-F` 收口。
 
 ## 依赖
 - `doc/p2p/prd.md`
@@ -112,12 +121,13 @@
 - `doc/world-simulator/viewer/viewer-web-software-safe-mode-2026-03-16.prd.md`
 - `testing-manual.md`
 
-## 验收命令（TASK-P2P-041-A 方案冻结）
+## 验收命令（TASK-P2P-041-A P0 实装）
 - `rg -n "public player plane|private control plane|signer plane|guest session|player session|strong auth|invite-only|gui-agent/action|admission control|specified_not_implemented" doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.prd.md doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.design.md doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.project.md doc/p2p/prd.md doc/p2p/project.md`
+- `env -u RUSTC_WRAPPER cargo test -p oasis7 --bin oasis7_web_launcher --bin oasis7_game_launcher`
 - `./scripts/doc-governance-check.sh`
 - `git diff --check`
 
 ## 状态
 - 当前状态: active
-- 下一步: 执行 `TASK-P2P-041-A`，先把 public join 与 private control 做硬拆分，冻结 `/api/gui-agent/action` split 与 admission control，并让 hosted-world 浏览器路径停止接收长期 signer bootstrap。
-- 最近更新: 2026-03-25
+- 下一步: 进入 `TASK-P2P-041-B` / `TASK-P2P-041-C`，优先落 `guest session -> player session`、runtime capability enforcement、entity bind/resume/revoke，并把当前 loopback-only private control plane 补成正式 operator runbook。
+- 最近更新: 2026-03-26

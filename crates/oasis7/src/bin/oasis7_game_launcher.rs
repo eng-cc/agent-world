@@ -1,6 +1,4 @@
 use std::env;
-use std::ffi::OsStr;
-use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
@@ -13,6 +11,26 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use oasis7::simulator::ProviderExecutionMode;
 use oasis7_proto::storage_profile::StorageProfile;
+
+#[path = "oasis7_hosted_access.rs"]
+mod hosted_access;
+#[path = "oasis7_game_launcher/runtime_paths.rs"]
+mod runtime_paths;
+#[path = "oasis7_game_launcher/static_http.rs"]
+mod static_http;
+
+use hosted_access::{DeploymentMode, DEFAULT_DEPLOYMENT_MODE};
+use runtime_paths::{
+    resolve_oasis7_chain_runtime_binary, resolve_oasis7_viewer_live_binary,
+    resolve_viewer_static_dir, resolve_viewer_static_dir_with_override,
+    viewer_dev_dist_candidates,
+};
+use static_http::{
+    build_viewer_auth_bootstrap_script, content_type_for_path, handle_http_connection,
+    resolve_static_asset_path, resolve_viewer_auth_bootstrap_for_embedded_server,
+    resolve_viewer_auth_bootstrap_from_path,
+    sanitize_index_html_for_embedded_server, sanitize_relative_request_path,
+};
 
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
 const DEFAULT_LIVE_BIND: &str = "127.0.0.1:5023";
@@ -71,6 +89,7 @@ struct ViewerAuthBootstrap {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CliOptions {
+    deployment_mode: String,
     scenario: String,
     live_bind: String,
     web_bind: String,
@@ -104,6 +123,7 @@ struct CliOptions {
 impl Default for CliOptions {
     fn default() -> Self {
         Self {
+            deployment_mode: DEFAULT_DEPLOYMENT_MODE.to_string(),
             scenario: DEFAULT_SCENARIO.to_string(),
             live_bind: DEFAULT_LIVE_BIND.to_string(),
             web_bind: DEFAULT_WEB_BIND.to_string(),
@@ -192,6 +212,7 @@ fn run_launcher(options: &CliOptions) -> Result<(), String> {
         }
     };
     let mut server = match start_static_http_server(
+        deployment_mode_from_options(options),
         options.viewer_host.as_str(),
         options.viewer_port,
         viewer_static_dir.as_path(),
@@ -389,6 +410,7 @@ fn build_oasis7_chain_runtime_args(options: &CliOptions) -> Vec<String> {
 }
 
 fn start_static_http_server(
+    deployment_mode: DeploymentMode,
     host: &str,
     port: u16,
     root_dir: &Path,
@@ -403,7 +425,7 @@ fn start_static_http_server(
     let (error_tx, error_rx) = mpsc::channel::<String>();
     let root_dir = Arc::new(root_dir.to_path_buf());
     let join_handle = thread::spawn(move || {
-        if let Err(err) = run_static_http_loop(listener, root_dir, stop_rx) {
+        if let Err(err) = run_static_http_loop(listener, deployment_mode, root_dir, stop_rx) {
             let _ = error_tx.send(err);
         }
     });
@@ -417,6 +439,7 @@ fn start_static_http_server(
 
 fn run_static_http_loop(
     listener: TcpListener,
+    deployment_mode: DeploymentMode,
     root_dir: Arc<PathBuf>,
     stop_rx: Receiver<()>,
 ) -> Result<(), String> {
@@ -429,8 +452,11 @@ fn run_static_http_loop(
         match listener.accept() {
             Ok((stream, _addr)) => {
                 let root_dir = Arc::clone(&root_dir);
+                let deployment_mode = deployment_mode;
                 thread::spawn(move || {
-                    if let Err(err) = handle_http_connection(stream, root_dir.as_path()) {
+                    if let Err(err) =
+                        handle_http_connection(stream, root_dir.as_path(), deployment_mode)
+                    {
                         eprintln!("warning: static HTTP connection failed: {err}");
                     }
                 });
@@ -443,235 +469,6 @@ fn run_static_http_loop(
             }
         }
     }
-}
-
-fn handle_http_connection(mut stream: TcpStream, root_dir: &Path) -> Result<(), String> {
-    stream
-        .set_read_timeout(Some(Duration::from_secs(2)))
-        .map_err(|err| format!("failed to set read timeout: {err}"))?;
-
-    let mut buffer = [0u8; 8192];
-    let bytes = stream
-        .read(&mut buffer)
-        .map_err(|err| format!("failed to read request: {err}"))?;
-    if bytes == 0 {
-        return Ok(());
-    }
-
-    let request = String::from_utf8_lossy(&buffer[..bytes]);
-    let Some(line) = request.lines().next() else {
-        write_http_response(&mut stream, 400, "text/plain", b"Bad Request", false)
-            .map_err(|err| format!("failed to write 400 response: {err}"))?;
-        return Ok(());
-    };
-
-    let mut parts = line.split_whitespace();
-    let method = parts.next().unwrap_or("");
-    let target = parts.next().unwrap_or("");
-
-    let head_only = method.eq_ignore_ascii_case("HEAD");
-    if !method.eq_ignore_ascii_case("GET") && !head_only {
-        write_http_response(&mut stream, 405, "text/plain", b"Method Not Allowed", false)
-            .map_err(|err| format!("failed to write 405 response: {err}"))?;
-        return Ok(());
-    }
-
-    let resolved = match resolve_static_asset_path(root_dir, target) {
-        Ok(resolved) => resolved,
-        Err(_) => {
-            write_http_response(&mut stream, 400, "text/plain", b"Bad Request", head_only)
-                .map_err(|err| format!("failed to write 400 response: {err}"))?;
-            return Ok(());
-        }
-    };
-
-    match resolved {
-        Some(path) => {
-            let body = fs::read(&path).map_err(|err| {
-                format!("failed to read static asset `{}`: {err}", path.display())
-            })?;
-            let viewer_auth_bootstrap =
-                resolve_viewer_auth_bootstrap_from_path(Path::new(NODE_CONFIG_FILE_NAME)).ok();
-            let body = sanitize_index_html_for_embedded_server(
-                path.as_path(),
-                body.as_slice(),
-                viewer_auth_bootstrap.as_ref(),
-            );
-            write_http_response(
-                &mut stream,
-                200,
-                content_type_for_path(path.as_path()),
-                body.as_slice(),
-                head_only,
-            )
-            .map_err(|err| format!("failed to write 200 response: {err}"))?;
-        }
-        None => {
-            write_http_response(&mut stream, 404, "text/plain", b"Not Found", head_only)
-                .map_err(|err| format!("failed to write 404 response: {err}"))?;
-        }
-    }
-
-    Ok(())
-}
-
-fn resolve_static_asset_path(root_dir: &Path, raw_target: &str) -> Result<Option<PathBuf>, String> {
-    let path_only = raw_target
-        .split('?')
-        .next()
-        .unwrap_or(raw_target)
-        .split('#')
-        .next()
-        .unwrap_or(raw_target);
-
-    let relative = sanitize_relative_request_path(path_only)?;
-    let direct_path = if relative.as_os_str().is_empty() {
-        root_dir.join("index.html")
-    } else {
-        root_dir.join(relative.as_path())
-    };
-
-    if direct_path.is_file() {
-        return Ok(Some(direct_path));
-    }
-
-    let has_extension = Path::new(path_only)
-        .file_name()
-        .and_then(|name| Path::new(name).extension())
-        .is_some();
-    if !has_extension {
-        let spa_index = root_dir.join("index.html");
-        if spa_index.is_file() {
-            return Ok(Some(spa_index));
-        }
-    }
-
-    Ok(None)
-}
-
-fn sanitize_relative_request_path(raw_path: &str) -> Result<PathBuf, String> {
-    let trimmed = raw_path.trim();
-    if trimmed.is_empty() {
-        return Ok(PathBuf::new());
-    }
-
-    let normalized = trimmed.strip_prefix('/').unwrap_or(trimmed);
-    let mut cleaned = PathBuf::new();
-    for segment in normalized.split('/') {
-        if segment.is_empty() || segment == "." {
-            continue;
-        }
-        if segment == ".." || segment.contains('\\') {
-            return Err("path traversal is not allowed".to_string());
-        }
-        cleaned.push(segment);
-    }
-
-    Ok(cleaned)
-}
-
-fn content_type_for_path(path: &Path) -> &'static str {
-    match path.extension().and_then(|ext| ext.to_str()) {
-        Some("html") => "text/html; charset=utf-8",
-        Some("js") => "text/javascript; charset=utf-8",
-        Some("css") => "text/css; charset=utf-8",
-        Some("json") => "application/json; charset=utf-8",
-        Some("wasm") => "application/wasm",
-        Some("svg") => "image/svg+xml",
-        Some("png") => "image/png",
-        Some("jpg") | Some("jpeg") => "image/jpeg",
-        Some("webp") => "image/webp",
-        Some("ico") => "image/x-icon",
-        Some("map") => "application/json; charset=utf-8",
-        Some("txt") => "text/plain; charset=utf-8",
-        _ => "application/octet-stream",
-    }
-}
-
-fn sanitize_index_html_for_embedded_server(
-    path: &Path,
-    body: &[u8],
-    viewer_auth_bootstrap: Option<&ViewerAuthBootstrap>,
-) -> Vec<u8> {
-    if path.extension() != Some(OsStr::new("html")) {
-        return body.to_vec();
-    }
-    let sanitized = if path.file_name() == Some(OsStr::new("index.html")) {
-        strip_trunk_autoreload_script(body)
-    } else {
-        body.to_vec()
-    };
-    if let Some(viewer_auth_bootstrap) = viewer_auth_bootstrap {
-        inject_viewer_auth_bootstrap_script(sanitized.as_slice(), viewer_auth_bootstrap)
-    } else {
-        sanitized
-    }
-}
-
-fn strip_trunk_autoreload_script(body: &[u8]) -> Vec<u8> {
-    let html = String::from_utf8_lossy(body);
-    let marker = ".well-known/trunk/ws";
-    let Some(marker_index) = html.find(marker) else {
-        return body.to_vec();
-    };
-    let Some(script_start) = html[..marker_index].rfind("<script") else {
-        return body.to_vec();
-    };
-    let Some(script_end_rel) = html[marker_index..].find("</script>") else {
-        return body.to_vec();
-    };
-    let script_end = marker_index + script_end_rel + "</script>".len();
-
-    let mut sanitized = String::with_capacity(html.len());
-    sanitized.push_str(&html[..script_start]);
-    sanitized.push_str(&html[script_end..]);
-    sanitized.into_bytes()
-}
-
-fn inject_viewer_auth_bootstrap_script(body: &[u8], auth: &ViewerAuthBootstrap) -> Vec<u8> {
-    let html = String::from_utf8_lossy(body);
-    let script = build_viewer_auth_bootstrap_script(auth);
-    let insert_at = html
-        .rfind("</head>")
-        .or_else(|| html.rfind("</body>"))
-        .unwrap_or(html.len());
-    let mut injected = String::with_capacity(html.len() + script.len() + 1);
-    injected.push_str(&html[..insert_at]);
-    injected.push_str(script.as_str());
-    injected.push_str(&html[insert_at..]);
-    injected.into_bytes()
-}
-
-fn build_viewer_auth_bootstrap_script(auth: &ViewerAuthBootstrap) -> String {
-    let payload = serde_json::json!({
-        VIEWER_PLAYER_ID_ENV: auth.player_id,
-        VIEWER_AUTH_PUBLIC_KEY_ENV: auth.public_key,
-        VIEWER_AUTH_PRIVATE_KEY_ENV: auth.private_key,
-    });
-    let payload = serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string());
-    format!(
-        "<script>const __oasis7ViewerAuthEnv=Object.freeze({payload});window.{VIEWER_AUTH_BOOTSTRAP_OBJECT}=__oasis7ViewerAuthEnv;</script>"
-    )
-}
-
-fn resolve_viewer_auth_bootstrap_from_path(path: &Path) -> Result<ViewerAuthBootstrap, String> {
-    let content =
-        fs::read_to_string(path).map_err(|err| format!("read {} failed: {err}", path.display()))?;
-    let value: toml::Value = toml::from_str(content.as_str())
-        .map_err(|err| format!("parse {} failed: {err}", path.display()))?;
-    let node = value
-        .get(NODE_TABLE_KEY)
-        .and_then(toml::Value::as_table)
-        .ok_or_else(|| format!("{NODE_TABLE_KEY} table is missing in {}", path.display()))?;
-    let private_key =
-        resolve_required_toml_string(node, NODE_PRIVATE_KEY_FIELD, "node.private_key")?;
-    let public_key = resolve_required_toml_string(node, NODE_PUBLIC_KEY_FIELD, "node.public_key")?;
-    let player_id = resolve_viewer_player_id_override(env::var(VIEWER_PLAYER_ID_ENV).ok());
-    Ok(ViewerAuthBootstrap {
-        player_id,
-        public_key,
-        private_key,
-    })
 }
 
 fn resolve_viewer_player_id_override(value: Option<String>) -> String {
@@ -963,6 +760,9 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
 
     while let Some(arg) = iter.next() {
         match arg {
+            "--deployment-mode" => {
+                options.deployment_mode = parse_required_value(&mut iter, "--deployment-mode")?;
+            }
             "--scenario" => {
                 options.scenario = parse_required_value(&mut iter, "--scenario")?;
             }
@@ -1122,6 +922,7 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
 
     let _ = parse_host_port(options.live_bind.as_str(), "--live-bind")?;
     let _ = parse_host_port(options.web_bind.as_str(), "--web-bind")?;
+    DeploymentMode::parse(options.deployment_mode.as_str(), "--deployment-mode")?;
     validate_agent_provider_mode(options.agent_provider_mode.as_str())?;
     if options.agent_provider_mode == OPENCLAW_LOCAL_HTTP_PROVIDER_MODE {
         if options.openclaw_base_url.trim().is_empty() {
@@ -1163,6 +964,11 @@ fn parse_options<'a>(args: impl Iterator<Item = &'a str>) -> Result<CliOptions, 
     }
 
     Ok(options)
+}
+
+fn deployment_mode_from_options(options: &CliOptions) -> DeploymentMode {
+    DeploymentMode::parse(options.deployment_mode.as_str(), "deployment_mode")
+        .unwrap_or(DeploymentMode::TrustedLocalOnly)
 }
 
 fn validate_agent_provider_mode(raw: &str) -> Result<(), String> {
@@ -1245,180 +1051,6 @@ fn validate_chain_node_validator(raw: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn resolve_oasis7_viewer_live_binary() -> Result<PathBuf, String> {
-    if let Some((path, env_name)) = resolve_non_empty_env_override(OASIS7_VIEWER_LIVE_BIN_ENV) {
-        let candidate = PathBuf::from(path);
-        if candidate.is_file() {
-            return Ok(candidate);
-        }
-        return Err(format!(
-            "{env_name} is set but file does not exist: {}",
-            candidate.display()
-        ));
-    }
-
-    let mut candidates = Vec::new();
-    if let Ok(current_exe) = env::current_exe() {
-        if let Some(dir) = current_exe.parent() {
-            candidates.push(dir.join(binary_name("oasis7_viewer_live")));
-            candidates.push(
-                dir.join("..")
-                    .join(binary_name("oasis7_viewer_live"))
-                    .to_path_buf(),
-            );
-        }
-    }
-
-    if let Some(path_entry) = find_on_path(OsStr::new(&binary_name("oasis7_viewer_live"))) {
-        candidates.push(path_entry);
-    }
-
-    for candidate in candidates {
-        if candidate.is_file() {
-            return Ok(candidate);
-        }
-    }
-
-    Err(format!(
-        "failed to locate `oasis7_viewer_live` binary; build it first or set {OASIS7_VIEWER_LIVE_BIN_ENV}"
-    ))
-}
-
-fn resolve_oasis7_chain_runtime_binary() -> Result<PathBuf, String> {
-    if let Some((path, env_name)) = resolve_non_empty_env_override(OASIS7_CHAIN_RUNTIME_BIN_ENV) {
-        let candidate = PathBuf::from(path);
-        if candidate.is_file() {
-            return Ok(candidate);
-        }
-        return Err(format!(
-            "{env_name} is set but file does not exist: {}",
-            candidate.display()
-        ));
-    }
-
-    let mut candidates = Vec::new();
-    if let Ok(current_exe) = env::current_exe() {
-        if let Some(dir) = current_exe.parent() {
-            candidates.push(dir.join(binary_name("oasis7_chain_runtime")));
-            candidates.push(
-                dir.join("..")
-                    .join(binary_name("oasis7_chain_runtime"))
-                    .to_path_buf(),
-            );
-        }
-    }
-
-    if let Some(path_entry) = find_on_path(OsStr::new(&binary_name("oasis7_chain_runtime"))) {
-        candidates.push(path_entry);
-    }
-
-    for candidate in candidates {
-        if candidate.is_file() {
-            return Ok(candidate);
-        }
-    }
-
-    Err(format!(
-        "failed to locate `oasis7_chain_runtime` binary; build it first or set {OASIS7_CHAIN_RUNTIME_BIN_ENV}"
-    ))
-}
-
-fn resolve_viewer_static_dir(raw: &str) -> Result<PathBuf, String> {
-    let env_override = resolve_non_empty_env_override(GAME_STATIC_DIR_ENV);
-    resolve_viewer_static_dir_with_override(
-        raw,
-        env_override
-            .as_ref()
-            .map(|(value, env_name)| (value.as_str(), *env_name)),
-    )
-}
-
-fn resolve_viewer_static_dir_with_override(
-    raw: &str,
-    env_override: Option<(&str, &str)>,
-) -> Result<PathBuf, String> {
-    if raw == DEFAULT_VIEWER_STATIC_DIR {
-        if let Some((override_path, env_name)) = env_override {
-            if let Some(dir) = resolve_viewer_static_dir_candidate(override_path) {
-                return Ok(dir);
-            }
-            return Err(format!(
-                "{env_name} is set but viewer static dir not found: `{override_path}`"
-            ));
-        }
-    }
-
-    if let Some(dir) = resolve_viewer_static_dir_candidate(raw) {
-        return Ok(dir);
-    }
-
-    if raw == DEFAULT_VIEWER_STATIC_DIR {
-        if let Some(dev_fallback) = viewer_dev_dist_candidates()
-            .into_iter()
-            .find(|candidate| candidate.is_dir())
-        {
-            return Ok(dev_fallback);
-        }
-    }
-
-    Err(format!(
-        "viewer static dir not found: `{raw}`; provide --viewer-static-dir <path> (expected trunk build output)"
-    ))
-}
-
-fn viewer_dev_dist_candidates() -> Vec<PathBuf> {
-    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
-    vec![repo_root.join("oasis7_viewer").join("dist")]
-}
-
-fn resolve_viewer_static_dir_candidate(raw: &str) -> Option<PathBuf> {
-    let user_path = PathBuf::from(raw);
-    if user_path.is_dir() {
-        return Some(user_path);
-    }
-
-    if user_path.is_relative() {
-        if let Ok(current_exe) = env::current_exe() {
-            if let Some(bin_dir) = current_exe.parent() {
-                let sibling_candidate = bin_dir.join("..").join(&user_path);
-                if sibling_candidate.is_dir() {
-                    return Some(sibling_candidate);
-                }
-            }
-        }
-    }
-    None
-}
-
-fn resolve_non_empty_env_override(env_name: &'static str) -> Option<(String, &'static str)> {
-    if let Ok(value) = env::var(env_name) {
-        let trimmed = value.trim();
-        if !trimmed.is_empty() {
-            return Some((trimmed.to_string(), env_name));
-        }
-    }
-    None
-}
-
-fn binary_name(base: &str) -> String {
-    if cfg!(windows) {
-        format!("{base}.exe")
-    } else {
-        base.to_string()
-    }
-}
-
-fn find_on_path(file_name: &OsStr) -> Option<PathBuf> {
-    let path_var = env::var_os("PATH")?;
-    for dir in env::split_paths(&path_var) {
-        let candidate = dir.join(file_name);
-        if candidate.is_file() {
-            return Some(candidate);
-        }
-    }
-    None
-}
-
 fn open_browser(url: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
@@ -1469,6 +1101,7 @@ Start player stack with one command:\n\
 - start built-in static web server\n\
 - print URL and optionally open browser\n\n\
 Options:\n\
+  --deployment-mode <mode>    trusted_local_only|hosted_public_join (default: {DEFAULT_DEPLOYMENT_MODE})\n\
   --scenario <name>            oasis7_viewer_live scenario (default: {DEFAULT_SCENARIO})\n\
   --live-bind <host:port>      oasis7_viewer_live bind (default: {DEFAULT_LIVE_BIND})\n\
   --web-bind <host:port>       oasis7_viewer_live web bridge bind (default: {DEFAULT_WEB_BIND})\n\
