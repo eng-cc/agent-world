@@ -105,8 +105,12 @@
   - `oasis7_web_launcher --deployment-mode hosted_public_join` 会把 `/api/state`、`/api/start`、`/api/stop`、`/api/chain/start`、`/api/chain/stop`、`/api/gui-agent/*` 与 console static 路径收口为 loopback-only private control plane。
   - 新增 `/api/public/state`，对外只暴露 join 级 public snapshot，不再把 operator state / logs / config 作为默认公共面。
   - launcher snapshot 现已冻结 `deployment_mode`、hosted verdict、`gui-agent` surface 状态与 admission contract 默认值，供后续 viewer/runtime/QA 接续。
+- 已实现的 `TASK-P2P-041-B` viewer first slice:
+  - `software_safe.js` 现会显式显示 `guest_session / player_session / strong_auth` 梯度、`deploymentHint`、`auth source` 与 reconnect 提示，不再只显示 `auth=ready|missing`。
+  - prompt/chat 现在会按 capability 给出结构化禁用原因：至少区分 `guest_session`、`observer_only` 与 `strong_auth_required` 占位，而不是继续用单一 “viewer auth bootstrap is unavailable”。
+  - `__AW_TEST__.getState()` 已补 `authTier`、`authSource`、`authDeploymentHint` 与 `authSurface`，便于后续 QA/agent-browser 对 hosted public join 的 session/capability 状态做证据采样。
 - 当前 blocker:
-  - `guest session -> player session` 的 session issue / resume / revoke 仍未实现，当前 public join 仍缺正式会话层。
+  - `guest session -> player session` 的 session issue / resume / revoke 仍未实现；当前 viewer 只是把梯度与禁用原因显式化，并未真正落会话签发/恢复。
   - runtime 还未对玩家输入、entity ownership、`/api/chain/transfer` 等动作执行 capability / strong-auth 校验。
   - hosted operator 目前仅支持 loopback private control plane；远程 operator URL / tunnel / runbook 仍待 `TASK-P2P-041-F` 收口。
 
@@ -129,5 +133,5 @@
 
 ## 状态
 - 当前状态: active
-- 下一步: 进入 `TASK-P2P-041-B` / `TASK-P2P-041-C`，优先落 `guest session -> player session`、runtime capability enforcement、entity bind/resume/revoke，并把当前 loopback-only private control plane 补成正式 operator runbook。
+- 下一步: 继续推进 `TASK-P2P-041-B` / `TASK-P2P-041-C`，把 viewer 已显式化的 `guest_session -> player_session` UX 接到真实 session issue / resume / revoke，并补 runtime capability enforcement、entity bind/ownership 冲突规则。
 - 最近更新: 2026-03-26

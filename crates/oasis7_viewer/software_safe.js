@@ -188,6 +188,136 @@ function resolveAuthBootstrap() {
   };
 }
 
+function hostnameFromUrl(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return null;
+  try {
+    return new URL(value, window.location.href).hostname || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function isLoopbackHostname(raw) {
+  const value = String(raw || "").trim().toLowerCase();
+  return value === "localhost" || value === "127.0.0.1" || value === "::1" || value === "[::1]";
+}
+
+function authDeploymentHint(auth) {
+  const params = getSearchParams();
+  const wsHost = hostnameFromUrl(state.wsUrl || params.get("ws") || params.get("addr") || "");
+  const pageHost = String(window.location.hostname || "").trim();
+  const remoteOriginLikely = [pageHost, wsHost].filter(Boolean).some((host) => !isLoopbackHostname(host));
+  if (auth.available) {
+    return remoteOriginLikely ? "remote_origin_legacy_bootstrap" : "trusted_local_preview";
+  }
+  return remoteOriginLikely ? "hosted_public_join_likely" : "guest_only_or_missing_bootstrap";
+}
+
+function guestSessionReason(auth, deploymentHint) {
+  if (auth.available) {
+    return "guest session has already been superseded by the current preview player auth lane";
+  }
+  if (deploymentHint === "hosted_public_join_likely") {
+    return "this browser only has guest-session viewing; hosted public join player-session issuance has not landed yet";
+  }
+  return auth.error || "viewer auth bootstrap is unavailable, so the browser cannot leave guest session";
+}
+
+function playerSessionReason(auth, deploymentHint) {
+  if (auth.available) {
+    return "player interaction is currently unlocked through legacy viewer auth bootstrap in trusted preview mode";
+  }
+  if (deploymentHint === "hosted_public_join_likely") {
+    return "player session upgrade/login is not implemented on the hosted public join path yet";
+  }
+  return auth.error || "viewer auth bootstrap is missing or incomplete";
+}
+
+function strongAuthReason() {
+  return "strong auth is still a separate follow-up; software_safe does not issue asset/governance proofs yet";
+}
+
+function buildSemanticCapability(actionId) {
+  const observerOnly = selectedAgentInteractionMode() === "observer_only";
+  const deploymentHint = authDeploymentHint(state.auth);
+  if (observerOnly) {
+    return {
+      actionId,
+      enabled: false,
+      code: "observer_only",
+      reason:
+        "selected agent runs through OpenClaw(Local HTTP); software_safe stays observer-only for prompt/chat on this lane",
+    };
+  }
+  if (!state.auth.available) {
+    const reason = deploymentHint === "hosted_public_join_likely"
+      ? `${actionId} requires player_session; this browser is still guest_session only on the hosted public join path`
+      : `${actionId} requires viewer auth bootstrap; current status: ${state.auth.error || "missing"}`;
+    return {
+      actionId,
+      enabled: false,
+      code: "auth_level_insufficient",
+      reason,
+    };
+  }
+  return {
+    actionId,
+    enabled: true,
+    code: null,
+    reason: "player_session is active via legacy viewer auth bootstrap preview",
+  };
+}
+
+function buildAuthSurfaceModel() {
+  const deploymentHint = authDeploymentHint(state.auth);
+  const promptCapability = buildSemanticCapability("prompt_control");
+  const chatCapability = buildSemanticCapability("agent_chat");
+  const currentTier = state.auth.available ? "player_session" : "guest_session";
+  return {
+    deploymentHint,
+    source: state.auth.available ? "legacy_viewer_auth_bootstrap" : "guest_only",
+    currentTier,
+    currentTierReason:
+      currentTier === "player_session"
+        ? "the current web viewer still reaches interactive mode through preview bootstrap, not through hosted-issued player sessions"
+        : guestSessionReason(state.auth, deploymentHint),
+    tiers: [
+      {
+        id: "guest_session",
+        label: "guest_session",
+        status: state.auth.available ? "superseded" : "active",
+        reason: guestSessionReason(state.auth, deploymentHint),
+      },
+      {
+        id: "player_session",
+        label: "player_session",
+        status: state.auth.available ? "active_legacy_preview" : "not_issued",
+        reason: playerSessionReason(state.auth, deploymentHint),
+      },
+      {
+        id: "strong_auth",
+        label: "strong_auth",
+        status: "not_implemented",
+        reason: strongAuthReason(),
+      },
+    ],
+    capabilities: {
+      prompt_control: promptCapability,
+      agent_chat: chatCapability,
+      strong_auth_actions: {
+        actionId: "strong_auth_actions",
+        enabled: false,
+        code: "strong_auth_required",
+        reason: strongAuthReason(),
+      },
+    },
+    reconnect: state.auth.available
+      ? "reconnect still depends on the current preview bootstrap; hosted resume/revoke tokens are not wired yet"
+      : "page reload is possible, but player-session reconnect/resume is not implemented yet",
+  };
+}
+
 function nextRequestId() {
   requestId += 1;
   return requestId;
@@ -231,6 +361,7 @@ function snapshotSemanticFeedback(feedback) {
 }
 
 function getState() {
+  const authSurface = buildAuthSurfaceModel();
   return {
     connectionStatus: state.connectionStatus,
     logicalTime: state.logicalTime,
@@ -264,6 +395,10 @@ function getState() {
     authPlayerId: state.auth.playerId,
     authPublicKey: state.auth.publicKey,
     authError: state.auth.error,
+    authTier: authSurface.currentTier,
+    authSource: authSurface.source,
+    authDeploymentHint: authSurface.deploymentHint,
+    authSurface: clone(authSurface),
     selectedAgentInteractionMode: selectedAgentInteractionMode(),
     selectedAgentDebug: clone(selectedAgentExecutionDebugContext()),
     selectedPromptVersion: state.promptDraft.currentVersion || 0,
@@ -492,6 +627,7 @@ function describeControls() {
     notes: [
       "software_safe acts as a debug_viewer lane: it subscribes to runtime snapshots/events and does not own world authority",
       "when selectedAgentDebug.provider_mode=openclaw_local_http, prompt/chat stay observer-only in runtime live",
+      "without viewer auth bootstrap the browser stays guest_session only; hosted public join player-session issuance is still pending",
     ],
   };
 }
@@ -1032,9 +1168,10 @@ async function processSemanticCommands() {
   }
 }
 
-function assertAuthAvailable() {
-  if (!state.auth.available) {
-    throw new Error(state.auth.error || "viewer auth bootstrap is unavailable");
+function assertSemanticCapability(actionId) {
+  const capability = buildSemanticCapability(actionId);
+  if (!capability.enabled) {
+    throw new Error(capability.reason || state.auth.error || `${actionId} is unavailable`);
   }
 }
 
@@ -1064,7 +1201,7 @@ function sendAgentChat(agentIdOrPayload, maybeMessage) {
     kind: "chat",
     feedback,
     execute: async () => {
-      assertAuthAvailable();
+      assertSemanticCapability("agent_chat");
       feedback.stage = "signing";
       feedback.effect = "building auth proof";
       render();
@@ -1125,7 +1262,7 @@ function sendPromptControl(mode, payload = null) {
     kind: "prompt",
     feedback,
     execute: async () => {
-      assertAuthAvailable();
+      assertSemanticCapability("prompt_control");
       feedback.stage = "signing";
       feedback.effect = "building auth proof";
       render();
@@ -1476,8 +1613,15 @@ function renderSummary() {
   const controlFeedback = snapshotControlFeedback(state.lastControlFeedback);
   const promptFeedback = snapshotSemanticFeedback(state.lastPromptFeedback);
   const chatFeedback = snapshotSemanticFeedback(state.lastChatFeedback);
+  const authSurface = buildAuthSurfaceModel();
   const authBadgeClass = state.auth.available ? "badge badge--good" : "badge badge--warn";
   const selectedDebug = selectedAgentExecutionDebugContext();
+  const tierBadgeClass = (status) =>
+    status === "active" || status === "active_legacy_preview"
+      ? "badge badge--good"
+      : status === "superseded"
+        ? "badge"
+        : "badge badge--warn";
   elements.centerPanel.innerHTML = `
     <div class="stack">
       <div class="badge-row">
@@ -1527,8 +1671,37 @@ function renderSummary() {
       </div>
       <div class="badge-row">
         <span class="${authBadgeClass}">auth=${state.auth.available ? "ready" : "missing"}</span>
+        <span class="badge badge--accent">tier=${escapeHtml(authSurface.currentTier)}</span>
+        <span class="badge">source=${escapeHtml(authSurface.source)}</span>
+        <span class="badge">deploymentHint=${escapeHtml(authSurface.deploymentHint)}</span>
         <span class="badge">player=${escapeHtml(state.auth.playerId || "-")}</span>
         <span class="badge">pubkey=${escapeHtml(state.auth.publicKey ? `${state.auth.publicKey.slice(0, 10)}…` : "-")}</span>
+      </div>
+      <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
+        <div class="panel__header"><div class="panel__title">Session Ladder</div></div>
+        <div class="panel__body stack">
+          <div class="empty">${escapeHtml(authSurface.currentTierReason)}</div>
+          <div class="event-list">
+            ${authSurface.tiers
+              .map(
+                (tier) => `
+                  <div class="event-card">
+                    <div class="event-card__title">
+                      <span>${escapeHtml(tier.label)}</span>
+                      <span class="${tierBadgeClass(tier.status)}">${escapeHtml(tier.status)}</span>
+                    </div>
+                    <div class="event-card__meta">${escapeHtml(tier.reason)}</div>
+                  </div>`,
+              )
+              .join("")}
+          </div>
+          <div class="badge-row">
+            <span class="${authSurface.capabilities.prompt_control.enabled ? "badge badge--good" : "badge badge--warn"}">prompt=${escapeHtml(authSurface.capabilities.prompt_control.enabled ? "enabled" : authSurface.capabilities.prompt_control.code)}</span>
+            <span class="${authSurface.capabilities.agent_chat.enabled ? "badge badge--good" : "badge badge--warn"}">chat=${escapeHtml(authSurface.capabilities.agent_chat.enabled ? "enabled" : authSurface.capabilities.agent_chat.code)}</span>
+            <span class="badge badge--warn">strongAuth=${escapeHtml(authSurface.capabilities.strong_auth_actions.code)}</span>
+          </div>
+          <div class="empty">${escapeHtml(authSurface.reconnect)}</div>
+        </div>
       </div>
       <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
         <div class="panel__header"><div class="panel__title">Playback Controls</div></div>
@@ -1603,14 +1776,16 @@ function renderInteractionPanel() {
   const debugContext = selectedAgentExecutionDebugContext();
   const promptFeedback = snapshotSemanticFeedback(state.lastPromptFeedback);
   const chatFeedback = snapshotSemanticFeedback(state.lastChatFeedback);
-  const authReady = state.auth.available;
-  const observerOnly = debugContext?.provider_mode === "openclaw_local_http";
-  const interactionEnabled = authReady && !observerOnly;
-  const authNotice = observerOnly
+  const authSurface = buildAuthSurfaceModel();
+  const promptCapability = authSurface.capabilities.prompt_control;
+  const chatCapability = authSurface.capabilities.agent_chat;
+  const interactionEnabled = promptCapability.enabled;
+  const authNotice = debugContext?.provider_mode === "openclaw_local_http"
     ? `<div class="empty">Selected agent currently runs through OpenClaw(Local HTTP) in ${escapeHtml(debugContext?.execution_mode || "headless_agent")}; software_safe stays in debug_viewer observer-only mode, so prompt/chat are intentionally disabled here.</div>`
-    : authReady
-      ? `<div class="badge-row"><span class="badge badge--good">auth bootstrap ready</span><span class="badge">player=${escapeHtml(state.auth.playerId)}</span></div>`
-      : `<div class="empty">Prompt/chat require viewer auth bootstrap. Current status: ${escapeHtml(state.auth.error || "missing")}</div>`;
+    : interactionEnabled
+      ? `<div class="badge-row"><span class="badge badge--good">${escapeHtml(authSurface.currentTier)}</span><span class="badge">player=${escapeHtml(state.auth.playerId)}</span><span class="badge">source=${escapeHtml(authSurface.source)}</span></div>
+         <div class="empty">${escapeHtml(promptCapability.reason)}</div>`
+      : `<div class="empty">${escapeHtml(promptCapability.reason)}</div>`;
   const chatHistory = state.chatHistory
     .filter((entry) => entry.agentId === agentId || entry.targetAgentId === agentId)
     .slice(0, 12);
@@ -1626,32 +1801,36 @@ function renderInteractionPanel() {
       <div class="badge-row">
         <span class="badge">boundPlayer=${escapeHtml(binding?.playerId || "-")}</span>
         <span class="badge">boundKey=${escapeHtml(binding?.publicKey ? `${binding.publicKey.slice(0, 10)}…` : "-")}</span>
+        <span class="${promptCapability.enabled ? "badge badge--good" : "badge badge--warn"}">prompt=${escapeHtml(promptCapability.enabled ? "enabled" : promptCapability.code)}</span>
+        <span class="${chatCapability.enabled ? "badge badge--good" : "badge badge--warn"}">chat=${escapeHtml(chatCapability.enabled ? "enabled" : chatCapability.code)}</span>
+        <span class="badge badge--warn">strongAuth=${escapeHtml(authSurface.capabilities.strong_auth_actions.code)}</span>
       </div>
+      <div class="empty">${escapeHtml(authSurface.capabilities.strong_auth_actions.reason)}</div>
       <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
         <div class="panel__header"><div class="panel__title">Prompt Overrides</div></div>
         <div class="panel__body stack">
           <div class="field">
             <label for="prompt-system">System Prompt Override</label>
-            <textarea id="prompt-system" rows="4" ${interactionEnabled ? "" : "disabled"}>${escapeHtml(state.promptDraft.systemPrompt)}</textarea>
+            <textarea id="prompt-system" rows="4" ${promptCapability.enabled ? "" : "disabled"}>${escapeHtml(state.promptDraft.systemPrompt)}</textarea>
           </div>
           <div class="field">
             <label for="prompt-short">Short-Term Goal Override</label>
-            <textarea id="prompt-short" rows="3" ${interactionEnabled ? "" : "disabled"}>${escapeHtml(state.promptDraft.shortTermGoal)}</textarea>
+            <textarea id="prompt-short" rows="3" ${promptCapability.enabled ? "" : "disabled"}>${escapeHtml(state.promptDraft.shortTermGoal)}</textarea>
           </div>
           <div class="field">
             <label for="prompt-long">Long-Term Goal Override</label>
-            <textarea id="prompt-long" rows="3" ${interactionEnabled ? "" : "disabled"}>${escapeHtml(state.promptDraft.longTermGoal)}</textarea>
+            <textarea id="prompt-long" rows="3" ${promptCapability.enabled ? "" : "disabled"}>${escapeHtml(state.promptDraft.longTermGoal)}</textarea>
           </div>
           <div class="toolbar">
-            <button data-prompt-action="preview" ${interactionEnabled ? "" : "disabled"}>Preview Prompt</button>
-            <button data-prompt-action="apply" ${interactionEnabled ? "" : "disabled"}>Apply Prompt</button>
+            <button data-prompt-action="preview" ${promptCapability.enabled ? "" : "disabled"}>Preview Prompt</button>
+            <button data-prompt-action="apply" ${promptCapability.enabled ? "" : "disabled"}>Apply Prompt</button>
           </div>
           <div class="toolbar">
             <div class="field" style="margin:0; min-width:180px; flex:1;">
               <label for="prompt-rollback-version">Rollback Target Version</label>
-              <input id="prompt-rollback-version" type="number" min="0" step="1" value="${Number(state.promptDraft.rollbackTargetVersion || 0)}" ${interactionEnabled ? "" : "disabled"} />
+              <input id="prompt-rollback-version" type="number" min="0" step="1" value="${Number(state.promptDraft.rollbackTargetVersion || 0)}" ${promptCapability.enabled ? "" : "disabled"} />
             </div>
-            <button data-prompt-action="rollback" ${interactionEnabled ? "" : "disabled"}>Rollback Prompt</button>
+            <button data-prompt-action="rollback" ${promptCapability.enabled ? "" : "disabled"}>Rollback Prompt</button>
           </div>
           ${promptFeedback
             ? `<div class="badge-row"><span class="${feedbackBadgeClass(promptFeedback)}">${escapeHtml(promptFeedback.stage)}</span></div>
@@ -1664,10 +1843,10 @@ function renderInteractionPanel() {
         <div class="panel__body stack">
           <div class="field">
             <label for="agent-chat-message">Message</label>
-            <textarea id="agent-chat-message" rows="4" placeholder="Send a message to the selected agent" ${interactionEnabled ? "" : "disabled"}>${escapeHtml(state.chatDraft.message)}</textarea>
+            <textarea id="agent-chat-message" rows="4" placeholder="Send a message to the selected agent" ${chatCapability.enabled ? "" : "disabled"}>${escapeHtml(state.chatDraft.message)}</textarea>
           </div>
           <div class="toolbar">
-            <button data-chat-send="1" ${interactionEnabled ? "" : "disabled"}>Send Chat</button>
+            <button data-chat-send="1" ${chatCapability.enabled ? "" : "disabled"}>Send Chat</button>
           </div>
           ${chatFeedback
             ? `<div class="badge-row"><span class="${feedbackBadgeClass(chatFeedback)}">${escapeHtml(chatFeedback.stage)}</span></div>

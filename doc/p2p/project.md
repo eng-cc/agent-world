@@ -394,8 +394,9 @@
 ## 状态
 - 更新日期: 2026-03-26
 - 当前状态: active（ROUND-026）
-- 下一任务: 继续执行 `TASK-P2P-041-B` / `TASK-P2P-041-C`，优先补 `guest session -> player session`、runtime capability enforcement、entity bind/resume/revoke，并把 hosted operator loopback-only private control plane 补成正式 runbook/tunnel 方案。
+- 下一任务: 继续执行 `TASK-P2P-041-B` / `TASK-P2P-041-C`，把 viewer 已落的 session ladder / capability state 接到真实 `guest session -> player session` issue/reconnect 流程，并补 runtime capability enforcement、entity bind/resume/revoke 与 ownership 冲突规则。
 - 最新完成: `TASK-P2P-041-A`（已完成 hosted-world P0 runtime gate：新增 `deployment_mode`，在 `hosted_public_join` 下让 `oasis7_game_launcher` 停止向公开 viewer 页面注入长期 signer bootstrap，让 `oasis7_web_launcher` 把 `/api/state`、`/api/start|stop`、`/api/chain/start|stop`、`/api/gui-agent/*` 与 console static 收口为 loopback-only private control plane，并新增 `/api/public/state` 与 admission/plane contract snapshot。）
+- 最新进展: `TASK-P2P-041-B` 已完成 viewer first slice：`software_safe.js` 现会显式显示 `guest_session/player_session/strong_auth`、`deploymentHint` 与 capability gate 原因，并把 `__AW_TEST__.getState()` 扩到 `authTier/authSource/authDeploymentHint/authSurface`；正式 session issue/resume/revoke 仍待后续实现。
 - 最新完成: `TASK-P2P-041`（已完成 hosted-world player access / session-auth 专题建档，正式冻结 `public player plane/private control plane/signer plane`、`guest/player/strong-auth`、无需 invite-only 的 base hosted-world 边界、`gui-agent` split 与 `specified_not_implemented` 口径。）
 - 最新完成: `TASK-P2P-040`（已完成 `RTMIN-4A` short-window follow-up：`shared-devnet-20260324-06` 已在 candidate `shared-devnet-20260324-05` 上留下真实 S9/S10 evidence，shared-devnet 剩余 blocker 现仅为 `shared_access` 与 `rollback_target_ready`。）
 - 最新完成: `TASK-P2P-038`（已完成 mainnet/public claims policy 复评专题建档，正式冻结当前只允许 `limited playable technical preview` + `crypto-hardened preview`，并把 `mainnet-grade`、`production mint ready` 等口径放入 denylist。）
