@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "content-creation": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "computedHash": "012ed09d491de22ef3d2697e7f268597353711b8c17d72ce013c4a6e396df970"
+    },
+    "humanizer-zh": {
+      "source": "op7418/humanizer-zh",
+      "sourceType": "github",
+      "computedHash": "7bd195e3bcdcc24f078dfd4e3b3e37e8ac321c36f410a41241fc4175eab1825a"
+    },
+    "xiaohongshu-note-analyzer": {
+      "source": "softbread/xiaohongshu-doctor",
+      "sourceType": "github",
+      "computedHash": "a7a84eb52d3c6fa15c8dc4cf3f25ab673cdc068be2bdfc6174ea7f53e7f3cab9"
+    }
+  }
+}
