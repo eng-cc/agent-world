@@ -696,6 +696,25 @@ function buildAuthSurfaceModel() {
   };
 }
 
+function buildHostedActionMatrixView() {
+  const matrix = Array.isArray(state.hostedAccess?.action_matrix)
+    ? state.hostedAccess.action_matrix
+    : [];
+  return matrix.map((policy) => {
+    const actionId = String(policy?.action_id || "").trim();
+    const capability = buildSemanticCapability(actionId);
+    return {
+      actionId,
+      requiredAuth: String(policy?.required_auth || "").trim() || "unknown",
+      availability: String(policy?.availability || "").trim() || "unknown",
+      reason: String(policy?.reason || capability.reason || "").trim(),
+      enabled: capability.enabled === true,
+      code: capability.code || null,
+      capabilityReason: capability.reason || null,
+    };
+  });
+}
+
 function nextRequestId() {
   requestId += 1;
   return requestId;
@@ -740,6 +759,7 @@ function snapshotSemanticFeedback(feedback) {
 
 function getState() {
   const authSurface = buildAuthSurfaceModel();
+  const hostedActionMatrixView = buildHostedActionMatrixView();
   return {
     connectionStatus: state.connectionStatus,
     logicalTime: state.logicalTime,
@@ -787,6 +807,7 @@ function getState() {
     authDeploymentHint: authSurface.deploymentHint,
     authSurface: clone(authSurface),
     hostedAccess: clone(state.hostedAccess),
+    hostedActionMatrix: clone(hostedActionMatrixView),
     hostedAdmission: clone(state.hostedAdmission),
     strongAuthApprovalCodeConfigured: !!String(state.strongAuth.approvalCode || "").trim(),
     strongAuthLastGrantActionId: state.strongAuth.lastGrantActionId,
@@ -2624,6 +2645,7 @@ function renderSummary() {
   const promptFeedback = snapshotSemanticFeedback(state.lastPromptFeedback);
   const chatFeedback = snapshotSemanticFeedback(state.lastChatFeedback);
   const authSurface = buildAuthSurfaceModel();
+  const hostedActionMatrixView = buildHostedActionMatrixView();
   const authBadgeClass = state.auth.available ? "badge badge--good" : "badge badge--warn";
   const selectedDebug = selectedAgentExecutionDebugContext();
   const tierBadgeClass = (status) =>
@@ -2763,6 +2785,32 @@ function renderSummary() {
           <div class="empty">${escapeHtml(authSurface.reconnect)}</div>
         </div>
       </div>
+      ${hostedActionMatrixView.length
+        ? `<div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
+            <div class="panel__header"><div class="panel__title">Hosted Action Matrix</div></div>
+            <div class="panel__body stack">
+              <div class="empty">This is the hosted public-join truth surface exported by the launcher. QA should read these action ids directly instead of inferring from button state alone.</div>
+              <div class="event-list">
+                ${hostedActionMatrixView
+                  .map(
+                    (item) => `
+                      <div class="event-card">
+                        <div class="event-card__title">
+                          <span>${escapeHtml(item.actionId)}</span>
+                          <span class="${item.enabled ? "badge badge--good" : "badge badge--warn"}">${escapeHtml(item.enabled ? "enabled" : item.code || "blocked")}</span>
+                        </div>
+                        <div class="event-card__meta">required_auth=${escapeHtml(item.requiredAuth)} · availability=${escapeHtml(item.availability)}</div>
+                        <div class="empty">${escapeHtml(item.reason || "-")}</div>
+                        ${item.capabilityReason && item.capabilityReason !== item.reason
+                          ? `<div class="empty">viewer=${escapeHtml(item.capabilityReason)}</div>`
+                          : ""}
+                      </div>`,
+                  )
+                  .join("")}
+              </div>
+            </div>
+          </div>`
+        : ""}
       <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
         <div class="panel__header"><div class="panel__title">Playback Controls</div></div>
         <div class="panel__body stack">
