@@ -596,7 +596,22 @@ mod tests {
     use super::{is_loopback_peer, path_requires_private_control_plane, private_plane_rejection};
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     use std::path::PathBuf;
-    use std::sync::{Arc, Mutex};
+    use std::sync::{Arc, Mutex, OnceLock};
+
+    fn hosted_strong_auth_env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn clear_hosted_strong_auth_env() {
+        for name in [
+            "OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY",
+            "OASIS7_HOSTED_STRONG_AUTH_PRIVATE_KEY",
+            "OASIS7_HOSTED_STRONG_AUTH_APPROVAL_CODE",
+        ] {
+            std::env::remove_var(name);
+        }
+    }
 
     #[test]
     fn hosted_mode_requires_private_control_plane_for_operator_routes() {
@@ -730,5 +745,41 @@ mod tests {
                 && policy.required_auth == "player_session"
                 && policy.availability == "public_player_plane"
         }));
+    }
+
+    #[test]
+    fn public_snapshot_keeps_asset_lane_blocked_when_prompt_reauth_env_is_ready() {
+        let _guard = hosted_strong_auth_env_lock().lock().expect("env lock");
+        clear_hosted_strong_auth_env();
+        std::env::set_var(
+            "OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        );
+        std::env::set_var(
+            "OASIS7_HOSTED_STRONG_AUTH_PRIVATE_KEY",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        );
+        std::env::set_var("OASIS7_HOSTED_STRONG_AUTH_APPROVAL_CODE", "preview-code");
+
+        let mut config = LauncherConfig::default();
+        config.deployment_mode = "hosted_public_join".to_string();
+        let state = ServiceState::new(
+            "launcher".to_string(),
+            "chain".to_string(),
+            PathBuf::from("."),
+            config,
+        );
+        let snapshot = public_snapshot_from_state(&state, Some("127.0.0.1"));
+        assert!(snapshot.hosted_access.action_matrix.iter().any(|policy| {
+            policy.action_id == "prompt_control_apply"
+                && policy.required_auth == "strong_auth"
+                && policy.availability == "public_player_plane_with_backend_reauth_preview"
+        }));
+        assert!(snapshot.hosted_access.action_matrix.iter().any(|policy| {
+            policy.action_id == "main_token_transfer"
+                && policy.required_auth == "strong_auth"
+                && policy.availability == "blocked_until_strong_auth"
+        }));
+        clear_hosted_strong_auth_env();
     }
 }
