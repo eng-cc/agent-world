@@ -73,7 +73,7 @@
 - Evaluation Strategy: 不适用。
 
 ## 4. Technical Specifications
-- Architecture Overview: hosted world 正式形态需要把“公开玩游戏”“私有控制世界”“安全持有 signer”拆成三个平面。`public player plane` 负责 join URL、公开静态资源、WebSocket/world 输入与 session issue；`private control plane` 负责 world 启停、配置和应急操作；`signer plane` 只为强鉴权动作提供签名或验签。浏览器只能持有短期 session、能力声明和必要公钥，不再承载长期私钥。
+- Architecture Overview: hosted world 正式形态需要把“公开玩游戏”“私有控制世界”“安全持有 signer”拆成三个平面。`public player plane` 负责 join URL、公开静态资源、WebSocket/world 输入与 session issue；`private control plane` 负责 world 启停、配置和应急操作；`signer plane` 只为强鉴权动作提供签名或验签。浏览器只能持有短期 session、能力声明和必要公钥，不再承载长期私钥。hosted v1 的最小 player-session 形态可以是“同源 public issue endpoint 签发 opaque `player_id + release_token`，浏览器本地生成/持久化临时 Ed25519 key，再通过 `register_session/reconnect_sync` 接到 runtime one-player-one-agent 规则；退出时通过 release route 归还 active slot，在线期间通过 refresh route 续租 lease，让 stale slot 能自动过期回收”。其中 lease/release 归还必须同时校验 `player_id + release_token` 绑定，不能退化成 token-only 即可操作 slot；`game_launcher` 的同源 public player plane 还应维持一条独立的 runtime presence 常驻连接，先消费 `AgentPlayerBound` 事件做增量更新，再用周期性 `RequestSnapshot` 做纠偏，把“曾经已在 runtime 绑定、现在又从 runtime 消失”的玩家 slot 回收掉，避免 operator kick / remote revoke 长时间卡住 `world_full`。若 host restart / rollback 让 runtime session 状态丢失，浏览器必须重新注册，不得回退到长期 signer bootstrap。
 - Integration Points:
   - `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.prd.md`
   - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
@@ -88,6 +88,7 @@
   - 若 guest session 尝试发送 player-only 输入，必须返回明确的 `auth_level_insufficient`，同时前端按钮保持禁用。
   - 若 player session 尝试执行 `main token transfer` 或其他强鉴权动作但没有额外 proof，必须返回 `strong_auth_required`，不得静默降级到 node signer 代签。
   - 若公开 join URL 的 guest/player session 发放超过 `issue_rate_limit`、已达 `max_guest_sessions/max_player_sessions` 或 world 已满，必须返回结构化 `rate_limited/world_full`，而不是继续无界签发 session。
+  - 若浏览器试图用不匹配的 `player_id + release_token` 组合去 refresh/release active slot，public player plane 必须返回结构化 `player_id_required/player_id_mismatch/release_token_invalid`，不能只凭 token 命中别人的 slot。
   - 若 host 重启 world、撤销玩家、或 rotate session secret，旧 `resume_token` 必须立即失效并要求重新登录。
   - 若同一 `player_id` 从多个浏览器并发恢复同一实体，必须有单一 owner 规则；冲突者进入 `suspended` 或重绑流程。
   - 若 host 错把 operator URL 当 join URL 分享，runbook 必须要求立即 rotate bind/secret、撤销会话并回收 public claims。

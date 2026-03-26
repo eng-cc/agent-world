@@ -1,14 +1,24 @@
 use super::*;
+use super::hosted_player_session::{
+    HostedPlayerSessionAdmissionResponse, HostedPlayerSessionIssueResponse, HostedPlayerSessionIssuer,
+    HostedPlayerSessionReleaseResponse, HOSTED_PLAYER_SESSION_ISSUE_ROUTE,
+    HOSTED_PLAYER_SESSION_ADMISSION_ROUTE,
+    HOSTED_PLAYER_SESSION_REFRESH_ROUTE,
+    HOSTED_PLAYER_SESSION_RELEASE_ROUTE,
+};
+use serde::Serialize;
 use std::ffi::OsStr;
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub(super) fn handle_http_connection(
     mut stream: TcpStream,
     root_dir: &Path,
     deployment_mode: DeploymentMode,
+    hosted_session_issuer: &Arc<Mutex<HostedPlayerSessionIssuer>>,
 ) -> Result<(), String> {
     stream
         .set_read_timeout(Some(Duration::from_secs(2)))
@@ -34,9 +44,53 @@ pub(super) fn handle_http_connection(
     let target = parts.next().unwrap_or("");
 
     let head_only = method.eq_ignore_ascii_case("HEAD");
-    if !method.eq_ignore_ascii_case("GET") && !head_only {
+    let path_only = target.split('?').next().unwrap_or(target);
+    let is_admission_route = path_only == HOSTED_PLAYER_SESSION_ADMISSION_ROUTE;
+    let is_refresh_route = path_only == HOSTED_PLAYER_SESSION_REFRESH_ROUTE;
+    let is_issue_route = path_only == HOSTED_PLAYER_SESSION_ISSUE_ROUTE;
+    let is_release_route = path_only == HOSTED_PLAYER_SESSION_RELEASE_ROUTE;
+    let allow_post = is_release_route || is_refresh_route;
+    if !method.eq_ignore_ascii_case("GET") && !head_only && !(allow_post && method.eq_ignore_ascii_case("POST")) {
         write_http_response(&mut stream, 405, "text/plain", b"Method Not Allowed", false)
             .map_err(|err| format!("failed to write 405 response: {err}"))?;
+        return Ok(());
+    }
+    if is_admission_route {
+        let response = hosted_player_session_admission(deployment_mode, hosted_session_issuer)?;
+        write_json_response(&mut stream, 200, &response, head_only)
+            .map_err(|err| format!("failed to write hosted session admission response: {err}"))?;
+        return Ok(());
+    }
+    if is_refresh_route {
+        let player_id = parse_query_value(target, "player_id").unwrap_or_default();
+        let release_token = parse_query_value(target, "release_token").unwrap_or_default();
+        let response = refresh_hosted_player_session(
+            deployment_mode,
+            player_id.as_str(),
+            release_token.as_str(),
+            hosted_session_issuer,
+        )?;
+        write_json_response(&mut stream, 200, &response, head_only)
+            .map_err(|err| format!("failed to write hosted session refresh response: {err}"))?;
+        return Ok(());
+    }
+    if is_issue_route {
+        let response = issue_hosted_player_session(deployment_mode, hosted_session_issuer)?;
+        write_json_response(&mut stream, 200, &response, head_only)
+            .map_err(|err| format!("failed to write hosted session issue response: {err}"))?;
+        return Ok(());
+    }
+    if is_release_route {
+        let player_id = parse_query_value(target, "player_id").unwrap_or_default();
+        let release_token = parse_query_value(target, "release_token").unwrap_or_default();
+        let response = release_hosted_player_session(
+            deployment_mode,
+            player_id.as_str(),
+            release_token.as_str(),
+            hosted_session_issuer,
+        )?;
+        write_json_response(&mut stream, 200, &response, head_only)
+            .map_err(|err| format!("failed to write hosted session release response: {err}"))?;
         return Ok(());
     }
 
@@ -77,6 +131,90 @@ pub(super) fn handle_http_connection(
     }
 
     Ok(())
+}
+
+fn hosted_player_session_admission(
+    deployment_mode: DeploymentMode,
+    hosted_session_issuer: &Arc<Mutex<HostedPlayerSessionIssuer>>,
+) -> Result<HostedPlayerSessionAdmissionResponse, String> {
+    let mut issuer = hosted_session_issuer
+        .lock()
+        .map_err(|_| "hosted session issuer lock poisoned".to_string())?;
+    Ok(issuer.admission(deployment_mode))
+}
+
+fn issue_hosted_player_session(
+    deployment_mode: DeploymentMode,
+    hosted_session_issuer: &Arc<Mutex<HostedPlayerSessionIssuer>>,
+) -> Result<HostedPlayerSessionIssueResponse, String> {
+    let mut issuer = hosted_session_issuer
+        .lock()
+        .map_err(|_| "hosted session issuer lock poisoned".to_string())?;
+    Ok(issuer.issue(deployment_mode))
+}
+
+fn refresh_hosted_player_session(
+    deployment_mode: DeploymentMode,
+    player_id: &str,
+    release_token: &str,
+    hosted_session_issuer: &Arc<Mutex<HostedPlayerSessionIssuer>>,
+) -> Result<HostedPlayerSessionAdmissionResponse, String> {
+    let mut issuer = hosted_session_issuer
+        .lock()
+        .map_err(|_| "hosted session issuer lock poisoned".to_string())?;
+    Ok(issuer.refresh(deployment_mode, player_id, release_token))
+}
+
+fn release_hosted_player_session(
+    deployment_mode: DeploymentMode,
+    player_id: &str,
+    release_token: &str,
+    hosted_session_issuer: &Arc<Mutex<HostedPlayerSessionIssuer>>,
+) -> Result<HostedPlayerSessionReleaseResponse, String> {
+    let mut issuer = hosted_session_issuer
+        .lock()
+        .map_err(|_| "hosted session issuer lock poisoned".to_string())?;
+    Ok(issuer.release(deployment_mode, player_id, release_token))
+}
+
+fn parse_query_value(target: &str, key: &str) -> Option<String> {
+    let query = target.split('?').nth(1)?;
+    for pair in query.split('&') {
+        let (raw_key, raw_value) = pair.split_once('=').unwrap_or((pair, ""));
+        if raw_key == key {
+            return Some(percent_decode(raw_value));
+        }
+    }
+    None
+}
+
+fn percent_decode(raw: &str) -> String {
+    let bytes = raw.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' && index + 2 < bytes.len() {
+            let hi = from_hex(bytes[index + 1]);
+            let lo = from_hex(bytes[index + 2]);
+            if let (Some(hi), Some(lo)) = (hi, lo) {
+                decoded.push((hi << 4) | lo);
+                index += 3;
+                continue;
+            }
+        }
+        decoded.push(if bytes[index] == b'+' { b' ' } else { bytes[index] });
+        index += 1;
+    }
+    String::from_utf8_lossy(decoded.as_slice()).into_owned()
+}
+
+fn from_hex(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        _ => None,
+    }
 }
 
 pub(super) fn resolve_static_asset_path(
@@ -219,6 +357,50 @@ pub(super) fn build_viewer_auth_bootstrap_script(auth: &ViewerAuthBootstrap) -> 
     format!(
         "<script>const __oasis7ViewerAuthEnv=Object.freeze({payload});window.{VIEWER_AUTH_BOOTSTRAP_OBJECT}=__oasis7ViewerAuthEnv;</script>"
     )
+}
+
+fn write_json_response<T: Serialize>(
+    stream: &mut TcpStream,
+    status_code: u16,
+    payload: &T,
+    head_only: bool,
+) -> Result<(), String> {
+    let body =
+        serde_json::to_vec(payload).map_err(|err| format!("serialize JSON failed: {err}"))?;
+    write_http_response(
+        stream,
+        status_code,
+        "application/json; charset=utf-8",
+        body.as_slice(),
+        head_only,
+    )
+    .map_err(|err| format!("write JSON response failed: {err}"))
+}
+
+fn write_http_response(
+    stream: &mut TcpStream,
+    status_code: u16,
+    content_type: &str,
+    body: &[u8],
+    head_only: bool,
+) -> std::io::Result<()> {
+    let status_text = match status_code {
+        200 => "OK",
+        400 => "Bad Request",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        _ => "Internal Server Error",
+    };
+    let headers = format!(
+        "HTTP/1.1 {status_code} {status_text}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        body.len()
+    );
+    stream.write_all(headers.as_bytes())?;
+    if !head_only {
+        stream.write_all(body)?;
+    }
+    stream.flush()?;
+    Ok(())
 }
 
 pub(super) fn resolve_viewer_auth_bootstrap_from_path(

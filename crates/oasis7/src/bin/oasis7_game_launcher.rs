@@ -1,37 +1,43 @@
 use std::env;
-use std::io::{Read, Write};
+use std::collections::BTreeSet;
+use std::io::{BufRead, BufReader, BufWriter, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{self, Child, Command};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-
 use oasis7::simulator::ProviderExecutionMode;
 use oasis7_proto::storage_profile::StorageProfile;
-
 #[path = "oasis7_hosted_access.rs"]
 mod hosted_access;
 #[path = "oasis7_game_launcher/runtime_paths.rs"]
 mod runtime_paths;
+#[path = "oasis7_game_launcher/hosted_player_session.rs"]
+mod hosted_player_session;
+#[path = "oasis7_game_launcher/runtime_presence.rs"]
+mod runtime_presence;
 #[path = "oasis7_game_launcher/static_http.rs"]
 mod static_http;
-
+#[path = "oasis7_game_launcher/url_encoding.rs"]
+mod url_encoding;
 use hosted_access::{DeploymentMode, DEFAULT_DEPLOYMENT_MODE};
 use runtime_paths::{
     resolve_oasis7_chain_runtime_binary, resolve_oasis7_viewer_live_binary,
     resolve_viewer_static_dir, resolve_viewer_static_dir_with_override,
     viewer_dev_dist_candidates,
 };
+use hosted_player_session::HostedPlayerSessionIssuer;
+use runtime_presence::{query_runtime_bound_players, run_runtime_presence_monitor};
 use static_http::{
     build_viewer_auth_bootstrap_script, content_type_for_path, handle_http_connection,
     resolve_static_asset_path, resolve_viewer_auth_bootstrap_for_embedded_server,
     resolve_viewer_auth_bootstrap_from_path,
     sanitize_index_html_for_embedded_server, sanitize_relative_request_path,
 };
-
+use url_encoding::encoded_query_pair;
 const DEFAULT_SCENARIO: &str = "llm_bootstrap";
 const DEFAULT_LIVE_BIND: &str = "127.0.0.1:5023";
 const DEFAULT_WEB_BIND: &str = "127.0.0.1:5011";
@@ -69,8 +75,7 @@ const NODE_CONFIG_FILE_NAME: &str = "config.toml";
 const NODE_TABLE_KEY: &str = "node";
 const NODE_PRIVATE_KEY_FIELD: &str = "private_key";
 const NODE_PUBLIC_KEY_FIELD: &str = "public_key";
-static TERMINATION_REQUESTED: AtomicBool = AtomicBool::new(false);
-static SIGNAL_HANDLER_INSTALL: OnceLock<Result<(), String>> = OnceLock::new();
+static TERMINATION_REQUESTED: AtomicBool = AtomicBool::new(false); static SIGNAL_HANDLER_INSTALL: OnceLock<Result<(), String>> = OnceLock::new();
 
 fn default_chain_node_id() -> String {
     let now = SystemTime::now()
@@ -158,9 +163,11 @@ impl Default for CliOptions {
 
 #[derive(Debug)]
 struct StaticHttpServer {
+    stop_requested: Arc<AtomicBool>,
     stop_tx: Sender<()>,
     error_rx: Receiver<String>,
     join_handle: Option<thread::JoinHandle<()>>,
+    runtime_presence_join_handle: Option<thread::JoinHandle<()>>,
 }
 
 fn main() {
@@ -213,6 +220,7 @@ fn run_launcher(options: &CliOptions) -> Result<(), String> {
     };
     let mut server = match start_static_http_server(
         deployment_mode_from_options(options),
+        options.live_bind.as_str(),
         options.viewer_host.as_str(),
         options.viewer_port,
         viewer_static_dir.as_path(),
@@ -413,6 +421,7 @@ fn build_oasis7_chain_runtime_args(options: &CliOptions) -> Vec<String> {
 
 fn start_static_http_server(
     deployment_mode: DeploymentMode,
+    live_bind: &str,
     host: &str,
     port: u16,
     root_dir: &Path,
@@ -425,17 +434,38 @@ fn start_static_http_server(
 
     let (stop_tx, stop_rx) = mpsc::channel::<()>();
     let (error_tx, error_rx) = mpsc::channel::<String>();
+    let stop_requested = Arc::new(AtomicBool::new(false));
     let root_dir = Arc::new(root_dir.to_path_buf());
+    let live_bind = Arc::new(live_bind.to_string());
+    let hosted_session_issuer = Arc::new(Mutex::new(HostedPlayerSessionIssuer::default()));
+    let runtime_presence_join_handle = if deployment_mode == DeploymentMode::HostedPublicJoin {
+        let stop_requested = Arc::clone(&stop_requested);
+        let live_bind = Arc::clone(&live_bind);
+        let hosted_session_issuer = Arc::clone(&hosted_session_issuer);
+        Some(thread::spawn(move || {
+            run_runtime_presence_monitor(stop_requested, live_bind, hosted_session_issuer)
+        }))
+    } else {
+        None
+    };
     let join_handle = thread::spawn(move || {
-        if let Err(err) = run_static_http_loop(listener, deployment_mode, root_dir, stop_rx) {
+        if let Err(err) = run_static_http_loop(
+            listener,
+            deployment_mode,
+            root_dir,
+            hosted_session_issuer,
+            stop_rx,
+        ) {
             let _ = error_tx.send(err);
         }
     });
 
     Ok(StaticHttpServer {
+        stop_requested,
         stop_tx,
         error_rx,
         join_handle: Some(join_handle),
+        runtime_presence_join_handle,
     })
 }
 
@@ -443,6 +473,7 @@ fn run_static_http_loop(
     listener: TcpListener,
     deployment_mode: DeploymentMode,
     root_dir: Arc<PathBuf>,
+    hosted_session_issuer: Arc<Mutex<HostedPlayerSessionIssuer>>,
     stop_rx: Receiver<()>,
 ) -> Result<(), String> {
     loop {
@@ -455,10 +486,14 @@ fn run_static_http_loop(
             Ok((stream, _addr)) => {
                 let root_dir = Arc::clone(&root_dir);
                 let deployment_mode = deployment_mode;
+                let hosted_session_issuer = Arc::clone(&hosted_session_issuer);
                 thread::spawn(move || {
-                    if let Err(err) =
-                        handle_http_connection(stream, root_dir.as_path(), deployment_mode)
-                    {
+                    if let Err(err) = handle_http_connection(
+                        stream,
+                        root_dir.as_path(),
+                        deployment_mode,
+                        &hosted_session_issuer,
+                    ) {
                         eprintln!("warning: static HTTP connection failed: {err}");
                     }
                 });
@@ -492,32 +527,6 @@ fn resolve_required_toml_string(
         .filter(|value| !value.is_empty())
         .ok_or_else(|| format!("{label} is missing or empty"))?;
     Ok(value.to_string())
-}
-
-fn write_http_response(
-    stream: &mut TcpStream,
-    status_code: u16,
-    content_type: &str,
-    body: &[u8],
-    head_only: bool,
-) -> std::io::Result<()> {
-    let status_text = match status_code {
-        200 => "OK",
-        400 => "Bad Request",
-        404 => "Not Found",
-        405 => "Method Not Allowed",
-        _ => "Internal Server Error",
-    };
-    let headers = format!(
-        "HTTP/1.1 {status_code} {status_text}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-        body.len()
-    );
-    stream.write_all(headers.as_bytes())?;
-    if !head_only {
-        stream.write_all(body)?;
-    }
-    stream.flush()?;
-    Ok(())
 }
 
 fn wait_until_ready(
@@ -616,14 +625,23 @@ fn monitor_world_chain_and_server(
                 return Err("static HTTP server exited unexpectedly".to_string());
             }
         }
+        if let Some(handle) = server.runtime_presence_join_handle.as_ref() {
+            if handle.is_finished() {
+                return Err("runtime presence monitor exited unexpectedly".to_string());
+            }
+        }
 
         thread::sleep(Duration::from_millis(400));
     }
 }
 
 fn stop_static_http_server(server: &mut StaticHttpServer) {
+    server.stop_requested.store(true, Ordering::SeqCst);
     let _ = server.stop_tx.send(());
     if let Some(handle) = server.join_handle.take() {
+        let _ = handle.join();
+    }
+    if let Some(handle) = server.runtime_presence_join_handle.take() {
         let _ = handle.join();
     }
 }
@@ -738,31 +756,6 @@ fn build_game_url(options: &CliOptions) -> String {
     )
 }
 
-fn encode_query_value(value: &str) -> String {
-    let mut encoded = String::with_capacity(value.len());
-    for byte in value.bytes() {
-        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
-            encoded.push(byte as char);
-        } else {
-            encoded.push('%');
-            encoded.push(hex_upper(byte >> 4));
-            encoded.push(hex_upper(byte & 0x0f));
-        }
-    }
-    encoded
-}
-
-fn encoded_query_pair(key: &str, value: &str) -> String {
-    format!("{key}={}", encode_query_value(value))
-}
-
-fn hex_upper(nibble: u8) -> char {
-    match nibble {
-        0..=9 => (b'0' + nibble) as char,
-        10..=15 => (b'A' + (nibble - 10)) as char,
-        _ => '0',
-    }
-}
 
 fn normalize_http_target(host: &str, port: u16, label: &str) -> Result<(String, u16), String> {
     let normalized = normalize_bind_host_for_local_access(host);

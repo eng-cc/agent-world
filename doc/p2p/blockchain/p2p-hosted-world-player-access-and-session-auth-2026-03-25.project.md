@@ -109,11 +109,22 @@
   - `software_safe.js` 现会显式显示 `guest_session / player_session / strong_auth` 梯度、`deploymentHint`、`auth source` 与 reconnect 提示，不再只显示 `auth=ready|missing`。
   - prompt/chat 现在会按 capability 给出结构化禁用原因：至少区分 `guest_session`、`observer_only` 与 `strong_auth_required` 占位，而不是继续用单一 “viewer auth bootstrap is unavailable”。
   - `__AW_TEST__.getState()` 已补 `authTier`、`authSource`、`authDeploymentHint` 与 `authSurface`，便于后续 QA/agent-browser 对 hosted public join 的 session/capability 状态做证据采样。
+  - `software_safe.js` 现在会在 `hosted_public_join` 下优先尝试 `GET /api/public/player-session/issue`，拿到 server-issued `player_id` 后由浏览器本地生成/持久化临时 Ed25519 key，并在 page reload 后复用这份本地会话态。
+  - viewer 现已消费 `authoritative_recovery register_session/reconnect_sync` ack/error：首次 issue 后会注册 player session，刷新或断线重连后会先走 `reconnect_sync`，若 runtime 返回 `session_not_found` 则回退到显式重新注册。
+  - viewer 现已提供显式 `Release Hosted Player Session` 动作：会向 runtime 发送 `revoke_session`，并向同源 public player plane 发送 `/api/public/player-session/release` 归还 active slot，然后清掉浏览器本地持久化的 hosted player session。
+  - viewer 现已可直接读取 `/api/public/player-session/admission`，并在 guest lane 显示当前 `activeSlots/issueBudget`；若先前因为 `world_full/rate_limited` 留在 guest，也可以通过显式 `Acquire Hosted Player Session` 动作重试，不必靠发送 chat/prompt 侧向触发。
+  - admission snapshot 现还会回出最近一次 runtime probe 看到的 `runtime_bound_player_sessions`；viewer summary 会并排显示 `activeSlots` 和 `runtimeBound`，便于 QA 区分“issuer 占位”和“runtime 真正还绑着几个玩家”。
+  - admission snapshot 现还会回出 `runtime_probe_status/runtime_probe_error/last_runtime_probe_unix_ms`；viewer summary 可直接看 runtime probe 当前是 `ok`、`error` 还是尚未启动，不必只靠外部日志猜测 public player plane 是否还在对账。
+  - viewer 现已在 hosted player session 注册成功后自动调用 `/api/public/player-session/refresh` 并启动 lease heartbeat；public admission 也会暴露 `slot_lease_ttl_ms`，让 stale slot 可被自动回收，而不是无限占位。
+  - viewer 的 lease heartbeat 现会同时发送轻量 `reconnect_sync` 探针；即便玩家空闲不发 chat/prompt，也能周期性发现 runtime 侧的 `session_revoked/session_not_found`，不再只能等下次主动交互才发现被踢/被撤销。
+  - viewer summary 与 `__AW_TEST__.getState()` 现已显式暴露 `authRuntimeStatus/authBoundAgentId` 与 recovery error；WebSocket 断线时也会清掉挂起的 `syncInFlight` 并标记 `runtime=disconnected`，避免 `reconnect_sync` 在短断线后卡死不再自动恢复。
 - 已实现的 `TASK-P2P-041-C` runtime first slice:
   - runtime-live 新增显式 `session_register`，并要求 prompt/chat/gameplay 在 player action 之前先完成 session 注册；原先“第一个签名动作自动注册 active key”的隐式登录已收口。
   - `RuntimeSessionPolicy::validate_known_session_key` 现会在未注册 session 时返回 `session_not_found`，不再把未注册玩家默认为 epoch 0 放行。
   - runtime 现额外维护 `player_id -> agent_id` 单实体占用真值；同一 player 不能静默切到第二个 agent，必须等待后续显式 rebind 设计。
   - `ReconnectSync` / `SessionRegistered` / `SessionRotated` ack 已带回当前 `agent_id`，`RevokeSession` 会清掉该 player 的绑定与 nonce/replay 痕迹，保持“撤销即失效、需重新注册”的 hosted v1 语义。
+  - public player plane 的 `refresh/release` 现已收紧为 `player_id + release_token` 双绑定校验，并补充 `player_id_required/player_id_mismatch` 单测，避免 token-only 误归还或误续租其他玩家 slot。
+  - `oasis7_game_launcher` 的 public player plane 现在会启动独立 runtime presence monitor 线程，维持到 `live_bind` 的常驻连接，先订阅 runtime 事件流消费 `AgentPlayerBound` 增量，再周期性 `RequestSnapshot` 做全量纠偏；public route 不再自己临时短连 probe。凡是“曾经已在 runtime 里出现过、现在又从 runtime binding 中消失”的 player slot，会被 issuer 立即回收，并对旧 browser session 返回 `session_revoked`，让 operator kick / remote revoke 能更快回流到 `world_full` 判定。
 - 已实现的 `TASK-P2P-041-D` strong-auth barrier first slice:
   - `oasis7_web_launcher` 在 `deployment_mode=hosted_public_join` 下会显式拒绝 `POST /api/chain/transfer`，返回结构化 `strong_auth_required`，不再让 public join 路径继续借用 trusted-local signer bootstrap。
   - `oasis7_game_launcher -> oasis7_viewer_live -> runtime-live` 现已透传 hosted deployment mode；在 `hosted_public_join` 下，`prompt_control preview/apply/rollback` 会统一返回 `strong_auth_required`，避免敏感 prompt/control 继续凭 `player_session` 直接穿过 hosted 公共玩家面。
@@ -122,8 +133,9 @@
   - `/api/public/state` 的 `hosted_access` contract 现已导出结构化 `action_matrix`，明确 `gameplay_action/agent_chat` 仍是 `player_session`，而 `prompt_control_*` 与 `main_token_transfer` 当前属于 `strong_auth` 且在 hosted public join 下为 `blocked_until_strong_auth`。
   - `oasis7_web_launcher`、`oasis7_game_launcher` 与 `oasis7_client_launcher` 的 game URL 现都已附带精简 `hosted_access` hint；`software_safe.js` 会优先消费这个 query contract，而不是继续只靠 hostname 猜 `deploymentHint`；`__AW_TEST__.getState()` 也会直接回出 `hostedAccess` 供 QA 采样。
 - 当前 blocker:
-  - `guest session -> player session` 的 session issue / resume / revoke 仍未实现；当前 viewer 只是把梯度与禁用原因显式化，并未真正落会话签发/恢复。
-  - `session_register` 目前仍是 runtime-live 内显式注册，不等于完整 hosted guest/player issuer；rollback / host restart 之后仍按 v1 规则要求重新注册。
+  - `guest session -> player session` 的最小 issuer 已落成，且 `max_player_sessions` 已开始在 public issue 面按 active slot + lease TTL 生效；public player plane 现在也会通过独立后台 runtime presence 常驻连接把已消失的历史绑定玩家回收到 issuer slot；但 `world_full/kick_policy` 仍未完全等价于 runtime authoritative presence，因为 runtime 还没有面向所有客户端的通用 unbind/revoke 广播，而且也还没覆盖“刚 issue 尚未 register”“纯 runtime occupancy 无 issuer slot”的全部状态。
+  - hosted v1 目前已支持浏览器本地 player session issue + reconnect/register + local release/logout，并能通过周期性 `reconnect_sync` 探针发现部分 remote revoke；但 operator kick 的公开玩家面即时回流、显式 rebind 流程与更稳定的 resume token 仍未收口。
+  - `session_register` 目前仍是 runtime-live 内显式注册；host restart / rollback 之后按 v1 规则仍要求重新注册，不是持久化 session registry。
   - 当前只实现了 hosted `strong_auth` barrier first slice，而不是完整 `strong_auth` challenge/proof/verification lane；`main token transfer` 与 `prompt_control` 现在是显式拒绝/禁用而非 hosted-ready 放行。
   - `agent_chat` 仍归 `player_session` 级低风险交互；更细的 hosted action matrix、resume issuer 与真正 strong-auth proof 仍待后续专题收口。
   - hosted operator 目前仅支持 loopback private control plane；远程 operator URL / tunnel / runbook 仍待 `TASK-P2P-041-F` 收口。
@@ -147,5 +159,5 @@
 
 ## 状态
 - 当前状态: active
-- 下一步: 在 `TASK-P2P-041-C` / `TASK-P2P-041-D` 上继续推进，把现有 `session_register + one-player-one-agent` 接到真实 hosted session issuer / resume UX，并把当前 `strong_auth_required` barrier 升级成正式 challenge/proof/verification lane 与完整 action matrix。
+- 下一步: 在 `TASK-P2P-041-C` / `TASK-P2P-041-D` 上继续推进，把当前已落的 hosted v1 `player_id issue + browser-local ephemeral key + reconnect/register` 扩到完整 revoke/world-full/admission enforcement，并把 `strong_auth_required` barrier 升级成正式 challenge/proof/verification lane 与动态 action matrix。
 - 最近更新: 2026-03-26

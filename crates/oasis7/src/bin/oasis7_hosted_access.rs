@@ -215,7 +215,11 @@ fn hosted_action_matrix(mode: DeploymentMode) -> Vec<HostedActionAccessPolicy> {
 pub(super) fn web_launcher_public_endpoints() -> &'static [&'static str] {
     &[
         "/healthz",
+        "/api/public/player-session/admission",
+        "/api/public/player-session/refresh",
         "/api/public/state",
+        "/api/public/player-session/issue",
+        "/api/public/player-session/release",
         "/api/chain/transfer",
         "/api/chain/transfer/accounts",
         "/api/chain/transfer/status",

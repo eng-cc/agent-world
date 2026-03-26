@@ -6,6 +6,12 @@ const VIEWER_PLAYER_ID_KEY = "OASIS7_VIEWER_PLAYER_ID";
 const VIEWER_AUTH_PUBLIC_KEY = "OASIS7_VIEWER_AUTH_PUBLIC_KEY";
 const VIEWER_AUTH_PRIVATE_KEY = "OASIS7_VIEWER_AUTH_PRIVATE_KEY";
 const VIEWER_AUTH_SIGNATURE_PREFIX = "awviewauth:v1:";
+const HOSTED_PLAYER_SESSION_STORAGE_PREFIX = "oasis7.hosted_player_session.v1";
+const HOSTED_PLAYER_SESSION_ADMISSION_ROUTE = "/api/public/player-session/admission";
+const HOSTED_PLAYER_SESSION_REFRESH_ROUTE = "/api/public/player-session/refresh";
+const HOSTED_PLAYER_SESSION_ISSUE_ROUTE = "/api/public/player-session/issue";
+const HOSTED_PLAYER_SESSION_RELEASE_ROUTE = "/api/public/player-session/release";
+const HOSTED_PLAYER_SESSION_REFRESH_INTERVAL_MS = 30000;
 const DEFAULT_WS_ADDR = "ws://127.0.0.1:5011";
 const MAX_EVENTS = 24;
 const SOFTWARE_RENDERER_MARKERS = [
@@ -54,6 +60,7 @@ const state = {
   snapshot: null,
   metrics: null,
   hostedAccess: null,
+  hostedAdmission: null,
   recentEvents: [],
   chatHistory: [],
   selectedObject: null,
@@ -62,7 +69,18 @@ const state = {
     playerId: null,
     publicKey: null,
     privateKey: null,
+    releaseToken: null,
     error: null,
+    source: "guest_only",
+    registrationStatus: "guest",
+    sessionEpoch: null,
+    issuedAtUnixMs: null,
+    recoveryErrorCode: null,
+    recoveryErrorMessage: null,
+    issueInFlight: false,
+    syncInFlight: false,
+    runtimeStatus: "guest",
+    boundAgentId: null,
   },
   promptDraft: {
     agentId: null,
@@ -84,6 +102,7 @@ const state = {
 
 let socket = null;
 let reconnectTimer = null;
+let hostedSessionRefreshTimer = null;
 let requestId = 0;
 let authNonceCounter = 0;
 let selectedSearch = "";
@@ -161,7 +180,18 @@ function resolveAuthBootstrap() {
       playerId: null,
       publicKey: null,
       privateKey: null,
+      releaseToken: null,
       error: "viewer auth bootstrap is unavailable",
+      source: "guest_only",
+      registrationStatus: "guest",
+      sessionEpoch: null,
+      issuedAtUnixMs: null,
+      recoveryErrorCode: null,
+      recoveryErrorMessage: null,
+      issueInFlight: false,
+      syncInFlight: false,
+      runtimeStatus: "guest",
+      boundAgentId: null,
     };
   }
   const playerId = String(raw[VIEWER_PLAYER_ID_KEY] || "").trim();
@@ -177,7 +207,18 @@ function resolveAuthBootstrap() {
       playerId: playerId || null,
       publicKey: publicKey || null,
       privateKey: privateKey || null,
+      releaseToken: null,
       error: "viewer auth bootstrap is incomplete",
+      source: "guest_only",
+      registrationStatus: "guest",
+      sessionEpoch: null,
+      issuedAtUnixMs: null,
+      recoveryErrorCode: null,
+      recoveryErrorMessage: null,
+      issueInFlight: false,
+      syncInFlight: false,
+      runtimeStatus: "guest",
+      boundAgentId: null,
     };
   }
   return {
@@ -185,8 +226,176 @@ function resolveAuthBootstrap() {
     playerId,
     publicKey,
     privateKey,
+    releaseToken: null,
     error: null,
+    source: "legacy_viewer_auth_bootstrap",
+    registrationStatus: "registered",
+    sessionEpoch: 1,
+    issuedAtUnixMs: null,
+    recoveryErrorCode: null,
+    recoveryErrorMessage: null,
+    issueInFlight: false,
+    syncInFlight: false,
+    runtimeStatus: "legacy_preview",
+    boundAgentId: null,
   };
+}
+
+function initialWsUrl() {
+  const params = getSearchParams();
+  return normalizeWsAddr(params.get("ws") || params.get("addr") || DEFAULT_WS_ADDR);
+}
+
+function hostedPlayerSessionStorageKey() {
+  return `${HOSTED_PLAYER_SESSION_STORAGE_PREFIX}:${initialWsUrl()}`;
+}
+
+function persistHostedPlayerSession(auth) {
+  if (!auth?.available || !auth?.playerId || !auth?.publicKey || !auth?.privateKey || auth.source === "legacy_viewer_auth_bootstrap") {
+    return;
+  }
+  try {
+    window.localStorage?.setItem(
+      hostedPlayerSessionStorageKey(),
+      JSON.stringify({
+        playerId: auth.playerId,
+        publicKey: auth.publicKey,
+        privateKey: auth.privateKey,
+        releaseToken: auth.releaseToken || null,
+        issuedAtUnixMs: auth.issuedAtUnixMs || null,
+        sessionEpoch: auth.sessionEpoch || null,
+      }),
+    );
+  } catch (_) {
+  }
+}
+
+function clearHostedPlayerSession() {
+  try {
+    window.localStorage?.removeItem(hostedPlayerSessionStorageKey());
+  } catch (_) {
+  }
+}
+
+function resolveStoredHostedPlayerSession() {
+  try {
+    const raw = window.localStorage?.getItem(hostedPlayerSessionStorageKey());
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    const playerId = String(parsed?.playerId || "").trim();
+    const publicKey = String(parsed?.publicKey || "").trim().toLowerCase();
+    const privateKey = String(parsed?.privateKey || "").trim().toLowerCase();
+    const releaseToken = String(parsed?.releaseToken || "").trim();
+    if (!playerId || !publicKey || !privateKey || !releaseToken) {
+      clearHostedPlayerSession();
+      return null;
+    }
+    return {
+      available: true,
+      playerId,
+      publicKey,
+      privateKey,
+      releaseToken,
+      error: null,
+      source: "hosted_browser_storage",
+      registrationStatus: "issued",
+      sessionEpoch: parsed?.sessionEpoch == null ? null : Number(parsed.sessionEpoch),
+      issuedAtUnixMs: parsed?.issuedAtUnixMs == null ? null : Number(parsed.issuedAtUnixMs),
+      recoveryErrorCode: null,
+      recoveryErrorMessage: null,
+      issueInFlight: false,
+      syncInFlight: false,
+      runtimeStatus: "issued",
+      boundAgentId: null,
+    };
+  } catch (_) {
+    clearHostedPlayerSession();
+    return null;
+  }
+}
+
+function resolveViewerAuthState() {
+  const bootstrap = resolveAuthBootstrap();
+  if (bootstrap.available) {
+    return bootstrap;
+  }
+  return resolveStoredHostedPlayerSession() || bootstrap;
+}
+
+async function refreshHostedAdmissionState() {
+  if (String(state.hostedAccess?.deployment_mode || "").trim() !== "hosted_public_join") {
+    state.hostedAdmission = null;
+    return null;
+  }
+  try {
+    const response = await fetch(HOSTED_PLAYER_SESSION_ADMISSION_ROUTE, {
+      method: "GET",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    const payload = await response.json();
+    state.hostedAdmission = payload?.admission ? clone(payload.admission) : null;
+    return state.hostedAdmission;
+  } catch (_) {
+    return state.hostedAdmission;
+  }
+}
+
+async function refreshHostedPlayerLease() {
+  const playerId = String(state.auth.playerId || "").trim();
+  const releaseToken = String(state.auth.releaseToken || "").trim();
+  if (!playerId || !releaseToken || state.auth.source === "legacy_viewer_auth_bootstrap") {
+    return null;
+  }
+  try {
+    const response = await fetch(
+      `${HOSTED_PLAYER_SESSION_REFRESH_ROUTE}?player_id=${encodeURIComponent(playerId)}&release_token=${encodeURIComponent(releaseToken)}`,
+      {
+        method: "POST",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      },
+    );
+    const payload = await response.json();
+    if (payload?.admission) {
+      state.hostedAdmission = clone(payload.admission);
+    }
+    if (!response.ok || !payload?.ok) {
+      throw new Error(payload?.error || payload?.error_code || `hosted player-session refresh failed with HTTP ${response.status}`);
+    }
+    return payload;
+  } catch (error) {
+    state.auth.error = String(error);
+    return null;
+  }
+}
+
+function stopHostedSessionRefreshLoop() {
+  if (hostedSessionRefreshTimer) {
+    window.clearInterval(hostedSessionRefreshTimer);
+    hostedSessionRefreshTimer = null;
+  }
+}
+
+function syncHostedSessionRefreshLoop() {
+  const shouldRun = state.connectionStatus === "connected"
+    && state.auth.available
+    && state.auth.source !== "legacy_viewer_auth_bootstrap"
+    && state.auth.registrationStatus === "registered"
+    && !!state.auth.releaseToken;
+  if (!shouldRun) {
+    stopHostedSessionRefreshLoop();
+    return;
+  }
+  if (hostedSessionRefreshTimer) {
+    return;
+  }
+  hostedSessionRefreshTimer = window.setInterval(() => {
+    probeHostedRuntimeSession();
+    void refreshHostedPlayerLease().then(() => render());
+  }, HOSTED_PLAYER_SESSION_REFRESH_INTERVAL_MS);
 }
 
 function resolveHostedAccessHint() {
@@ -220,8 +429,11 @@ function isLoopbackHostname(raw) {
 function authDeploymentHint(auth) {
   const hostedMode = String(state.hostedAccess?.deployment_mode || "").trim();
   if (hostedMode === "hosted_public_join") {
+    if (auth.available && auth.source === "legacy_viewer_auth_bootstrap") {
+      return "hosted_public_join_contract_with_legacy_bootstrap";
+    }
     return auth.available
-      ? "hosted_public_join_contract_with_legacy_bootstrap"
+      ? "hosted_public_join_contract_with_browser_session"
       : "hosted_public_join_contract";
   }
   if (hostedMode === "trusted_local_only") {
@@ -256,20 +468,31 @@ function hostedActionPolicy(actionId) {
 
 function guestSessionReason(auth, deploymentHint) {
   if (auth.available) {
-    return "guest session has already been superseded by the current preview player auth lane";
+    return auth.source === "legacy_viewer_auth_bootstrap"
+      ? "guest session has already been superseded by the current preview player auth lane"
+      : "guest session has already been superseded by a hosted-issued player identity";
   }
   if (isHostedPublicJoinHint(deploymentHint)) {
-    return "this browser only has guest-session viewing; hosted public join player-session issuance has not landed yet";
+    return auth.error || "this browser is still guest-only; hosted public join must issue a player identity before low-risk interaction unlocks";
   }
   return auth.error || "viewer auth bootstrap is unavailable, so the browser cannot leave guest session";
 }
 
 function playerSessionReason(auth, deploymentHint) {
   if (auth.available) {
-    return "player interaction is currently unlocked through legacy viewer auth bootstrap in trusted preview mode";
+    if (auth.source === "legacy_viewer_auth_bootstrap") {
+      return "player interaction is currently unlocked through legacy viewer auth bootstrap in trusted preview mode";
+    }
+    if (auth.registrationStatus === "registered") {
+      return "player interaction is unlocked through hosted-issued player_id + browser-local ephemeral Ed25519 session";
+    }
+    if (auth.registrationStatus === "registering" || auth.registrationStatus === "issued") {
+      return "browser-local hosted identity is ready; runtime player-session registration is still in progress";
+    }
+    return auth.error || "hosted player identity exists, but runtime registration still needs recovery";
   }
   if (isHostedPublicJoinHint(deploymentHint)) {
-    return "player session upgrade/login is not implemented on the hosted public join path yet";
+    return auth.error || "player session upgrade/login is still pending hosted issue";
   }
   return auth.error || "viewer auth bootstrap is missing or incomplete";
 }
@@ -372,19 +595,22 @@ function buildAuthSurfaceModel() {
   const chatCapability = buildSemanticCapability("agent_chat");
   const strongAuthCapability = buildSemanticCapability("strong_auth_actions");
   const currentTier = state.auth.available ? "player_session" : "guest_session";
+  const source = state.hostedAccess
+    ? state.auth.available
+      ? state.auth.source === "legacy_viewer_auth_bootstrap"
+        ? "legacy_viewer_auth_bootstrap+hosted_access_hint"
+        : "hosted_player_issue+browser_local_ephemeral_key"
+      : "hosted_access_hint"
+    : state.auth.available
+      ? state.auth.source
+      : "guest_only";
   return {
     deploymentHint,
-    source: state.hostedAccess
-      ? state.auth.available
-        ? "legacy_viewer_auth_bootstrap+hosted_access_hint"
-        : "hosted_access_hint"
-      : state.auth.available
-        ? "legacy_viewer_auth_bootstrap"
-        : "guest_only",
+    source,
     currentTier,
     currentTierReason:
       currentTier === "player_session"
-        ? "the current web viewer still reaches interactive mode through preview bootstrap, not through hosted-issued player sessions"
+        ? playerSessionReason(state.auth, deploymentHint)
         : guestSessionReason(state.auth, deploymentHint),
     tiers: [
       {
@@ -396,7 +622,13 @@ function buildAuthSurfaceModel() {
       {
         id: "player_session",
         label: "player_session",
-        status: state.auth.available ? "active_legacy_preview" : "not_issued",
+        status: state.auth.available
+          ? state.auth.source === "legacy_viewer_auth_bootstrap"
+            ? "active_legacy_preview"
+            : state.auth.registrationStatus === "registered"
+              ? "active_hosted_issue"
+              : "issued_pending_register"
+          : "not_issued",
         reason: playerSessionReason(state.auth, deploymentHint),
       },
       {
@@ -412,7 +644,11 @@ function buildAuthSurfaceModel() {
       strong_auth_actions: strongAuthCapability,
     },
     reconnect: state.auth.available
-      ? "reconnect still depends on the current preview bootstrap; hosted resume/revoke tokens are not wired yet"
+      ? state.auth.source === "legacy_viewer_auth_bootstrap"
+        ? "reconnect still depends on the current preview bootstrap; hosted resume/revoke tokens are not wired yet"
+        : state.auth.registrationStatus === "registered"
+          ? "page reload will reuse the browser-local hosted key and attempt reconnect_sync first"
+          : "browser-local hosted key is persisted, but runtime session restore is still pending this page load"
       : "page reload is possible, but player-session reconnect/resume is not implemented yet",
   };
 }
@@ -494,11 +730,18 @@ function getState() {
     authPlayerId: state.auth.playerId,
     authPublicKey: state.auth.publicKey,
     authError: state.auth.error,
+    authRegistrationStatus: state.auth.registrationStatus,
+    authSessionEpoch: state.auth.sessionEpoch,
+    authRecoveryErrorCode: state.auth.recoveryErrorCode,
+    authRecoveryErrorMessage: state.auth.recoveryErrorMessage,
+    authRuntimeStatus: state.auth.runtimeStatus,
+    authBoundAgentId: state.auth.boundAgentId,
     authTier: authSurface.currentTier,
     authSource: authSurface.source,
     authDeploymentHint: authSurface.deploymentHint,
     authSurface: clone(authSurface),
     hostedAccess: clone(state.hostedAccess),
+    hostedAdmission: clone(state.hostedAdmission),
     selectedAgentInteractionMode: selectedAgentInteractionMode(),
     selectedAgentDebug: clone(selectedAgentExecutionDebugContext()),
     selectedPromptVersion: state.promptDraft.currentVersion || 0,
@@ -1000,6 +1243,18 @@ function bytesToHex(bytes) {
   return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
 }
 
+function bytesStartWith(bytes, prefix) {
+  if (bytes.length < prefix.length) {
+    return false;
+  }
+  for (let index = 0; index < prefix.length; index += 1) {
+    if (bytes[index] !== prefix[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 async function importEd25519SigningKey(privateKeyHex) {
   if (!window.crypto?.subtle) {
     throw new Error("Web Crypto subtle API is unavailable");
@@ -1022,6 +1277,29 @@ async function signAuthPayload(signingPayloadBytes, auth) {
   const key = await importEd25519SigningKey(auth.privateKey);
   const signature = await window.crypto.subtle.sign({ name: "Ed25519" }, key, signingPayloadBytes);
   return `${VIEWER_AUTH_SIGNATURE_PREFIX}${bytesToHex(new Uint8Array(signature))}`;
+}
+
+async function generateEphemeralEd25519Keypair() {
+  if (!window.crypto?.subtle) {
+    throw new Error("Web Crypto subtle API is unavailable");
+  }
+  const keyPair = await window.crypto.subtle.generateKey(
+    { name: "Ed25519" },
+    true,
+    ["sign", "verify"],
+  );
+  const pkcs8 = new Uint8Array(await window.crypto.subtle.exportKey("pkcs8", keyPair.privateKey));
+  if (!bytesStartWith(pkcs8, ED25519_PKCS8_PREFIX) || pkcs8.length !== ED25519_PKCS8_PREFIX.length + 32) {
+    throw new Error("unexpected Ed25519 pkcs8 encoding from Web Crypto");
+  }
+  const rawPublicKey = new Uint8Array(await window.crypto.subtle.exportKey("raw", keyPair.publicKey));
+  if (rawPublicKey.length !== 32) {
+    throw new Error(`unexpected Ed25519 public key length: ${rawPublicKey.length}`);
+  }
+  return {
+    publicKey: bytesToHex(rawPublicKey),
+    privateKey: bytesToHex(pkcs8.slice(ED25519_PKCS8_PREFIX.length)),
+  };
 }
 
 function buildAuthEnvelope(payload) {
@@ -1136,7 +1414,228 @@ async function buildSessionRegisterAuthProof(request, auth) {
   };
 }
 
+function canAutoIssueHostedPlayerSession() {
+  return String(state.hostedAccess?.deployment_mode || "").trim() === "hosted_public_join"
+    && state.auth.source !== "legacy_viewer_auth_bootstrap";
+}
+
+async function issueHostedPlayerIdentity() {
+  if (!canAutoIssueHostedPlayerSession()) {
+    return state.auth;
+  }
+  if (state.auth.available || state.auth.issueInFlight) {
+    return state.auth;
+  }
+  state.auth.issueInFlight = true;
+  state.auth.error = null;
+  render();
+  try {
+    const response = await fetch(HOSTED_PLAYER_SESSION_ISSUE_ROUTE, {
+      method: "GET",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload?.ok || !payload?.grant?.player_id) {
+      if (payload?.admission) {
+        state.hostedAdmission = clone(payload.admission);
+      }
+      throw new Error(payload?.error || payload?.error_code || `hosted player-session issue failed with HTTP ${response.status}`);
+    }
+    state.hostedAdmission = payload?.admission ? clone(payload.admission) : state.hostedAdmission;
+    const keypair = await generateEphemeralEd25519Keypair();
+    state.auth = {
+      available: true,
+      playerId: String(payload.grant.player_id || "").trim(),
+      publicKey: keypair.publicKey,
+      privateKey: keypair.privateKey,
+      releaseToken: String(payload.grant.release_token || "").trim() || null,
+      error: null,
+      source: "hosted_browser_storage",
+      registrationStatus: "issued",
+      sessionEpoch: null,
+      issuedAtUnixMs: payload?.grant?.issued_at_unix_ms == null ? Date.now() : Number(payload.grant.issued_at_unix_ms),
+      recoveryErrorCode: null,
+      recoveryErrorMessage: null,
+      issueInFlight: false,
+      syncInFlight: false,
+      runtimeStatus: "issued",
+      boundAgentId: null,
+    };
+    persistHostedPlayerSession(state.auth);
+    render();
+    return state.auth;
+  } catch (error) {
+    state.auth.issueInFlight = false;
+    state.auth.error = String(error);
+    render();
+    return state.auth;
+  }
+}
+
+async function ensureHostedPlayerAuthAvailable() {
+  if (state.auth.available) {
+    return state.auth;
+  }
+  if (canAutoIssueHostedPlayerSession()) {
+    return issueHostedPlayerIdentity();
+  }
+  return state.auth;
+}
+
+async function retryHostedPlayerIdentityIssue() {
+  if (!canAutoIssueHostedPlayerSession()) {
+    return { ok: false, reason: "hosted public player-session issue is unavailable on this lane" };
+  }
+  const auth = await issueHostedPlayerIdentity();
+  render();
+  return {
+    ok: auth.available,
+    playerId: auth.playerId,
+    error: auth.error,
+  };
+}
+
+function sendReconnectSync() {
+  if (!state.auth.available || state.auth.source === "legacy_viewer_auth_bootstrap") {
+    return;
+  }
+  state.auth.syncInFlight = true;
+  state.auth.registrationStatus = "registering";
+  state.auth.runtimeStatus = "probing";
+  state.auth.recoveryErrorCode = null;
+  state.auth.recoveryErrorMessage = null;
+  sendJson({
+    type: "authoritative_recovery",
+    command: {
+      mode: "reconnect_sync",
+      request: {
+        player_id: state.auth.playerId,
+        session_pubkey: state.auth.publicKey,
+      },
+    },
+  });
+}
+
+function probeHostedRuntimeSession() {
+  if (
+    !state.auth.available
+    || state.auth.source === "legacy_viewer_auth_bootstrap"
+    || state.connectionStatus !== "connected"
+    || state.auth.registrationStatus !== "registered"
+  ) {
+    return;
+  }
+  state.auth.syncInFlight = true;
+  state.auth.runtimeStatus = "probing";
+  sendJson({
+    type: "authoritative_recovery",
+    command: {
+      mode: "reconnect_sync",
+      request: {
+        player_id: state.auth.playerId,
+        session_pubkey: state.auth.publicKey,
+      },
+    },
+  });
+}
+
+async function releaseHostedPlayerSlot() {
+  const playerId = String(state.auth.playerId || "").trim();
+  const releaseToken = String(state.auth.releaseToken || "").trim();
+  if (!playerId || !releaseToken || state.auth.source === "legacy_viewer_auth_bootstrap") {
+    return { ok: false, skipped: true };
+  }
+  const query = `player_id=${encodeURIComponent(playerId)}&release_token=${encodeURIComponent(releaseToken)}`;
+  const response = await fetch(`${HOSTED_PLAYER_SESSION_RELEASE_ROUTE}?${query}`, {
+    method: "POST",
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  const payload = await response.json();
+  if (!response.ok || !payload?.ok) {
+    if (payload?.admission) {
+      state.hostedAdmission = clone(payload.admission);
+    }
+    throw new Error(payload?.error || payload?.error_code || `hosted player-session release failed with HTTP ${response.status}`);
+  }
+  state.hostedAdmission = payload?.admission ? clone(payload.admission) : state.hostedAdmission;
+  return payload;
+}
+
+function resetHostedPlayerAuthState(errorMessage = null) {
+  stopHostedSessionRefreshLoop();
+  clearHostedPlayerSession();
+  const bootstrap = resolveAuthBootstrap();
+  state.auth = bootstrap.available
+    ? bootstrap
+    : {
+        ...bootstrap,
+        source: "guest_only",
+        registrationStatus: "guest",
+        error: errorMessage,
+        sessionEpoch: null,
+        issuedAtUnixMs: null,
+        releaseToken: null,
+        recoveryErrorCode: null,
+        recoveryErrorMessage: null,
+        issueInFlight: false,
+        syncInFlight: false,
+        runtimeStatus: "guest",
+        boundAgentId: null,
+      };
+  void refreshHostedAdmissionState().then(() => render());
+}
+
+async function logoutHostedPlayerSession() {
+  if (!state.auth.available || state.auth.source === "legacy_viewer_auth_bootstrap") {
+    return { ok: false, reason: "hosted browser session is unavailable" };
+  }
+  const revokeRequest = {
+    player_id: state.auth.playerId,
+    session_pubkey: state.auth.publicKey,
+    revoke_reason: "player_logout",
+    revoked_by: state.auth.playerId,
+  };
+  try {
+    if (state.connectionStatus === "connected") {
+      sendJson({
+        type: "authoritative_recovery",
+        command: {
+          mode: "revoke_session",
+          request: revokeRequest,
+        },
+      });
+    }
+  } catch (_) {
+  }
+  try {
+    await releaseHostedPlayerSlot();
+  } finally {
+    resetHostedPlayerAuthState("hosted player session released locally");
+    render();
+  }
+  return { ok: true };
+}
+
+function syncHostedPlayerSessionOnConnect() {
+  if (!state.auth.available || state.auth.source === "legacy_viewer_auth_bootstrap" || state.auth.syncInFlight) {
+    return;
+  }
+  sendReconnectSync();
+}
+
 async function ensureRegisteredPlayerSession(requestedAgentId = null) {
+  await ensureHostedPlayerAuthAvailable();
+  if (!state.auth.available) {
+    throw new Error(state.auth.error || "player session auth is unavailable");
+  }
+  if (state.auth.source !== "legacy_viewer_auth_bootstrap") {
+    state.auth.registrationStatus = "registering";
+    state.auth.syncInFlight = true;
+    state.auth.recoveryErrorCode = null;
+    state.auth.recoveryErrorMessage = null;
+  }
   const request = {
     player_id: state.auth.playerId,
     public_key: state.auth.publicKey,
@@ -1152,6 +1651,7 @@ async function ensureRegisteredPlayerSession(requestedAgentId = null) {
       request,
     },
   });
+  render();
 }
 
 function buildPromptRequestFromDraft(agentId, draftOverrides) {
@@ -1340,6 +1840,7 @@ function sendAgentChat(agentIdOrPayload, maybeMessage) {
     kind: "chat",
     feedback,
     execute: async () => {
+      await ensureHostedPlayerAuthAvailable();
       assertSemanticCapability("agent_chat");
       feedback.stage = "registering";
       feedback.effect = "registering player session";
@@ -1405,6 +1906,7 @@ function sendPromptControl(mode, payload = null) {
     kind: "prompt",
     feedback,
     execute: async () => {
+      await ensureHostedPlayerAuthAvailable();
       assertSemanticCapability("prompt_control");
       feedback.stage = "registering";
       feedback.effect = "registering player session";
@@ -1548,6 +2050,87 @@ function handleAgentChatError(error) {
   state.lastChatFeedback = feedback;
 }
 
+function adoptHostedRecoveryAck(ack) {
+  if (!ack || !state.auth.available || state.auth.source === "legacy_viewer_auth_bootstrap") {
+    return;
+  }
+  state.auth.syncInFlight = false;
+  state.auth.recoveryErrorCode = null;
+  state.auth.recoveryErrorMessage = null;
+  state.auth.error = null;
+  if (ack.player_id) {
+    state.auth.playerId = ack.player_id;
+  }
+  if (ack.session_pubkey) {
+    state.auth.publicKey = ack.session_pubkey;
+  }
+  if (ack.session_epoch != null) {
+    state.auth.sessionEpoch = Number(ack.session_epoch);
+  }
+  state.auth.boundAgentId = ack.agent_id || null;
+  state.auth.registrationStatus = ack.status === "session_registered" || ack.status === "catch_up_ready"
+    ? "registered"
+    : ack.status === "session_revoked"
+      ? "guest"
+      : "issued";
+  state.auth.runtimeStatus = ack.status === "session_revoked"
+    ? "revoked"
+    : ack.agent_id
+      ? "registered"
+      : "registered_unbound";
+  if (ack.status === "session_revoked") {
+    void releaseHostedPlayerSlot().catch(() => {});
+    resetHostedPlayerAuthState(ack.message || "hosted player session was revoked");
+  } else {
+    persistHostedPlayerSession(state.auth);
+    void refreshHostedPlayerLease();
+    syncHostedSessionRefreshLoop();
+  }
+}
+
+async function recoverHostedSessionFromError(error) {
+  if (!canAutoIssueHostedPlayerSession() || state.auth.source === "legacy_viewer_auth_bootstrap") {
+    return;
+  }
+  const code = String(error?.code || "").trim();
+  if (code === "session_not_found") {
+    await ensureRegisteredPlayerSession();
+    return;
+  }
+  if (["session_key_mismatch", "session_revoked", "session_player_id_invalid"].includes(code)) {
+    void releaseHostedPlayerSlot().catch(() => {});
+    resetHostedPlayerAuthState(error?.message || code || "hosted player session failed");
+    render();
+    await issueHostedPlayerIdentity();
+    if (state.auth.available) {
+      await ensureRegisteredPlayerSession();
+    }
+  }
+}
+
+function handleAuthoritativeRecoveryAck(ack) {
+  adoptHostedRecoveryAck(ack);
+}
+
+function handleAuthoritativeRecoveryError(error) {
+  if (!state.auth.available || state.auth.source === "legacy_viewer_auth_bootstrap") {
+    return;
+  }
+  state.auth.syncInFlight = false;
+  state.auth.recoveryErrorCode = error?.code || null;
+  state.auth.recoveryErrorMessage = error?.message || null;
+  state.auth.error = error?.message || error?.code || "authoritative recovery failed";
+  state.auth.registrationStatus = "issued";
+  state.auth.runtimeStatus = error?.code === "session_revoked"
+    ? "revoked"
+    : error?.code === "session_not_found"
+      ? "missing"
+      : "error";
+  state.auth.boundAgentId = null;
+  syncHostedSessionRefreshLoop();
+  void recoverHostedSessionFromError(error);
+}
+
 function handleViewerMessage(message) {
   switch (message?.type) {
     case "hello_ack":
@@ -1555,6 +2138,10 @@ function handleViewerMessage(message) {
       state.worldId = message.world_id || null;
       state.controlProfile = message.control_profile || "playback";
       state.debugViewerStatus = "subscribed";
+      void ensureHostedPlayerAuthAvailable().then(() => {
+        syncHostedPlayerSessionOnConnect();
+        render();
+      });
       break;
     case "snapshot":
       handleSnapshot(message.snapshot);
@@ -1587,6 +2174,12 @@ function handleViewerMessage(message) {
     case "agent_chat_error":
       handleAgentChatError(message.error);
       break;
+    case "authoritative_recovery_ack":
+      handleAuthoritativeRecoveryAck(message.ack);
+      break;
+    case "authoritative_recovery_error":
+      handleAuthoritativeRecoveryError(message.error);
+      break;
     case "error":
       reportFatalError(message.message, "viewer");
       break;
@@ -1605,6 +2198,7 @@ function attachSocket(ws) {
     sendJson({ type: "hello", client: "software_safe_viewer", version: 1 });
     sendJson({ type: "subscribe", streams: ["snapshot", "events", "metrics"], event_kinds: [] });
     sendJson({ type: "request_snapshot" });
+    syncHostedSessionRefreshLoop();
     render();
   });
 
@@ -1624,6 +2218,11 @@ function attachSocket(ws) {
   ws.addEventListener("close", () => {
     state.connectionStatus = "connecting";
     state.debugViewerStatus = "detached";
+    if (state.auth.available && state.auth.source !== "legacy_viewer_auth_bootstrap") {
+      state.auth.syncInFlight = false;
+      state.auth.runtimeStatus = "disconnected";
+    }
+    stopHostedSessionRefreshLoop();
     render();
     if (reconnectTimer) {
       window.clearTimeout(reconnectTimer);
@@ -1817,13 +2416,44 @@ function renderSummary() {
         </div>
       </div>
       <div class="badge-row">
-        <span class="${authBadgeClass}">auth=${state.auth.available ? "ready" : "missing"}</span>
+        <span class="${authBadgeClass}">auth=${state.auth.available ? state.auth.registrationStatus || "ready" : "missing"}</span>
         <span class="badge badge--accent">tier=${escapeHtml(authSurface.currentTier)}</span>
         <span class="badge">source=${escapeHtml(authSurface.source)}</span>
         <span class="badge">deploymentHint=${escapeHtml(authSurface.deploymentHint)}</span>
         <span class="badge">player=${escapeHtml(state.auth.playerId || "-")}</span>
         <span class="badge">pubkey=${escapeHtml(state.auth.publicKey ? `${state.auth.publicKey.slice(0, 10)}…` : "-")}</span>
+        <span class="badge">epoch=${escapeHtml(state.auth.sessionEpoch == null ? "-" : state.auth.sessionEpoch)}</span>
+        <span class="badge">runtime=${escapeHtml(state.auth.runtimeStatus || "-")}</span>
+        <span class="badge">boundAgent=${escapeHtml(state.auth.boundAgentId || "-")}</span>
       </div>
+      ${state.auth.recoveryErrorCode || state.auth.recoveryErrorMessage
+        ? `<div class="badge-row">
+            <span class="badge badge--warn">recoveryError=${escapeHtml(state.auth.recoveryErrorCode || "-")}</span>
+            <span class="badge">${escapeHtml(state.auth.recoveryErrorMessage || "-")}</span>
+          </div>`
+        : ""}
+      ${state.hostedAdmission
+        ? `<div class="badge-row">
+            <span class="badge">activeSlots=${escapeHtml(`${state.hostedAdmission.active_player_sessions}/${state.hostedAdmission.max_player_sessions}`)}</span>
+            <span class="badge">runtimeBound=${escapeHtml(state.hostedAdmission.runtime_bound_player_sessions == null ? "-" : state.hostedAdmission.runtime_bound_player_sessions)}</span>
+            <span class="badge">runtimeProbe=${escapeHtml(state.hostedAdmission.runtime_probe_status || "-")}</span>
+            <span class="badge">issueBudget=${escapeHtml(state.hostedAdmission.remaining_issue_budget)}</span>
+            <span class="badge">leaseTTL=${escapeHtml(state.hostedAdmission.slot_lease_ttl_ms)}</span>
+            <span class="badge">issued=${escapeHtml(state.hostedAdmission.issued_players_total)}</span>
+            <span class="badge">released=${escapeHtml(state.hostedAdmission.released_players_total)}</span>
+          </div>`
+        : ""}
+      ${state.hostedAdmission?.runtime_probe_error
+        ? `<div class="badge-row">
+            <span class="badge badge--warn">runtimeProbeError=${escapeHtml(state.hostedAdmission.runtime_probe_error)}</span>
+          </div>`
+        : ""}
+      ${!state.auth.available && String(state.hostedAccess?.deployment_mode || "").trim() === "hosted_public_join"
+        ? `<div class="toolbar"><button data-auth-action="retry-issue" ${state.auth.issueInFlight ? "disabled" : ""}>Acquire Hosted Player Session</button></div>`
+        : ""}
+      ${state.auth.available && state.auth.source !== "legacy_viewer_auth_bootstrap"
+        ? `<div class="toolbar"><button data-auth-action="logout">Release Hosted Player Session</button></div>`
+        : ""}
       <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
         <div class="panel__header"><div class="panel__title">Session Ladder</div></div>
         <div class="panel__body stack">
@@ -2153,6 +2783,18 @@ function bindEvents() {
       sendAgentChat(selectedAgentId(), state.chatDraft.message);
     });
   });
+  document.querySelectorAll("[data-auth-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const action = button.getAttribute("data-auth-action");
+      if (action === "logout") {
+        void logoutHostedPlayerSession();
+        return;
+      }
+      if (action === "retry-issue") {
+        void retryHostedPlayerIdentityIssue();
+      }
+    });
+  });
 }
 
 function render() {
@@ -2186,14 +2828,17 @@ function installTestApi() {
     select,
     sendAgentChat,
     sendPromptControl,
+    logoutHostedPlayerSession,
+    retryHostedPlayerIdentityIssue,
     reportFatalError,
   };
 }
 
 function bootstrap() {
   Object.assign(state, detectRendererMeta());
-  state.auth = resolveAuthBootstrap();
   state.hostedAccess = resolveHostedAccessHint();
+  state.auth = resolveViewerAuthState();
+  state.wsUrl = initialWsUrl();
   window[RENDER_META_GLOBAL_NAME] = Object.freeze({
     renderMode: state.renderMode,
     rendererClass: state.rendererClass,
@@ -2205,6 +2850,8 @@ function bootstrap() {
   mountApp();
   installTestApi();
   render();
+  void refreshHostedAdmissionState().then(() => render());
+  void ensureHostedPlayerAuthAvailable().then(() => render());
   connect();
 }
 

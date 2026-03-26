@@ -1,12 +1,16 @@
 use std::env;
 use std::fs;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
+use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
     build_game_url, build_oasis7_chain_runtime_args, build_viewer_auth_bootstrap_script,
-    content_type_for_path, parse_host_port, parse_options, resolve_static_asset_path,
-    resolve_viewer_auth_bootstrap_for_embedded_server, resolve_viewer_auth_bootstrap_from_path,
+    content_type_for_path, parse_host_port, parse_options, query_runtime_bound_players,
+    resolve_static_asset_path, resolve_viewer_auth_bootstrap_for_embedded_server,
+    resolve_viewer_auth_bootstrap_from_path,
     resolve_viewer_static_dir_with_override, sanitize_index_html_for_embedded_server,
     sanitize_relative_request_path,
     viewer_dev_dist_candidates, CliOptions, ViewerAuthBootstrap, BUILTIN_LLM_PROVIDER_MODE,
@@ -17,6 +21,8 @@ use super::{
     VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
 };
 use oasis7::simulator::ProviderExecutionMode;
+use oasis7::simulator::{WorldConfig, WorldModel, WorldSnapshot};
+use oasis7::viewer::{ViewerRequest, ViewerResponse, VIEWER_PROTOCOL_VERSION};
 use oasis7_proto::storage_profile::StorageProfile;
 
 fn assert_removed_old_brand_viewer_auth_env_absent(text: &str) {
@@ -256,6 +262,82 @@ fn parse_options_rejects_unknown_chain_storage_profile() {
 fn parse_options_rejects_missing_value() {
     let err = parse_options(["--viewer-port"].into_iter()).expect_err("should fail");
     assert!(err.contains("requires a value"));
+}
+
+#[test]
+fn query_runtime_bound_players_reads_snapshot_bindings() {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind probe mock");
+    let addr = listener.local_addr().expect("local addr");
+    let handle = thread::spawn(move || {
+        let (stream, _) = listener.accept().expect("accept");
+        let reader_stream = stream.try_clone().expect("clone stream");
+        let mut reader = BufReader::new(reader_stream);
+        let mut writer = BufWriter::new(stream);
+
+        let mut raw_hello = String::new();
+        reader.read_line(&mut raw_hello).expect("read hello");
+        let hello_request: ViewerRequest =
+            serde_json::from_str(raw_hello.trim_end()).expect("decode hello request");
+        assert!(matches!(
+            hello_request,
+            ViewerRequest::Hello {
+                version: VIEWER_PROTOCOL_VERSION,
+                ..
+            }
+        ));
+        serde_json::to_writer(
+            &mut writer,
+            &ViewerResponse::HelloAck {
+                server: "oasis7".to_string(),
+                version: VIEWER_PROTOCOL_VERSION,
+                world_id: "test-world".to_string(),
+                control_profile: oasis7::viewer::ViewerControlProfile::Playback,
+            },
+        )
+        .expect("write hello ack");
+        writer.write_all(b"\n").expect("write newline");
+        writer.flush().expect("flush hello ack");
+
+        let mut snapshot_line = String::new();
+        reader
+            .read_line(&mut snapshot_line)
+            .expect("read snapshot request");
+        let snapshot_request: ViewerRequest =
+            serde_json::from_str(snapshot_line.trim_end()).expect("decode snapshot request");
+        assert!(matches!(snapshot_request, ViewerRequest::RequestSnapshot));
+
+        let mut model = WorldModel::default();
+        model
+            .agent_player_bindings
+            .insert("agent-1".to_string(), "player-a".to_string());
+        model
+            .agent_player_bindings
+            .insert("agent-2".to_string(), "player-b".to_string());
+        let snapshot = WorldSnapshot {
+            version: 1,
+            chunk_generation_schema_version: 1,
+            time: 0,
+            config: WorldConfig::default(),
+            model,
+            runtime_snapshot: None,
+            player_gameplay: None,
+            chunk_runtime: Default::default(),
+            next_event_id: 0,
+            next_action_id: 0,
+            pending_actions: Vec::new(),
+            journal_len: 0,
+        };
+        serde_json::to_writer(&mut writer, &ViewerResponse::Snapshot { snapshot })
+            .expect("write snapshot");
+        writer.write_all(b"\n").expect("write newline");
+        writer.flush().expect("flush snapshot");
+    });
+
+    let players = query_runtime_bound_players(format!("{addr}").as_str()).expect("query players");
+    assert!(players.contains("player-a"));
+    assert!(players.contains("player-b"));
+    assert_eq!(players.len(), 2);
+    handle.join().expect("join mock server");
 }
 
 #[test]
