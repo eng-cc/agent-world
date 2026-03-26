@@ -20,10 +20,10 @@
   - `prompt_control_*` 只处于 `public_player_plane_with_backend_reauth_preview`
   - 未完成 runtime register 的 `player_session` 会在 `pending_registration_ttl_ms=30000` 后失效，旧 `release_token` 不能继续申请 grant
   - 即便带正确 `approval_code`，`main_token_transfer` 仍返回 `strong_auth_action_not_enabled`
-- 当前 local hosted 栈仍有一个明确残余缺口：
-  - 本轮运行使用 `oasis7_game_launcher --deployment-mode hosted_public_join --chain-disable` + `oasis7_viewer_live llm_bootstrap --no-llm`
-  - 页面始终表现为 `debugViewer=detached`、`No agents in current snapshot`
-  - 因此 `prompt_control_*` 的 grant success path 在本轮只能验证到“需要非空 `agent_id`，否则返回 `strong_auth_grant_sign_failed`”，还不能作为“已跑通 runtime-attached prompt_control reauth”的放行证据
+- 当前 local hosted 栈的 runtime starvation 已在后续补丁中关闭：
+  - fresh `oasis7_game_launcher --deployment-mode hosted_public_join --chain-disable` 栈上，`software_safe` 页面现在可稳定看到 5 个 seeded agents，`debugViewer=debug_viewer:subscribed`
+  - 浏览器保持打开时，`/api/public/player-session/admission.runtime_probe_status` 仍可维持 `ok`，不再掉回 `runtime probe timed out waiting for hello_ack`
+  - 当前剩余缺口已收敛为 hosted auth 产品证据本身：还没有一份“player_session + backend strong-auth grant + runtime-attached prompt_control success”完整放行证据
 
 ## 执行命令
 - 本地 hosted 栈:
@@ -37,6 +37,8 @@
   - `ab_eval hosted-p2p-041-evidence2 'window.__AW_TEST__.setStrongAuthApprovalCode("preview-code"); window.__AW_TEST__.getState()'`
 - 辅助 admission 取样:
   - `curl -s http://127.0.0.1:4186/api/public/player-session/admission | python3 -m json.tool`
+  - follow-up: `agent-browser --session hosted-p2p-041-concurrency open 'http://127.0.0.1:4388/?ws=ws://127.0.0.1:5315'`
+  - follow-up: `curl -s http://127.0.0.1:4388/api/public/player-session/admission | python3 -m json.tool`
 
 ## 浏览器证据
 ### 1. player session 页面真值
@@ -100,6 +102,6 @@
   - 资产动作仍被 hosted public join 显式阻断，grant route 泛化没有把 `main_token_transfer` 顺带打开
 
 ## 风险与剩余项
-- 本证据覆盖的是 hosted 浏览器访问与鉴权面，不是“world 已可玩”证明；当前 local 栈没有起出 agent/world snapshot，所以无法把 `player_session` 推进到 registered/bound。
-- 下一轮若要补 `prompt_control_*` success path，必须换成有真实 world + selectable agent 的 attach 环境，再保留一份 `grant signed -> runtime verify -> prompt action accepted` 证据。
+- 本证据覆盖的是 hosted 浏览器访问与鉴权面，不是“world 已可玩”证明；虽然 follow-up 已确认当前 local 栈能稳定给出 agent/world snapshot，但尚未补齐一份带 hosted auth 升级链路的完整 success evidence。
+- 下一轮若要补 `prompt_control_*` success path，需要在同一份带真实 agent 的 hosted 页面上保留 `player_session issue -> grant signed -> runtime verify -> prompt action accepted` 证据，而不是只验证阻断路径。
 - `main_token_transfer` 当前仍保持阻断，这符合本专题目标，不构成缺陷；真正开放前仍需后续 `strong_auth` 专题和 custody 方案收口。

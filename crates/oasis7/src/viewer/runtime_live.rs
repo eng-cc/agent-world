@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashSet, VecDeque};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::net::{TcpListener, TcpStream};
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::geometry::GeoPos;
@@ -502,13 +504,17 @@ impl ViewerRuntimeLiveServer {
         })
     }
 
-    pub fn run(&mut self) -> Result<(), ViewerRuntimeLiveServerError> {
+    pub fn run(self) -> Result<(), ViewerRuntimeLiveServerError> {
         let listener = TcpListener::bind(&self.config.bind_addr)?;
+        let shared = Arc::new(Mutex::new(self));
         for incoming in listener.incoming() {
             let stream = incoming?;
-            if let Err(err) = self.serve_stream(stream) {
-                eprintln!("viewer runtime live server error: {err:?}");
-            }
+            let shared = Arc::clone(&shared);
+            thread::spawn(move || {
+                if let Err(err) = Self::serve_shared_stream(shared, stream) {
+                    eprintln!("viewer runtime live server error: {err:?}");
+                }
+            });
         }
         Ok(())
     }
@@ -521,6 +527,50 @@ impl ViewerRuntimeLiveServer {
 
     fn hosted_public_join_mode(&self) -> bool {
         self.config.hosted_public_join_mode
+    }
+
+    fn serve_shared_stream(
+        shared: Arc<Mutex<Self>>,
+        stream: TcpStream,
+    ) -> Result<(), ViewerRuntimeLiveServerError> {
+        stream.set_nodelay(true)?;
+        stream.set_read_timeout(Some(Duration::from_millis(50)))?;
+
+        let reader_stream = stream.try_clone()?;
+        let mut reader = BufReader::new(reader_stream);
+        let mut writer = BufWriter::new(stream);
+        let mut session = RuntimeLiveSession::new();
+
+        loop {
+            let mut line = String::new();
+            match reader.read_line(&mut line) {
+                Ok(0) => return Ok(()),
+                Ok(_) => {
+                    let trimmed = line.trim();
+                    if !trimmed.is_empty() {
+                        match serde_json::from_str::<ViewerRequest>(trimmed) {
+                            Ok(request) => {
+                                let mut server = lock_shared_server(&shared)?;
+                                server.handle_request(request, &mut session, &mut writer)?;
+                            }
+                            Err(_) => {}
+                        }
+                    }
+                }
+                Err(err) if is_timeout_error(&err) => {}
+                Err(err) if is_expected_disconnect_error(&err) => return Ok(()),
+                Err(err) => return Err(ViewerRuntimeLiveServerError::Io(err)),
+            }
+
+            let play_step_interval = {
+                let server = lock_shared_server(&shared)?;
+                server.config.play_step_interval
+            };
+            if session.should_advance_play_step(play_step_interval) {
+                let mut server = lock_shared_server(&shared)?;
+                server.advance_runtime(&mut session, &mut writer, 1, None, false)?;
+            }
+        }
     }
 
     fn serve_stream(&mut self, stream: TcpStream) -> Result<(), ViewerRuntimeLiveServerError> {
@@ -548,6 +598,7 @@ impl ViewerRuntimeLiveServer {
                     }
                 }
                 Err(err) if is_timeout_error(&err) => {}
+                Err(err) if is_expected_disconnect_error(&err) => return Ok(()),
                 Err(err) => return Err(ViewerRuntimeLiveServerError::Io(err)),
             }
 
@@ -2316,5 +2367,26 @@ fn is_timeout_error(err: &io::Error) -> bool {
     matches!(
         err.kind(),
         io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut | io::ErrorKind::Interrupted
+    )
+}
+
+fn lock_shared_server(
+    shared: &Arc<Mutex<ViewerRuntimeLiveServer>>,
+) -> Result<MutexGuard<'_, ViewerRuntimeLiveServer>, ViewerRuntimeLiveServerError> {
+    shared.lock().map_err(|_| {
+        ViewerRuntimeLiveServerError::Io(io::Error::other(
+            "viewer runtime live shared state poisoned",
+        ))
+    })
+}
+
+fn is_expected_disconnect_error(err: &io::Error) -> bool {
+    matches!(
+        err.kind(),
+        io::ErrorKind::ConnectionReset
+            | io::ErrorKind::ConnectionAborted
+            | io::ErrorKind::BrokenPipe
+            | io::ErrorKind::UnexpectedEof
+            | io::ErrorKind::NotConnected
     )
 }

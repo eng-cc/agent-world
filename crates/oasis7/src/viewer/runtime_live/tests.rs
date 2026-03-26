@@ -5,7 +5,10 @@ use crate::simulator::{
     DEFAULT_PROVIDER_OBSERVATION_SCHEMA_VERSION,
 };
 use ed25519_dalek::SigningKey;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::net::{TcpListener, TcpStream};
 use std::sync::{Mutex, OnceLock};
+use std::thread;
 use std::time::Duration;
 
 const VIEWER_AGENT_PROVIDER_MODE_ENV: &str = "OASIS7_AGENT_PROVIDER_MODE";
@@ -91,6 +94,116 @@ fn test_now_unix_ms() -> u64 {
         .as_millis()
         .try_into()
         .unwrap_or(u64::MAX)
+}
+
+fn connect_runtime_live_client(addr: &str) -> (BufReader<TcpStream>, BufWriter<TcpStream>) {
+    let stream = TcpStream::connect(addr).expect("connect runtime live");
+    stream.set_nodelay(true).expect("set_nodelay");
+    stream
+        .set_read_timeout(Some(Duration::from_millis(500)))
+        .expect("set_read_timeout");
+    stream
+        .set_write_timeout(Some(Duration::from_millis(500)))
+        .expect("set_write_timeout");
+    let reader_stream = stream.try_clone().expect("clone stream");
+    let mut reader = BufReader::new(reader_stream);
+    let mut writer = BufWriter::new(stream);
+    send_runtime_live_request(
+        &mut writer,
+        &ViewerRequest::Hello {
+            client: "runtime-live-test".to_string(),
+            version: VIEWER_PROTOCOL_VERSION,
+        },
+    );
+    read_runtime_live_hello_ack(&mut reader);
+    (reader, writer)
+}
+
+fn send_runtime_live_request(writer: &mut BufWriter<TcpStream>, request: &ViewerRequest) {
+    serde_json::to_writer(&mut *writer, request).expect("write request");
+    writer.write_all(b"\n").expect("write newline");
+    writer.flush().expect("flush request");
+}
+
+fn read_runtime_live_hello_ack(reader: &mut BufReader<TcpStream>) {
+    loop {
+        let response = read_runtime_live_response(reader);
+        if matches!(response, ViewerResponse::HelloAck { .. }) {
+            return;
+        }
+    }
+}
+
+fn read_runtime_live_snapshot(reader: &mut BufReader<TcpStream>) -> WorldSnapshot {
+    loop {
+        let response = read_runtime_live_response(reader);
+        if let ViewerResponse::Snapshot { snapshot } = response {
+            return snapshot;
+        }
+    }
+}
+
+fn read_runtime_live_response(reader: &mut BufReader<TcpStream>) -> ViewerResponse {
+    let mut line = String::new();
+    reader.read_line(&mut line).expect("read response");
+    serde_json::from_str(line.trim_end()).expect("decode response")
+}
+
+fn wait_for_runtime_live_server(addr: &str) {
+    for _ in 0..50 {
+        if TcpStream::connect(addr).is_ok() {
+            return;
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
+    panic!("runtime live server did not start listening at {addr}");
+}
+
+#[test]
+fn runtime_live_run_accepts_probe_while_viewer_session_is_open() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("reserve port");
+    let addr = listener.local_addr().expect("local addr");
+    drop(listener);
+
+    let server_addr = addr.to_string();
+    thread::spawn(move || {
+        let server = ViewerRuntimeLiveServer::new(
+            ViewerRuntimeLiveServerConfig::new(WorldScenario::LlmBootstrap)
+                .with_bind_addr(server_addr),
+        )
+        .expect("create server");
+        server.run().expect("run server");
+    });
+    wait_for_runtime_live_server(addr.to_string().as_str());
+
+    let (mut viewer_reader, mut viewer_writer) =
+        connect_runtime_live_client(addr.to_string().as_str());
+    send_runtime_live_request(
+        &mut viewer_writer,
+        &ViewerRequest::Subscribe {
+            streams: vec![
+                ViewerStream::Snapshot,
+                ViewerStream::Events,
+                ViewerStream::Metrics,
+            ],
+            event_kinds: Vec::new(),
+        },
+    );
+    send_runtime_live_request(&mut viewer_writer, &ViewerRequest::RequestSnapshot);
+    let viewer_snapshot = read_runtime_live_snapshot(&mut viewer_reader);
+    assert!(
+        !viewer_snapshot.model.agents.is_empty(),
+        "expected seeded agents in runtime snapshot"
+    );
+
+    let (mut probe_reader, mut probe_writer) =
+        connect_runtime_live_client(addr.to_string().as_str());
+    send_runtime_live_request(&mut probe_writer, &ViewerRequest::RequestSnapshot);
+    let probe_snapshot = read_runtime_live_snapshot(&mut probe_reader);
+    assert_eq!(
+        probe_snapshot.model.agents.len(),
+        viewer_snapshot.model.agents.len()
+    );
 }
 
 fn signed_prompt_control_apply_request(
