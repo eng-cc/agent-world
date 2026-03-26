@@ -784,23 +784,23 @@
         {
           kind: "cover",
           title: 'AI时代，<br />你变<span class="accent">"懒"</span>了么',
-          subtitle: "我最近越来越常碰到这个瞬间。卡住了，第一反应已经不是自己拧一会儿，而是先问一句 AI。",
-          noteTitle: "我确实有点变懒了",
-          noteBody: "不是不做事了。是很多原本会自己扛一下的停顿，被我直接跳过去了。",
-          compareLeft: "以前会先自己拧一会儿",
-          compareRight: "现在经常先问一句 AI",
-          prompt: "如果连这个停顿都在消失，游戏还该把什么留给人？",
+          subtitle: "我最近越来越常碰到这个瞬间。不只是工作卡住会先问 AI，连玩游戏都更想先搜答案。",
+          noteTitle: "我发现不只是在工作里",
+          noteBody: "有时候连玩游戏，我都会先想：有没有更快的攻略、配装和最优解。",
+          compareLeft: "以前卡关会先自己试一会儿",
+          compareRight: "现在经常先搜攻略 / 问 AI",
+          prompt: "如果连玩游戏都越来越想直接拿答案，游戏还该把什么留给人？",
         },
         {
           kind: "chat",
           title: "我确实变懒了",
           stickyTitle: "先承认这件事",
-          stickyBody: "整理、改字、查漏补缺，我现在真的会更快先找 AI。",
-          userTitle: "卡住了",
-          userBody: '<span class="strike">等等，我先自己想一下</span>',
+          stickyBody: "整理、改字会先找 AI，连打游戏卡关，我现在也更容易先找攻略。",
+          userTitle: "以前的停顿",
+          userBody: '<span class="strike">等等，我先自己试一下</span>',
           aiTitle: "现在更常见的反应",
-          aiBody: "先问一句 AI 再说。",
-          tail: "方便是真的。可我也开始怀疑，有些被省掉的可能不只是时间。",
+          aiBody: "先搜攻略，或者先让 AI 把 build 和路线理一遍。",
+          tail: "方便是真的。可一旦连试错都想省掉，游戏里有些东西也会一起变薄。",
         },
         {
           kind: "allowed",
@@ -816,18 +816,18 @@
               body: "卡在表述的时候，让 AI 帮我起个头也没什么。",
             },
             {
-              title: "重复活",
-              body: "能被稳定复制的劳动，不值得每次都硬耗。",
+              title: "刷材料",
+              body: "游戏里那些纯重复劳动，确实也不值得每次都硬熬。",
             },
           ],
           summary: "这些懒没问题",
           summaryBody: "因为被接走的主要还是体力活，不是那个决定怎么想的瞬间。",
-          list: ["整理", "改字", "重复活"],
+          list: ["整理", "改字", "刷材料"],
         },
         {
           kind: "question",
           title: "但如果 AI 接走的<br />不只是动作",
-          body: "而是连“先自己判断一下”这一步也一起接走了，那游戏模式到底还要把什么留给人？",
+          body: "而是连“先自己试一下”“先自己判断一下”这两步也一起接走了，那游戏模式到底还要把什么留给人？",
           ladder: [
             {
               label: "先被接走的",
@@ -836,22 +836,22 @@
             },
             {
               label: "我开始警惕的",
-              title: "判断",
-              body: "什么时候该停，怎么选方向，这部分一丢，人就薄了。",
+              title: "试错 + 判断",
+              body: "什么时候该停、怎么试、怎么选方向，这部分一丢，游戏就容易只剩答案。",
             },
           ],
           sideTitle: "我最近一直在想",
-          sideBody: "游戏是不是不该只继续追求更省事，而要故意把一些关键位置留给玩家。",
-          tokens: ["操作感", "判断感", "承担后果"],
+          sideBody: "游戏是不是不该只继续追求更省事，而要故意把摸索、判断和后果留给玩家自己来扛。",
+          tokens: ["摸索感", "判断感", "承担后果"],
         },
         {
           kind: "closing",
           title: "你觉得最该留给人的<br />到底是什么？",
-          body: "如果 AI 能接走越来越多动作，你会更想把哪一块死死留在人手里？",
+          body: "如果 AI 让人连玩游戏都越来越想直接拿答案，你会更想把哪一块死死留在人手里？",
           options: [
             {
-              title: "操作感",
-              body: "亲手按下去、自己完成那一下，游戏才成立。",
+              title: "摸索感",
+              body: "先自己试、自己绕、自己找到路，这部分不能一下全跳过。",
             },
             {
               title: "判断感",
@@ -862,7 +862,7 @@
               body: "选完以后要自己扛，这一下才像在玩。",
             },
           ],
-          footer: "我自己现在会更在意后两者。你呢？",
+          footer: "我自己现在会更在意判断和承担后果。你呢？",
         },
       ];
 
@@ -1032,7 +1032,7 @@
                     <p style="margin-top: 18px;">${slide.sideBody}</p>
                   </div>
                   <div class="token-cloud">
-                    <span class="token">操作感</span>
+                    <span class="token">摸索感</span>
                     <span class="token hot">判断感</span>
                     <span class="token soft">承担后果</span>
                   </div>

@@ -356,7 +356,7 @@
     - `site/social/xiaohongshu-ai-laziness-game-mode-slide5.png`
     - `doc/devlog/2026-03-26.md`
   - 验收命令 (`test_tier_required`):
-    - `rg -n "AI时代，你变\"懒\"了么|以前我会自己硬想|哪些懒是好的|游戏还应该把什么留给人|操作感|判断感|承担后果" doc/readme/governance/readme-xiaohongshu-ai-laziness-game-mode-post-pack-2026-03-26.md`
+    - `rg -n "AI时代，你变\"懒\"了么|先搜一下攻略|连玩游戏|摸索感|判断感|承担后果" doc/readme/governance/readme-xiaohongshu-ai-laziness-game-mode-post-pack-2026-03-26.md`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
 
