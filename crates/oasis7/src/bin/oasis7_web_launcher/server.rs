@@ -649,6 +649,60 @@ mod tests {
     }
 
     #[test]
+    fn hosted_mode_rejects_remote_private_control_plane_matrix() {
+        let private_paths = [
+            "/api/state",
+            "/api/gui-agent/capabilities",
+            "/api/gui-agent/state",
+            "/api/gui-agent/action",
+            "/api/ui/schema",
+            "/api/start",
+            "/api/stop",
+            "/api/chain/start",
+            "/api/chain/stop",
+        ];
+
+        let mut config = LauncherConfig::default();
+        config.deployment_mode = "hosted_public_join".to_string();
+        let state = Arc::new(Mutex::new(ServiceState::new(
+            "launcher".to_string(),
+            "chain".to_string(),
+            PathBuf::from("."),
+            config,
+        )));
+        let deployment_mode = {
+            let guard = state.lock().expect("lock");
+            deployment_mode_from_config(&guard.config)
+        };
+        let remote_peer = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(39, 104, 204, 172)), 5410);
+
+        for path in private_paths {
+            let response = private_plane_rejection(
+                deployment_mode,
+                path,
+                Some("play.example.com"),
+                Some(remote_peer),
+                &state,
+            )
+            .unwrap_or_else(|| panic!("path should reject on remote public origin: {path}"));
+            assert_eq!(response.error_code, "operator_plane_only");
+            assert!(
+                response.error.contains(path),
+                "error should mention rejected path: {path}"
+            );
+            let public_state = response
+                .public_state
+                .as_ref()
+                .unwrap_or_else(|| panic!("path should expose public snapshot: {path}"));
+            assert_eq!(public_state.hosted_access.verdict, "specified_not_implemented");
+            assert!(
+                public_state.game_url.contains("play.example.com"),
+                "public snapshot should stay on public host for path: {path}"
+            );
+        }
+    }
+
+    #[test]
     fn public_snapshot_exposes_hosted_access_contract() {
         let mut config = LauncherConfig::default();
         config.deployment_mode = "hosted_public_join".to_string();

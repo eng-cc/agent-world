@@ -138,13 +138,14 @@
   - 这条 hosted `prompt_control` strong-auth lane 仍明确属于 preview-grade backend reauth：后端 signer 当前只支持 env 托管 + approval code，不是 production signer custody，也不代表资产动作已具备 hosted-ready 安全级别。
 - 已实现的 `TASK-P2P-041-E` QA first slice:
   - runtime-live 现已补 hosted `prompt_control` abuse 定向测试，至少覆盖 `expired grant -> strong_auth_grant_invalid`、`replayed player auth nonce -> auth_nonce_replay` 与 `session revoked after grant issuance -> session_revoked` 三条高风险签名，证明 preview-grade backend reauth 不能单靠 grant 穿透 session 生命周期与 nonce 防重放。
+  - `oasis7_web_launcher::server` 现已补 remote private-control-plane matrix 回归，覆盖 `/api/state`、`/api/start|stop`、`/api/chain/start|stop`、`/api/gui-agent/*` 与 `/api/ui/schema` 的远端拒绝路径，要求统一返回 `operator_plane_only` 且只携带 public snapshot，避免误分享 operator URL 时把私有控制面状态直接暴露给公网访客。
 - 当前 blocker:
   - `guest session -> player session` 的最小 issuer 已落成，且 `max_player_sessions` 已开始在 public issue 面按“issuer active slot + runtime-only occupancy”的有效占用生效；未完成 register 的 pending slot 也会按更短 TTL 自动回收。public player plane 现在也会通过独立后台 runtime presence 常驻连接把已消失的历史绑定玩家回收到 issuer slot；revoke 与 same-agent rebind 已具备显式 `AgentPlayerUnbound` 增量事件，但更完整的 operator kick / hosted rebind product flow 仍未收口。
   - hosted v1 目前已支持浏览器本地 player session issue + reconnect/register + local release/logout，并能通过周期性 `reconnect_sync` 探针发现部分 remote revoke；但 operator kick 的公开玩家面即时回流、显式 rebind 流程与更稳定的 resume token 仍未收口。
   - `session_register` 目前仍是 runtime-live 内显式注册；host restart / rollback 之后按 v1 规则仍要求重新注册，不是持久化 session registry。
   - 当前只为 `prompt_control_*` 实现了 preview-grade backend reauth slice，而不是完整 `strong_auth` challenge/proof/verification lane；后端 signer 仍是 env 托管 + `approval_code`，`main token transfer` 继续显式阻断，尚未进入 hosted-ready 放行范围。
   - `agent_chat` 仍归 `player_session` 级低风险交互；更细的 hosted action matrix、resume issuer 与真正 strong-auth proof 仍待后续专题收口。
-  - `TASK-P2P-041-E` 目前仍只是 strong-auth abuse first slice；operator/public URL 混淆、capability bypass、admission full-matrix 与分享 runbook 仍待后续 QA/LiveOps 专题继续扩展。
+  - `TASK-P2P-041-E` 目前已覆盖 strong-auth abuse 与 operator/public URL 混淆 first slice；capability bypass、admission full-matrix 与分享 runbook 仍待后续 QA/LiveOps 专题继续扩展。
   - hosted operator 目前仅支持 loopback private control plane；远程 operator URL / tunnel / runbook 仍待 `TASK-P2P-041-F` 收口。
 
 ## 依赖
