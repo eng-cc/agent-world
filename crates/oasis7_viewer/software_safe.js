@@ -84,6 +84,7 @@ const state = {
     boundAgentId: null,
     pendingRequestedAgentId: null,
     pendingForceRebind: false,
+    rebindNotice: null,
   },
   promptDraft: {
     agentId: null,
@@ -204,6 +205,7 @@ function resolveAuthBootstrap() {
       boundAgentId: null,
       pendingRequestedAgentId: null,
       pendingForceRebind: false,
+      rebindNotice: null,
     };
   }
   const playerId = String(raw[VIEWER_PLAYER_ID_KEY] || "").trim();
@@ -233,6 +235,7 @@ function resolveAuthBootstrap() {
       boundAgentId: null,
       pendingRequestedAgentId: null,
       pendingForceRebind: false,
+      rebindNotice: null,
     };
   }
   return {
@@ -254,6 +257,7 @@ function resolveAuthBootstrap() {
     boundAgentId: null,
     pendingRequestedAgentId: null,
     pendingForceRebind: false,
+    rebindNotice: null,
   };
 }
 
@@ -327,6 +331,7 @@ function resolveStoredHostedPlayerSession() {
       boundAgentId: null,
       pendingRequestedAgentId: null,
       pendingForceRebind: false,
+      rebindNotice: null,
     };
   } catch (_) {
     clearHostedPlayerSession();
@@ -773,6 +778,7 @@ function getState() {
     authBoundAgentId: state.auth.boundAgentId,
     authPendingRequestedAgentId: state.auth.pendingRequestedAgentId,
     authPendingForceRebind: state.auth.pendingForceRebind,
+    authRebindNotice: state.auth.rebindNotice,
     authTier: authSurface.currentTier,
     authSource: authSurface.source,
     authDeploymentHint: authSurface.deploymentHint,
@@ -1507,6 +1513,7 @@ async function issueHostedPlayerIdentity() {
       boundAgentId: null,
       pendingRequestedAgentId: null,
       pendingForceRebind: false,
+      rebindNotice: null,
     };
     persistHostedPlayerSession(state.auth);
     render();
@@ -1671,6 +1678,7 @@ function resetHostedPlayerAuthState(errorMessage = null) {
         boundAgentId: null,
         pendingRequestedAgentId: null,
         pendingForceRebind: false,
+        rebindNotice: null,
       };
   void refreshHostedAdmissionState().then(() => render());
 }
@@ -1731,6 +1739,10 @@ async function dispatchSessionRegisterRequest(requestedAgentId, forceRebind) {
     state.auth.syncInFlight = true;
     state.auth.recoveryErrorCode = null;
     state.auth.recoveryErrorMessage = null;
+    state.auth.runtimeStatus = forceRebind === true ? "rebind_registering" : "registering";
+  }
+  if (forceRebind === true) {
+    state.auth.rebindNotice = `Switching player session to ${normalizedRequestedAgentId || "requested agent"}...`;
   }
   state.auth.pendingRequestedAgentId = normalizedRequestedAgentId;
   state.auth.pendingForceRebind = forceRebind === true;
@@ -1949,6 +1961,17 @@ function createSemanticFeedback(kind, action, agentId, extra = {}) {
     response: null,
     ...extra,
   };
+}
+
+function markPendingSemanticRebind(message) {
+  const text = String(message || "explicit rebind required; retrying player session registration").trim();
+  for (const feedback of [state.lastChatFeedback, state.lastPromptFeedback]) {
+    if (!feedback || feedback.stage !== "registering") {
+      continue;
+    }
+    feedback.effect = text;
+    feedback.reason = null;
+  }
 }
 
 function enqueueSemanticCommand(command) {
@@ -2248,6 +2271,8 @@ function adoptHostedRecoveryAck(ack) {
   if (!ack || !state.auth.available || state.auth.source === "legacy_viewer_auth_bootstrap") {
     return;
   }
+  const hadPendingForceRebind = state.auth.pendingForceRebind === true;
+  const previousRequestedAgentId = state.auth.pendingRequestedAgentId;
   state.auth.syncInFlight = false;
   state.auth.recoveryErrorCode = null;
   state.auth.recoveryErrorMessage = null;
@@ -2264,6 +2289,9 @@ function adoptHostedRecoveryAck(ack) {
   state.auth.boundAgentId = ack.agent_id || null;
   state.auth.pendingRequestedAgentId = ack.agent_id || state.auth.pendingRequestedAgentId || null;
   state.auth.pendingForceRebind = false;
+  if (ack.status === "session_registered" && hadPendingForceRebind) {
+    state.auth.rebindNotice = `Player session switched to ${ack.agent_id || previousRequestedAgentId || "requested agent"}.`;
+  }
   state.auth.registrationStatus = ack.status === "session_registered" || ack.status === "catch_up_ready"
     ? "registered"
     : ack.status === "session_revoked"
@@ -2330,6 +2358,8 @@ function handleAuthoritativeRecoveryError(error) {
     state.auth.registrationStatus = "registering";
     state.auth.runtimeStatus = "rebind_retrying";
     state.auth.pendingForceRebind = true;
+    state.auth.rebindNotice = `Requested agent ${state.auth.pendingRequestedAgentId || "-"} needs explicit rebind; retrying now.`;
+    markPendingSemanticRebind("explicit rebind required; retrying registration for the requested agent");
     render();
     void retryPendingSessionRegisterWaiterWithForceRebind().catch((retryError) => {
       handleAuthoritativeRecoveryError({
@@ -2599,6 +2629,10 @@ function renderSummary() {
       : status === "superseded"
         ? "badge"
         : "badge badge--warn";
+  const showRebindNotice = !!state.auth.pendingRequestedAgentId
+    && (state.auth.pendingForceRebind
+      || state.auth.runtimeStatus === "rebind_retrying"
+      || state.auth.runtimeStatus === "rebind_registering");
   elements.centerPanel.innerHTML = `
     <div class="stack">
       <div class="badge-row">
@@ -2664,6 +2698,17 @@ function renderSummary() {
             <span class="badge badge--warn">recoveryError=${escapeHtml(state.auth.recoveryErrorCode || "-")}</span>
             <span class="badge">${escapeHtml(state.auth.recoveryErrorMessage || "-")}</span>
           </div>`
+        : ""}
+      ${showRebindNotice
+        ? `<div class="badge-row">
+            <span class="badge badge--accent">rebind</span>
+            <span class="badge">target=${escapeHtml(state.auth.pendingRequestedAgentId || "-")}</span>
+            <span class="badge">${escapeHtml(state.auth.pendingForceRebind ? "mode=force_rebind" : "mode=awaiting_retry")}</span>
+          </div>
+          <div class="empty">Player session is switching to the requested agent and the current action will continue after registration succeeds.</div>`
+        : ""}
+      ${state.auth.rebindNotice
+        ? `<div class="empty">${escapeHtml(state.auth.rebindNotice)}</div>`
         : ""}
       ${state.hostedAdmission
         ? `<div class="badge-row">

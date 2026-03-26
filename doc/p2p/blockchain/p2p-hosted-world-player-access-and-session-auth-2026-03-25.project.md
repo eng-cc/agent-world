@@ -121,6 +121,8 @@
   - viewer 现会记住最近一次 `requested_agent_id`；若 runtime 对 `register_session` 返回 `player_bind_failed: explicit rebind required`，会自动携带 `force_rebind=true` 做一次受控重试，而不是只把玩家留在报错态。
   - `__AW_TEST__.getState()` 与 viewer summary 现还会显式暴露 `pendingRequestedAgentId/pendingForceRebind`，便于 QA 直接确认 hosted viewer 是否真的进入了 rebind 重试，而不是只靠日志推断。
   - viewer 的语义动作现在会等待 `session_registered` ack 后再继续发送 chat/prompt；若首个 `register_session` 因 explicit rebind 被拒，当前动作会留在队列里，等 `force_rebind` 成功后继续，而不是要求玩家手动再点一次。
+  - viewer summary 现会在 rebind 期间显式显示 `rebind target/mode` 与“当前动作会在注册成功后继续”的提示，让 same-player explicit rebind 不再只是后台自动恢复。
+  - viewer 现还会在 rebind 成功后保留一条人类可读的完成提示；`__AW_TEST__.getState()` 也会同步暴露 `authRebindNotice`，避免提示只在进行中可见、成功后立即消失。
 - 已实现的 `TASK-P2P-041-C` runtime first slice:
   - runtime-live 新增显式 `session_register`，并要求 prompt/chat/gameplay 在 player action 之前先完成 session 注册；原先“第一个签名动作自动注册 active key”的隐式登录已收口。
   - `RuntimeSessionPolicy::validate_known_session_key` 现会在未注册 session 时返回 `session_not_found`，不再把未注册玩家默认为 epoch 0 放行。
@@ -149,7 +151,7 @@
   - 已新增 `doc/testing/templates/hosted-world-operator-incident-template.md`，把误分享 operator URL / private control plane 暴露的 incident 记录字段统一成可复用模板，避免 liveops/QA 各写各的事故摘要。
 - 当前 blocker:
   - `guest session -> player session` 的最小 issuer 已落成，且 `max_player_sessions` 已开始在 public issue 面按“issuer active slot + runtime-only occupancy”的有效占用生效；未完成 register 的 pending slot 也会按更短 TTL 自动回收。public player plane 现在也会通过独立后台 runtime presence 常驻连接把已消失的历史绑定玩家回收到 issuer slot；revoke、same-agent rebind 与 same-player explicit rebind 都已有最小事件/恢复链路，但更完整的 operator kick / hosted handoff product flow 仍未收口。
-  - hosted v1 目前已支持浏览器本地 player session issue + reconnect/register + local release/logout，并能通过周期性 `reconnect_sync` 探针发现部分 remote revoke；同一玩家切换 agent 时也已具备最小 `force_rebind` 自动恢复与 register-ack gating，但 operator kick 的公开玩家面即时回流、玩家可见确认 UI 与更稳定的 resume token 仍未收口。
+  - hosted v1 目前已支持浏览器本地 player session issue + reconnect/register + local release/logout，并能通过周期性 `reconnect_sync` 探针发现部分 remote revoke；同一玩家切换 agent 时也已具备最小 `force_rebind` 自动恢复、register-ack gating、进行中提示与成功提示，但更完整的确认 UI、operator kick 的公开玩家面即时回流与更稳定的 resume token 仍未收口。
   - `session_register` 目前仍是 runtime-live 内显式注册；host restart / rollback 之后按 v1 规则仍要求重新注册，不是持久化 session registry。
   - 当前只为 `prompt_control_*` 实现了 preview-grade backend reauth slice，而不是完整 `strong_auth` challenge/proof/verification lane；后端 signer 仍是 env 托管 + `approval_code`，`main token transfer` 继续显式阻断，尚未进入 hosted-ready 放行范围。
   - `agent_chat` 仍归 `player_session` 级低风险交互；更细的 hosted action matrix、resume issuer 与真正 strong-auth proof 仍待后续专题收口。
