@@ -87,7 +87,17 @@ pub(super) struct HostedPlayerAccessContract {
     pub(super) public_endpoints: Vec<String>,
     pub(super) private_endpoints: Vec<String>,
     pub(super) session_ladder: Vec<String>,
+    pub(super) action_matrix: Vec<HostedActionAccessPolicy>,
     pub(super) admission: HostedAdmissionControlContract,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize)]
+pub(super) struct HostedActionAccessPolicy {
+    pub(super) action_id: String,
+    pub(super) required_auth: String,
+    pub(super) availability: String,
+    pub(super) reason: String,
 }
 
 #[allow(dead_code)]
@@ -111,6 +121,7 @@ pub(super) fn hosted_player_access_contract(mode: DeploymentMode) -> HostedPlaye
             "player_session".to_string(),
             "strong_auth".to_string(),
         ],
+        action_matrix: hosted_action_matrix(mode),
         admission: HostedAdmissionControlContract {
             max_guest_sessions: DEFAULT_MAX_GUEST_SESSIONS,
             max_player_sessions: DEFAULT_MAX_PLAYER_SESSIONS,
@@ -119,6 +130,60 @@ pub(super) fn hosted_player_access_contract(mode: DeploymentMode) -> HostedPlaye
             kick_policy: DEFAULT_KICK_POLICY.to_string(),
         },
     }
+}
+
+#[allow(dead_code)]
+fn hosted_action_matrix(mode: DeploymentMode) -> Vec<HostedActionAccessPolicy> {
+    let strong_auth_availability = match mode {
+        DeploymentMode::TrustedLocalOnly => "trusted_local_preview_only",
+        DeploymentMode::HostedPublicJoin => "blocked_until_strong_auth",
+    };
+    let strong_auth_reason = match mode {
+        DeploymentMode::TrustedLocalOnly => {
+            "trusted local preview may still use preview bootstrap; hosted/public strong-auth lane remains pending"
+        }
+        DeploymentMode::HostedPublicJoin => {
+            "hosted public join keeps this action behind strong_auth/private plane until the dedicated proof lane lands"
+        }
+    };
+    vec![
+        HostedActionAccessPolicy {
+            action_id: "gameplay_action".to_string(),
+            required_auth: "player_session".to_string(),
+            availability: "public_player_plane".to_string(),
+            reason: "core gameplay input stays on the player_session lane".to_string(),
+        },
+        HostedActionAccessPolicy {
+            action_id: "agent_chat".to_string(),
+            required_auth: "player_session".to_string(),
+            availability: "public_player_plane".to_string(),
+            reason: "agent chat currently stays on the low-risk player_session lane".to_string(),
+        },
+        HostedActionAccessPolicy {
+            action_id: "prompt_control_preview".to_string(),
+            required_auth: "strong_auth".to_string(),
+            availability: strong_auth_availability.to_string(),
+            reason: strong_auth_reason.to_string(),
+        },
+        HostedActionAccessPolicy {
+            action_id: "prompt_control_apply".to_string(),
+            required_auth: "strong_auth".to_string(),
+            availability: strong_auth_availability.to_string(),
+            reason: strong_auth_reason.to_string(),
+        },
+        HostedActionAccessPolicy {
+            action_id: "prompt_control_rollback".to_string(),
+            required_auth: "strong_auth".to_string(),
+            availability: strong_auth_availability.to_string(),
+            reason: strong_auth_reason.to_string(),
+        },
+        HostedActionAccessPolicy {
+            action_id: "main_token_transfer".to_string(),
+            required_auth: "strong_auth".to_string(),
+            availability: strong_auth_availability.to_string(),
+            reason: strong_auth_reason.to_string(),
+        },
+    ]
 }
 
 #[allow(dead_code)]
