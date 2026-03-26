@@ -5,8 +5,8 @@ use super::hosted_player_session::{
     HOSTED_PLAYER_SESSION_REFRESH_ROUTE, HOSTED_PLAYER_SESSION_RELEASE_ROUTE,
 };
 use super::hosted_strong_auth::{
-    issue_hosted_prompt_control_strong_auth_grant, HostedStrongAuthGrantResponse,
-    HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE,
+    issue_hosted_strong_auth_grant, HostedStrongAuthGrantResponse,
+    HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE, HOSTED_STRONG_AUTH_GRANT_ROUTE,
 };
 use super::*;
 use serde::Serialize;
@@ -52,8 +52,8 @@ pub(super) fn handle_http_connection(
     let is_refresh_route = path_only == HOSTED_PLAYER_SESSION_REFRESH_ROUTE;
     let is_issue_route = path_only == HOSTED_PLAYER_SESSION_ISSUE_ROUTE;
     let is_release_route = path_only == HOSTED_PLAYER_SESSION_RELEASE_ROUTE;
-    let is_prompt_strong_auth_grant_route =
-        path_only == HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE;
+    let is_strong_auth_grant_route = path_only == HOSTED_STRONG_AUTH_GRANT_ROUTE
+        || path_only == HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE;
     let allow_post = is_release_route || is_refresh_route;
     if !method.eq_ignore_ascii_case("GET")
         && !head_only
@@ -101,14 +101,14 @@ pub(super) fn handle_http_connection(
             .map_err(|err| format!("failed to write hosted session release response: {err}"))?;
         return Ok(());
     }
-    if is_prompt_strong_auth_grant_route {
+    if is_strong_auth_grant_route {
         let player_id = parse_query_value(target, "player_id").unwrap_or_default();
         let public_key = parse_query_value(target, "public_key").unwrap_or_default();
         let agent_id = parse_query_value(target, "agent_id").unwrap_or_default();
         let action_id = parse_query_value(target, "action_id").unwrap_or_default();
         let approval_code = parse_query_value(target, "approval_code").unwrap_or_default();
         let release_token = parse_query_value(target, "release_token").unwrap_or_default();
-        let response = issue_prompt_control_strong_auth_grant(
+        let response = issue_strong_auth_grant(
             deployment_mode,
             player_id.as_str(),
             public_key.as_str(),
@@ -206,7 +206,7 @@ fn release_hosted_player_session(
     Ok(issuer.release(deployment_mode, player_id, release_token))
 }
 
-fn issue_prompt_control_strong_auth_grant(
+fn issue_strong_auth_grant(
     deployment_mode: DeploymentMode,
     player_id: &str,
     public_key: &str,
@@ -219,7 +219,7 @@ fn issue_prompt_control_strong_auth_grant(
     let mut issuer = hosted_session_issuer
         .lock()
         .map_err(|_| "hosted session issuer lock poisoned".to_string())?;
-    Ok(issue_hosted_prompt_control_strong_auth_grant(
+    Ok(issue_hosted_strong_auth_grant(
         deployment_mode,
         player_id,
         public_key,

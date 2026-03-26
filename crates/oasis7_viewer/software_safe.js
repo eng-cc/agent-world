@@ -11,7 +11,7 @@ const HOSTED_PLAYER_SESSION_ADMISSION_ROUTE = "/api/public/player-session/admiss
 const HOSTED_PLAYER_SESSION_REFRESH_ROUTE = "/api/public/player-session/refresh";
 const HOSTED_PLAYER_SESSION_ISSUE_ROUTE = "/api/public/player-session/issue";
 const HOSTED_PLAYER_SESSION_RELEASE_ROUTE = "/api/public/player-session/release";
-const HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE = "/api/public/strong-auth/grant/prompt-control";
+const HOSTED_STRONG_AUTH_GRANT_ROUTE = "/api/public/strong-auth/grant";
 const HOSTED_PLAYER_SESSION_REFRESH_INTERVAL_MS = 30000;
 const DEFAULT_WS_ADDR = "ws://127.0.0.1:5011";
 const MAX_EVENTS = 24;
@@ -1549,7 +1549,7 @@ async function retryHostedPlayerIdentityIssue() {
   };
 }
 
-async function requestHostedPromptStrongAuthGrant(actionId, agentId) {
+async function requestHostedStrongAuthGrant(actionId, agentId) {
   const playerId = String(state.auth.playerId || "").trim();
   const publicKey = String(state.auth.publicKey || "").trim();
   const releaseToken = String(state.auth.releaseToken || "").trim();
@@ -1568,7 +1568,7 @@ async function requestHostedPromptStrongAuthGrant(actionId, agentId) {
     action_id: String(actionId || "").trim(),
     approval_code: approvalCode,
   });
-  const response = await fetch(`${HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE}?${query.toString()}`, {
+  const response = await fetch(`${HOSTED_STRONG_AUTH_GRANT_ROUTE}?${query.toString()}`, {
     method: "GET",
     cache: "no-store",
     headers: { Accept: "application/json" },
@@ -2118,7 +2118,7 @@ function sendPromptControl(mode, payload = null) {
         feedback.stage = "authorizing";
         feedback.effect = "requesting backend strong-auth grant";
         render();
-        strongAuthGrant = await requestHostedPromptStrongAuthGrant(
+        strongAuthGrant = await requestHostedStrongAuthGrant(
           normalizedMode === "rollback" ? "prompt_control_rollback" : `prompt_control_${normalizedMode}`,
           agentId,
         );

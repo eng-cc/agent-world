@@ -162,10 +162,10 @@ pub(super) fn hosted_viewer_access_hint(mode: DeploymentMode) -> HostedViewerAcc
 
 #[allow(dead_code)]
 fn hosted_action_matrix(mode: DeploymentMode) -> Vec<HostedActionAccessPolicy> {
-    let hosted_prompt_backend_grant_enabled = hosted_prompt_control_backend_grant_enabled();
+    let hosted_strong_auth_backend_grant_enabled = hosted_strong_auth_backend_grant_enabled();
     let prompt_strong_auth_availability = match mode {
         DeploymentMode::TrustedLocalOnly => "trusted_local_preview_only",
-        DeploymentMode::HostedPublicJoin if hosted_prompt_backend_grant_enabled => {
+        DeploymentMode::HostedPublicJoin if hosted_strong_auth_backend_grant_enabled => {
             "public_player_plane_with_backend_reauth_preview"
         }
         DeploymentMode::HostedPublicJoin => "blocked_until_strong_auth",
@@ -174,7 +174,7 @@ fn hosted_action_matrix(mode: DeploymentMode) -> Vec<HostedActionAccessPolicy> {
         DeploymentMode::TrustedLocalOnly => {
             "trusted local preview may still use preview bootstrap; hosted/public strong-auth lane remains pending"
         }
-        DeploymentMode::HostedPublicJoin if hosted_prompt_backend_grant_enabled => {
+        DeploymentMode::HostedPublicJoin if hosted_strong_auth_backend_grant_enabled => {
             "hosted public join allows prompt_control through browser-local player auth plus short-lived backend strong-auth grant; this remains preview-grade until stronger custody lands"
         }
         DeploymentMode::HostedPublicJoin => {
@@ -242,7 +242,7 @@ pub(super) fn web_launcher_public_endpoints() -> &'static [&'static str] {
         "/api/public/state",
         "/api/public/player-session/issue",
         "/api/public/player-session/release",
-        "/api/public/strong-auth/grant/prompt-control",
+        "/api/public/strong-auth/grant",
         "/api/chain/transfer",
         "/api/chain/transfer/accounts",
         "/api/chain/transfer/status",
@@ -264,7 +264,7 @@ pub(super) fn web_launcher_public_endpoints() -> &'static [&'static str] {
     ]
 }
 
-fn hosted_prompt_control_backend_grant_enabled() -> bool {
+fn hosted_strong_auth_backend_grant_enabled() -> bool {
     env_non_empty(HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV)
         && env_non_empty(HOSTED_STRONG_AUTH_PRIVATE_KEY_ENV)
         && env_non_empty(HOSTED_STRONG_AUTH_APPROVAL_CODE_ENV)
@@ -350,5 +350,12 @@ mod tests {
         );
         assert!(policy.reason.contains("backend strong-auth grant"));
         clear_env();
+    }
+
+    #[test]
+    fn web_launcher_public_endpoints_expose_generic_strong_auth_grant_route() {
+        assert!(web_launcher_public_endpoints().contains(&"/api/public/strong-auth/grant"));
+        assert!(!web_launcher_public_endpoints()
+            .contains(&"/api/public/strong-auth/grant/prompt-control"));
     }
 }

@@ -6,6 +6,7 @@ use super::*;
 use oasis7::viewer::{sign_hosted_prompt_control_strong_auth_grant, HostedStrongAuthGrant};
 use serde::Serialize;
 
+pub(super) const HOSTED_STRONG_AUTH_GRANT_ROUTE: &str = "/api/public/strong-auth/grant";
 pub(super) const HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE: &str =
     "/api/public/strong-auth/grant/prompt-control";
 const HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV: &str = "OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY";
@@ -26,7 +27,14 @@ pub(super) struct HostedStrongAuthGrantResponse {
     pub(super) grant: Option<HostedStrongAuthGrant>,
 }
 
-pub(super) fn issue_hosted_prompt_control_strong_auth_grant(
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HostedStrongAuthActionGrantMode {
+    PromptControlBackendReauthPreview,
+    BlockedUntilDedicatedLane,
+    Unsupported,
+}
+
+pub(super) fn issue_hosted_strong_auth_grant(
     deployment_mode: DeploymentMode,
     player_id: &str,
     public_key: &str,
@@ -53,26 +61,39 @@ pub(super) fn issue_hosted_prompt_control_strong_auth_grant(
             grant: None,
         };
     }
-    if !hosted_prompt_control_backend_grant_enabled() {
+    let normalized_action_id = action_id.trim();
+    match hosted_strong_auth_action_grant_mode(normalized_action_id) {
+        HostedStrongAuthActionGrantMode::PromptControlBackendReauthPreview => {}
+        HostedStrongAuthActionGrantMode::BlockedUntilDedicatedLane => {
+            return HostedStrongAuthGrantResponse {
+                ok: false,
+                error_code: Some("strong_auth_action_not_enabled".to_string()),
+                error: Some(format!(
+                    "hosted public join does not enable backend strong-auth grant for action_id `{normalized_action_id}` yet"
+                )),
+                deployment_mode: deployment_mode.as_str().to_string(),
+                admission: admission.admission,
+                grant: None,
+            };
+        }
+        HostedStrongAuthActionGrantMode::Unsupported => {
+            return HostedStrongAuthGrantResponse {
+                ok: false,
+                error_code: Some("unsupported_action_id".to_string()),
+                error: Some("unsupported strong-auth action_id".to_string()),
+                deployment_mode: deployment_mode.as_str().to_string(),
+                admission: admission.admission,
+                grant: None,
+            };
+        }
+    }
+    if !hosted_strong_auth_backend_grant_enabled() {
         return HostedStrongAuthGrantResponse {
             ok: false,
             error_code: Some("strong_auth_backend_unavailable".to_string()),
             error: Some(
                 "hosted strong-auth backend grant is not configured on this server".to_string(),
             ),
-            deployment_mode: deployment_mode.as_str().to_string(),
-            admission: admission.admission,
-            grant: None,
-        };
-    }
-    if !matches!(
-        action_id.trim(),
-        "prompt_control_preview" | "prompt_control_apply" | "prompt_control_rollback"
-    ) {
-        return HostedStrongAuthGrantResponse {
-            ok: false,
-            error_code: Some("unsupported_action_id".to_string()),
-            error: Some("unsupported strong-auth action_id".to_string()),
             deployment_mode: deployment_mode.as_str().to_string(),
             admission: admission.admission,
             grant: None,
@@ -105,7 +126,7 @@ pub(super) fn issue_hosted_prompt_control_strong_auth_grant(
     let issued_at_unix_ms = now_unix_ms();
     let expires_at_unix_ms = issued_at_unix_ms.saturating_add(HOSTED_STRONG_AUTH_GRANT_TTL_MS);
     match sign_hosted_prompt_control_strong_auth_grant(
-        action_id.trim(),
+        normalized_action_id,
         player_id.trim(),
         public_key.trim(),
         agent_id.trim(),
@@ -147,7 +168,17 @@ fn response_from_admission(
     }
 }
 
-fn hosted_prompt_control_backend_grant_enabled() -> bool {
+fn hosted_strong_auth_action_grant_mode(action_id: &str) -> HostedStrongAuthActionGrantMode {
+    match action_id {
+        "prompt_control_preview" | "prompt_control_apply" | "prompt_control_rollback" => {
+            HostedStrongAuthActionGrantMode::PromptControlBackendReauthPreview
+        }
+        "main_token_transfer" => HostedStrongAuthActionGrantMode::BlockedUntilDedicatedLane,
+        _ => HostedStrongAuthActionGrantMode::Unsupported,
+    }
+}
+
+fn hosted_strong_auth_backend_grant_enabled() -> bool {
     [
         HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV,
         HOSTED_STRONG_AUTH_PRIVATE_KEY_ENV,
@@ -219,7 +250,7 @@ mod tests {
         let mut issuer = HostedPlayerSessionIssuer::default();
         let issue = issuer.issue(DeploymentMode::HostedPublicJoin);
         let grant = issue.grant.expect("grant");
-        let response = issue_hosted_prompt_control_strong_auth_grant(
+        let response = issue_hosted_strong_auth_grant(
             DeploymentMode::HostedPublicJoin,
             grant.player_id.as_str(),
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -249,7 +280,7 @@ mod tests {
         let mut issuer = HostedPlayerSessionIssuer::default();
         let issue = issuer.issue(DeploymentMode::HostedPublicJoin);
         let grant = issue.grant.expect("grant");
-        let response = issue_hosted_prompt_control_strong_auth_grant(
+        let response = issue_hosted_strong_auth_grant(
             DeploymentMode::HostedPublicJoin,
             grant.player_id.as_str(),
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -270,6 +301,40 @@ mod tests {
         assert_eq!(issued_grant.agent_id, "agent-0");
         assert_eq!(issued_grant.signer_public_key, public_key);
         assert!(issued_grant.expires_at_unix_ms > issued_grant.issued_at_unix_ms);
+        clear_env();
+    }
+
+    #[test]
+    fn hosted_strong_auth_grant_rejects_main_token_transfer_until_lane_lands() {
+        let _guard = hosted_strong_auth_env_lock().lock().expect("env lock");
+        clear_env();
+        let (public_key, private_key) = signer(43);
+        set_env(HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV, public_key.as_str());
+        set_env(HOSTED_STRONG_AUTH_PRIVATE_KEY_ENV, private_key.as_str());
+        set_env(HOSTED_STRONG_AUTH_APPROVAL_CODE_ENV, "correct-code");
+
+        let mut issuer = HostedPlayerSessionIssuer::default();
+        let issue = issuer.issue(DeploymentMode::HostedPublicJoin);
+        let grant = issue.grant.expect("grant");
+        let response = issue_hosted_strong_auth_grant(
+            DeploymentMode::HostedPublicJoin,
+            grant.player_id.as_str(),
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "agent-0",
+            "main_token_transfer",
+            "correct-code",
+            grant.release_token.as_str(),
+            &mut issuer,
+        );
+        assert!(!response.ok);
+        assert_eq!(
+            response.error_code.as_deref(),
+            Some("strong_auth_action_not_enabled")
+        );
+        assert!(response
+            .error
+            .as_deref()
+            .is_some_and(|message| message.contains("main_token_transfer")));
         clear_env();
     }
 }

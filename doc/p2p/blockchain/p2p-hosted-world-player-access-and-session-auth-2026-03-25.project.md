@@ -138,10 +138,11 @@
   - hosted issuer 现已把“刚 issue 但还没 register”的 pending slot 与正常在线 slot 分开处理：未完成 runtime register 的 slot 只享有更短的 `pending_registration_ttl_ms`，不会继续按完整 lease TTL 长时间占位。
 - 已实现的 `TASK-P2P-041-D` strong-auth barrier + backend reauth preview slice:
   - `oasis7_web_launcher` 在 `deployment_mode=hosted_public_join` 下会显式拒绝 `POST /api/chain/transfer`，返回结构化 `strong_auth_required`，不再让 public join 路径继续借用 trusted-local signer bootstrap。
-  - `oasis7_game_launcher` 的 public player plane 现已新增 `/api/public/strong-auth/grant/prompt-control`：会先校验 `player_id + release_token` 仍对应有效 hosted player session，再要求后端 `approval_code` 正确，最后用服务端环境变量中的 signer 生成短期 `HostedStrongAuthGrant`。
+  - `oasis7_game_launcher` 的 public player plane 现已新增通用 `/api/public/strong-auth/grant`：会先校验 `player_id + release_token` 仍对应有效 hosted player session，再要求后端 `approval_code` 正确，最后用服务端环境变量中的 signer 生成短期 `HostedStrongAuthGrant`。
   - `oasis7_game_launcher -> oasis7_viewer_live -> runtime-live` 现已透传 hosted deployment mode；在 `hosted_public_join` 下，`prompt_control preview/apply/rollback` 不再一律拒绝，而是要求“玩家本地签名的 `player_session` proof + backend-signed grant”同时成立，缺失时返回 `strong_auth_required`，篡改/过期/错 signer 时返回 `strong_auth_grant_invalid`。
-  - `software_safe.js` 现会在 hosted public join 的 `prompt_control` lane 显示 `Backend Approval Code`，先向同源 strong-auth grant route 申请短期 grant，再附带到 prompt request 上；`__AW_TEST__.getState()` 也会回出 `strongAuthApprovalCodeConfigured/strongAuthLastGrant*` 供 QA 取证。
+  - `software_safe.js` 现会在 hosted public join 的 `prompt_control` lane 显示 `Backend Approval Code`，并改走同源通用 strong-auth grant route；`__AW_TEST__.getState()` 也会回出 `strongAuthApprovalCodeConfigured/strongAuthLastGrant*` 供 QA 取证。
   - `/api/public/state` 的 `hosted_access` contract 现已导出动态 `action_matrix`：若 `OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY/PRIVATE_KEY/APPROVAL_CODE` 已配置，则 `prompt_control_*` 会从 `blocked_until_strong_auth` 升为 `public_player_plane_with_backend_reauth_preview`；`main_token_transfer` 仍保持 `blocked_until_strong_auth`。
+  - 当前 grant route 虽已泛化到 `action_id` 维度，但 allowlist 仍只放行 `prompt_control_*`；若请求 `main_token_transfer`，public player plane 会显式返回 `strong_auth_action_not_enabled`，避免 route 泛化后被误读成 hosted 资产动作已可用。
   - 这条 hosted `prompt_control` strong-auth lane 仍明确属于 preview-grade backend reauth：后端 signer 当前只支持 env 托管 + approval code，不是 production signer custody，也不代表资产动作已具备 hosted-ready 安全级别。
 - 已实现的 `TASK-P2P-041-E` QA first slice:
   - runtime-live 现已补 hosted `prompt_control` abuse 定向测试，至少覆盖 `expired grant -> strong_auth_grant_invalid`、`replayed player auth nonce -> auth_nonce_replay` 与 `session revoked after grant issuance -> session_revoked` 三条高风险签名，证明 preview-grade backend reauth 不能单靠 grant 穿透 session 生命周期与 nonce 防重放。
