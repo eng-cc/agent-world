@@ -139,6 +139,8 @@
 - 已实现的 `TASK-P2P-041-E` QA first slice:
   - runtime-live 现已补 hosted `prompt_control` abuse 定向测试，至少覆盖 `expired grant -> strong_auth_grant_invalid`、`replayed player auth nonce -> auth_nonce_replay` 与 `session revoked after grant issuance -> session_revoked` 三条高风险签名，证明 preview-grade backend reauth 不能单靠 grant 穿透 session 生命周期与 nonce 防重放。
   - `oasis7_web_launcher::server` 现已补 remote private-control-plane matrix 回归，覆盖 `/api/state`、`/api/start|stop`、`/api/chain/start|stop`、`/api/gui-agent/*` 与 `/api/ui/schema` 的远端拒绝路径，要求统一返回 `operator_plane_only` 且只携带 public snapshot，避免误分享 operator URL 时把私有控制面状态直接暴露给公网访客。
+- 已实现的 `TASK-P2P-041-F` runbook first slice:
+  - 已新增 `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`，冻结 hosted operator 的最小执行法：区分 `public join URL / private control plane / signer path`，并明确分享前检查、误分享后的第一响应、incident 最小记录字段与 public claims freeze 边界。
 - 当前 blocker:
   - `guest session -> player session` 的最小 issuer 已落成，且 `max_player_sessions` 已开始在 public issue 面按“issuer active slot + runtime-only occupancy”的有效占用生效；未完成 register 的 pending slot 也会按更短 TTL 自动回收。public player plane 现在也会通过独立后台 runtime presence 常驻连接把已消失的历史绑定玩家回收到 issuer slot；revoke 与 same-agent rebind 已具备显式 `AgentPlayerUnbound` 增量事件，但更完整的 operator kick / hosted rebind product flow 仍未收口。
   - hosted v1 目前已支持浏览器本地 player session issue + reconnect/register + local release/logout，并能通过周期性 `reconnect_sync` 探针发现部分 remote revoke；但 operator kick 的公开玩家面即时回流、显式 rebind 流程与更稳定的 resume token 仍未收口。
@@ -146,11 +148,12 @@
   - 当前只为 `prompt_control_*` 实现了 preview-grade backend reauth slice，而不是完整 `strong_auth` challenge/proof/verification lane；后端 signer 仍是 env 托管 + `approval_code`，`main token transfer` 继续显式阻断，尚未进入 hosted-ready 放行范围。
   - `agent_chat` 仍归 `player_session` 级低风险交互；更细的 hosted action matrix、resume issuer 与真正 strong-auth proof 仍待后续专题收口。
   - `TASK-P2P-041-E` 目前已覆盖 strong-auth abuse 与 operator/public URL 混淆 first slice；capability bypass、admission full-matrix 与分享 runbook 仍待后续 QA/LiveOps 专题继续扩展。
-  - hosted operator 目前仅支持 loopback private control plane；远程 operator URL / tunnel / runbook 仍待 `TASK-P2P-041-F` 收口。
+  - `TASK-P2P-041-F` 目前只有 hosted operator runbook first slice；incident 模板、远程 operator tunnel/policy、session revoke 实操步骤与对外更正模板仍待补齐。
 
 ## 依赖
 - `doc/p2p/prd.md`
 - `doc/p2p/project.md`
+- `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`
 - `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-governance-signer-externalization-2026-03-23.prd.md`
