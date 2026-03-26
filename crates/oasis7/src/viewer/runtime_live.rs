@@ -24,10 +24,12 @@ use super::protocol::{
     AuthoritativeChallengeSubmitRequest, AuthoritativeFinalityState,
     AuthoritativeReconnectSyncRequest, AuthoritativeRecoveryAck, AuthoritativeRecoveryCommand,
     AuthoritativeRecoveryError, AuthoritativeRecoveryStatus, AuthoritativeRollbackRequest,
-    AuthoritativeSessionRevokeRequest, AuthoritativeSessionRotateRequest, ControlCompletionAck,
-    ControlCompletionStatus, ViewerControl, ViewerControlProfile, ViewerEventKind, ViewerRequest,
-    ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    AuthoritativeSessionRegisterRequest, AuthoritativeSessionRevokeRequest,
+    AuthoritativeSessionRotateRequest, ControlCompletionAck, ControlCompletionStatus,
+    ViewerControl, ViewerControlProfile, ViewerEventKind, ViewerRequest, ViewerResponse,
+    ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
+use super::auth::verify_session_register_auth_proof;
 #[path = "runtime_live/control_plane.rs"]
 mod control_plane;
 mod gameplay_snapshot;
@@ -72,11 +74,7 @@ struct RuntimeSessionPolicy {
 }
 
 impl RuntimeSessionPolicy {
-    fn validate_or_register_active_key(
-        &mut self,
-        player_id: &str,
-        public_key: &str,
-    ) -> Result<u64, String> {
+    fn register_session(&mut self, player_id: &str, public_key: &str) -> Result<u64, String> {
         let player_id = player_id.trim();
         let public_key = public_key.trim();
         if player_id.is_empty() {
@@ -85,7 +83,6 @@ impl RuntimeSessionPolicy {
         if public_key.is_empty() {
             return Err("session_pubkey_invalid: session_pubkey cannot be empty".to_string());
         }
-
         if self
             .revoked_pubkeys_by_player
             .get(player_id)
@@ -137,11 +134,18 @@ impl RuntimeSessionPolicy {
                 player_id, public_key
             ));
         }
-        if let Some(active) = self.active_pubkey_by_player.get(player_id) {
-            if active != public_key {
+        match self.active_pubkey_by_player.get(player_id) {
+            Some(active) if active == public_key => {}
+            Some(active) => {
                 return Err(format!(
                     "session_key_mismatch: player {} active session_pubkey {} does not match {}",
                     player_id, active, public_key
+                ));
+            }
+            None => {
+                return Err(format!(
+                    "session_not_found: player {} has no active session_pubkey",
+                    player_id
                 ));
             }
         }
@@ -594,6 +598,7 @@ impl ViewerRuntimeLiveServer {
                                 log_cursor: cursor.log_cursor,
                                 stable_batch_id: cursor.stable_batch_id,
                                 player_id: None,
+                                agent_id: None,
                                 session_pubkey: None,
                                 replaced_by_pubkey: None,
                                 session_epoch: None,
@@ -1219,6 +1224,9 @@ impl ViewerRuntimeLiveServer {
         command: AuthoritativeRecoveryCommand,
     ) -> Result<(AuthoritativeRecoveryAck<u64>, bool), AuthoritativeRecoveryError> {
         match command {
+            AuthoritativeRecoveryCommand::RegisterSession { request } => {
+                self.register_session_key(request).map(|ack| (ack, false))
+            }
             AuthoritativeRecoveryCommand::Rollback { request } => self
                 .rollback_to_stable_checkpoint(request)
                 .map(|ack| (ack, true)),
@@ -1333,10 +1341,113 @@ impl ViewerRuntimeLiveServer {
             log_cursor: cursor.log_cursor,
             stable_batch_id: Some(checkpoint.batch_id),
             player_id: None,
+            agent_id: None,
             session_pubkey: None,
             replaced_by_pubkey: None,
             session_epoch: None,
             message: Some("rollback applied to stable checkpoint".to_string()),
+            acknowledged_at_tick: self.world.state().time,
+        })
+    }
+
+    fn register_session_key(
+        &mut self,
+        request: AuthoritativeSessionRegisterRequest,
+    ) -> Result<AuthoritativeRecoveryAck<u64>, AuthoritativeRecoveryError> {
+        let Some(auth) = request.auth.as_ref() else {
+            return Err(recovery_error(
+                "auth_proof_required",
+                "session_register requires auth proof",
+                None,
+                Some(request.player_id.clone()),
+                request.public_key.clone(),
+            ));
+        };
+        let verified =
+            verify_session_register_auth_proof(&request, auth).map_err(|message| {
+                recovery_error(
+                    control_plane::map_auth_verify_error_code(message.as_str()),
+                    message,
+                    None,
+                    Some(request.player_id.clone()),
+                    request.public_key.clone(),
+                )
+            })?;
+        let session_epoch = self
+            .session_policy
+            .register_session(verified.player_id.as_str(), verified.public_key.as_str())
+            .map_err(|message| {
+                recovery_error(
+                    map_session_policy_error_code(message.as_str()),
+                    message,
+                    None,
+                    Some(verified.player_id.clone()),
+                    Some(verified.public_key.clone()),
+                )
+            })?;
+        self.llm_sidecar
+            .consume_player_auth_nonce(verified.player_id.as_str(), verified.nonce)
+            .map_err(|message| {
+                recovery_error(
+                    "auth_nonce_replay",
+                    message,
+                    None,
+                    Some(verified.player_id.clone()),
+                    Some(verified.public_key.clone()),
+                )
+            })?;
+
+        let bound_agent_id = match request
+            .requested_agent_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            Some(agent_id) => {
+                self.bind_player_session_agent(
+                    agent_id,
+                    verified.player_id.as_str(),
+                    Some(verified.public_key.as_str()),
+                )
+                .map_err(|message| {
+                    recovery_error(
+                        "player_bind_failed",
+                        message,
+                        None,
+                        Some(verified.player_id.clone()),
+                        Some(verified.public_key.clone()),
+                    )
+                })?;
+                Some(agent_id.to_string())
+            }
+            None => self
+                .llm_sidecar
+                .bound_agent_for_player(verified.player_id.as_str())
+                .map(ToOwned::to_owned),
+        };
+
+        let cursor = self.current_recovery_cursor().map_err(|err| {
+            recovery_error(
+                "cursor_compute_failed",
+                format!("{err:?}"),
+                None,
+                Some(verified.player_id.clone()),
+                Some(verified.public_key.clone()),
+            )
+        })?;
+        Ok(AuthoritativeRecoveryAck {
+            status: AuthoritativeRecoveryStatus::SessionRegistered,
+            reorg_epoch: self.reorg_epoch,
+            snapshot_height: cursor.snapshot_height,
+            snapshot_hash: cursor.snapshot_hash,
+            log_cursor: cursor.log_cursor,
+            stable_batch_id: cursor.stable_batch_id,
+            player_id: Some(verified.player_id),
+            agent_id: bound_agent_id,
+            session_pubkey: Some(verified.public_key),
+            replaced_by_pubkey: None,
+            session_epoch: Some(session_epoch),
+            message: Some("session_registered".to_string()),
             acknowledged_at_tick: self.world.state().time,
         })
     }
@@ -1433,6 +1544,10 @@ impl ViewerRuntimeLiveServer {
             log_cursor: cursor.log_cursor,
             stable_batch_id: cursor.stable_batch_id,
             player_id: Some(player_id),
+            agent_id: self
+                .llm_sidecar
+                .bound_agent_for_player(request.player_id.as_str())
+                .map(ToOwned::to_owned),
             session_pubkey,
             replaced_by_pubkey: None,
             session_epoch,
@@ -1488,6 +1603,7 @@ impl ViewerRuntimeLiveServer {
             log_cursor: cursor.log_cursor,
             stable_batch_id: cursor.stable_batch_id,
             player_id: Some(player_id),
+            agent_id: None,
             session_pubkey: Some(revoked_pubkey),
             replaced_by_pubkey: None,
             session_epoch: Some(session_epoch),
@@ -1551,6 +1667,10 @@ impl ViewerRuntimeLiveServer {
             log_cursor: cursor.log_cursor,
             stable_batch_id: cursor.stable_batch_id,
             player_id: Some(player_id),
+            agent_id: self
+                .llm_sidecar
+                .bound_agent_for_player(request.player_id.as_str())
+                .map(ToOwned::to_owned),
             session_pubkey: Some(request.old_session_pubkey),
             replaced_by_pubkey: Some(request.new_session_pubkey),
             session_epoch: Some(session_epoch),
@@ -1635,25 +1755,8 @@ impl ViewerRuntimeLiveServer {
             .clear_chat_intent_acks_for_player(player_id.trim());
     }
 
-    fn apply_session_revoke_binding(&mut self, player_id: &str, revoked_pubkey: &str) {
-        let mut affected_agents = Vec::new();
-        for (agent_id, bound_player) in &self.llm_sidecar.agent_player_bindings {
-            if bound_player == player_id {
-                affected_agents.push(agent_id.clone());
-            }
-        }
-        for agent_id in affected_agents {
-            if self
-                .llm_sidecar
-                .agent_public_key_bindings
-                .get(agent_id.as_str())
-                .is_some_and(|bound| bound == revoked_pubkey)
-            {
-                self.llm_sidecar
-                    .agent_public_key_bindings
-                    .remove(agent_id.as_str());
-            }
-        }
+    fn apply_session_revoke_binding(&mut self, player_id: &str, _revoked_pubkey: &str) {
+        let _ = self.llm_sidecar.clear_player_binding(player_id);
     }
 
     fn apply_session_rotate_binding(
@@ -1680,6 +1783,29 @@ impl ViewerRuntimeLiveServer {
                     .insert(agent_id, new_pubkey.to_string());
             }
         }
+    }
+
+    fn bind_player_session_agent(
+        &mut self,
+        agent_id: &str,
+        player_id: &str,
+        public_key: Option<&str>,
+    ) -> Result<(), String> {
+        control_plane::ensure_agent_player_access_runtime(
+            &self.world,
+            &self.llm_sidecar,
+            agent_id,
+            player_id,
+            public_key,
+        )
+        .map_err(|err| err.message)?;
+        if let Some(event) = self
+            .llm_sidecar
+            .bind_agent_player(agent_id, player_id, public_key)?
+        {
+            self.enqueue_virtual_event(event);
+        }
+        Ok(())
     }
 
     fn emit_authoritative_batch_snapshot(

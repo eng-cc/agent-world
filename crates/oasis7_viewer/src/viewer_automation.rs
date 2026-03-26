@@ -681,6 +681,21 @@ fn dispatch_agent_chat_step(
 ) -> Result<(), String> {
     let client = viewer_client.ok_or_else(|| "viewer client unavailable".to_string())?;
     let signer = resolve_automation_auth_signer()?;
+    let register_nonce = next_auth_nonce(automation_state);
+    let mut session_register = oasis7::viewer::AuthoritativeSessionRegisterRequest {
+        player_id: signer.player_id.clone(),
+        public_key: Some(signer.public_key.clone()),
+        auth: None,
+        requested_agent_id: Some(agent_id.to_string()),
+    };
+    let register_proof = oasis7::viewer::sign_session_register_auth_proof(
+        &session_register,
+        register_nonce,
+        signer.public_key.as_str(),
+        signer.private_key.as_str(),
+    )
+    .map_err(|err| format!("sign session register failed: {err}"))?;
+    session_register.auth = Some(register_proof);
     let nonce = next_auth_nonce(automation_state);
     let mut request = oasis7::viewer::AgentChatRequest {
         agent_id: agent_id.to_string(),
@@ -701,6 +716,14 @@ fn dispatch_agent_chat_step(
     request.auth = Some(proof);
     client
         .tx
+        .send(oasis7::viewer::ViewerRequest::AuthoritativeRecovery {
+            command: oasis7::viewer::AuthoritativeRecoveryCommand::RegisterSession {
+                request: session_register,
+            },
+        })
+        .map_err(|err| format!("send session register failed: {err}"))?;
+    client
+        .tx
         .send(oasis7::viewer::ViewerRequest::AgentChat { request })
         .map_err(|err| format!("send agent chat failed: {err}"))
 }
@@ -714,6 +737,21 @@ fn dispatch_prompt_override_step(
 ) -> Result<(), String> {
     let client = viewer_client.ok_or_else(|| "viewer client unavailable".to_string())?;
     let signer = resolve_automation_auth_signer()?;
+    let register_nonce = next_auth_nonce(automation_state);
+    let mut session_register = oasis7::viewer::AuthoritativeSessionRegisterRequest {
+        player_id: signer.player_id.clone(),
+        public_key: Some(signer.public_key.clone()),
+        auth: None,
+        requested_agent_id: Some(agent_id.to_string()),
+    };
+    let register_proof = oasis7::viewer::sign_session_register_auth_proof(
+        &session_register,
+        register_nonce,
+        signer.public_key.as_str(),
+        signer.private_key.as_str(),
+    )
+    .map_err(|err| format!("sign session register failed: {err}"))?;
+    session_register.auth = Some(register_proof);
     let nonce = next_auth_nonce(automation_state);
     let mut request = oasis7::viewer::PromptControlApplyRequest {
         agent_id: agent_id.to_string(),
@@ -743,6 +781,14 @@ fn dispatch_prompt_override_step(
     )
     .map_err(|err| format!("sign prompt apply failed: {err}"))?;
     request.auth = Some(proof);
+    client
+        .tx
+        .send(oasis7::viewer::ViewerRequest::AuthoritativeRecovery {
+            command: oasis7::viewer::AuthoritativeRecoveryCommand::RegisterSession {
+                request: session_register,
+            },
+        })
+        .map_err(|err| format!("send session register failed: {err}"))?;
     client
         .tx
         .send(oasis7::viewer::ViewerRequest::PromptControl {

@@ -1015,6 +1015,45 @@ async function buildPromptRollbackAuthProof(request, auth) {
   };
 }
 
+async function buildSessionRegisterAuthProof(request, auth) {
+  const nonce = nextAuthNonce();
+  const payload = {
+    operation: "session_register",
+    player_id: auth.playerId,
+    public_key: auth.publicKey,
+    nonce,
+  };
+  if (request.requested_agent_id != null) {
+    payload.requested_agent_id = request.requested_agent_id;
+  }
+  const signingPayload = buildAuthEnvelope(payload);
+  return {
+    scheme: "ed25519",
+    player_id: auth.playerId,
+    public_key: auth.publicKey,
+    nonce,
+    signature: await signAuthPayload(signingPayload, auth),
+  };
+}
+
+async function ensureRegisteredPlayerSession(requestedAgentId = null) {
+  const request = {
+    player_id: state.auth.playerId,
+    public_key: state.auth.publicKey,
+  };
+  if (requestedAgentId) {
+    request.requested_agent_id = requestedAgentId;
+  }
+  request.auth = await buildSessionRegisterAuthProof(request, state.auth);
+  sendJson({
+    type: "authoritative_recovery",
+    command: {
+      mode: "register_session",
+      request,
+    },
+  });
+}
+
 function buildPromptRequestFromDraft(agentId, draftOverrides) {
   const currentProfile = selectedAgentPromptProfile();
   if (!agentId || !currentProfile) {
@@ -1202,6 +1241,10 @@ function sendAgentChat(agentIdOrPayload, maybeMessage) {
     feedback,
     execute: async () => {
       assertSemanticCapability("agent_chat");
+      feedback.stage = "registering";
+      feedback.effect = "registering player session";
+      render();
+      await ensureRegisteredPlayerSession(agentId);
       feedback.stage = "signing";
       feedback.effect = "building auth proof";
       render();
@@ -1263,6 +1306,10 @@ function sendPromptControl(mode, payload = null) {
     feedback,
     execute: async () => {
       assertSemanticCapability("prompt_control");
+      feedback.stage = "registering";
+      feedback.effect = "registering player session";
+      render();
+      await ensureRegisteredPlayerSession(agentId);
       feedback.stage = "signing";
       feedback.effect = "building auth proof";
       render();

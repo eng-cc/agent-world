@@ -237,6 +237,8 @@ pub(super) fn render_chat_section(
             if let Some(client) = client {
                 sync_viewer_auth_nonce_from_state(state);
                 let send_result: Result<(), String> = (|| {
+                    let session_register =
+                        build_session_register_request(Some(selected_agent_id.clone()))?;
                     let mut request = oasis7::viewer::AgentChatRequest {
                         agent_id: selected_agent_id.clone(),
                         message,
@@ -247,6 +249,14 @@ pub(super) fn render_chat_section(
                         intent_seq: None,
                     };
                     sign_agent_chat_request(&mut request)?;
+                    client
+                        .tx
+                        .send(oasis7::viewer::ViewerRequest::AuthoritativeRecovery {
+                            command: oasis7::viewer::AuthoritativeRecoveryCommand::RegisterSession {
+                                request: session_register,
+                            },
+                        })
+                        .map_err(|err| err.to_string())?;
                     client
                         .tx
                         .send(oasis7::viewer::ViewerRequest::AgentChat { request })
@@ -349,6 +359,7 @@ fn send_prompt_profile_apply_command(
     let Some(client) = client else {
         return Err("viewer client unavailable".to_string());
     };
+    let session_register = build_session_register_request(Some(selected_agent_id.to_string()))?;
     let mut request = build_prompt_profile_apply_request(selected_agent_id, current_profile, draft);
     if !prompt_apply_request_has_patch(&request) {
         return Err("no prompt profile changes".to_string());
@@ -358,6 +369,14 @@ fn send_prompt_profile_apply_command(
         &mut request,
         oasis7::viewer::PromptControlAuthIntent::Apply,
     )?;
+    client
+        .tx
+        .send(oasis7::viewer::ViewerRequest::AuthoritativeRecovery {
+            command: oasis7::viewer::AuthoritativeRecoveryCommand::RegisterSession {
+                request: session_register,
+            },
+        })
+        .map_err(|err| err.to_string())?;
     client
         .tx
         .send(oasis7::viewer::ViewerRequest::PromptControl {

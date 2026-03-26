@@ -14,8 +14,9 @@ mod web_bridge;
 pub use auth::{
     sign_agent_chat_auth_proof, sign_gameplay_action_auth_proof,
     sign_prompt_control_apply_auth_proof, sign_prompt_control_rollback_auth_proof,
-    verify_agent_chat_auth_proof, verify_gameplay_action_auth_proof,
-    verify_prompt_control_apply_auth_proof, verify_prompt_control_rollback_auth_proof,
+    sign_session_register_auth_proof, verify_agent_chat_auth_proof,
+    verify_gameplay_action_auth_proof, verify_prompt_control_apply_auth_proof,
+    verify_prompt_control_rollback_auth_proof, verify_session_register_auth_proof,
     PromptControlAuthIntent, VerifiedPlayerAuth, VIEWER_PLAYER_AUTH_SIGNATURE_V1_PREFIX,
 };
 #[cfg(not(target_arch = "wasm32"))]
@@ -31,10 +32,11 @@ pub use protocol::{
     AuthoritativeChallengeSubmitRequest, AuthoritativeFinalityState,
     AuthoritativeReconnectSyncRequest, AuthoritativeRecoveryAck, AuthoritativeRecoveryCommand,
     AuthoritativeRecoveryError, AuthoritativeRecoveryStatus, AuthoritativeRollbackRequest,
-    AuthoritativeSessionRevokeRequest, AuthoritativeSessionRotateRequest, ControlCompletionAck,
-    ControlCompletionStatus, GameplayActionAck, GameplayActionError, GameplayActionRequest,
-    LiveControl, PlaybackControl, PlayerAuthProof, PlayerAuthScheme, PromptControlAck,
-    PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
+    AuthoritativeSessionRegisterRequest, AuthoritativeSessionRevokeRequest,
+    AuthoritativeSessionRotateRequest, ControlCompletionAck, ControlCompletionStatus,
+    GameplayActionAck, GameplayActionError, GameplayActionRequest, LiveControl, PlaybackControl,
+    PlayerAuthProof, PlayerAuthScheme, PromptControlAck, PromptControlApplyRequest,
+    PromptControlCommand, PromptControlError, PromptControlOperation,
     PromptControlRollbackRequest, ViewerControl, ViewerControlProfile, ViewerRequest,
     ViewerResponse, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };

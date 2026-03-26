@@ -362,7 +362,7 @@ impl ViewerRuntimeLiveServer {
         }
         let verified = self.verify_agent_chat_auth(&request)?;
         self.session_policy
-            .validate_or_register_active_key(
+            .validate_known_session_key(
                 verified.player_id.as_str(),
                 verified.public_key.as_str(),
             )
@@ -460,7 +460,7 @@ impl ViewerRuntimeLiveServer {
                 }
             })?;
         self.session_policy
-            .validate_or_register_active_key(
+            .validate_known_session_key(
                 verified.player_id.as_str(),
                 verified.public_key.as_str(),
             )
@@ -503,7 +503,7 @@ impl ViewerRuntimeLiveServer {
                 }
             })?;
         self.session_policy
-            .validate_or_register_active_key(
+            .validate_known_session_key(
                 verified.player_id.as_str(),
                 verified.public_key.as_str(),
             )

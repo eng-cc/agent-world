@@ -203,6 +203,7 @@ pub(in crate::viewer::runtime_live) struct RuntimeLlmSidecar {
     pub(in crate::viewer::runtime_live) prompt_profile_history:
         BTreeMap<String, BTreeMap<u64, AgentPromptProfile>>,
     pub(in crate::viewer::runtime_live) agent_player_bindings: BTreeMap<String, String>,
+    pub(in crate::viewer::runtime_live) player_agent_bindings: BTreeMap<String, String>,
     pub(in crate::viewer::runtime_live) agent_public_key_bindings: BTreeMap<String, String>,
     pub(in crate::viewer::runtime_live) player_auth_last_nonce: BTreeMap<String, u64>,
     player_chat_intent_acks: BTreeMap<(String, String, u64), RuntimeChatIntentAckRecord>,
@@ -219,6 +220,7 @@ impl RuntimeLlmSidecar {
             prompt_profiles: BTreeMap::new(),
             prompt_profile_history: BTreeMap::new(),
             agent_player_bindings: BTreeMap::new(),
+            player_agent_bindings: BTreeMap::new(),
             agent_public_key_bindings: BTreeMap::new(),
             player_auth_last_nonce: BTreeMap::new(),
             player_chat_intent_acks: BTreeMap::new(),
@@ -332,6 +334,26 @@ impl RuntimeLlmSidecar {
             .retain(|(record_player_id, _, _), _| record_player_id != player_id);
     }
 
+    pub(in crate::viewer::runtime_live) fn bound_agent_for_player(
+        &self,
+        player_id: &str,
+    ) -> Option<&str> {
+        self.player_agent_bindings
+            .get(player_id.trim())
+            .map(String::as_str)
+    }
+
+    pub(in crate::viewer::runtime_live) fn clear_player_binding(
+        &mut self,
+        player_id: &str,
+    ) -> Option<String> {
+        let player_id = player_id.trim();
+        let agent_id = self.player_agent_bindings.remove(player_id)?;
+        self.agent_player_bindings.remove(agent_id.as_str());
+        self.agent_public_key_bindings.remove(agent_id.as_str());
+        Some(agent_id)
+    }
+
     pub(in crate::viewer::runtime_live) fn bind_agent_player(
         &mut self,
         agent_id: &str,
@@ -348,6 +370,20 @@ impl RuntimeLlmSidecar {
             .map(ToOwned::to_owned);
         let current_player = self.agent_player_bindings.get(agent_id).cloned();
         let current_public_key = self.agent_public_key_bindings.get(agent_id).cloned();
+        if self
+            .player_agent_bindings
+            .get(player_id)
+            .is_some_and(|bound_agent_id| bound_agent_id != agent_id)
+        {
+            return Err(format!(
+                "player {} is already bound to agent {}, explicit rebind required",
+                player_id,
+                self.player_agent_bindings
+                    .get(player_id)
+                    .cloned()
+                    .unwrap_or_default()
+            ));
+        }
         let target_public_key = if current_player.as_deref() == Some(player_id) {
             requested_public_key
                 .clone()
@@ -358,9 +394,17 @@ impl RuntimeLlmSidecar {
         if current_player.as_deref() == Some(player_id) && current_public_key == target_public_key {
             return Ok(None);
         }
+        if let Some(previous_player_id) = current_player
+            .as_deref()
+            .filter(|bound_player_id| *bound_player_id != player_id)
+        {
+            self.player_agent_bindings.remove(previous_player_id);
+        }
 
         self.agent_player_bindings
             .insert(agent_id.to_string(), player_id.to_string());
+        self.player_agent_bindings
+            .insert(player_id.to_string(), agent_id.to_string());
         match target_public_key.clone() {
             Some(value) => {
                 self.agent_public_key_bindings

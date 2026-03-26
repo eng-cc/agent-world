@@ -215,6 +215,27 @@ pub(super) fn sign_agent_chat_request(
     attach_agent_chat_auth(request, &signer, nonce)
 }
 
+pub(super) fn build_session_register_request(
+    requested_agent_id: Option<String>,
+) -> Result<oasis7::viewer::AuthoritativeSessionRegisterRequest, String> {
+    let signer = resolve_viewer_auth_signer()?;
+    let nonce = next_viewer_auth_nonce()?;
+    let mut request = oasis7::viewer::AuthoritativeSessionRegisterRequest {
+        player_id: signer.player_id.clone(),
+        public_key: Some(signer.public_key.clone()),
+        auth: None,
+        requested_agent_id,
+    };
+    let proof = oasis7::viewer::sign_session_register_auth_proof(
+        &request,
+        nonce,
+        signer.public_key.as_str(),
+        signer.private_key.as_str(),
+    )?;
+    request.auth = Some(proof);
+    Ok(request)
+}
+
 pub(super) fn sync_viewer_auth_nonce_from_state(state: &ViewerState) {
     let Ok(player_id) = resolve_viewer_player_id_from(&runtime_auth_value) else {
         return;

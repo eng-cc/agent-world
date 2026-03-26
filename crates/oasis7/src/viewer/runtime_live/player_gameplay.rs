@@ -158,7 +158,7 @@ impl ViewerRuntimeLiveServer {
     ) -> Result<GameplayActionAck, GameplayActionError> {
         let verified = self.verify_gameplay_action_auth(&request)?;
         self.session_policy
-            .validate_or_register_active_key(
+            .validate_known_session_key(
                 verified.player_id.as_str(),
                 verified.public_key.as_str(),
             )

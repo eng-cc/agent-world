@@ -192,6 +192,9 @@ pub struct AuthoritativeChallengeResolveRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
 pub enum AuthoritativeRecoveryCommand {
+    RegisterSession {
+        request: AuthoritativeSessionRegisterRequest,
+    },
     Rollback {
         request: AuthoritativeRollbackRequest,
     },
@@ -224,6 +227,17 @@ pub struct AuthoritativeReconnectSyncRequest {
     pub last_known_log_cursor: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_reorg_epoch: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthoritativeSessionRegisterRequest {
+    pub player_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<PlayerAuthProof>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requested_agent_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -366,6 +380,7 @@ pub struct AuthoritativeChallengeError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AuthoritativeRecoveryStatus {
+    SessionRegistered,
     RolledBack,
     CatchUpReady,
     SessionRevoked,
@@ -383,6 +398,8 @@ pub struct AuthoritativeRecoveryAck<Time> {
     pub stable_batch_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub player_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_pubkey: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1042,6 +1059,7 @@ mod tests {
                 log_cursor: 123,
                 stable_batch_id: Some("batch-9".to_string()),
                 player_id: Some("player-1".to_string()),
+                agent_id: Some("agent-7".to_string()),
                 session_pubkey: Some("old-key".to_string()),
                 replaced_by_pubkey: Some("new-key".to_string()),
                 session_epoch: Some(5),
