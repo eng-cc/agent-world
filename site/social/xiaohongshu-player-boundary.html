@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xiaohongshu Player Boundary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #dce5ee;
+        --bg-2: #eef3f7;
+        --ink: #102033;
+        --muted: rgba(16, 32, 51, 0.66);
+        --soft: rgba(16, 32, 51, 0.42);
+        --line: rgba(16, 32, 51, 0.12);
+        --blue: #174a7a;
+        --blue-2: #0e3152;
+        --signal: #f0622f;
+        --signal-2: #ff8c42;
+        --mint: #43b59d;
+        --panel: rgba(245, 249, 252, 0.86);
+        --panel-strong: rgba(248, 251, 254, 0.96);
+        --shadow: 0 34px 72px rgba(16, 32, 51, 0.13);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 12% 18%, rgba(67, 181, 157, 0.16), transparent 22%),
+          radial-gradient(circle at 88% 16%, rgba(240, 98, 47, 0.14), transparent 22%),
+          linear-gradient(155deg, #cfdbe6, #e7eef5 45%, #d7e1ea);
+        color: var(--ink);
+        font-family: "IBM Plex Sans", "Noto Sans SC", sans-serif;
+      }
+
+      .gallery {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 0 72px;
+      }
+
+      .slide {
+        position: relative;
+        width: 1080px;
+        height: 1440px;
+        margin: 0 auto 28px;
+        overflow: hidden;
+        border-radius: 20px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.24), transparent 26%),
+          linear-gradient(145deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.1)),
+          var(--bg);
+        box-shadow: 0 34px 76px rgba(16, 32, 51, 0.16);
+      }
+
+      .single .gallery {
+        max-width: none;
+        padding: 0;
+      }
+
+      .single .slide {
+        margin: 0 auto;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .grid,
+      .wash,
+      .bars {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .grid {
+        background-image:
+          linear-gradient(to right, var(--line) 1px, transparent 1px),
+          linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+        background-size: 76px 76px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.4), transparent 88%);
+      }
+
+      .wash {
+        background:
+          radial-gradient(circle at 16% 12%, rgba(67, 181, 157, 0.08), transparent 18%),
+          radial-gradient(circle at 86% 20%, rgba(240, 98, 47, 0.08), transparent 18%),
+          radial-gradient(circle at 50% 88%, rgba(23, 74, 122, 0.06), transparent 22%);
+      }
+
+      .bars::before,
+      .bars::after {
+        content: "";
+        position: absolute;
+        background: rgba(23, 74, 122, 0.08);
+      }
+
+      .bars::before {
+        left: 70px;
+        top: 0;
+        width: 6px;
+        height: 100%;
+      }
+
+      .bars::after {
+        right: 70px;
+        top: 0;
+        width: 6px;
+        height: 100%;
+      }
+
+      .brand {
+        position: absolute;
+        top: 64px;
+        left: 82px;
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        color: var(--blue);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 20px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .brand::before {
+        content: "";
+        width: 14px;
+        height: 14px;
+        background: var(--signal);
+        box-shadow: 8px 8px 0 rgba(240, 98, 47, 0.18);
+      }
+
+      .eyebrow {
+        display: inline-block;
+        margin-bottom: 24px;
+        color: var(--mint);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 22px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 820px;
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 88px;
+        line-height: 1.05;
+        letter-spacing: -0.05em;
+        font-weight: 900;
+      }
+
+      .accent {
+        color: var(--signal);
+      }
+
+      p,
+      li {
+        font-size: 25px;
+        line-height: 1.56;
+        color: var(--muted);
+      }
+
+      .hero {
+        position: absolute;
+        left: 92px;
+        right: 92px;
+        top: 170px;
+      }
+
+      .hero p {
+        max-width: 720px;
+        margin: 24px 0 0;
+        font-size: 23px;
+        line-height: 1.48;
+      }
+
+      .panel {
+        position: relative;
+        border: 1px solid rgba(16, 32, 51, 0.08);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
+      }
+
+      .panel::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 12px;
+        height: 100%;
+        background: linear-gradient(180deg, var(--signal), var(--signal-2));
+      }
+
+      .panel .tag {
+        display: inline-block;
+        margin-bottom: 16px;
+        color: var(--blue);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 15px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .cover-grid {
+        position: absolute;
+        left: 92px;
+        right: 92px;
+        top: 860px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+        align-items: stretch;
+      }
+
+      .cover-lead {
+        max-width: 860px;
+      }
+
+      .cover-lead h1 {
+        max-width: 900px;
+        font-size: 102px;
+        line-height: 0.98;
+      }
+
+      .cover-lead p {
+        max-width: 620px;
+        margin-top: 18px;
+        font-size: 21px;
+        line-height: 1.42;
+      }
+
+      .contrast {
+        min-height: 272px;
+        padding: 42px 24px 24px 30px;
+      }
+
+      .contrast-row {
+        display: block;
+      }
+
+      .contrast-row strong {
+        display: block;
+        margin-top: 16px;
+        font-size: 42px;
+        line-height: 1.08;
+        letter-spacing: -0.04em;
+      }
+
+      .token {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 108px;
+        height: 40px;
+        padding: 0 14px;
+        background: var(--blue);
+        color: #f3f8fb;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 14px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .side-note {
+        min-height: 272px;
+        padding: 42px 24px 24px 30px;
+        background: var(--panel-strong);
+      }
+
+      .side-note p {
+        font-size: 32px;
+        line-height: 1.22;
+        font-weight: 700;
+        color: var(--ink);
+      }
+
+      .side-note p {
+        margin: 0;
+      }
+
+      .signal-note {
+        position: absolute;
+        left: 92px;
+        top: 666px;
+        width: 620px;
+        padding: 24px 28px 24px 30px;
+        background: var(--blue);
+        color: #ecf5fb;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 34px;
+        line-height: 1.18;
+        box-shadow: 18px 18px 0 rgba(23, 74, 122, 0.12);
+      }
+
+      .signal-note::after {
+        content: "";
+        position: absolute;
+        left: auto;
+        right: -42px;
+        top: 50%;
+        width: 42px;
+        height: 3px;
+        transform: translateY(-50%);
+        background: var(--signal);
+      }
+
+      .editorial {
+        position: absolute;
+        left: 92px;
+        right: 92px;
+        top: 236px;
+        display: grid;
+        grid-template-columns: 1.16fr 0.84fr;
+        gap: 24px;
+      }
+
+      .copy p {
+        margin: 0 0 16px;
+        max-width: 560px;
+        font-size: 27px;
+        line-height: 1.5;
+      }
+
+      .stack {
+        display: grid;
+        gap: 22px;
+      }
+
+      .focus,
+      .quote {
+        min-height: 224px;
+        padding: 46px 24px 24px 34px;
+      }
+
+      .focus strong,
+      .quote strong {
+        display: block;
+        margin-bottom: 12px;
+        font-size: 38px;
+        line-height: 1.2;
+      }
+
+      .quote {
+        background: linear-gradient(180deg, rgba(23, 74, 122, 0.08), rgba(245, 249, 252, 0.96));
+      }
+
+      .boundary-stage {
+        position: absolute;
+        left: 92px;
+        right: 92px;
+        top: 330px;
+        bottom: 118px;
+        display: grid;
+        grid-template-columns: 1fr 90px 1fr;
+        gap: 24px;
+        align-items: center;
+      }
+
+      .zone {
+        position: relative;
+        min-height: 820px;
+        padding: 34px 24px 24px;
+        border: 1px solid rgba(16, 32, 51, 0.09);
+        background: rgba(245, 249, 252, 0.74);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .zone-title {
+        margin-bottom: 24px;
+        color: var(--blue);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 16px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .boundary {
+        position: relative;
+        height: 820px;
+      }
+
+      .boundary::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 8px;
+        transform: translateX(-50%);
+        background: linear-gradient(180deg, var(--signal), var(--signal-2));
+      }
+
+      .boundary-label {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%) rotate(-90deg);
+        padding: 10px 14px;
+        background: var(--blue);
+        color: #eef6fb;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 18px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .action-card,
+      .world-card {
+        position: relative;
+        min-height: 180px;
+        margin-bottom: 0;
+        padding: 20px 18px 16px 20px;
+        border: 1px solid rgba(16, 32, 51, 0.08);
+        background: rgba(255, 255, 255, 0.74);
+        flex: 1 1 0;
+        display: flex;
+        align-items: center;
+      }
+
+      .action-card:last-child,
+      .world-card:last-child {
+        margin-bottom: 0;
+      }
+
+      .action-card::after,
+      .world-card::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        width: 44px;
+        height: 2px;
+        background: var(--signal);
+      }
+
+      .action-card::after {
+        right: -46px;
+      }
+
+      .world-card::before {
+        left: -46px;
+      }
+
+      .action-card strong,
+      .world-card strong {
+        display: block;
+        margin-bottom: 0;
+        font-size: 40px;
+        line-height: 1.06;
+      }
+
+      .action-card span,
+      .world-card span {
+        display: none;
+      }
+
+      .triple {
+        position: absolute;
+        left: 92px;
+        right: 92px;
+        bottom: 116px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 22px;
+      }
+
+      .mini {
+        min-height: 304px;
+        padding: 46px 20px 22px 30px;
+      }
+
+      .mini strong {
+        display: block;
+        margin-bottom: 12px;
+        font-size: 38px;
+        line-height: 1.08;
+      }
+
+      .mini p {
+        margin: 0;
+        font-size: 23px;
+        line-height: 1.42;
+      }
+
+      .question-panel {
+        position: absolute;
+        left: 132px;
+        right: 132px;
+        bottom: 134px;
+        min-height: 352px;
+        padding: 58px 34px 34px 46px;
+      }
+
+      .question-panel strong {
+        display: block;
+        margin-bottom: 18px;
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 72px;
+        line-height: 1.04;
+        letter-spacing: -0.04em;
+        font-weight: 900;
+      }
+
+      .question-panel p {
+        max-width: 640px;
+        margin: 0;
+        font-size: 23px;
+        line-height: 1.42;
+      }
+
+      .option-row {
+        display: flex;
+        gap: 18px;
+        margin-top: 26px;
+      }
+
+      .option {
+        padding: 16px 20px;
+        border: 1px solid rgba(16, 32, 51, 0.12);
+        background: rgba(255, 255, 255, 0.68);
+        color: var(--blue);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 19px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="gallery" id="gallery"></div>
+    <script>
+      const slides = [
+        {
+          kind: "cover",
+          phase: "",
+          title: '我其实不太想让玩家<br /><span class="accent">直接操控角色</span>',
+          subtitle:
+            "说白了，我更想让玩家在外面推一把，而不是直接附身进去。",
+          rows: [
+            {
+              label: "不是",
+              text: "替某个角色活",
+            },
+            {
+              label: "而是",
+              text: "在世界外面推一把，看它怎么回应",
+            },
+          ],
+          note:
+            "先把这个关系讲清，再谈玩法。",
+          signal: "不是附身\n是推一把",
+        },
+        {
+          kind: "editorial",
+          phase: "",
+          eyebrow: "我后来想明白了",
+          title: '玩家不用附身进去<br /><span class="accent">也能有参与感</span>',
+          paragraphs: [
+            "我不太想让玩家附身在某个角色身上。",
+            "我更想让玩家站在世界外面给方向，然后看它自己运转。",
+          ],
+          focusTitle: "我更在意的",
+          focusBody:
+            "不是手感像不像自己在操作，而是你推的那一下，会不会真的把世界带偏。",
+          quoteTitle: "说白了",
+          quoteBody: "不是进去替它活，是在外面推它一把。",
+        },
+        {
+          kind: "boundary",
+          phase: "",
+          eyebrow: "我脑子里的关系",
+          title: '玩家在外面推一把<br /><span class="accent">世界自己往下走</span>',
+          leftCards: [
+            { title: "定个目标", sub: "" },
+            { title: "给点提示", sub: "" },
+            { title: "推一下方向", sub: "" },
+          ],
+          rightCards: [
+            { title: "资源", sub: "" },
+            { title: "协作", sub: "" },
+            { title: "秩序", sub: "" },
+          ],
+        },
+        {
+          kind: "triple",
+          phase: "",
+          eyebrow: "玩家能干嘛",
+          title: '不是点每一步<br /><span class="accent">是改它往哪边长</span>',
+          cards: [
+            {
+              title: "定目标",
+              body: "不是替它点动作，而是先给方向。",
+            },
+            {
+              title: "给提示",
+              body: "你给的话，会影响它怎么理解现在的局势。",
+            },
+            {
+              title: "改走向",
+              body: "更重要的不是这一下，而是世界最后往哪边长。",
+            },
+          ],
+        },
+        {
+          kind: "closing",
+          phase: "",
+          eyebrow: "想听听你们的",
+          title: '如果是你<br /><span class="accent">你会怎么选？</span>',
+          question: "自己操控角色\n还是在外面推一把？",
+          note:
+            "我其实挺想知道，大家更在意手感，还是更在意影响力。",
+        },
+      ];
+
+      function shell(phase) {
+        return `
+          <div class="grid"></div>
+          <div class="wash"></div>
+          <div class="bars"></div>
+          <div class="brand">oasis7</div>
+        `;
+      }
+
+      function renderCover(slide) {
+        return `
+          <section class="slide">
+            ${shell(slide.phase)}
+            <div class="hero cover-lead">
+              <div class="eyebrow">最近一直在想这个</div>
+              <h1>${slide.title}</h1>
+              <p>${slide.subtitle}</p>
+            </div>
+            <div class="signal-note">${slide.signal.replace("\n", "<br />")}</div>
+            <div class="cover-grid">
+              ${slide.rows
+                .map(
+                  (row, index) => `
+                <div class="panel ${index === 0 ? "contrast" : "side-note"}">
+                  <div class="tag">${index === 0 ? "不是" : "而是"}</div>
+                  ${
+                    index === 0
+                      ? `<div class="contrast-row"><strong>${row.text}</strong></div>`
+                      : `<p>${row.text}</p>`
+                  }
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+          </section>
+        `;
+      }
+
+      function renderEditorial(slide) {
+        return `
+          <section class="slide">
+            ${shell(slide.phase)}
+            <div class="editorial">
+              <div class="copy">
+                <div class="eyebrow">${slide.eyebrow}</div>
+                <h1>${slide.title}</h1>
+                ${slide.paragraphs.map((p) => `<p>${p}</p>`).join("")}
+              </div>
+              <div class="stack">
+                <div class="panel focus">
+                  <div class="tag">我更在意的</div>
+                  <strong>${slide.focusTitle}</strong>
+                  <p>${slide.focusBody}</p>
+                </div>
+                <div class="panel quote">
+                  <div class="tag">说白了</div>
+                  <strong>${slide.quoteTitle}</strong>
+                  <p>${slide.quoteBody}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderBoundary(slide) {
+        return `
+          <section class="slide">
+            ${shell(slide.phase)}
+            <div class="hero">
+              <div class="eyebrow">${slide.eyebrow}</div>
+              <h1>${slide.title}</h1>
+            </div>
+            <div class="boundary-stage">
+              <div class="zone">
+                <div class="zone-title">玩家这边</div>
+                ${slide.leftCards
+                  .map(
+                    (card) => `
+                  <div class="action-card">
+                    <strong>${card.title}</strong>
+                    <span>${card.sub}</span>
+                  </div>
+                `,
+                  )
+                  .join("")}
+              </div>
+              <div class="boundary">
+                <div class="boundary-label">中间隔着一层</div>
+              </div>
+              <div class="zone">
+                <div class="zone-title">世界那边</div>
+                ${slide.rightCards
+                  .map(
+                    (card) => `
+                  <div class="world-card">
+                    <strong>${card.title}</strong>
+                    <span>${card.sub}</span>
+                  </div>
+                `,
+                  )
+                  .join("")}
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderTriple(slide) {
+        return `
+          <section class="slide">
+            ${shell(slide.phase)}
+            <div class="hero">
+              <div class="eyebrow">${slide.eyebrow}</div>
+              <h1>${slide.title}</h1>
+            </div>
+            <div class="triple">
+              ${slide.cards
+                .map(
+                  (card) => `
+                <div class="panel mini">
+                  <div class="tag">你能做什么</div>
+                  <strong>${card.title}</strong>
+                  <p>${card.body}</p>
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+          </section>
+        `;
+      }
+
+      function renderClosing(slide) {
+        return `
+          <section class="slide">
+            ${shell(slide.phase)}
+            <div class="hero">
+              <div class="eyebrow">${slide.eyebrow}</div>
+              <h1>${slide.title}</h1>
+            </div>
+            <div class="panel question-panel">
+              <div class="tag">评论区问题</div>
+              <strong>${slide.question.replace("\n", "<br />")}</strong>
+              <p>${slide.note}</p>
+              <div class="option-row">
+                <div class="option">直接控制</div>
+                <div class="option">外部引导</div>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderSlide(slide) {
+        if (slide.kind === "cover") return renderCover(slide);
+        if (slide.kind === "editorial") return renderEditorial(slide);
+        if (slide.kind === "boundary") return renderBoundary(slide);
+        if (slide.kind === "triple") return renderTriple(slide);
+        if (slide.kind === "closing") return renderClosing(slide);
+        return "";
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const slideIndex = Number(params.get("slide"));
+      const gallery = document.getElementById("gallery");
+
+      if (Number.isInteger(slideIndex) && slideIndex >= 1 && slideIndex <= slides.length) {
+        document.body.classList.add("single");
+        gallery.innerHTML = renderSlide(slides[slideIndex - 1]);
+      } else {
+        gallery.innerHTML = slides.map(renderSlide).join("");
+      }
+    </script>
+  </body>
+</html>

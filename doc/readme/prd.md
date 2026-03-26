@@ -73,6 +73,8 @@
 - PRD-README-023: As a `liveops_community`, I want a reusable Xiaohongshu team-roster post pack, so that the second post can explain the current agent team structure with human-facing clarity instead of drifting into either dry role docs or vague AI talk.
 - PRD-README-024: As a `liveops_community`, I want a Xiaohongshu liveops runbook aligned with the Moltbook model, so that human-facing channel operations can reuse a stable SOP for post checks, reply boundaries, interaction prompts, and signal feedback loops.
 - PRD-README-025: As a `liveops_community`, I want a reusable Xiaohongshu game-intro post pack, so that the third post can explain what kind of game `oasis7` is in human-facing language without collapsing into either a full world-rule dump or unsafe release claims.
+- PRD-README-026: As a `liveops_community`, I want a reusable Xiaohongshu player-boundary post pack, so that the fourth post can explain why players guide the world instead of directly puppeting one role, without slipping into either control-scheme jargon or unsafe playability claims.
+- PRD-README-027: As a `liveops_community`, I want a reusable Xiaohongshu AI-laziness-to-game-mode post pack, so that the fifth post can start from a familiar AI-era feeling and pull the discussion toward what games should still ask humans to judge, choose, and carry.
 - Critical User Flows:
   1. Flow-RM-001: `阅读 README -> 跳转模块入口 -> 快速定位目标能力`
   2. Flow-RM-002: `检测口径变更 -> 更新入口文档 -> 校验链接 -> 发布同步`
@@ -88,6 +90,8 @@
   12. Flow-RM-012: `结束一轮 limited preview -> 将可计分贡献抄入 reward ledger -> producer 审批档位 -> execution owner 回填发放记录 -> 台账归档`
   13. Flow-RM-013: `发布小红书内容 -> 按 T+15m / T+1h / T+4h / T+24h 巡检 -> 按状态误解 / 过度猜想 / 高质量互动分级 -> 回流下篇选题`
   14. Flow-RM-014: `确定第三篇“游戏是什么”表达 -> 冻结标题/正文/轮播页/互动问题 -> 用人类开发者口吻给出可想象的游戏轮廓 -> 保持 limited playable technical preview 边界`
+  15. Flow-RM-015: `确定第四篇“玩家为什么不能直接控制角色”表达 -> 冻结标题/正文/轮播页/互动问题 -> 用人类开发者口吻解释玩家与 agent 的控制边界 -> 保持 limited playable technical preview 边界`
+  16. Flow-RM-016: `确定第五篇“AI时代，你变"懒"了么”表达 -> 从熟悉的 AI 使用感切入 -> 收口到“游戏模式里什么还该交给人” -> 冻结标题/正文/轮播页/互动问题并避免滑向泛 AI 焦虑帖`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -118,6 +122,8 @@
 - AC-12: 若团队进入 `limited playable technical preview` 的 invite-only 执行阶段，必须补齐受控执行包，明确 callout 文案、巡检窗口、信号分桶、claim drift 纠偏与 producer 摘要字段。
 - AC-13: 若团队决定在 limited preview 阶段使用 early contributor reward，必须补齐独立操作包，明确评分模板、证据字段、审阅链、禁语与“无固定 token/point 汇率”边界。
 - AC-14: 若团队开始记录真实贡献奖励轮次，必须补齐 round-based ledger，明确 round meta、逐条 row 状态、producer 审批引用、distribution ref 与 archive note。
+- AC-15: 若小红书内容链路进入第四篇，必须补齐“玩家控制边界”素材包，明确标题、正文、轮播结构、互动问题，并把“玩家不能直接控制角色，但能给方向”的正式口径收进人类开发者叙事。
+- AC-16: 若小红书内容链路进入第五篇，必须补齐“AI时代，你变"懒"了么”素材包，明确如何从 AI 使用习惯切到游戏模式讨论，并保持人类开发者视角与 `limited playable technical preview` 边界。
 - AC-15: 若小红书进入“开始解释游戏是什么”的第三帖阶段，必须补齐独立素材包，明确标题、正文、轮播结构、互动问题与“不能写成完整设定说明书/不能暗示已上线”的边界。
 - Non-Goals:
   - 不在 readme PRD 中替代各模块详细设计。
@@ -194,6 +200,8 @@
 | PRD-README-023 | TASK-README-033 | `test_tier_required` | 小红书第二帖素材包明确 7 位 agent 队友卡文案、收束页与可截图 HTML | 渠道内容连续性与“agent 队伍”概念可理解性 |
 | PRD-README-024 | TASK-README-034 | `test_tier_required` | 小红书 runbook 明确发帖前复核、发帖后 24h 巡检、评论分级、互动引导和 `devlog` 回写要求 | 人类向渠道的持续运营一致性 |
 | PRD-README-025 | TASK-README-035 | `test_tier_required` | 小红书第三帖素材包明确“游戏是什么”的标题、正文、轮播结构、互动问题与技术预览边界 | 渠道内容从“谁在做”过渡到“在做什么游戏”的可理解性 |
+| PRD-README-026 | TASK-README-036 | `test_tier_required` | 小红书第四帖素材包明确“玩家为什么不能直接控制角色”的标题、正文、轮播结构、互动问题与控制边界口径 | 渠道内容从“游戏是什么”过渡到“玩家如何介入世界”的可理解性 |
+| PRD-README-027 | TASK-README-037 | `test_tier_required` | 小红书第五帖素材包明确“AI时代，你变"懒"了么”的标题、正文、轮播结构、互动问题与游戏模式讨论收口 | 渠道内容从“玩家怎么介入”过渡到“AI时代下游戏应该把什么留给人”的可讨论性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |
@@ -221,3 +229,5 @@
 | DEC-RM-022 | 用 round-based reward ledger 承接真实贡献奖励结算 | 继续靠 issue 评论、聊天记录或零散表格临场结算 | 真实发放前必须把评分、审批、执行引用和归档收进统一模板，才能保持可审计性。 |
 | DEC-RM-023 | 小红书持续运营细节独立沉淀为 runbook，而不是继续只留在素材包和角色卡 | 只补几条角色卡示例或继续靠帖子素材包驱动 | 小红书已经进入持续发帖和看反馈阶段，需要和 Moltbook 一样有稳定 SOP，才能复盘互动和误解模式。 |
 | DEC-RM-024 | 第三篇采用“轻量游戏介绍 + 猜类型互动”而非完整设定说明书 | 直接把世界规则、技术架构与完整玩法一次讲清 | 用户到了第三篇需要先建立“这是什么游戏”的可想象轮廓，而不是被文档级信息密度劝退；同时仍要保持技术预览边界。 |
+| DEC-RM-025 | 第四篇采用“玩家控制边界解释 + 站队式互动”而非继续泛讲世界设定 | 跳过玩家位置直接讲更多系统细节，或把第四篇写成输入操作说明 | 第三篇之后最自然的追问是“玩家到底怎么介入这个世界”；先把控制边界讲清，才能避免用户把项目误解成直接操控单角色的传统玩法。 |
+| DEC-RM-026 | 第五篇采用“AI 使用感受 -> 游戏模式判断”而非直接泛聊 AI 让人变懒 | 只发一条泛 AI 焦虑/效率感想，或直接转去讲 `oasis7` 具体机制 | “AI时代，你变"懒"了么”本身容易引讨论，但如果不收口会太泛；把它拉回“游戏还该把什么留给人”更贴账号主线，也更能承接项目设计判断。 |

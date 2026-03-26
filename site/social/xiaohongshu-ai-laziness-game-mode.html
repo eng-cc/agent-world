@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xiaohongshu AI Laziness Game Mode</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Noto+Sans+SC:wght@400;500;700;800;900&family=Noto+Serif+SC:wght@600;700;900&family=Spline+Sans+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f5efe6;
+        --paper-2: #efe3d2;
+        --paper-3: #fbf7f1;
+        --ink: #241d17;
+        --muted: rgba(36, 29, 23, 0.74);
+        --soft: rgba(36, 29, 23, 0.46);
+        --line: rgba(36, 29, 23, 0.1);
+        --rust: #be4c35;
+        --rust-2: #e57f58;
+        --olive: #697158;
+        --olive-2: #8b9577;
+        --stamp: #dbc7ac;
+        --shadow: 0 30px 70px rgba(64, 42, 27, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 14% 12%, rgba(229, 127, 88, 0.16), transparent 22%),
+          radial-gradient(circle at 86% 20%, rgba(105, 113, 88, 0.18), transparent 22%),
+          linear-gradient(150deg, #ede3d6, #f5efe6 40%, #e9dccb);
+        color: var(--ink);
+        font-family: "Albert Sans", "Noto Sans SC", sans-serif;
+      }
+
+      .gallery {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 0 72px;
+      }
+
+      .slide {
+        position: relative;
+        width: 1080px;
+        height: 1440px;
+        margin: 0 auto 28px;
+        overflow: hidden;
+        border-radius: 28px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.38), transparent 18%),
+          linear-gradient(145deg, rgba(255, 249, 241, 0.94), rgba(243, 232, 216, 0.98)),
+          var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .single .gallery {
+        max-width: none;
+        padding: 0;
+      }
+
+      .single .slide {
+        margin: 0 auto;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .wash,
+      .grain,
+      .rules,
+      .frame {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .wash {
+        background:
+          radial-gradient(circle at 16% 16%, rgba(229, 127, 88, 0.14), transparent 20%),
+          radial-gradient(circle at 82% 12%, rgba(105, 113, 88, 0.16), transparent 18%),
+          radial-gradient(circle at 58% 86%, rgba(190, 76, 53, 0.08), transparent 26%);
+      }
+
+      .grain {
+        opacity: 0.22;
+        background-image:
+          radial-gradient(circle at 20% 20%, rgba(36, 29, 23, 0.2) 0.6px, transparent 0.8px),
+          radial-gradient(circle at 80% 30%, rgba(36, 29, 23, 0.16) 0.7px, transparent 0.9px),
+          radial-gradient(circle at 30% 72%, rgba(36, 29, 23, 0.15) 0.6px, transparent 0.8px);
+        background-size: 34px 34px, 42px 42px, 56px 56px;
+      }
+
+      .rules {
+        background-image:
+          linear-gradient(to bottom, rgba(36, 29, 23, 0.05) 1px, transparent 1px);
+        background-size: 100% 96px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.34), transparent 90%);
+      }
+
+      .frame::before,
+      .frame::after {
+        content: "";
+        position: absolute;
+        inset: 26px;
+        border: 1px solid rgba(36, 29, 23, 0.08);
+        border-radius: 22px;
+      }
+
+      .frame::after {
+        inset: 42px;
+        border-style: dashed;
+        border-color: rgba(36, 29, 23, 0.05);
+        border-radius: 16px;
+      }
+
+      .header,
+      .footer {
+        position: absolute;
+        left: 72px;
+        right: 72px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .header {
+        top: 62px;
+      }
+
+      .footer {
+        bottom: 56px;
+        color: var(--soft);
+        font-family: "Spline Sans Mono", monospace;
+        font-size: 18px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .brand,
+      .kicker,
+      .meta-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .brand,
+      .kicker {
+        color: var(--ink);
+        font-family: "Spline Sans Mono", monospace;
+        font-size: 18px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      .brand::before,
+      .kicker::before {
+        content: "";
+        width: 12px;
+        height: 12px;
+        background: var(--rust);
+        box-shadow: 5px 5px 0 rgba(190, 76, 53, 0.15);
+      }
+
+      .meta-chip {
+        padding: 10px 14px;
+        border: 1px solid rgba(36, 29, 23, 0.08);
+        background: rgba(255, 251, 245, 0.82);
+        color: var(--soft);
+        font-family: "Spline Sans Mono", monospace;
+        font-size: 16px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .meta-chip::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--olive);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 22px;
+        color: var(--olive);
+        font-family: "Spline Sans Mono", monospace;
+        font-size: 18px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 28px;
+        height: 2px;
+        background: currentColor;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-family: "Noto Serif SC", "Fraunces", serif;
+        font-size: 96px;
+        line-height: 1.06;
+        letter-spacing: -0.05em;
+        font-weight: 900;
+      }
+
+      .accent {
+        color: var(--rust);
+      }
+
+      .subaccent {
+        color: var(--olive);
+      }
+
+      p,
+      li {
+        color: var(--muted);
+        font-size: 27px;
+        line-height: 1.52;
+      }
+
+      .paper-card,
+      .note-card,
+      .bubble,
+      .metric,
+      .option {
+        position: relative;
+        border: 1px solid rgba(36, 29, 23, 0.08);
+        background: rgba(255, 251, 245, 0.88);
+        box-shadow: var(--shadow);
+      }
+
+      .paper-card::before,
+      .note-card::before,
+      .metric::before,
+      .option::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 12px;
+        background: linear-gradient(90deg, rgba(190, 76, 53, 0.18), rgba(105, 113, 88, 0.08));
+      }
+
+      .cover-hero {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+        top: 156px;
+        display: grid;
+        grid-template-columns: 1.12fr 0.88fr;
+        gap: 26px;
+        align-items: start;
+      }
+
+      .cover-copy p {
+        max-width: 560px;
+        margin-top: 26px;
+        font-size: 28px;
+      }
+
+      .highlight-note {
+        min-height: 290px;
+        padding: 36px 28px 26px;
+        border-radius: 24px;
+        transform: rotate(1.6deg);
+      }
+
+      .tape {
+        position: absolute;
+        top: -10px;
+        left: 34px;
+        width: 120px;
+        height: 26px;
+        background: rgba(255, 214, 161, 0.56);
+        transform: rotate(-6deg);
+      }
+
+      .highlight-note strong,
+      .sticky strong,
+      .prompt-card strong,
+      .question-card strong,
+      .closing-main strong {
+        display: block;
+        color: var(--ink);
+        font-family: "Noto Sans SC", sans-serif;
+        font-size: 42px;
+        line-height: 1.14;
+        font-weight: 900;
+      }
+
+      .highlight-note p {
+        margin-top: 18px;
+        font-size: 24px;
+        line-height: 1.46;
+      }
+
+      .cover-bottom {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+        bottom: 118px;
+        display: grid;
+        grid-template-columns: 1.08fr 0.92fr;
+        gap: 22px;
+      }
+
+      .compare {
+        padding: 34px 30px 28px;
+        border-radius: 24px;
+      }
+
+      .compare-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      .mini-card {
+        padding: 18px 16px;
+        border: 1px solid rgba(36, 29, 23, 0.08);
+        background: rgba(255, 255, 255, 0.56);
+      }
+
+      .mini-card .label {
+        display: block;
+        margin-bottom: 10px;
+        color: var(--soft);
+        font-family: "Spline Sans Mono", monospace;
+        font-size: 14px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      .mini-card p {
+        color: var(--ink);
+        font-size: 28px;
+        line-height: 1.3;
+        font-weight: 800;
+      }
+
+      .prompt-card {
+        padding: 34px 28px 28px;
+        border-radius: 24px;
+        background:
+          linear-gradient(180deg, rgba(105, 113, 88, 0.08), rgba(255, 251, 245, 0.9)),
+          rgba(255, 251, 245, 0.9);
+      }
+
+      .prompt-window {
+        margin-top: 20px;
+        padding: 16px 18px 18px;
+        border: 1px solid rgba(36, 29, 23, 0.12);
+        background: rgba(248, 244, 237, 0.86);
+      }
+
+      .prompt-window .bar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .prompt-window .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(36, 29, 23, 0.2);
+      }
+
+      .prompt-window p {
+        color: var(--ink);
+        font-size: 25px;
+        line-height: 1.42;
+        font-weight: 700;
+      }
+
+      .chat-layout {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+        top: 158px;
+        bottom: 118px;
+        display: grid;
+        grid-template-columns: 0.86fr 1.14fr;
+        gap: 24px;
+      }
+
+      .sticky {
+        align-self: start;
+        padding: 38px 28px 30px;
+        border-radius: 26px;
+        background: linear-gradient(180deg, rgba(255, 238, 196, 0.9), rgba(247, 228, 177, 0.92));
+        box-shadow: 0 24px 60px rgba(125, 94, 39, 0.16);
+        transform: rotate(-2.6deg);
+      }
+
+      .sticky p {
+        margin-top: 18px;
+        color: rgba(36, 29, 23, 0.86);
+        font-size: 25px;
+      }
+
+      .thread {
+        display: grid;
+        gap: 18px;
+      }
+
+      .bubble {
+        padding: 24px 24px 22px;
+        border-radius: 26px;
+        box-shadow: 0 18px 46px rgba(64, 42, 27, 0.1);
+      }
+
+      .bubble.user {
+        margin-right: 66px;
+        background: rgba(255, 251, 245, 0.9);
+      }
+
+      .bubble.ai {
+        margin-left: 92px;
+        background: rgba(236, 242, 230, 0.92);
+      }
+
+      .bubble .tag {
+        display: inline-block;
+        margin-bottom: 12px;
+        color: var(--soft);
+        font-family: "Spline Sans Mono", monospace;
+        font-size: 14px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      .bubble strong {
+        display: block;
+        color: var(--ink);
+        font-size: 42px;
+        line-height: 1.16;
+        font-weight: 900;
+      }
+
+      .bubble p {
+        margin-top: 10px;
+        font-size: 24px;
+        line-height: 1.4;
+      }
+
+      .strike {
+        text-decoration: line-through;
+        text-decoration-thickness: 4px;
+        text-decoration-color: rgba(190, 76, 53, 0.72);
+      }
+
+      .tail-note {
+        align-self: end;
+        padding: 26px 28px;
+        border-left: 6px solid var(--rust);
+        background: rgba(255, 251, 245, 0.66);
+      }
+
+      .tail-note p {
+        color: var(--ink);
+        font-size: 31px;
+        line-height: 1.32;
+        font-weight: 800;
+      }
+
+      .allowed-layout {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+        top: 160px;
+        bottom: 114px;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 24px;
+      }
+
+      .allowed-top {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .allowed-top h1 {
+        max-width: 680px;
+      }
+
+      .stamp {
+        padding: 16px 18px;
+        border: 2px dashed rgba(190, 76, 53, 0.38);
+        color: var(--rust);
+        font-family: "Spline Sans Mono", monospace;
+        font-size: 16px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 700;
+        transform: rotate(-2deg);
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+
+      .metric {
+        padding: 30px 22px 24px;
+        border-radius: 24px;
+      }
+
+      .metric strong {
+        display: block;
+        color: var(--ink);
+        font-size: 46px;
+        line-height: 1.1;
+        font-weight: 900;
+      }
+
+      .metric p {
+        margin-top: 16px;
+        font-size: 23px;
+        line-height: 1.42;
+      }
+
+      .allowed-bottom {
+        display: grid;
+        grid-template-columns: 1.08fr 0.92fr;
+        gap: 22px;
+      }
+
+      .summary-card,
+      .list-card,
+      .question-card,
+      .option-panel,
+      .closing-main {
+        padding: 32px 28px 26px;
+        border-radius: 24px;
+      }
+
+      .summary-card {
+        background:
+          linear-gradient(180deg, rgba(105, 113, 88, 0.1), rgba(255, 251, 245, 0.92)),
+          rgba(255, 251, 245, 0.92);
+      }
+
+      .summary-card strong {
+        display: block;
+        color: var(--ink);
+        font-size: 58px;
+        line-height: 1.14;
+        font-weight: 900;
+      }
+
+      .summary-card p {
+        margin-top: 16px;
+      }
+
+      .list-card p {
+        color: var(--ink);
+        font-size: 30px;
+        line-height: 1.44;
+        font-weight: 800;
+      }
+
+      .list-card p + p {
+        margin-top: 12px;
+      }
+
+      .question-layout {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+        top: 162px;
+        bottom: 114px;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 22px;
+      }
+
+      .question-card strong {
+        font-size: 80px;
+        line-height: 1.04;
+        letter-spacing: -0.05em;
+      }
+
+      .question-card p {
+        margin-top: 18px;
+        max-width: 760px;
+        font-size: 28px;
+      }
+
+      .ladder {
+        display: grid;
+        grid-template-columns: 1.02fr 0.98fr;
+        gap: 22px;
+      }
+
+      .ladder-main {
+        display: grid;
+        gap: 18px;
+      }
+
+      .ladder-card {
+        padding: 24px 24px 22px;
+        border-radius: 24px;
+        border: 1px solid rgba(36, 29, 23, 0.08);
+        background: rgba(255, 251, 245, 0.84);
+      }
+
+      .ladder-card .label {
+        display: inline-block;
+        margin-bottom: 12px;
+        color: var(--soft);
+        font-family: "Spline Sans Mono", monospace;
+        font-size: 14px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      .ladder-card strong {
+        display: block;
+        color: var(--ink);
+        font-size: 40px;
+        line-height: 1.16;
+        font-weight: 900;
+      }
+
+      .ladder-card p {
+        margin-top: 10px;
+        font-size: 23px;
+      }
+
+      .question-side {
+        display: grid;
+        gap: 18px;
+      }
+
+      .token-cloud {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+
+      .token {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 120px;
+        height: 52px;
+        padding: 0 22px;
+        border-radius: 999px;
+        border: 1px solid rgba(36, 29, 23, 0.08);
+        background: rgba(255, 255, 255, 0.7);
+        color: var(--ink);
+        font-size: 22px;
+        line-height: 1;
+        font-weight: 800;
+      }
+
+      .token.hot {
+        background: rgba(190, 76, 53, 0.12);
+        color: var(--rust);
+      }
+
+      .token.soft {
+        background: rgba(105, 113, 88, 0.12);
+        color: var(--olive);
+      }
+
+      .closing-layout {
+        position: absolute;
+        left: 78px;
+        right: 78px;
+        top: 170px;
+        bottom: 118px;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 20px;
+      }
+
+      .closing-main strong {
+        font-size: 88px;
+        line-height: 1.04;
+        letter-spacing: -0.05em;
+      }
+
+      .closing-main p {
+        margin-top: 18px;
+        max-width: 720px;
+        font-size: 28px;
+      }
+
+      .option-panel {
+        background:
+          linear-gradient(180deg, rgba(255, 251, 245, 0.92), rgba(244, 237, 226, 0.98)),
+          rgba(255, 251, 245, 0.92);
+      }
+
+      .options {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      .option {
+        min-height: 246px;
+        padding: 28px 20px 22px;
+        border-radius: 24px;
+      }
+
+      .option .k {
+        display: inline-block;
+        margin-bottom: 14px;
+        color: var(--soft);
+        font-family: "Spline Sans Mono", monospace;
+        font-size: 13px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      .option strong {
+        display: block;
+        color: var(--ink);
+        font-size: 42px;
+        line-height: 1.12;
+        font-weight: 900;
+      }
+
+      .option p {
+        margin-top: 12px;
+        font-size: 22px;
+        line-height: 1.42;
+      }
+
+      .closing-foot {
+        align-self: end;
+        padding: 24px 28px;
+        border-top: 2px solid rgba(36, 29, 23, 0.1);
+      }
+
+      .closing-foot p {
+        color: var(--ink);
+        font-size: 29px;
+        line-height: 1.38;
+        font-weight: 800;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="gallery" id="gallery"></div>
+    <script>
+      const slides = [
+        {
+          kind: "cover",
+          title: 'AI时代，<br />你变<span class="accent">"懒"</span>了么',
+          subtitle: "我最近越来越常碰到这个瞬间。卡住了，第一反应已经不是自己拧一会儿，而是先问一句 AI。",
+          noteTitle: "我确实有点变懒了",
+          noteBody: "不是不做事了。是很多原本会自己扛一下的停顿，被我直接跳过去了。",
+          compareLeft: "以前会先自己拧一会儿",
+          compareRight: "现在经常先问一句 AI",
+          prompt: "如果连这个停顿都在消失，游戏还该把什么留给人？",
+        },
+        {
+          kind: "chat",
+          title: "我确实变懒了",
+          stickyTitle: "先承认这件事",
+          stickyBody: "整理、改字、查漏补缺，我现在真的会更快先找 AI。",
+          userTitle: "卡住了",
+          userBody: '<span class="strike">等等，我先自己想一下</span>',
+          aiTitle: "现在更常见的反应",
+          aiBody: "先问一句 AI 再说。",
+          tail: "方便是真的。可我也开始怀疑，有些被省掉的可能不只是时间。",
+        },
+        {
+          kind: "allowed",
+          title: '有些懒<br /><span class="subaccent">我觉得没问题</span>',
+          stamp: "worth automating",
+          metrics: [
+            {
+              title: "整理资料",
+              body: "归纳、拉清单、补结构，这些本来就适合提速。",
+            },
+            {
+              title: "改字润色",
+              body: "卡在表述的时候，让 AI 帮我起个头也没什么。",
+            },
+            {
+              title: "重复活",
+              body: "能被稳定复制的劳动，不值得每次都硬耗。",
+            },
+          ],
+          summary: "这些懒没问题",
+          summaryBody: "因为被接走的主要还是体力活，不是那个决定怎么想的瞬间。",
+          list: ["整理", "改字", "重复活"],
+        },
+        {
+          kind: "question",
+          title: "但如果 AI 接走的<br />不只是动作",
+          body: "而是连“先自己判断一下”这一步也一起接走了，那游戏模式到底还要把什么留给人？",
+          ladder: [
+            {
+              label: "先被接走的",
+              title: "动作",
+              body: "点一下、改一下、补一下，效率确实上来了。",
+            },
+            {
+              label: "我开始警惕的",
+              title: "判断",
+              body: "什么时候该停，怎么选方向，这部分一丢，人就薄了。",
+            },
+          ],
+          sideTitle: "我最近一直在想",
+          sideBody: "游戏是不是不该只继续追求更省事，而要故意把一些关键位置留给玩家。",
+          tokens: ["操作感", "判断感", "承担后果"],
+        },
+        {
+          kind: "closing",
+          title: "你觉得最该留给人的<br />到底是什么？",
+          body: "如果 AI 能接走越来越多动作，你会更想把哪一块死死留在人手里？",
+          options: [
+            {
+              title: "操作感",
+              body: "亲手按下去、自己完成那一下，游戏才成立。",
+            },
+            {
+              title: "判断感",
+              body: "谁来决定现在该怎么选，这事不能外包。",
+            },
+            {
+              title: "承担后果",
+              body: "选完以后要自己扛，这一下才像在玩。",
+            },
+          ],
+          footer: "我自己现在会更在意后两者。你呢？",
+        },
+      ];
+
+      function shell(index) {
+        return `
+          <div class="wash"></div>
+          <div class="grain"></div>
+          <div class="rules"></div>
+          <div class="frame"></div>
+          <div class="header">
+            <div class="brand">oasis7 / draft_05</div>
+            <div class="meta-chip">ai / game mode</div>
+          </div>
+          <div class="footer">
+            <span class="kicker">human pause</span>
+            <span>${index + 1} / ${slides.length}</span>
+          </div>
+        `;
+      }
+
+      function renderCover(slide, index) {
+        return `
+          <section class="slide" data-slide="${index + 1}">
+            ${shell(index)}
+            <div class="cover-hero">
+              <div class="cover-copy">
+                <div class="eyebrow">一个我自己也有的变化</div>
+                <h1>${slide.title}</h1>
+                <p>${slide.subtitle}</p>
+              </div>
+              <div class="note-card highlight-note">
+                <div class="tape"></div>
+                <strong>${slide.noteTitle}</strong>
+                <p>${slide.noteBody}</p>
+              </div>
+            </div>
+            <div class="cover-bottom">
+              <div class="paper-card compare">
+                <strong>变化其实很具体</strong>
+                <div class="compare-grid">
+                  <div class="mini-card">
+                    <span class="label">before</span>
+                    <p>${slide.compareLeft}</p>
+                  </div>
+                  <div class="mini-card">
+                    <span class="label">now</span>
+                    <p>${slide.compareRight}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="paper-card prompt-card">
+                <strong>真正让我停下来的，是这句</strong>
+                <div class="prompt-window">
+                  <div class="bar">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                  </div>
+                  <p>${slide.prompt}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderChat(slide, index) {
+        return `
+          <section class="slide" data-slide="${index + 1}">
+            ${shell(index)}
+            <div class="chat-layout">
+              <div class="sticky">
+                <div class="eyebrow">先承认</div>
+                <strong>${slide.stickyTitle}</strong>
+                <p>${slide.stickyBody}</p>
+              </div>
+              <div class="thread">
+                <div>
+                  <div class="eyebrow">这就是最近的我</div>
+                  <h1>${slide.title}</h1>
+                </div>
+                <div class="bubble user">
+                  <div class="tag">old pause</div>
+                  <strong>${slide.userTitle}</strong>
+                  <p>${slide.userBody}</p>
+                </div>
+                <div class="bubble ai">
+                  <div class="tag">new reflex</div>
+                  <strong>${slide.aiTitle}</strong>
+                  <p>${slide.aiBody}</p>
+                </div>
+                <div class="tail-note">
+                  <p>${slide.tail}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderAllowed(slide, index) {
+        return `
+          <section class="slide" data-slide="${index + 1}">
+            ${shell(index)}
+            <div class="allowed-layout">
+              <div class="allowed-top">
+                <div>
+                  <div class="eyebrow">先分清楚</div>
+                  <h1>${slide.title}</h1>
+                </div>
+                <div class="stamp">${slide.stamp}</div>
+              </div>
+              <div class="metrics">
+                ${slide.metrics
+                  .map(
+                    (item) => `
+                  <div class="metric">
+                    <strong>${item.title}</strong>
+                    <p>${item.body}</p>
+                  </div>
+                `,
+                  )
+                  .join("")}
+              </div>
+              <div class="allowed-bottom">
+                <div class="paper-card summary-card">
+                  <strong>${slide.summary}</strong>
+                  <p>${slide.summaryBody}</p>
+                </div>
+                <div class="paper-card list-card">
+                  <div class="eyebrow">这三类我都能接受</div>
+                  ${slide.list.map((item) => `<p>${item}</p>`).join("")}
+                </div>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderQuestion(slide, index) {
+        return `
+          <section class="slide" data-slide="${index + 1}">
+            ${shell(index)}
+            <div class="question-layout">
+              <div class="paper-card question-card">
+                <div class="eyebrow">我开始警惕的是这个</div>
+                <strong>${slide.title}</strong>
+                <p>${slide.body}</p>
+              </div>
+              <div class="ladder">
+                <div class="ladder-main">
+                  ${slide.ladder
+                    .map(
+                      (item) => `
+                    <div class="ladder-card">
+                      <span class="label">${item.label}</span>
+                      <strong>${item.title}</strong>
+                      <p>${item.body}</p>
+                    </div>
+                  `,
+                    )
+                    .join("")}
+                </div>
+                <div class="question-side">
+                  <div class="paper-card prompt-card">
+                    <strong>${slide.sideTitle}</strong>
+                    <p style="margin-top: 18px;">${slide.sideBody}</p>
+                  </div>
+                  <div class="token-cloud">
+                    <span class="token">操作感</span>
+                    <span class="token hot">判断感</span>
+                    <span class="token soft">承担后果</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderClosing(slide, index) {
+        return `
+          <section class="slide" data-slide="${index + 1}">
+            ${shell(index)}
+            <div class="closing-layout">
+              <div class="paper-card closing-main">
+                <div class="eyebrow">评论区就聊这个</div>
+                <strong>${slide.title}</strong>
+                <p>${slide.body}</p>
+              </div>
+              <div class="paper-card option-panel">
+                <strong>你会把哪块留给人？</strong>
+                <div class="options">
+                  ${slide.options
+                    .map(
+                      (item, optionIndex) => `
+                    <div class="option">
+                      <span class="k">option 0${optionIndex + 1}</span>
+                      <strong>${item.title}</strong>
+                      <p>${item.body}</p>
+                    </div>
+                  `,
+                    )
+                    .join("")}
+                </div>
+              </div>
+              <div class="closing-foot">
+                <p>${slide.footer}</p>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderSlide(slide, index) {
+        switch (slide.kind) {
+          case "cover":
+            return renderCover(slide, index);
+          case "chat":
+            return renderChat(slide, index);
+          case "allowed":
+            return renderAllowed(slide, index);
+          case "question":
+            return renderQuestion(slide, index);
+          case "closing":
+            return renderClosing(slide, index);
+          default:
+            return "";
+        }
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const slideIndex = Number(params.get("slide"));
+      const gallery = document.getElementById("gallery");
+
+      if (Number.isInteger(slideIndex) && slideIndex >= 1 && slideIndex <= slides.length) {
+        document.body.classList.add("single");
+        gallery.innerHTML = renderSlide(slides[slideIndex - 1], slideIndex - 1);
+      } else {
+        gallery.innerHTML = slides.map((slide, index) => renderSlide(slide, index)).join("");
+      }
+    </script>
+  </body>
+</html>
