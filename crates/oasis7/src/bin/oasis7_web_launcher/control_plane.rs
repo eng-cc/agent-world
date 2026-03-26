@@ -824,7 +824,42 @@ pub(super) fn build_game_url(config: &LauncherConfig, request_host: Option<&str>
     let web_host = resolve_runtime_host(web_host.as_str(), request_host);
     let viewer_host = host_for_url(viewer_host.as_str());
     let web_host = host_for_url(web_host.as_str());
-    format!("http://{viewer_host}:{viewer_port}/?ws=ws://{web_host}:{web_port}")
+    let ws_url = format!("ws://{web_host}:{web_port}");
+    let hosted_access_hint = serde_json::to_string(&hosted_access::hosted_viewer_access_hint(
+        deployment_mode_from_config(config),
+    ))
+    .unwrap_or_else(|_| "{}".to_string());
+    format!(
+        "http://{viewer_host}:{viewer_port}/?{}&{}",
+        encoded_query_pair("ws", ws_url.as_str()),
+        encoded_query_pair("hosted_access", hosted_access_hint.as_str()),
+    )
+}
+
+fn encode_query_value(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+            encoded.push(byte as char);
+        } else {
+            encoded.push('%');
+            encoded.push(hex_upper(byte >> 4));
+            encoded.push(hex_upper(byte & 0x0f));
+        }
+    }
+    encoded
+}
+
+fn encoded_query_pair(key: &str, value: &str) -> String {
+    format!("{key}={}", encode_query_value(value))
+}
+
+fn hex_upper(nibble: u8) -> char {
+    match nibble {
+        0..=9 => (b'0' + nibble) as char,
+        10..=15 => (b'A' + (nibble - 10)) as char,
+        _ => '0',
+    }
 }
 
 fn resolve_runtime_host(config_host: &str, request_host: Option<&str>) -> String {

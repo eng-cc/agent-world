@@ -120,6 +120,7 @@
   - `software_safe.js` 现会把 `prompt_control` 明确标成 `strong_auth_required`：在 hosted public join 推断路径下不再继续展示成“只差 player_session”，在 remote-origin legacy bootstrap 下也不再把 preview bootstrap 误当成 hosted-ready prompt/control 能力。
   - `oasis7_client_launcher` 已把 `deployment_mode` 透传到启动参数，并在转账窗口对 `hosted_public_join` 显示同口径 strong-auth barrier，不再继续尝试 trusted-local signer bootstrap 提交。
   - `/api/public/state` 的 `hosted_access` contract 现已导出结构化 `action_matrix`，明确 `gameplay_action/agent_chat` 仍是 `player_session`，而 `prompt_control_*` 与 `main_token_transfer` 当前属于 `strong_auth` 且在 hosted public join 下为 `blocked_until_strong_auth`。
+  - `oasis7_web_launcher` 生成的 game URL 现会附带精简 `hosted_access` hint，`software_safe.js` 会优先消费这个 query contract，而不是继续只靠 hostname 猜 `deploymentHint`；`__AW_TEST__.getState()` 也会直接回出 `hostedAccess` 供 QA 采样。
 - 当前 blocker:
   - `guest session -> player session` 的 session issue / resume / revoke 仍未实现；当前 viewer 只是把梯度与禁用原因显式化，并未真正落会话签发/恢复。
   - `session_register` 目前仍是 runtime-live 内显式注册，不等于完整 hosted guest/player issuer；rollback / host restart 之后仍按 v1 规则要求重新注册。

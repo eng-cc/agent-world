@@ -351,10 +351,13 @@ fn build_game_url_uses_request_host_for_wildcard_bindings() {
         viewer_host: "0.0.0.0".to_string(),
         viewer_port: "4173".to_string(),
         web_bind: "0.0.0.0:5011".to_string(),
+        deployment_mode: "hosted_public_join".to_string(),
         ..LauncherConfig::default()
     };
     let url = build_game_url(&config, Some("10.10.1.8"));
-    assert_eq!(url, "http://10.10.1.8:4173/?ws=ws://10.10.1.8:5011");
+    assert!(url.starts_with("http://10.10.1.8:4173/?ws=ws%3A%2F%2F10.10.1.8%3A5011&hosted_access="));
+    assert!(url.contains("%22deployment_mode%22%3A%22hosted_public_join%22"));
+    assert!(url.contains("%22action_matrix%22"));
 }
 
 #[test]

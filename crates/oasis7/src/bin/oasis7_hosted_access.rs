@@ -101,6 +101,16 @@ pub(super) struct HostedActionAccessPolicy {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Clone, Serialize)]
+pub(super) struct HostedViewerAccessHint {
+    pub(super) deployment_mode: String,
+    pub(super) verdict: String,
+    pub(super) browser_signer_bootstrap: String,
+    pub(super) session_ladder: Vec<String>,
+    pub(super) action_matrix: Vec<HostedActionAccessPolicy>,
+}
+
+#[allow(dead_code)]
 pub(super) fn hosted_player_access_contract(mode: DeploymentMode) -> HostedPlayerAccessContract {
     HostedPlayerAccessContract {
         deployment_mode: mode.as_str().to_string(),
@@ -129,6 +139,21 @@ pub(super) fn hosted_player_access_contract(mode: DeploymentMode) -> HostedPlaye
             world_full_policy: DEFAULT_WORLD_FULL_POLICY.to_string(),
             kick_policy: DEFAULT_KICK_POLICY.to_string(),
         },
+    }
+}
+
+#[allow(dead_code)]
+pub(super) fn hosted_viewer_access_hint(mode: DeploymentMode) -> HostedViewerAccessHint {
+    HostedViewerAccessHint {
+        deployment_mode: mode.as_str().to_string(),
+        verdict: HOSTED_PLAYER_ACCESS_VERDICT.to_string(),
+        browser_signer_bootstrap: mode.browser_signer_bootstrap_mode().to_string(),
+        session_ladder: vec![
+            "guest_session".to_string(),
+            "player_session".to_string(),
+            "strong_auth".to_string(),
+        ],
+        action_matrix: hosted_action_matrix(mode),
     }
 }
 

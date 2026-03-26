@@ -53,6 +53,7 @@ const state = {
   lastChatFeedback: null,
   snapshot: null,
   metrics: null,
+  hostedAccess: null,
   recentEvents: [],
   chatHistory: [],
   selectedObject: null,
@@ -188,6 +189,19 @@ function resolveAuthBootstrap() {
   };
 }
 
+function resolveHostedAccessHint() {
+  const raw = getSearchParams().get("hosted_access");
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function hostnameFromUrl(raw) {
   const value = String(raw || "").trim();
   if (!value) return null;
@@ -204,6 +218,15 @@ function isLoopbackHostname(raw) {
 }
 
 function authDeploymentHint(auth) {
+  const hostedMode = String(state.hostedAccess?.deployment_mode || "").trim();
+  if (hostedMode === "hosted_public_join") {
+    return auth.available
+      ? "hosted_public_join_contract_with_legacy_bootstrap"
+      : "hosted_public_join_contract";
+  }
+  if (hostedMode === "trusted_local_only") {
+    return auth.available ? "trusted_local_contract" : "trusted_local_contract_guest";
+  }
   const params = getSearchParams();
   const wsHost = hostnameFromUrl(state.wsUrl || params.get("ws") || params.get("addr") || "");
   const pageHost = String(window.location.hostname || "").trim();
@@ -214,11 +237,28 @@ function authDeploymentHint(auth) {
   return remoteOriginLikely ? "hosted_public_join_likely" : "guest_only_or_missing_bootstrap";
 }
 
+function isHostedPublicJoinHint(deploymentHint) {
+  return [
+    "hosted_public_join_contract",
+    "hosted_public_join_contract_with_legacy_bootstrap",
+    "hosted_public_join_likely",
+  ].includes(deploymentHint);
+}
+
+function hostedActionPolicy(actionId) {
+  const normalizedActionId = actionId === "prompt_control"
+    ? "prompt_control_apply"
+    : actionId === "strong_auth_actions"
+      ? "main_token_transfer"
+      : actionId;
+  return state.hostedAccess?.action_matrix?.find((policy) => policy?.action_id === normalizedActionId) || null;
+}
+
 function guestSessionReason(auth, deploymentHint) {
   if (auth.available) {
     return "guest session has already been superseded by the current preview player auth lane";
   }
-  if (deploymentHint === "hosted_public_join_likely") {
+  if (isHostedPublicJoinHint(deploymentHint)) {
     return "this browser only has guest-session viewing; hosted public join player-session issuance has not landed yet";
   }
   return auth.error || "viewer auth bootstrap is unavailable, so the browser cannot leave guest session";
@@ -228,7 +268,7 @@ function playerSessionReason(auth, deploymentHint) {
   if (auth.available) {
     return "player interaction is currently unlocked through legacy viewer auth bootstrap in trusted preview mode";
   }
-  if (deploymentHint === "hosted_public_join_likely") {
+  if (isHostedPublicJoinHint(deploymentHint)) {
     return "player session upgrade/login is not implemented on the hosted public join path yet";
   }
   return auth.error || "viewer auth bootstrap is missing or incomplete";
@@ -246,6 +286,7 @@ function buildSemanticCapability(actionId) {
   const observerOnly = selectedAgentInteractionMode() === "observer_only";
   const deploymentHint = authDeploymentHint(state.auth);
   const strongAuthSensitive = isStrongAuthSensitiveAction(actionId);
+  const policy = hostedActionPolicy(actionId);
   if (observerOnly) {
     return {
       actionId,
@@ -255,7 +296,40 @@ function buildSemanticCapability(actionId) {
         "selected agent runs through OpenClaw(Local HTTP); software_safe stays observer-only for prompt/chat on this lane",
     };
   }
-  if (strongAuthSensitive && deploymentHint === "hosted_public_join_likely") {
+  if (policy) {
+    if (policy.required_auth === "strong_auth") {
+      const isLocalPreviewOnly = policy.availability === "trusted_local_preview_only";
+      if (isLocalPreviewOnly && state.auth.available && !isHostedPublicJoinHint(deploymentHint)) {
+        return {
+          actionId,
+          enabled: true,
+          code: null,
+          reason: policy.reason || "trusted local preview currently allows this strong-auth-marked action through preview bootstrap",
+        };
+      }
+      return {
+        actionId,
+        enabled: false,
+        code: "strong_auth_required",
+        reason: policy.reason || strongAuthReason(),
+      };
+    }
+    if (!state.auth.available) {
+      return {
+        actionId,
+        enabled: false,
+        code: "auth_level_insufficient",
+        reason: `${actionId} requires ${policy.required_auth}; current browser remains guest_session only`,
+      };
+    }
+    return {
+      actionId,
+      enabled: true,
+      code: null,
+      reason: policy.reason || `${actionId} is allowed on the ${policy.required_auth} lane`,
+    };
+  }
+  if (strongAuthSensitive && isHostedPublicJoinHint(deploymentHint)) {
     return {
       actionId,
       enabled: false,
@@ -272,7 +346,7 @@ function buildSemanticCapability(actionId) {
     };
   }
   if (!state.auth.available) {
-    const reason = deploymentHint === "hosted_public_join_likely"
+    const reason = isHostedPublicJoinHint(deploymentHint)
       ? `${actionId} requires player_session; this browser is still guest_session only on the hosted public join path`
       : `${actionId} requires viewer auth bootstrap; current status: ${state.auth.error || "missing"}`;
     return {
@@ -296,10 +370,17 @@ function buildAuthSurfaceModel() {
   const deploymentHint = authDeploymentHint(state.auth);
   const promptCapability = buildSemanticCapability("prompt_control");
   const chatCapability = buildSemanticCapability("agent_chat");
+  const strongAuthCapability = buildSemanticCapability("strong_auth_actions");
   const currentTier = state.auth.available ? "player_session" : "guest_session";
   return {
     deploymentHint,
-    source: state.auth.available ? "legacy_viewer_auth_bootstrap" : "guest_only",
+    source: state.hostedAccess
+      ? state.auth.available
+        ? "legacy_viewer_auth_bootstrap+hosted_access_hint"
+        : "hosted_access_hint"
+      : state.auth.available
+        ? "legacy_viewer_auth_bootstrap"
+        : "guest_only",
     currentTier,
     currentTierReason:
       currentTier === "player_session"
@@ -328,12 +409,7 @@ function buildAuthSurfaceModel() {
     capabilities: {
       prompt_control: promptCapability,
       agent_chat: chatCapability,
-      strong_auth_actions: {
-        actionId: "strong_auth_actions",
-        enabled: false,
-        code: "strong_auth_required",
-        reason: strongAuthReason(),
-      },
+      strong_auth_actions: strongAuthCapability,
     },
     reconnect: state.auth.available
       ? "reconnect still depends on the current preview bootstrap; hosted resume/revoke tokens are not wired yet"
@@ -422,6 +498,7 @@ function getState() {
     authSource: authSurface.source,
     authDeploymentHint: authSurface.deploymentHint,
     authSurface: clone(authSurface),
+    hostedAccess: clone(state.hostedAccess),
     selectedAgentInteractionMode: selectedAgentInteractionMode(),
     selectedAgentDebug: clone(selectedAgentExecutionDebugContext()),
     selectedPromptVersion: state.promptDraft.currentVersion || 0,
@@ -1974,7 +2051,8 @@ function renderDetails() {
                 promptProfiles: Object.keys(state.snapshot?.model?.agent_prompt_profiles || {}).length,
                 executionDebugContexts: Object.keys(state.snapshot?.model?.agent_execution_debug_contexts || {}).length,
               },
-              metrics: state.metrics,
+    metrics: state.metrics,
+    hostedAccess: clone(state.hostedAccess),
             },
             null,
             2,
@@ -2115,6 +2193,7 @@ function installTestApi() {
 function bootstrap() {
   Object.assign(state, detectRendererMeta());
   state.auth = resolveAuthBootstrap();
+  state.hostedAccess = resolveHostedAccessHint();
   window[RENDER_META_GLOBAL_NAME] = Object.freeze({
     renderMode: state.renderMode,
     rendererClass: state.rendererClass,
