@@ -255,6 +255,8 @@ pub struct AuthoritativeSessionRegisterRequest {
     pub auth: Option<PlayerAuthProof>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requested_agent_id: Option<String>,
+    #[serde(default)]
+    pub force_rebind: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -174,12 +174,33 @@ fn register_runtime_session(
     public_key_hex: &str,
     private_key_hex: &str,
 ) -> AuthoritativeRecoveryAck<u64> {
+    register_runtime_session_with_options(
+        server,
+        player_id,
+        agent_id,
+        false,
+        nonce,
+        public_key_hex,
+        private_key_hex,
+    )
+}
+
+fn register_runtime_session_with_options(
+    server: &mut ViewerRuntimeLiveServer,
+    player_id: &str,
+    agent_id: Option<&str>,
+    force_rebind: bool,
+    nonce: u64,
+    public_key_hex: &str,
+    private_key_hex: &str,
+) -> AuthoritativeRecoveryAck<u64> {
     let request = signed_session_register_request(
         crate::viewer::AuthoritativeSessionRegisterRequest {
             player_id: player_id.to_string(),
             public_key: None,
             auth: None,
             requested_agent_id: agent_id.map(ToOwned::to_owned),
+            force_rebind,
         },
         nonce,
         public_key_hex,
@@ -1230,8 +1251,18 @@ fn runtime_session_register_rejects_same_player_binding_to_second_agent() {
             .with_decision_mode(ViewerLiveDecisionMode::Llm),
     )
     .expect("runtime server");
-    let agent_ids: Vec<_> = server.world.state().agents.keys().cloned().take(2).collect();
-    assert!(agent_ids.len() >= 2, "expected at least two agents in two_bases scenario");
+    let agent_ids: Vec<_> = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .cloned()
+        .take(2)
+        .collect();
+    assert!(
+        agent_ids.len() >= 2,
+        "expected at least two agents in two_bases scenario"
+    );
     let (public_key, private_key) = test_signer(25);
 
     let first_ack = register_runtime_session(
@@ -1254,6 +1285,7 @@ fn runtime_session_register_rejects_same_player_binding_to_second_agent() {
             public_key: None,
             auth: None,
             requested_agent_id: Some(agent_ids[1].clone()),
+            force_rebind: false,
         },
         2,
         public_key.as_str(),
@@ -1265,9 +1297,70 @@ fn runtime_session_register_rejects_same_player_binding_to_second_agent() {
         })
         .expect_err("same player should not silently rebind to another agent");
     assert_eq!(err.code, "player_bind_failed");
-    assert!(err
-        .message
-        .contains("explicit rebind required"));
+    assert!(err.message.contains("explicit rebind required"));
+}
+
+#[test]
+fn runtime_session_register_allows_same_player_rebind_with_force_rebind() {
+    let _guard = lock_test_llm_env();
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::TwoBases)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm),
+    )
+    .expect("runtime server");
+    let agent_ids: Vec<_> = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .cloned()
+        .take(2)
+        .collect();
+    assert!(
+        agent_ids.len() >= 2,
+        "expected at least two agents in two_bases scenario"
+    );
+    let (public_key, private_key) = test_signer(26);
+
+    let first_ack = register_runtime_session(
+        &mut server,
+        "player-a",
+        Some(agent_ids[0].as_str()),
+        1,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+    assert_eq!(
+        first_ack.status,
+        AuthoritativeRecoveryStatus::SessionRegistered
+    );
+    assert_eq!(first_ack.agent_id.as_deref(), Some(agent_ids[0].as_str()));
+
+    let second_ack = register_runtime_session_with_options(
+        &mut server,
+        "player-a",
+        Some(agent_ids[1].as_str()),
+        true,
+        2,
+        public_key.as_str(),
+        private_key.as_str(),
+    );
+    assert_eq!(
+        second_ack.status,
+        AuthoritativeRecoveryStatus::SessionRegistered
+    );
+    assert_eq!(second_ack.agent_id.as_deref(), Some(agent_ids[1].as_str()));
+    assert_eq!(
+        server.llm_sidecar.bound_agent_for_player("player-a"),
+        Some(agent_ids[1].as_str())
+    );
+    assert_eq!(
+        server
+            .llm_sidecar
+            .agent_player_bindings
+            .get(agent_ids[0].as_str()),
+        None
+    );
 }
 
 #[test]

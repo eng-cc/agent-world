@@ -13,10 +13,10 @@ pub use proto::{
     AuthoritativeRecoveryError, AuthoritativeRecoveryStatus, AuthoritativeRollbackRequest,
     AuthoritativeSessionRegisterRequest, AuthoritativeSessionRevokeRequest,
     AuthoritativeSessionRotateRequest, ControlCompletionStatus, GameplayActionError,
-    GameplayActionRequest, LiveControl, PlaybackControl, PlayerAuthProof, PlayerAuthScheme,
-    PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
-    PromptControlRollbackRequest, ViewerControl, ViewerControlProfile, ViewerEventKind,
-    ViewerRequest, ViewerStream, HostedStrongAuthGrant, VIEWER_PROTOCOL_VERSION,
+    GameplayActionRequest, HostedStrongAuthGrant, LiveControl, PlaybackControl, PlayerAuthProof,
+    PlayerAuthScheme, PromptControlApplyRequest, PromptControlCommand, PromptControlError,
+    PromptControlOperation, PromptControlRollbackRequest, ViewerControl, ViewerControlProfile,
+    ViewerEventKind, ViewerRequest, ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
 
 pub type ViewerResponse =

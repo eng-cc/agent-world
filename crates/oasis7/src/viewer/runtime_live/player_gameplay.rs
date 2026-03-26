@@ -158,10 +158,7 @@ impl ViewerRuntimeLiveServer {
     ) -> Result<GameplayActionAck, GameplayActionError> {
         let verified = self.verify_gameplay_action_auth(&request)?;
         self.session_policy
-            .validate_known_session_key(
-                verified.player_id.as_str(),
-                verified.public_key.as_str(),
-            )
+            .validate_known_session_key(verified.player_id.as_str(), verified.public_key.as_str())
             .map_err(|message| GameplayActionError {
                 code: map_session_policy_error_code(message.as_str()).to_string(),
                 message,
@@ -197,6 +194,7 @@ impl ViewerRuntimeLiveServer {
                 request.target_agent_id.as_str(),
                 verified.player_id.as_str(),
                 public_key.as_deref(),
+                false,
             )
             .map_err(|message| GameplayActionError {
                 code: "player_bind_failed".to_string(),

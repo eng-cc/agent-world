@@ -98,6 +98,7 @@ struct SessionRegisterSigningPayload<'a> {
     nonce: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     requested_agent_id: Option<&'a str>,
+    force_rebind: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -317,7 +318,9 @@ pub fn sign_hosted_prompt_control_strong_auth_grant(
     signer_private_key_hex: &str,
 ) -> Result<HostedStrongAuthGrant, String> {
     if issued_at_unix_ms == 0 {
-        return Err("hosted strong-auth grant issued_at_unix_ms must be greater than zero".to_string());
+        return Err(
+            "hosted strong-auth grant issued_at_unix_ms must be greater than zero".to_string(),
+        );
     }
     if expires_at_unix_ms <= issued_at_unix_ms {
         return Err(
@@ -596,8 +599,10 @@ pub fn sign_session_register_auth_proof(
         return Err("session_register public_key does not match signer public key".to_string());
     }
 
-    let signing_key =
-        signing_key_from_hex(signer_private_key_hex, "session_register signer private key")?;
+    let signing_key = signing_key_from_hex(
+        signer_private_key_hex,
+        "session_register signer private key",
+    )?;
     verify_keypair_match(
         &signing_key,
         signer_public_key.as_str(),
@@ -767,6 +772,7 @@ fn build_session_register_signing_payload(
             .as_deref()
             .map(str::trim)
             .filter(|value| !value.is_empty()),
+        force_rebind: request.force_rebind,
     };
     encode_signing_payload(payload)
 }
@@ -958,8 +964,7 @@ fn verify_hosted_prompt_control_strong_auth_grant(
     if grant.version != VIEWER_HOSTED_STRONG_AUTH_GRANT_PAYLOAD_VERSION {
         return Err(format!(
             "hosted strong-auth grant version mismatch: expected={} actual={}",
-            VIEWER_HOSTED_STRONG_AUTH_GRANT_PAYLOAD_VERSION,
-            grant.version
+            VIEWER_HOSTED_STRONG_AUTH_GRANT_PAYLOAD_VERSION, grant.version
         ));
     }
     let action_id = normalize_prompt_control_grant_operation(grant.action_id.as_str())?;
@@ -974,8 +979,10 @@ fn verify_hosted_prompt_control_strong_auth_grant(
         request_public_key,
         "hosted strong-auth request public_key",
     )?;
-    let grant_player_id =
-        normalize_required_field(grant.player_id.as_str(), "hosted strong-auth grant player_id")?;
+    let grant_player_id = normalize_required_field(
+        grant.player_id.as_str(),
+        "hosted strong-auth grant player_id",
+    )?;
     let grant_player_public_key = normalize_public_key_field(
         grant.player_public_key.as_str(),
         "hosted strong-auth grant player_public_key",
@@ -1306,6 +1313,56 @@ mod tests {
         tampered.action_id = "schedule_recipe_smelter_iron_ingot".to_string();
         let err =
             verify_gameplay_action_auth_proof(&tampered, &proof).expect_err("tamper must fail");
+        assert!(err.contains("verify auth signature failed"));
+    }
+
+    #[test]
+    fn session_register_auth_verify_rejects_tampered_requested_agent_id() {
+        let (public_key, private_key) = test_signer();
+        let request = AuthoritativeSessionRegisterRequest {
+            player_id: "player-a".to_string(),
+            public_key: Some(public_key.clone()),
+            auth: None,
+            requested_agent_id: Some("agent-0".to_string()),
+            force_rebind: false,
+        };
+        let proof = sign_session_register_auth_proof(
+            &request,
+            31,
+            public_key.as_str(),
+            private_key.as_str(),
+        )
+        .expect("sign proof");
+
+        let mut tampered = request.clone();
+        tampered.requested_agent_id = Some("agent-1".to_string());
+        let err = verify_session_register_auth_proof(&tampered, &proof)
+            .expect_err("tampered requested_agent_id must fail");
+        assert!(err.contains("verify auth signature failed"));
+    }
+
+    #[test]
+    fn session_register_auth_verify_rejects_tampered_force_rebind() {
+        let (public_key, private_key) = test_signer();
+        let request = AuthoritativeSessionRegisterRequest {
+            player_id: "player-a".to_string(),
+            public_key: Some(public_key.clone()),
+            auth: None,
+            requested_agent_id: Some("agent-0".to_string()),
+            force_rebind: false,
+        };
+        let proof = sign_session_register_auth_proof(
+            &request,
+            32,
+            public_key.as_str(),
+            private_key.as_str(),
+        )
+        .expect("sign proof");
+
+        let mut tampered = request.clone();
+        tampered.force_rebind = true;
+        let err = verify_session_register_auth_proof(&tampered, &proof)
+            .expect_err("tampered force_rebind must fail");
         assert!(err.contains("verify auth signature failed"));
     }
 }

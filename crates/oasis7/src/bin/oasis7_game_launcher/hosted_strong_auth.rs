@@ -1,8 +1,8 @@
-use super::*;
 use super::hosted_player_session::{
     HostedPlayerSessionAdmissionResponse, HostedPlayerSessionAdmissionSnapshot,
     HostedPlayerSessionIssuer,
 };
+use super::*;
 use oasis7::viewer::{sign_hosted_prompt_control_strong_auth_grant, HostedStrongAuthGrant};
 use serde::Serialize;
 
@@ -148,9 +148,13 @@ fn response_from_admission(
 }
 
 fn hosted_prompt_control_backend_grant_enabled() -> bool {
-    [HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV, HOSTED_STRONG_AUTH_PRIVATE_KEY_ENV, HOSTED_STRONG_AUTH_APPROVAL_CODE_ENV]
-        .into_iter()
-        .all(env_non_empty)
+    [
+        HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV,
+        HOSTED_STRONG_AUTH_PRIVATE_KEY_ENV,
+        HOSTED_STRONG_AUTH_APPROVAL_CODE_ENV,
+    ]
+    .into_iter()
+    .all(env_non_empty)
 }
 
 fn env_non_empty(name: &str) -> bool {
@@ -226,7 +230,10 @@ mod tests {
             &mut issuer,
         );
         assert!(!response.ok);
-        assert_eq!(response.error_code.as_deref(), Some("approval_code_invalid"));
+        assert_eq!(
+            response.error_code.as_deref(),
+            Some("approval_code_invalid")
+        );
         clear_env();
     }
 

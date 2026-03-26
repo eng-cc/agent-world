@@ -403,10 +403,7 @@ impl ViewerRuntimeLiveServer {
         }
         let verified = self.verify_agent_chat_auth(&request)?;
         self.session_policy
-            .validate_known_session_key(
-                verified.player_id.as_str(),
-                verified.public_key.as_str(),
-            )
+            .validate_known_session_key(verified.player_id.as_str(), verified.public_key.as_str())
             .map_err(|message| AgentChatError {
                 code: map_session_policy_error_code(message.as_str()).to_string(),
                 message,
@@ -501,10 +498,7 @@ impl ViewerRuntimeLiveServer {
                 }
             })?;
         self.session_policy
-            .validate_known_session_key(
-                verified.player_id.as_str(),
-                verified.public_key.as_str(),
-            )
+            .validate_known_session_key(verified.player_id.as_str(), verified.public_key.as_str())
             .map_err(|message| PromptControlError {
                 code: map_session_policy_error_code(message.as_str()).to_string(),
                 message,
@@ -534,13 +528,14 @@ impl ViewerRuntimeLiveServer {
                 "prompt_control requires hosted strong auth grant on hosted_public_join",
             ));
         };
-        let signer_public_key = hosted_strong_auth_grant_public_key_from_env().map_err(|message| {
-            self.hosted_prompt_control_strong_auth_error(
-                "strong_auth_required",
-                request.agent_id.as_str(),
-                message.as_str(),
-            )
-        })?;
+        let signer_public_key =
+            hosted_strong_auth_grant_public_key_from_env().map_err(|message| {
+                self.hosted_prompt_control_strong_auth_error(
+                    "strong_auth_required",
+                    request.agent_id.as_str(),
+                    message.as_str(),
+                )
+            })?;
         verify_hosted_prompt_control_apply_strong_auth_grant(
             intent,
             request,
@@ -579,10 +574,7 @@ impl ViewerRuntimeLiveServer {
                 }
             })?;
         self.session_policy
-            .validate_known_session_key(
-                verified.player_id.as_str(),
-                verified.public_key.as_str(),
-            )
+            .validate_known_session_key(verified.player_id.as_str(), verified.public_key.as_str())
             .map_err(|message| PromptControlError {
                 code: map_session_policy_error_code(message.as_str()).to_string(),
                 message,
@@ -611,13 +603,14 @@ impl ViewerRuntimeLiveServer {
                 "prompt_control rollback requires hosted strong auth grant on hosted_public_join",
             ));
         };
-        let signer_public_key = hosted_strong_auth_grant_public_key_from_env().map_err(|message| {
-            self.hosted_prompt_control_strong_auth_error(
-                "strong_auth_required",
-                request.agent_id.as_str(),
-                message.as_str(),
-            )
-        })?;
+        let signer_public_key =
+            hosted_strong_auth_grant_public_key_from_env().map_err(|message| {
+                self.hosted_prompt_control_strong_auth_error(
+                    "strong_auth_required",
+                    request.agent_id.as_str(),
+                    message.as_str(),
+                )
+            })?;
         verify_hosted_prompt_control_rollback_strong_auth_grant(
             request,
             grant,
@@ -732,7 +725,7 @@ impl ViewerRuntimeLiveServer {
         )?;
         let events = self
             .llm_sidecar
-            .bind_agent_player(agent_id, player_id, public_key)
+            .bind_agent_player(agent_id, player_id, public_key, false)
             .map_err(|message| PromptControlError {
                 code: "player_bind_failed".to_string(),
                 message,
@@ -766,7 +759,7 @@ impl ViewerRuntimeLiveServer {
         mapped?;
         let events = self
             .llm_sidecar
-            .bind_agent_player(agent_id, player_id, public_key)
+            .bind_agent_player(agent_id, player_id, public_key, false)
             .map_err(|message| AgentChatError {
                 code: "player_bind_failed".to_string(),
                 message,

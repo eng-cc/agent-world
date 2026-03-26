@@ -5,7 +5,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(super) const HOSTED_PLAYER_SESSION_ISSUE_ROUTE: &str = "/api/public/player-session/issue";
 pub(super) const HOSTED_PLAYER_SESSION_RELEASE_ROUTE: &str = "/api/public/player-session/release";
-pub(super) const HOSTED_PLAYER_SESSION_ADMISSION_ROUTE: &str = "/api/public/player-session/admission";
+pub(super) const HOSTED_PLAYER_SESSION_ADMISSION_ROUTE: &str =
+    "/api/public/player-session/admission";
 pub(super) const HOSTED_PLAYER_SESSION_REFRESH_ROUTE: &str = "/api/public/player-session/refresh";
 const ISSUE_WINDOW_MS: u64 = 60_000;
 const PENDING_REGISTRATION_TTL_MS: u64 = 30_000;
@@ -448,12 +449,14 @@ impl HostedPlayerSessionIssuer {
         }
         for token in expired_tokens {
             if let Some(player_id) = self.active_players_by_release_token.remove(token.as_str()) {
-                self.active_release_tokens_by_player.remove(player_id.as_str());
+                self.active_release_tokens_by_player
+                    .remove(player_id.as_str());
                 self.runtime_seen_players.remove(player_id.as_str());
                 self.runtime_revoked_players.remove(player_id.as_str());
                 self.released_players_total = self.released_players_total.saturating_add(1);
             }
-            self.last_seen_unix_ms_by_release_token.remove(token.as_str());
+            self.last_seen_unix_ms_by_release_token
+                .remove(token.as_str());
         }
     }
 
@@ -463,7 +466,8 @@ impl HostedPlayerSessionIssuer {
             return false;
         };
         self.active_players_by_release_token.remove(token.as_str());
-        self.last_seen_unix_ms_by_release_token.remove(token.as_str());
+        self.last_seen_unix_ms_by_release_token
+            .remove(token.as_str());
         self.runtime_seen_players.remove(player_id);
         if runtime_revoked {
             self.runtime_revoked_players.insert(player_id.to_string());
@@ -514,7 +518,8 @@ impl HostedPlayerSessionIssuer {
             issued_players_total: self.issued_players_total,
             released_players_total: self.released_players_total,
             issued_in_current_window,
-            remaining_issue_budget: issue_rate_limit_per_minute.saturating_sub(issued_in_current_window),
+            remaining_issue_budget: issue_rate_limit_per_minute
+                .saturating_sub(issued_in_current_window),
         }
     }
 }

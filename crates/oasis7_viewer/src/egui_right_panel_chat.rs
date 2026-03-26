@@ -252,9 +252,10 @@ pub(super) fn render_chat_section(
                     client
                         .tx
                         .send(oasis7::viewer::ViewerRequest::AuthoritativeRecovery {
-                            command: oasis7::viewer::AuthoritativeRecoveryCommand::RegisterSession {
-                                request: session_register,
-                            },
+                            command:
+                                oasis7::viewer::AuthoritativeRecoveryCommand::RegisterSession {
+                                    request: session_register,
+                                },
                         })
                         .map_err(|err| err.to_string())?;
                     client

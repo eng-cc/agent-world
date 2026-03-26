@@ -10,13 +10,11 @@ use super::{
     build_game_url, build_oasis7_chain_runtime_args, build_viewer_auth_bootstrap_script,
     content_type_for_path, parse_host_port, parse_options, query_runtime_bound_players,
     resolve_static_asset_path, resolve_viewer_auth_bootstrap_for_embedded_server,
-    resolve_viewer_auth_bootstrap_from_path,
-    resolve_viewer_static_dir_with_override, sanitize_index_html_for_embedded_server,
-    sanitize_relative_request_path,
+    resolve_viewer_auth_bootstrap_from_path, resolve_viewer_static_dir_with_override,
+    sanitize_index_html_for_embedded_server, sanitize_relative_request_path,
     viewer_dev_dist_candidates, CliOptions, ViewerAuthBootstrap, BUILTIN_LLM_PROVIDER_MODE,
-    DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_DEPLOYMENT_MODE,
-    DEFAULT_LIVE_BIND, DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO,
-    DEFAULT_VIEWER_STATIC_DIR,
+    DEFAULT_CHAIN_NODE_ID, DEFAULT_CHAIN_STATUS_BIND, DEFAULT_DEPLOYMENT_MODE, DEFAULT_LIVE_BIND,
+    DEFAULT_OPENCLAW_AGENT_PROFILE, DEFAULT_SCENARIO, DEFAULT_VIEWER_STATIC_DIR,
     GAME_STATIC_DIR_ENV, OPENCLAW_LOCAL_HTTP_PROVIDER_MODE, VIEWER_AUTH_BOOTSTRAP_OBJECT,
     VIEWER_AUTH_PRIVATE_KEY_ENV, VIEWER_AUTH_PUBLIC_KEY_ENV, VIEWER_PLAYER_ID_ENV,
 };
@@ -598,9 +596,8 @@ fn hosted_public_join_disables_viewer_auth_bootstrap_resolution() {
 
     let old_cwd = env::current_dir().expect("cwd");
     env::set_current_dir(&temp_dir).expect("chdir");
-    let auth = resolve_viewer_auth_bootstrap_for_embedded_server(
-        super::DeploymentMode::HostedPublicJoin,
-    );
+    let auth =
+        resolve_viewer_auth_bootstrap_for_embedded_server(super::DeploymentMode::HostedPublicJoin);
     env::set_current_dir(old_cwd).expect("restore cwd");
 
     assert!(auth.is_none());

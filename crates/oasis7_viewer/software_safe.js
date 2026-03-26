@@ -82,6 +82,8 @@ const state = {
     syncInFlight: false,
     runtimeStatus: "guest",
     boundAgentId: null,
+    pendingRequestedAgentId: null,
+    pendingForceRebind: false,
   },
   promptDraft: {
     agentId: null,
@@ -117,6 +119,7 @@ let semanticSendLoop = null;
 const pendingControlFeedback = new Map();
 const pendingSemanticCommands = [];
 const authKeyCache = new Map();
+let pendingSessionRegisterWaiter = null;
 
 const elements = {};
 
@@ -199,6 +202,8 @@ function resolveAuthBootstrap() {
       syncInFlight: false,
       runtimeStatus: "guest",
       boundAgentId: null,
+      pendingRequestedAgentId: null,
+      pendingForceRebind: false,
     };
   }
   const playerId = String(raw[VIEWER_PLAYER_ID_KEY] || "").trim();
@@ -226,6 +231,8 @@ function resolveAuthBootstrap() {
       syncInFlight: false,
       runtimeStatus: "guest",
       boundAgentId: null,
+      pendingRequestedAgentId: null,
+      pendingForceRebind: false,
     };
   }
   return {
@@ -245,6 +252,8 @@ function resolveAuthBootstrap() {
     syncInFlight: false,
     runtimeStatus: "legacy_preview",
     boundAgentId: null,
+    pendingRequestedAgentId: null,
+    pendingForceRebind: false,
   };
 }
 
@@ -316,6 +325,8 @@ function resolveStoredHostedPlayerSession() {
       syncInFlight: false,
       runtimeStatus: "issued",
       boundAgentId: null,
+      pendingRequestedAgentId: null,
+      pendingForceRebind: false,
     };
   } catch (_) {
     clearHostedPlayerSession();
@@ -760,6 +771,8 @@ function getState() {
     authRecoveryErrorMessage: state.auth.recoveryErrorMessage,
     authRuntimeStatus: state.auth.runtimeStatus,
     authBoundAgentId: state.auth.boundAgentId,
+    authPendingRequestedAgentId: state.auth.pendingRequestedAgentId,
+    authPendingForceRebind: state.auth.pendingForceRebind,
     authTier: authSurface.currentTier,
     authSource: authSurface.source,
     authDeploymentHint: authSurface.deploymentHint,
@@ -1432,6 +1445,9 @@ async function buildSessionRegisterAuthProof(request, auth) {
   if (request.requested_agent_id != null) {
     payload.requested_agent_id = request.requested_agent_id;
   }
+  if (request.force_rebind === true) {
+    payload.force_rebind = true;
+  }
   const signingPayload = buildAuthEnvelope(payload);
   return {
     scheme: "ed25519",
@@ -1489,6 +1505,8 @@ async function issueHostedPlayerIdentity() {
       syncInFlight: false,
       runtimeStatus: "issued",
       boundAgentId: null,
+      pendingRequestedAgentId: null,
+      pendingForceRebind: false,
     };
     persistHostedPlayerSession(state.auth);
     render();
@@ -1651,6 +1669,8 @@ function resetHostedPlayerAuthState(errorMessage = null) {
         syncInFlight: false,
         runtimeStatus: "guest",
         boundAgentId: null,
+        pendingRequestedAgentId: null,
+        pendingForceRebind: false,
       };
   void refreshHostedAdmissionState().then(() => render());
 }
@@ -1693,23 +1713,36 @@ function syncHostedPlayerSessionOnConnect() {
   sendReconnectSync();
 }
 
-async function ensureRegisteredPlayerSession(requestedAgentId = null) {
-  await ensureHostedPlayerAuthAvailable();
-  if (!state.auth.available) {
-    throw new Error(state.auth.error || "player session auth is unavailable");
+function clearPendingSessionRegisterWaiter(error = null) {
+  if (!pendingSessionRegisterWaiter) {
+    return;
   }
+  const waiter = pendingSessionRegisterWaiter;
+  pendingSessionRegisterWaiter = null;
+  if (error != null) {
+    waiter.reject(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
+async function dispatchSessionRegisterRequest(requestedAgentId, forceRebind) {
+  const normalizedRequestedAgentId = String(requestedAgentId || "").trim() || null;
   if (state.auth.source !== "legacy_viewer_auth_bootstrap") {
     state.auth.registrationStatus = "registering";
     state.auth.syncInFlight = true;
     state.auth.recoveryErrorCode = null;
     state.auth.recoveryErrorMessage = null;
   }
+  state.auth.pendingRequestedAgentId = normalizedRequestedAgentId;
+  state.auth.pendingForceRebind = forceRebind === true;
   const request = {
     player_id: state.auth.playerId,
     public_key: state.auth.publicKey,
   };
-  if (requestedAgentId) {
-    request.requested_agent_id = requestedAgentId;
+  if (normalizedRequestedAgentId) {
+    request.requested_agent_id = normalizedRequestedAgentId;
+  }
+  if (forceRebind === true) {
+    request.force_rebind = true;
   }
   request.auth = await buildSessionRegisterAuthProof(request, state.auth);
   sendJson({
@@ -1720,6 +1753,83 @@ async function ensureRegisteredPlayerSession(requestedAgentId = null) {
     },
   });
   render();
+}
+
+async function retryPendingSessionRegisterWaiterWithForceRebind() {
+  const waiter = pendingSessionRegisterWaiter;
+  if (!waiter) {
+    return;
+  }
+  waiter.forceRebind = true;
+  try {
+    await dispatchSessionRegisterRequest(waiter.requestedAgentId, true);
+  } catch (error) {
+    clearPendingSessionRegisterWaiter(error);
+    throw error;
+  }
+}
+
+function latestRequestedAgentId(fallbackAgentId = null) {
+  const agentId = String(
+    fallbackAgentId
+      || state.auth.pendingRequestedAgentId
+      || state.auth.boundAgentId
+      || "",
+  ).trim();
+  return agentId || null;
+}
+
+function recoveryErrorRequiresExplicitRebind(error) {
+  return String(error?.code || "").trim() === "player_bind_failed"
+    && String(error?.message || "").includes("explicit rebind required");
+}
+
+async function ensureRegisteredPlayerSession(requestedAgentId = null, options = {}) {
+  await ensureHostedPlayerAuthAvailable();
+  if (!state.auth.available) {
+    throw new Error(state.auth.error || "player session auth is unavailable");
+  }
+  const normalizedRequestedAgentId = String(requestedAgentId || "").trim() || null;
+  const forceRebind = options?.forceRebind === true;
+  if (
+    state.auth.registrationStatus === "registered"
+    && (state.auth.runtimeStatus === "registered" || state.auth.runtimeStatus === "registered_unbound")
+    && !forceRebind
+    && (
+      normalizedRequestedAgentId == null
+      || normalizedRequestedAgentId === state.auth.boundAgentId
+    )
+  ) {
+    return state.auth;
+  }
+  if (pendingSessionRegisterWaiter) {
+    const sameRequest = pendingSessionRegisterWaiter.requestedAgentId === normalizedRequestedAgentId
+      && pendingSessionRegisterWaiter.forceRebind === forceRebind;
+    if (!sameRequest) {
+      throw new Error("another player session registration is already in flight");
+    }
+    return pendingSessionRegisterWaiter.promise;
+  }
+  let resolveWaiter;
+  let rejectWaiter;
+  const promise = new Promise((resolve, reject) => {
+    resolveWaiter = resolve;
+    rejectWaiter = reject;
+  });
+  pendingSessionRegisterWaiter = {
+    requestedAgentId: normalizedRequestedAgentId,
+    forceRebind,
+    promise,
+    resolve: resolveWaiter,
+    reject: rejectWaiter,
+  };
+  try {
+    await dispatchSessionRegisterRequest(normalizedRequestedAgentId, forceRebind);
+  } catch (error) {
+    clearPendingSessionRegisterWaiter(error);
+    throw error;
+  }
+  return promise;
 }
 
 function buildPromptRequestFromDraft(agentId, draftOverrides) {
@@ -2152,6 +2262,8 @@ function adoptHostedRecoveryAck(ack) {
     state.auth.sessionEpoch = Number(ack.session_epoch);
   }
   state.auth.boundAgentId = ack.agent_id || null;
+  state.auth.pendingRequestedAgentId = ack.agent_id || state.auth.pendingRequestedAgentId || null;
+  state.auth.pendingForceRebind = false;
   state.auth.registrationStatus = ack.status === "session_registered" || ack.status === "catch_up_ready"
     ? "registered"
     : ack.status === "session_revoked"
@@ -2170,6 +2282,11 @@ function adoptHostedRecoveryAck(ack) {
     void refreshHostedPlayerLease();
     syncHostedSessionRefreshLoop();
   }
+  if (pendingSessionRegisterWaiter && ack.status === "session_registered") {
+    const waiter = pendingSessionRegisterWaiter;
+    pendingSessionRegisterWaiter = null;
+    waiter.resolve(ack);
+  }
 }
 
 async function recoverHostedSessionFromError(error) {
@@ -2177,8 +2294,12 @@ async function recoverHostedSessionFromError(error) {
     return;
   }
   const code = String(error?.code || "").trim();
+  if (recoveryErrorRequiresExplicitRebind(error) && state.auth.pendingRequestedAgentId && !state.auth.pendingForceRebind) {
+    await ensureRegisteredPlayerSession(state.auth.pendingRequestedAgentId, { forceRebind: true });
+    return;
+  }
   if (code === "session_not_found") {
-    await ensureRegisteredPlayerSession();
+    await ensureRegisteredPlayerSession(latestRequestedAgentId());
     return;
   }
   if (["session_key_mismatch", "session_revoked", "session_player_id_invalid"].includes(code)) {
@@ -2187,7 +2308,7 @@ async function recoverHostedSessionFromError(error) {
     render();
     await issueHostedPlayerIdentity();
     if (state.auth.available) {
-      await ensureRegisteredPlayerSession();
+      await ensureRegisteredPlayerSession(latestRequestedAgentId());
     }
   }
 }
@@ -2197,7 +2318,29 @@ function handleAuthoritativeRecoveryAck(ack) {
 }
 
 function handleAuthoritativeRecoveryError(error) {
+  if (
+    pendingSessionRegisterWaiter
+    && recoveryErrorRequiresExplicitRebind(error)
+    && pendingSessionRegisterWaiter.requestedAgentId
+    && !pendingSessionRegisterWaiter.forceRebind
+  ) {
+    state.auth.recoveryErrorCode = error?.code || null;
+    state.auth.recoveryErrorMessage = error?.message || null;
+    state.auth.error = error?.message || error?.code || "authoritative recovery failed";
+    state.auth.registrationStatus = "registering";
+    state.auth.runtimeStatus = "rebind_retrying";
+    state.auth.pendingForceRebind = true;
+    render();
+    void retryPendingSessionRegisterWaiterWithForceRebind().catch((retryError) => {
+      handleAuthoritativeRecoveryError({
+        code: "player_bind_failed",
+        message: String(retryError),
+      });
+    });
+    return;
+  }
   if (!state.auth.available || state.auth.source === "legacy_viewer_auth_bootstrap") {
+    clearPendingSessionRegisterWaiter(error?.message || error?.code || "authoritative recovery failed");
     return;
   }
   state.auth.syncInFlight = false;
@@ -2210,7 +2353,10 @@ function handleAuthoritativeRecoveryError(error) {
     : error?.code === "session_not_found"
       ? "missing"
       : "error";
-  state.auth.boundAgentId = null;
+  if (!recoveryErrorRequiresExplicitRebind(error)) {
+    state.auth.boundAgentId = null;
+  }
+  clearPendingSessionRegisterWaiter(error?.message || error?.code || "authoritative recovery failed");
   syncHostedSessionRefreshLoop();
   void recoverHostedSessionFromError(error);
 }
@@ -2306,6 +2452,7 @@ function attachSocket(ws) {
       state.auth.syncInFlight = false;
       state.auth.runtimeStatus = "disconnected";
     }
+    clearPendingSessionRegisterWaiter("websocket disconnected during player session registration");
     stopHostedSessionRefreshLoop();
     render();
     if (reconnectTimer) {
@@ -2509,6 +2656,8 @@ function renderSummary() {
         <span class="badge">epoch=${escapeHtml(state.auth.sessionEpoch == null ? "-" : state.auth.sessionEpoch)}</span>
         <span class="badge">runtime=${escapeHtml(state.auth.runtimeStatus || "-")}</span>
         <span class="badge">boundAgent=${escapeHtml(state.auth.boundAgentId || "-")}</span>
+        <span class="badge">requestedAgent=${escapeHtml(state.auth.pendingRequestedAgentId || "-")}</span>
+        <span class="badge">${escapeHtml(state.auth.pendingForceRebind ? "rebind=forcing" : "rebind=idle")}</span>
       </div>
       ${state.auth.recoveryErrorCode || state.auth.recoveryErrorMessage
         ? `<div class="badge-row">

@@ -590,10 +590,10 @@ fn normalize_host_header(raw: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_loopback_peer, path_requires_private_control_plane, private_plane_rejection};
     use super::super::{
         deployment_mode_from_config, public_snapshot_from_state, LauncherConfig, ServiceState,
     };
+    use super::{is_loopback_peer, path_requires_private_control_plane, private_plane_rejection};
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex};
@@ -603,7 +603,9 @@ mod tests {
         assert!(path_requires_private_control_plane("/api/state"));
         assert!(path_requires_private_control_plane("/api/gui-agent/action"));
         assert!(!path_requires_private_control_plane("/api/public/state"));
-        assert!(!path_requires_private_control_plane("/api/chain/explorer/overview"));
+        assert!(!path_requires_private_control_plane(
+            "/api/chain/explorer/overview"
+        ));
     }
 
     #[test]
@@ -694,7 +696,10 @@ mod tests {
                 .public_state
                 .as_ref()
                 .unwrap_or_else(|| panic!("path should expose public snapshot: {path}"));
-            assert_eq!(public_state.hosted_access.verdict, "specified_not_implemented");
+            assert_eq!(
+                public_state.hosted_access.verdict,
+                "specified_not_implemented"
+            );
             assert!(
                 public_state.game_url.contains("play.example.com"),
                 "public snapshot should stay on public host for path: {path}"

@@ -363,6 +363,7 @@ impl RuntimeLlmSidecar {
         agent_id: &str,
         player_id: &str,
         public_key: Option<&str>,
+        allow_player_rebind: bool,
     ) -> Result<Vec<WorldEventKind>, String> {
         let agent_id = agent_id.trim();
         let player_id = player_id.trim();
@@ -378,18 +379,16 @@ impl RuntimeLlmSidecar {
             .map(ToOwned::to_owned);
         let current_player = self.agent_player_bindings.get(agent_id).cloned();
         let current_public_key = self.agent_public_key_bindings.get(agent_id).cloned();
-        if self
-            .player_agent_bindings
-            .get(player_id)
+        let previous_agent_id = self.player_agent_bindings.get(player_id).cloned();
+        if previous_agent_id
+            .as_deref()
             .is_some_and(|bound_agent_id| bound_agent_id != agent_id)
+            && !allow_player_rebind
         {
             return Err(format!(
                 "player {} is already bound to agent {}, explicit rebind required",
                 player_id,
-                self.player_agent_bindings
-                    .get(player_id)
-                    .cloned()
-                    .unwrap_or_default()
+                previous_agent_id.unwrap_or_default()
             ));
         }
         let target_public_key = if current_player.as_deref() == Some(player_id) {
@@ -403,6 +402,19 @@ impl RuntimeLlmSidecar {
             return Ok(Vec::new());
         }
         let mut events = Vec::new();
+        if let Some(previous_agent_id) = previous_agent_id
+            .as_deref()
+            .filter(|bound_agent_id| *bound_agent_id != agent_id)
+        {
+            self.player_agent_bindings.remove(player_id);
+            self.agent_player_bindings.remove(previous_agent_id);
+            let previous_public_key = self.agent_public_key_bindings.remove(previous_agent_id);
+            events.push(WorldEventKind::AgentPlayerUnbound {
+                agent_id: previous_agent_id.to_string(),
+                player_id: player_id.to_string(),
+                public_key: previous_public_key,
+            });
+        }
         if let Some(previous_player_id) = current_player
             .as_deref()
             .filter(|bound_player_id| *bound_player_id != player_id)
@@ -1094,7 +1106,7 @@ mod tests {
             .insert("agent-1".to_string(), "pubkey-a".to_string());
 
         let events = sidecar
-            .bind_agent_player("agent-1", "player-b", Some("pubkey-b"))
+            .bind_agent_player("agent-1", "player-b", Some("pubkey-b"), false)
             .expect("rebind should succeed");
         assert_eq!(events.len(), 2);
         assert!(matches!(

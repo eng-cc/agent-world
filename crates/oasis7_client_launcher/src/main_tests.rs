@@ -20,8 +20,7 @@ use super::{
     transfer_window::{
         hosted_public_join_transfer_blocked, recommend_default_from_account,
         recommend_transfer_account_ids, resolve_transfer_timeline, transfer_amount_presets,
-        TransferTimelineState, WebTransferAccountEntry,
-        WebTransferLifecycleStatus,
+        TransferTimelineState, WebTransferAccountEntry, WebTransferLifecycleStatus,
     },
     ChainRuntimeStatus, ClientLauncherApp, ConfigIssue, GlossaryTerm, LaunchConfig, LauncherStatus,
     UiLanguage, WebChainRecoverySnapshot, WebRequestDomain, WebStateSnapshot,
@@ -113,7 +112,9 @@ fn hosted_public_join_transfer_barrier_tracks_deployment_mode() {
         deployment_mode: "hosted_public_join".to_string(),
         ..LaunchConfig::default()
     }));
-    assert!(!hosted_public_join_transfer_blocked(&LaunchConfig::default()));
+    assert!(!hosted_public_join_transfer_blocked(
+        &LaunchConfig::default()
+    ));
 }
 #[test]
 fn build_game_url_rewrites_zero_host() {

@@ -15,11 +15,11 @@ pub(super) fn run_runtime_presence_monitor(
 ) {
     let reconnect_backoff = Duration::from_millis(250);
     while !stop_requested.load(Ordering::SeqCst) {
-        let result = RuntimePresenceMonitorClient::connect(live_bind.as_str())
-            .and_then(|mut client| {
+        let result =
+            RuntimePresenceMonitorClient::connect(live_bind.as_str()).and_then(|mut client| {
                 observe_runtime_presence_snapshot(&hosted_session_issuer, client.active_players());
-                let mut next_snapshot_at =
-                    Instant::now() + Duration::from_millis(HOSTED_SESSION_RUNTIME_PROBE_INTERVAL_MS);
+                let mut next_snapshot_at = Instant::now()
+                    + Duration::from_millis(HOSTED_SESSION_RUNTIME_PROBE_INTERVAL_MS);
                 loop {
                     if stop_requested.load(Ordering::SeqCst) {
                         return Ok(());
@@ -128,7 +128,9 @@ impl RuntimePresenceMonitorClient {
                     self.apply_response(response);
                 }
                 ViewerResponseLine::Timeout => {
-                    return Err("runtime presence monitor timed out waiting for snapshot".to_string())
+                    return Err(
+                        "runtime presence monitor timed out waiting for snapshot".to_string()
+                    )
                 }
                 ViewerResponseLine::Closed => {
                     return Err(
@@ -200,9 +202,9 @@ impl ViewerRuntimeProbeClient {
         stream
             .set_read_timeout(Some(timeout))
             .map_err(|err| format!("set_read_timeout on runtime presence client failed: {err}"))?;
-        stream.set_write_timeout(Some(timeout)).map_err(|err| {
-            format!("set_write_timeout on runtime presence client failed: {err}")
-        })?;
+        stream
+            .set_write_timeout(Some(timeout))
+            .map_err(|err| format!("set_write_timeout on runtime presence client failed: {err}"))?;
         let reader_stream = stream
             .try_clone()
             .map_err(|err| format!("clone runtime presence stream failed: {err}"))?;
@@ -315,11 +317,13 @@ fn runtime_players_from_event(event: &WorldEvent) -> Option<RuntimePlayerPresenc
     match &event.kind {
         WorldEventKind::AgentPlayerBound { player_id, .. } => {
             let player_id = player_id.trim();
-            (!player_id.is_empty()).then(|| RuntimePlayerPresenceDelta::Bound(player_id.to_string()))
+            (!player_id.is_empty())
+                .then(|| RuntimePlayerPresenceDelta::Bound(player_id.to_string()))
         }
         WorldEventKind::AgentPlayerUnbound { player_id, .. } => {
             let player_id = player_id.trim();
-            (!player_id.is_empty()).then(|| RuntimePlayerPresenceDelta::Unbound(player_id.to_string()))
+            (!player_id.is_empty())
+                .then(|| RuntimePlayerPresenceDelta::Unbound(player_id.to_string()))
         }
         _ => None,
     }
@@ -469,8 +473,7 @@ mod tests {
     {
         let mut line = String::new();
         reader.read_line(&mut line).expect("read request");
-        let request: ViewerRequest =
-            serde_json::from_str(line.trim_end()).expect("decode request");
+        let request: ViewerRequest = serde_json::from_str(line.trim_end()).expect("decode request");
         assert!(predicate(&request), "unexpected request: {request:?}");
     }
 
@@ -483,10 +486,9 @@ mod tests {
     fn world_snapshot<const N: usize>(players: [&str; N]) -> WorldSnapshot {
         let mut model = WorldModel::default();
         for (index, player_id) in players.iter().enumerate() {
-            model.agent_player_bindings.insert(
-                format!("agent-{index}"),
-                (*player_id).to_string(),
-            );
+            model
+                .agent_player_bindings
+                .insert(format!("agent-{index}"), (*player_id).to_string());
         }
         WorldSnapshot {
             version: 1,

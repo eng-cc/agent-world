@@ -1,15 +1,14 @@
-use super::*;
 use super::hosted_player_session::{
-    HostedPlayerSessionAdmissionResponse, HostedPlayerSessionIssueResponse, HostedPlayerSessionIssuer,
-    HostedPlayerSessionReleaseResponse, HOSTED_PLAYER_SESSION_ISSUE_ROUTE,
-    HOSTED_PLAYER_SESSION_ADMISSION_ROUTE,
-    HOSTED_PLAYER_SESSION_REFRESH_ROUTE,
-    HOSTED_PLAYER_SESSION_RELEASE_ROUTE,
+    HostedPlayerSessionAdmissionResponse, HostedPlayerSessionIssueResponse,
+    HostedPlayerSessionIssuer, HostedPlayerSessionReleaseResponse,
+    HOSTED_PLAYER_SESSION_ADMISSION_ROUTE, HOSTED_PLAYER_SESSION_ISSUE_ROUTE,
+    HOSTED_PLAYER_SESSION_REFRESH_ROUTE, HOSTED_PLAYER_SESSION_RELEASE_ROUTE,
 };
 use super::hosted_strong_auth::{
     issue_hosted_prompt_control_strong_auth_grant, HostedStrongAuthGrantResponse,
     HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE,
 };
+use super::*;
 use serde::Serialize;
 use std::ffi::OsStr;
 use std::fs;
@@ -53,9 +52,13 @@ pub(super) fn handle_http_connection(
     let is_refresh_route = path_only == HOSTED_PLAYER_SESSION_REFRESH_ROUTE;
     let is_issue_route = path_only == HOSTED_PLAYER_SESSION_ISSUE_ROUTE;
     let is_release_route = path_only == HOSTED_PLAYER_SESSION_RELEASE_ROUTE;
-    let is_prompt_strong_auth_grant_route = path_only == HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE;
+    let is_prompt_strong_auth_grant_route =
+        path_only == HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE;
     let allow_post = is_release_route || is_refresh_route;
-    if !method.eq_ignore_ascii_case("GET") && !head_only && !(allow_post && method.eq_ignore_ascii_case("POST")) {
+    if !method.eq_ignore_ascii_case("GET")
+        && !head_only
+        && !(allow_post && method.eq_ignore_ascii_case("POST"))
+    {
         write_http_response(&mut stream, 405, "text/plain", b"Method Not Allowed", false)
             .map_err(|err| format!("failed to write 405 response: {err}"))?;
         return Ok(());
@@ -115,9 +118,8 @@ pub(super) fn handle_http_connection(
             release_token.as_str(),
             hosted_session_issuer,
         )?;
-        write_json_response(&mut stream, 200, &response, head_only).map_err(|err| {
-            format!("failed to write hosted strong-auth grant response: {err}")
-        })?;
+        write_json_response(&mut stream, 200, &response, head_only)
+            .map_err(|err| format!("failed to write hosted strong-auth grant response: {err}"))?;
         return Ok(());
     }
 
@@ -254,7 +256,11 @@ fn percent_decode(raw: &str) -> String {
                 continue;
             }
         }
-        decoded.push(if bytes[index] == b'+' { b' ' } else { bytes[index] });
+        decoded.push(if bytes[index] == b'+' {
+            b' '
+        } else {
+            bytes[index]
+        });
         index += 1;
     }
     String::from_utf8_lossy(decoded.as_slice()).into_owned()

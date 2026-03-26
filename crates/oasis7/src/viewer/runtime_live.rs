@@ -16,6 +16,7 @@ use crate::simulator::{
     SNAPSHOT_VERSION,
 };
 
+use super::auth::verify_session_register_auth_proof;
 use super::live::ViewerLiveDecisionMode;
 use super::protocol::{
     viewer_event_kind_matches, AuthoritativeBatchFinality, AuthoritativeChallengeAck,
@@ -29,7 +30,6 @@ use super::protocol::{
     ViewerControl, ViewerControlProfile, ViewerEventKind, ViewerRequest, ViewerResponse,
     ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
-use super::auth::verify_session_register_auth_proof;
 #[path = "runtime_live/control_plane.rs"]
 mod control_plane;
 mod gameplay_snapshot;
@@ -1374,16 +1374,15 @@ impl ViewerRuntimeLiveServer {
                 request.public_key.clone(),
             ));
         };
-        let verified =
-            verify_session_register_auth_proof(&request, auth).map_err(|message| {
-                recovery_error(
-                    control_plane::map_auth_verify_error_code(message.as_str()),
-                    message,
-                    None,
-                    Some(request.player_id.clone()),
-                    request.public_key.clone(),
-                )
-            })?;
+        let verified = verify_session_register_auth_proof(&request, auth).map_err(|message| {
+            recovery_error(
+                control_plane::map_auth_verify_error_code(message.as_str()),
+                message,
+                None,
+                Some(request.player_id.clone()),
+                request.public_key.clone(),
+            )
+        })?;
         let session_epoch = self
             .session_policy
             .register_session(verified.player_id.as_str(), verified.public_key.as_str())
@@ -1419,6 +1418,7 @@ impl ViewerRuntimeLiveServer {
                     agent_id,
                     verified.player_id.as_str(),
                     Some(verified.public_key.as_str()),
+                    request.force_rebind,
                 )
                 .map_err(|message| {
                     recovery_error(
@@ -1803,6 +1803,7 @@ impl ViewerRuntimeLiveServer {
         agent_id: &str,
         player_id: &str,
         public_key: Option<&str>,
+        allow_player_rebind: bool,
     ) -> Result<(), String> {
         control_plane::ensure_agent_player_access_runtime(
             &self.world,
@@ -1812,10 +1813,12 @@ impl ViewerRuntimeLiveServer {
             public_key,
         )
         .map_err(|err| err.message)?;
-        for event in self
-            .llm_sidecar
-            .bind_agent_player(agent_id, player_id, public_key)?
-        {
+        for event in self.llm_sidecar.bind_agent_player(
+            agent_id,
+            player_id,
+            public_key,
+            allow_player_rebind,
+        )? {
             self.enqueue_virtual_event(event);
         }
         Ok(())

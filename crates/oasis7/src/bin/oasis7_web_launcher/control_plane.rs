@@ -1591,11 +1591,13 @@ mod tests {
 
         assert!(!response.ok);
         assert_eq!(response.error_code.as_deref(), Some("strong_auth_required"));
-        assert!(response
-            .error
-            .as_deref()
-            .is_some_and(|message| message.contains("hosted public join blocks main token transfer")));
-        assert!(state.logs.iter().any(|line| line.contains("strong_auth/private plane")));
+        assert!(response.error.as_deref().is_some_and(
+            |message| message.contains("hosted public join blocks main token transfer")
+        ));
+        assert!(state
+            .logs
+            .iter()
+            .any(|line| line.contains("strong_auth/private plane")));
     }
 
     #[test]
