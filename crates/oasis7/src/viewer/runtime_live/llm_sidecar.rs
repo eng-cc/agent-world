@@ -363,8 +363,12 @@ impl RuntimeLlmSidecar {
         agent_id: &str,
         player_id: &str,
         public_key: Option<&str>,
-    ) -> Result<Option<WorldEventKind>, String> {
+    ) -> Result<Vec<WorldEventKind>, String> {
+        let agent_id = agent_id.trim();
         let player_id = player_id.trim();
+        if agent_id.is_empty() {
+            return Err("agent_id cannot be empty".to_string());
+        }
         if player_id.is_empty() {
             return Err("player_id cannot be empty".to_string());
         }
@@ -396,13 +400,19 @@ impl RuntimeLlmSidecar {
             requested_public_key.clone()
         };
         if current_player.as_deref() == Some(player_id) && current_public_key == target_public_key {
-            return Ok(None);
+            return Ok(Vec::new());
         }
+        let mut events = Vec::new();
         if let Some(previous_player_id) = current_player
             .as_deref()
             .filter(|bound_player_id| *bound_player_id != player_id)
         {
             self.player_agent_bindings.remove(previous_player_id);
+            events.push(WorldEventKind::AgentPlayerUnbound {
+                agent_id: agent_id.to_string(),
+                player_id: previous_player_id.to_string(),
+                public_key: current_public_key.clone(),
+            });
         }
 
         self.agent_player_bindings
@@ -418,11 +428,12 @@ impl RuntimeLlmSidecar {
                 self.agent_public_key_bindings.remove(agent_id);
             }
         }
-        Ok(Some(WorldEventKind::AgentPlayerBound {
+        events.push(WorldEventKind::AgentPlayerBound {
             agent_id: agent_id.to_string(),
             player_id: player_id.to_string(),
             public_key: target_public_key,
-        }))
+        });
+        Ok(events)
     }
 
     pub(super) fn upsert_prompt_profile(&mut self, profile: AgentPromptProfile) {
@@ -1062,5 +1073,71 @@ fn sync_llm_runner_long_term_memory(
                 agent_id, message
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bind_agent_player_emits_unbind_before_rebind_for_same_agent() {
+        let mut sidecar = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+        sidecar
+            .agent_player_bindings
+            .insert("agent-1".to_string(), "player-a".to_string());
+        sidecar
+            .player_agent_bindings
+            .insert("player-a".to_string(), "agent-1".to_string());
+        sidecar
+            .agent_public_key_bindings
+            .insert("agent-1".to_string(), "pubkey-a".to_string());
+
+        let events = sidecar
+            .bind_agent_player("agent-1", "player-b", Some("pubkey-b"))
+            .expect("rebind should succeed");
+        assert_eq!(events.len(), 2);
+        assert!(matches!(
+            &events[0],
+            WorldEventKind::AgentPlayerUnbound {
+                agent_id,
+                player_id,
+                public_key
+            } if agent_id == "agent-1"
+                && player_id == "player-a"
+                && public_key.as_deref() == Some("pubkey-a")
+        ));
+        assert!(matches!(
+            &events[1],
+            WorldEventKind::AgentPlayerBound {
+                agent_id,
+                player_id,
+                public_key
+            } if agent_id == "agent-1"
+                && player_id == "player-b"
+                && public_key.as_deref() == Some("pubkey-b")
+        ));
+        assert_eq!(
+            sidecar
+                .agent_player_bindings
+                .get("agent-1")
+                .map(String::as_str),
+            Some("player-b")
+        );
+        assert_eq!(
+            sidecar
+                .player_agent_bindings
+                .get("player-b")
+                .map(String::as_str),
+            Some("agent-1")
+        );
+        assert!(!sidecar.player_agent_bindings.contains_key("player-a"));
+        assert_eq!(
+            sidecar
+                .agent_public_key_bindings
+                .get("agent-1")
+                .map(String::as_str),
+            Some("pubkey-b")
+        );
     }
 }

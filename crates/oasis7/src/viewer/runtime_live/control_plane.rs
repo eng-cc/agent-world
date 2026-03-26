@@ -730,7 +730,7 @@ impl ViewerRuntimeLiveServer {
             player_id,
             public_key,
         )?;
-        if let Some(event) = self
+        let events = self
             .llm_sidecar
             .bind_agent_player(agent_id, player_id, public_key)
             .map_err(|message| PromptControlError {
@@ -738,8 +738,8 @@ impl ViewerRuntimeLiveServer {
                 message,
                 agent_id: Some(agent_id.to_string()),
                 current_version: self.current_prompt_version(agent_id),
-            })?
-        {
+            })?;
+        for event in events {
             self.enqueue_virtual_event(event);
         }
         Ok(())
@@ -764,15 +764,15 @@ impl ViewerRuntimeLiveServer {
             agent_id: err.agent_id,
         });
         mapped?;
-        if let Some(event) = self
+        let events = self
             .llm_sidecar
             .bind_agent_player(agent_id, player_id, public_key)
             .map_err(|message| AgentChatError {
                 code: "player_bind_failed".to_string(),
                 message,
                 agent_id: Some(agent_id.to_string()),
-            })?
-        {
+            })?;
+        for event in events {
             self.enqueue_virtual_event(event);
         }
         Ok(())

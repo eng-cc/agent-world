@@ -1812,7 +1812,7 @@ impl ViewerRuntimeLiveServer {
             public_key,
         )
         .map_err(|err| err.message)?;
-        if let Some(event) = self
+        for event in self
             .llm_sidecar
             .bind_agent_player(agent_id, player_id, public_key)?
         {

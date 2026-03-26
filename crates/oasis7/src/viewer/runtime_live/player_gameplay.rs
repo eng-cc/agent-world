@@ -191,7 +191,7 @@ impl ViewerRuntimeLiveServer {
             action_id: Some(request.action_id.clone()),
             target_agent_id: err.agent_id,
         })?;
-        if let Some(event) = self
+        let events = self
             .llm_sidecar
             .bind_agent_player(
                 request.target_agent_id.as_str(),
@@ -203,8 +203,8 @@ impl ViewerRuntimeLiveServer {
                 message,
                 action_id: Some(request.action_id.clone()),
                 target_agent_id: Some(request.target_agent_id.clone()),
-            })?
-        {
+            })?;
+        for event in events {
             self.enqueue_virtual_event(event);
         }
 
