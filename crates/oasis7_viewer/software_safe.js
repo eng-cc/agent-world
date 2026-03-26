@@ -715,6 +715,49 @@ function buildHostedActionMatrixView() {
   });
 }
 
+function buildHostedRecoveryHint() {
+  if (String(state.hostedAccess?.deployment_mode || "").trim() !== "hosted_public_join") {
+    return null;
+  }
+  if (state.auth.available) {
+    return null;
+  }
+  const errorText = String(state.auth.error || "").trim();
+  if (!errorText) {
+    return null;
+  }
+  if (errorText.includes("released locally")) {
+    return {
+      kind: "released",
+      title: "Hosted player session released",
+      detail: "This browser returned its hosted player slot locally. Acquire a new hosted player session if you want to resume gameplay.",
+      cta: "Acquire Hosted Player Session",
+    };
+  }
+  if (errorText.includes("revoked")) {
+    return {
+      kind: "revoked",
+      title: "Hosted player session was revoked",
+      detail: "The runtime or operator revoked this browser session. You need to acquire a fresh hosted player session before gameplay, chat, or prompt actions can continue.",
+      cta: "Re-acquire Hosted Player Session",
+    };
+  }
+  if (errorText.includes("session_not_found") || errorText.includes("not found")) {
+    return {
+      kind: "missing",
+      title: "Hosted player session is missing from runtime",
+      detail: "The browser-local key still exists, but the runtime no longer recognizes the session. Acquire a fresh hosted player session and register again.",
+      cta: "Re-acquire Hosted Player Session",
+    };
+  }
+  return {
+    kind: "guest",
+    title: "Hosted player session is unavailable",
+    detail: errorText,
+    cta: "Acquire Hosted Player Session",
+  };
+}
+
 function nextRequestId() {
   requestId += 1;
   return requestId;
@@ -760,6 +803,7 @@ function snapshotSemanticFeedback(feedback) {
 function getState() {
   const authSurface = buildAuthSurfaceModel();
   const hostedActionMatrixView = buildHostedActionMatrixView();
+  const hostedRecoveryHint = buildHostedRecoveryHint();
   return {
     connectionStatus: state.connectionStatus,
     logicalTime: state.logicalTime,
@@ -806,6 +850,7 @@ function getState() {
     authSource: authSurface.source,
     authDeploymentHint: authSurface.deploymentHint,
     authSurface: clone(authSurface),
+    hostedRecoveryHint: clone(hostedRecoveryHint),
     hostedAccess: clone(state.hostedAccess),
     hostedActionMatrix: clone(hostedActionMatrixView),
     hostedAdmission: clone(state.hostedAdmission),
@@ -2646,6 +2691,7 @@ function renderSummary() {
   const chatFeedback = snapshotSemanticFeedback(state.lastChatFeedback);
   const authSurface = buildAuthSurfaceModel();
   const hostedActionMatrixView = buildHostedActionMatrixView();
+  const hostedRecoveryHint = buildHostedRecoveryHint();
   const authBadgeClass = state.auth.available ? "badge badge--good" : "badge badge--warn";
   const selectedDebug = selectedAgentExecutionDebugContext();
   const tierBadgeClass = (status) =>
@@ -2753,8 +2799,23 @@ function renderSummary() {
             <span class="badge badge--warn">runtimeProbeError=${escapeHtml(state.hostedAdmission.runtime_probe_error)}</span>
           </div>`
         : ""}
+      ${hostedRecoveryHint
+        ? `<div class="panel panel--nested" style="background:rgba(255,255,255,0.02); border-color:rgba(255,184,77,0.35);">
+            <div class="panel__header"><div class="panel__title">Hosted Recovery</div></div>
+            <div class="panel__body stack">
+              <div class="badge-row">
+                <span class="badge badge--warn">${escapeHtml(hostedRecoveryHint.kind)}</span>
+                <span class="badge">${escapeHtml(hostedRecoveryHint.title)}</span>
+              </div>
+              <div class="empty">${escapeHtml(hostedRecoveryHint.detail)}</div>
+              <div class="toolbar"><button data-auth-action="retry-issue" ${state.auth.issueInFlight ? "disabled" : ""}>${escapeHtml(hostedRecoveryHint.cta)}</button></div>
+            </div>
+          </div>`
+        : ""}
       ${!state.auth.available && String(state.hostedAccess?.deployment_mode || "").trim() === "hosted_public_join"
-        ? `<div class="toolbar"><button data-auth-action="retry-issue" ${state.auth.issueInFlight ? "disabled" : ""}>Acquire Hosted Player Session</button></div>`
+        ? hostedRecoveryHint
+          ? ""
+          : `<div class="toolbar"><button data-auth-action="retry-issue" ${state.auth.issueInFlight ? "disabled" : ""}>Acquire Hosted Player Session</button></div>`
         : ""}
       ${state.auth.available && state.auth.source !== "legacy_viewer_auth_bootstrap"
         ? `<div class="toolbar"><button data-auth-action="logout">Release Hosted Player Session</button></div>`
