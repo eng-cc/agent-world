@@ -321,6 +321,14 @@ mod tests {
             .expect("prompt_control_apply policy")
     }
 
+    fn main_token_transfer_policy(mode: DeploymentMode) -> HostedActionAccessPolicy {
+        hosted_viewer_access_hint(mode)
+            .action_matrix
+            .into_iter()
+            .find(|policy| policy.action_id == "main_token_transfer")
+            .expect("main_token_transfer policy")
+    }
+
     #[test]
     fn hosted_public_join_prompt_control_stays_blocked_without_backend_grant_env() {
         let _guard = hosted_access_env_lock().lock().expect("env lock");
@@ -349,6 +357,26 @@ mod tests {
             "public_player_plane_with_backend_reauth_preview"
         );
         assert!(policy.reason.contains("backend strong-auth grant"));
+        clear_env();
+    }
+
+    #[test]
+    fn hosted_public_join_main_token_transfer_stays_blocked_even_when_prompt_reauth_env_ready() {
+        let _guard = hosted_access_env_lock().lock().expect("env lock");
+        clear_env();
+        std::env::set_var(
+            HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV,
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        );
+        std::env::set_var(
+            HOSTED_STRONG_AUTH_PRIVATE_KEY_ENV,
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        );
+        std::env::set_var(HOSTED_STRONG_AUTH_APPROVAL_CODE_ENV, "preview-code");
+        let policy = main_token_transfer_policy(DeploymentMode::HostedPublicJoin);
+        assert_eq!(policy.required_auth, "strong_auth");
+        assert_eq!(policy.availability, "blocked_until_strong_auth");
+        assert!(policy.reason.contains("dedicated proof lane"));
         clear_env();
     }
 
