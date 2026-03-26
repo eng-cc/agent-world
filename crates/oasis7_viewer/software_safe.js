@@ -11,6 +11,7 @@ const HOSTED_PLAYER_SESSION_ADMISSION_ROUTE = "/api/public/player-session/admiss
 const HOSTED_PLAYER_SESSION_REFRESH_ROUTE = "/api/public/player-session/refresh";
 const HOSTED_PLAYER_SESSION_ISSUE_ROUTE = "/api/public/player-session/issue";
 const HOSTED_PLAYER_SESSION_RELEASE_ROUTE = "/api/public/player-session/release";
+const HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE = "/api/public/strong-auth/grant/prompt-control";
 const HOSTED_PLAYER_SESSION_REFRESH_INTERVAL_MS = 30000;
 const DEFAULT_WS_ADDR = "ws://127.0.0.1:5011";
 const MAX_EVENTS = 24;
@@ -97,6 +98,12 @@ const state = {
     agentId: null,
     message: "",
     dirty: false,
+  },
+  strongAuth: {
+    approvalCode: "",
+    lastGrantActionId: null,
+    lastGrantExpiresAtUnixMs: null,
+    lastGrantError: null,
   },
 };
 
@@ -522,12 +529,29 @@ function buildSemanticCapability(actionId) {
   if (policy) {
     if (policy.required_auth === "strong_auth") {
       const isLocalPreviewOnly = policy.availability === "trusted_local_preview_only";
+      const isBackendGrantPreview = policy.availability === "public_player_plane_with_backend_reauth_preview";
       if (isLocalPreviewOnly && state.auth.available && !isHostedPublicJoinHint(deploymentHint)) {
         return {
           actionId,
           enabled: true,
           code: null,
           reason: policy.reason || "trusted local preview currently allows this strong-auth-marked action through preview bootstrap",
+        };
+      }
+      if (isBackendGrantPreview && state.auth.available) {
+        return {
+          actionId,
+          enabled: true,
+          code: null,
+          reason: policy.reason || `${actionId} is available through browser-local player auth plus backend re-authorization`,
+        };
+      }
+      if (isBackendGrantPreview && !state.auth.available) {
+        return {
+          actionId,
+          enabled: false,
+          code: "auth_level_insufficient",
+          reason: `${actionId} requires player_session before backend re-authorization can upgrade it to strong_auth`,
         };
       }
       return {
@@ -742,6 +766,10 @@ function getState() {
     authSurface: clone(authSurface),
     hostedAccess: clone(state.hostedAccess),
     hostedAdmission: clone(state.hostedAdmission),
+    strongAuthApprovalCodeConfigured: !!String(state.strongAuth.approvalCode || "").trim(),
+    strongAuthLastGrantActionId: state.strongAuth.lastGrantActionId,
+    strongAuthLastGrantExpiresAtUnixMs: state.strongAuth.lastGrantExpiresAtUnixMs,
+    strongAuthLastGrantError: state.strongAuth.lastGrantError,
     selectedAgentInteractionMode: selectedAgentInteractionMode(),
     selectedAgentDebug: clone(selectedAgentExecutionDebugContext()),
     selectedPromptVersion: state.promptDraft.currentVersion || 0,
@@ -1496,6 +1524,46 @@ async function retryHostedPlayerIdentityIssue() {
   };
 }
 
+async function requestHostedPromptStrongAuthGrant(actionId, agentId) {
+  const playerId = String(state.auth.playerId || "").trim();
+  const publicKey = String(state.auth.publicKey || "").trim();
+  const releaseToken = String(state.auth.releaseToken || "").trim();
+  const approvalCode = String(state.strongAuth.approvalCode || "").trim();
+  if (!playerId || !publicKey || !releaseToken) {
+    throw new Error("hosted strong-auth grant requires an active player_session with release token");
+  }
+  if (!approvalCode) {
+    throw new Error("backend approval code is required before hosted strong auth can be granted");
+  }
+  const query = new URLSearchParams({
+    player_id: playerId,
+    public_key: publicKey,
+    release_token: releaseToken,
+    agent_id: String(agentId || "").trim(),
+    action_id: String(actionId || "").trim(),
+    approval_code: approvalCode,
+  });
+  const response = await fetch(`${HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE}?${query.toString()}`, {
+    method: "GET",
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  const payload = await response.json();
+  if (payload?.admission) {
+    state.hostedAdmission = clone(payload.admission);
+  }
+  if (!response.ok || !payload?.ok || !payload?.grant) {
+    state.strongAuth.lastGrantError = payload?.error || payload?.error_code || `hosted strong-auth grant failed with HTTP ${response.status}`;
+    throw new Error(state.strongAuth.lastGrantError);
+  }
+  state.strongAuth.lastGrantActionId = String(payload.grant.action_id || "").trim() || actionId;
+  state.strongAuth.lastGrantExpiresAtUnixMs = payload?.grant?.expires_at_unix_ms == null
+    ? null
+    : Number(payload.grant.expires_at_unix_ms);
+  state.strongAuth.lastGrantError = null;
+  return payload.grant;
+}
+
 function sendReconnectSync() {
   if (!state.auth.available || state.auth.source === "legacy_viewer_auth_bootstrap") {
     return;
@@ -1912,6 +1980,16 @@ function sendPromptControl(mode, payload = null) {
       feedback.effect = "registering player session";
       render();
       await ensureRegisteredPlayerSession(agentId);
+      let strongAuthGrant = null;
+      if (String(state.hostedAccess?.deployment_mode || "").trim() === "hosted_public_join") {
+        feedback.stage = "authorizing";
+        feedback.effect = "requesting backend strong-auth grant";
+        render();
+        strongAuthGrant = await requestHostedPromptStrongAuthGrant(
+          normalizedMode === "rollback" ? "prompt_control_rollback" : `prompt_control_${normalizedMode}`,
+          agentId,
+        );
+      }
       feedback.stage = "signing";
       feedback.effect = "building auth proof";
       render();
@@ -1921,9 +1999,15 @@ function sendPromptControl(mode, payload = null) {
           ...request,
           auth: await buildPromptRollbackAuthProof(request, state.auth),
         };
+        if (strongAuthGrant) {
+          commandRequest.strong_auth_grant = strongAuthGrant;
+        }
       } else {
         commandRequest = encodePromptRequestForJson(request);
         commandRequest.auth = await buildPromptControlAuthProof(normalizedMode, request, state.auth);
+        if (strongAuthGrant) {
+          commandRequest.strong_auth_grant = strongAuthGrant;
+        }
       }
       feedback.stage = "sent";
       feedback.effect = `prompt ${normalizedMode} request sent; waiting for ack`;
@@ -2557,6 +2641,13 @@ function renderInteractionPanel() {
   const promptCapability = authSurface.capabilities.prompt_control;
   const chatCapability = authSurface.capabilities.agent_chat;
   const interactionEnabled = promptCapability.enabled;
+  const strongAuthGrantHint = authSurface.capabilities.prompt_control.enabled
+    && String(state.hostedAccess?.deployment_mode || "").trim() === "hosted_public_join"
+    ? `<div class="field">
+         <label for="strong-auth-approval-code">Backend Approval Code</label>
+         <input id="strong-auth-approval-code" type="password" autocomplete="off" value="${escapeHtml(state.strongAuth.approvalCode || "")}" />
+       </div>`
+    : "";
   const authNotice = debugContext?.provider_mode === "openclaw_local_http"
     ? `<div class="empty">Selected agent currently runs through OpenClaw(Local HTTP) in ${escapeHtml(debugContext?.execution_mode || "headless_agent")}; software_safe stays in debug_viewer observer-only mode, so prompt/chat are intentionally disabled here.</div>`
     : interactionEnabled
@@ -2586,6 +2677,7 @@ function renderInteractionPanel() {
       <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
         <div class="panel__header"><div class="panel__title">Prompt Overrides</div></div>
         <div class="panel__body stack">
+          ${strongAuthGrantHint}
           <div class="field">
             <label for="prompt-system">System Prompt Override</label>
             <textarea id="prompt-system" rows="4" ${promptCapability.enabled ? "" : "disabled"}>${escapeHtml(state.promptDraft.systemPrompt)}</textarea>
@@ -2613,6 +2705,12 @@ function renderInteractionPanel() {
             ? `<div class="badge-row"><span class="${feedbackBadgeClass(promptFeedback)}">${escapeHtml(promptFeedback.stage)}</span></div>
                <pre class="json">${escapeHtml(JSON.stringify(promptFeedback, null, 2))}</pre>`
             : '<div class="empty">No prompt feedback yet.</div>'}
+          ${state.strongAuth.lastGrantActionId
+            ? `<div class="empty">lastGrant=${escapeHtml(state.strongAuth.lastGrantActionId)} expiresAt=${escapeHtml(String(state.strongAuth.lastGrantExpiresAtUnixMs || "-"))}</div>`
+            : ""}
+          ${state.strongAuth.lastGrantError
+            ? `<div class="empty" style="color:var(--bad);">${escapeHtml(state.strongAuth.lastGrantError)}</div>`
+            : ""}
         </div>
       </div>
       <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
@@ -2758,6 +2856,12 @@ function bindEvents() {
       state.promptDraft.rollbackTargetVersion = Math.max(0, Math.floor(nextValue || 0));
     });
   }
+  const strongAuthApprovalCode = document.getElementById("strong-auth-approval-code");
+  if (strongAuthApprovalCode) {
+    strongAuthApprovalCode.addEventListener("input", (event) => {
+      state.strongAuth.approvalCode = String(event.target.value || "");
+    });
+  }
   document.querySelectorAll("[data-prompt-action]").forEach((button) => {
     button.addEventListener("click", () => {
       const action = button.getAttribute("data-prompt-action");
@@ -2804,6 +2908,15 @@ function render() {
   bindEvents();
 }
 
+function setStrongAuthApprovalCode(value) {
+  state.strongAuth.approvalCode = String(value || "");
+  render();
+  return {
+    ok: true,
+    configured: !!state.strongAuth.approvalCode.trim(),
+  };
+}
+
 function mountApp() {
   const app = document.getElementById("app");
   app.innerHTML = `
@@ -2828,6 +2941,7 @@ function installTestApi() {
     select,
     sendAgentChat,
     sendPromptControl,
+    setStrongAuthApprovalCode,
     logoutHostedPlayerSession,
     retryHostedPlayerIdentityIssue,
     reportFatalError,

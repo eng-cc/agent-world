@@ -13,6 +13,9 @@ const DEFAULT_ISSUE_RATE_LIMIT_PER_MINUTE: u64 = 60;
 const DEFAULT_WORLD_FULL_POLICY: &str = "reject";
 #[allow(dead_code)]
 const DEFAULT_KICK_POLICY: &str = "operator_audit_required";
+const HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV: &str = "OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY";
+const HOSTED_STRONG_AUTH_PRIVATE_KEY_ENV: &str = "OASIS7_HOSTED_STRONG_AUTH_PRIVATE_KEY";
+const HOSTED_STRONG_AUTH_APPROVAL_CODE_ENV: &str = "OASIS7_HOSTED_STRONG_AUTH_APPROVAL_CODE";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum DeploymentMode {
@@ -159,11 +162,30 @@ pub(super) fn hosted_viewer_access_hint(mode: DeploymentMode) -> HostedViewerAcc
 
 #[allow(dead_code)]
 fn hosted_action_matrix(mode: DeploymentMode) -> Vec<HostedActionAccessPolicy> {
-    let strong_auth_availability = match mode {
+    let hosted_prompt_backend_grant_enabled = hosted_prompt_control_backend_grant_enabled();
+    let prompt_strong_auth_availability = match mode {
+        DeploymentMode::TrustedLocalOnly => "trusted_local_preview_only",
+        DeploymentMode::HostedPublicJoin if hosted_prompt_backend_grant_enabled => {
+            "public_player_plane_with_backend_reauth_preview"
+        }
+        DeploymentMode::HostedPublicJoin => "blocked_until_strong_auth",
+    };
+    let prompt_strong_auth_reason = match mode {
+        DeploymentMode::TrustedLocalOnly => {
+            "trusted local preview may still use preview bootstrap; hosted/public strong-auth lane remains pending"
+        }
+        DeploymentMode::HostedPublicJoin if hosted_prompt_backend_grant_enabled => {
+            "hosted public join allows prompt_control through browser-local player auth plus short-lived backend strong-auth grant; this remains preview-grade until stronger custody lands"
+        }
+        DeploymentMode::HostedPublicJoin => {
+            "hosted public join keeps this action behind strong_auth/private plane until the dedicated proof lane lands"
+        }
+    };
+    let asset_strong_auth_availability = match mode {
         DeploymentMode::TrustedLocalOnly => "trusted_local_preview_only",
         DeploymentMode::HostedPublicJoin => "blocked_until_strong_auth",
     };
-    let strong_auth_reason = match mode {
+    let asset_strong_auth_reason = match mode {
         DeploymentMode::TrustedLocalOnly => {
             "trusted local preview may still use preview bootstrap; hosted/public strong-auth lane remains pending"
         }
@@ -187,26 +209,26 @@ fn hosted_action_matrix(mode: DeploymentMode) -> Vec<HostedActionAccessPolicy> {
         HostedActionAccessPolicy {
             action_id: "prompt_control_preview".to_string(),
             required_auth: "strong_auth".to_string(),
-            availability: strong_auth_availability.to_string(),
-            reason: strong_auth_reason.to_string(),
+            availability: prompt_strong_auth_availability.to_string(),
+            reason: prompt_strong_auth_reason.to_string(),
         },
         HostedActionAccessPolicy {
             action_id: "prompt_control_apply".to_string(),
             required_auth: "strong_auth".to_string(),
-            availability: strong_auth_availability.to_string(),
-            reason: strong_auth_reason.to_string(),
+            availability: prompt_strong_auth_availability.to_string(),
+            reason: prompt_strong_auth_reason.to_string(),
         },
         HostedActionAccessPolicy {
             action_id: "prompt_control_rollback".to_string(),
             required_auth: "strong_auth".to_string(),
-            availability: strong_auth_availability.to_string(),
-            reason: strong_auth_reason.to_string(),
+            availability: prompt_strong_auth_availability.to_string(),
+            reason: prompt_strong_auth_reason.to_string(),
         },
         HostedActionAccessPolicy {
             action_id: "main_token_transfer".to_string(),
             required_auth: "strong_auth".to_string(),
-            availability: strong_auth_availability.to_string(),
-            reason: strong_auth_reason.to_string(),
+            availability: asset_strong_auth_availability.to_string(),
+            reason: asset_strong_auth_reason.to_string(),
         },
     ]
 }
@@ -220,6 +242,7 @@ pub(super) fn web_launcher_public_endpoints() -> &'static [&'static str] {
         "/api/public/state",
         "/api/public/player-session/issue",
         "/api/public/player-session/release",
+        "/api/public/strong-auth/grant/prompt-control",
         "/api/chain/transfer",
         "/api/chain/transfer/accounts",
         "/api/chain/transfer/status",
@@ -241,6 +264,19 @@ pub(super) fn web_launcher_public_endpoints() -> &'static [&'static str] {
     ]
 }
 
+fn hosted_prompt_control_backend_grant_enabled() -> bool {
+    env_non_empty(HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV)
+        && env_non_empty(HOSTED_STRONG_AUTH_PRIVATE_KEY_ENV)
+        && env_non_empty(HOSTED_STRONG_AUTH_APPROVAL_CODE_ENV)
+}
+
+fn env_non_empty(name: &str) -> bool {
+    std::env::var(name)
+        .ok()
+        .map(|raw| !raw.trim().is_empty())
+        .unwrap_or(false)
+}
+
 #[allow(dead_code)]
 pub(super) fn web_launcher_private_endpoints() -> &'static [&'static str] {
     &[
@@ -255,4 +291,64 @@ pub(super) fn web_launcher_private_endpoints() -> &'static [&'static str] {
         "/api/chain/start",
         "/api/chain/stop",
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Mutex, OnceLock};
+
+    fn hosted_access_env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn clear_env() {
+        for name in [
+            HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV,
+            HOSTED_STRONG_AUTH_PRIVATE_KEY_ENV,
+            HOSTED_STRONG_AUTH_APPROVAL_CODE_ENV,
+        ] {
+            std::env::remove_var(name);
+        }
+    }
+
+    fn prompt_control_apply_policy(mode: DeploymentMode) -> HostedActionAccessPolicy {
+        hosted_viewer_access_hint(mode)
+            .action_matrix
+            .into_iter()
+            .find(|policy| policy.action_id == "prompt_control_apply")
+            .expect("prompt_control_apply policy")
+    }
+
+    #[test]
+    fn hosted_public_join_prompt_control_stays_blocked_without_backend_grant_env() {
+        let _guard = hosted_access_env_lock().lock().expect("env lock");
+        clear_env();
+        let policy = prompt_control_apply_policy(DeploymentMode::HostedPublicJoin);
+        assert_eq!(policy.required_auth, "strong_auth");
+        assert_eq!(policy.availability, "blocked_until_strong_auth");
+    }
+
+    #[test]
+    fn hosted_public_join_prompt_control_exposes_backend_reauth_preview_when_env_ready() {
+        let _guard = hosted_access_env_lock().lock().expect("env lock");
+        clear_env();
+        std::env::set_var(
+            HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV,
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        );
+        std::env::set_var(
+            HOSTED_STRONG_AUTH_PRIVATE_KEY_ENV,
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        );
+        std::env::set_var(HOSTED_STRONG_AUTH_APPROVAL_CODE_ENV, "preview-code");
+        let policy = prompt_control_apply_policy(DeploymentMode::HostedPublicJoin);
+        assert_eq!(
+            policy.availability,
+            "public_player_plane_with_backend_reauth_preview"
+        );
+        assert!(policy.reason.contains("backend strong-auth grant"));
+        clear_env();
+    }
 }

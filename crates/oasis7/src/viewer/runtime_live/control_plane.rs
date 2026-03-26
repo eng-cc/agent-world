@@ -1,8 +1,10 @@
 use super::*;
 
 use super::super::auth::{
-    verify_agent_chat_auth_proof, verify_prompt_control_apply_auth_proof,
-    verify_prompt_control_rollback_auth_proof, PromptControlAuthIntent, VerifiedPlayerAuth,
+    verify_agent_chat_auth_proof, verify_hosted_prompt_control_apply_strong_auth_grant,
+    verify_hosted_prompt_control_rollback_strong_auth_grant,
+    verify_prompt_control_apply_auth_proof, verify_prompt_control_rollback_auth_proof,
+    PromptControlAuthIntent, VerifiedPlayerAuth,
 };
 use super::super::protocol::{
     AgentChatAck, AgentChatError, AgentChatRequest, PromptControlAck, PromptControlApplyRequest,
@@ -21,6 +23,7 @@ pub(super) use llm_sidecar::{
 
 const RUNTIME_AGENT_CHAT_ECHO_ENV: &str = "OASIS7_RUNTIME_AGENT_CHAT_ECHO";
 const RUNTIME_AGENT_CHAT_ECHO_PREFIX: &str = "[qa-echo]";
+const HOSTED_STRONG_AUTH_GRANT_PUBLIC_KEY_ENV: &str = "OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY";
 
 #[allow(dead_code)]
 pub(in crate::viewer::runtime_live) fn runtime_openclaw_settings_from_env(
@@ -46,31 +49,48 @@ fn runtime_agent_chat_echo_enabled_from_env() -> bool {
         .unwrap_or(false)
 }
 
+fn hosted_strong_auth_grant_public_key_from_env() -> Result<String, String> {
+    std::env::var(HOSTED_STRONG_AUTH_GRANT_PUBLIC_KEY_ENV)
+        .ok()
+        .map(|raw| raw.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            "hosted strong auth backend grant signer is not configured on this runtime".to_string()
+        })
+}
+
+fn hosted_strong_auth_now_unix_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .try_into()
+        .unwrap_or(u64::MAX)
+}
+
 impl ViewerRuntimeLiveServer {
     pub(super) fn handle_prompt_control(
         &mut self,
         command: PromptControlCommand,
     ) -> Result<PromptControlAck, PromptControlError> {
         if self.hosted_public_join_mode() {
-            let (agent_id, current_version) = match &command {
-                PromptControlCommand::Preview { request }
-                | PromptControlCommand::Apply { request } => (
-                    request.agent_id.clone(),
-                    self.current_prompt_version(request.agent_id.as_str()),
-                ),
-                PromptControlCommand::Rollback { request } => (
-                    request.agent_id.clone(),
-                    self.current_prompt_version(request.agent_id.as_str()),
-                ),
-            };
-            return Err(PromptControlError {
-                code: "strong_auth_required".to_string(),
-                message:
-                    "prompt_control requires hosted strong auth on hosted_public_join; trusted local preview bootstrap is not accepted on this lane"
-                        .to_string(),
-                agent_id: Some(agent_id),
-                current_version,
-            });
+            match &command {
+                PromptControlCommand::Preview { request } => {
+                    self.verify_hosted_prompt_control_apply_strong_auth(
+                        PromptControlAuthIntent::Preview,
+                        request,
+                    )?;
+                }
+                PromptControlCommand::Apply { request } => {
+                    self.verify_hosted_prompt_control_apply_strong_auth(
+                        PromptControlAuthIntent::Apply,
+                        request,
+                    )?;
+                }
+                PromptControlCommand::Rollback { request } => {
+                    self.verify_hosted_prompt_control_rollback_strong_auth(request)?;
+                }
+            }
         }
         if !self.llm_sidecar.is_llm_mode() {
             let (agent_id, message) = match command {
@@ -502,6 +522,41 @@ impl ViewerRuntimeLiveServer {
         Ok(())
     }
 
+    fn verify_hosted_prompt_control_apply_strong_auth(
+        &self,
+        intent: PromptControlAuthIntent,
+        request: &PromptControlApplyRequest,
+    ) -> Result<(), PromptControlError> {
+        let Some(grant) = request.strong_auth_grant.as_ref() else {
+            return Err(self.hosted_prompt_control_strong_auth_error(
+                "strong_auth_required",
+                request.agent_id.as_str(),
+                "prompt_control requires hosted strong auth grant on hosted_public_join",
+            ));
+        };
+        let signer_public_key = hosted_strong_auth_grant_public_key_from_env().map_err(|message| {
+            self.hosted_prompt_control_strong_auth_error(
+                "strong_auth_required",
+                request.agent_id.as_str(),
+                message.as_str(),
+            )
+        })?;
+        verify_hosted_prompt_control_apply_strong_auth_grant(
+            intent,
+            request,
+            grant,
+            signer_public_key.as_str(),
+            hosted_strong_auth_now_unix_ms(),
+        )
+        .map_err(|message| {
+            self.hosted_prompt_control_strong_auth_error(
+                "strong_auth_grant_invalid",
+                request.agent_id.as_str(),
+                message.as_str(),
+            )
+        })
+    }
+
     fn verify_and_consume_prompt_control_rollback_auth(
         &mut self,
         request: &PromptControlRollbackRequest,
@@ -543,6 +598,53 @@ impl ViewerRuntimeLiveServer {
                 current_version: self.current_prompt_version(request.agent_id.as_str()),
             })?;
         Ok(())
+    }
+
+    fn verify_hosted_prompt_control_rollback_strong_auth(
+        &self,
+        request: &PromptControlRollbackRequest,
+    ) -> Result<(), PromptControlError> {
+        let Some(grant) = request.strong_auth_grant.as_ref() else {
+            return Err(self.hosted_prompt_control_strong_auth_error(
+                "strong_auth_required",
+                request.agent_id.as_str(),
+                "prompt_control rollback requires hosted strong auth grant on hosted_public_join",
+            ));
+        };
+        let signer_public_key = hosted_strong_auth_grant_public_key_from_env().map_err(|message| {
+            self.hosted_prompt_control_strong_auth_error(
+                "strong_auth_required",
+                request.agent_id.as_str(),
+                message.as_str(),
+            )
+        })?;
+        verify_hosted_prompt_control_rollback_strong_auth_grant(
+            request,
+            grant,
+            signer_public_key.as_str(),
+            hosted_strong_auth_now_unix_ms(),
+        )
+        .map_err(|message| {
+            self.hosted_prompt_control_strong_auth_error(
+                "strong_auth_grant_invalid",
+                request.agent_id.as_str(),
+                message.as_str(),
+            )
+        })
+    }
+
+    fn hosted_prompt_control_strong_auth_error(
+        &self,
+        code: &str,
+        agent_id: &str,
+        message: &str,
+    ) -> PromptControlError {
+        PromptControlError {
+            code: code.to_string(),
+            message: message.to_string(),
+            agent_id: Some(agent_id.to_string()),
+            current_version: self.current_prompt_version(agent_id),
+        }
     }
 
     fn verify_agent_chat_auth(

@@ -20,6 +20,19 @@ pub struct PlayerAuthProof {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HostedStrongAuthGrant {
+    pub version: u8,
+    pub action_id: String,
+    pub player_id: String,
+    pub player_public_key: String,
+    pub agent_id: String,
+    pub issued_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    pub signer_public_key: String,
+    pub signature: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ViewerRequest {
     Hello {
@@ -88,6 +101,8 @@ pub struct PromptControlApplyRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<PlayerAuthProof>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub strong_auth_grant: Option<HostedStrongAuthGrant>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_version: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_by: Option<String>,
@@ -127,6 +142,8 @@ pub struct PromptControlRollbackRequest {
     pub public_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub auth: Option<PlayerAuthProof>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub strong_auth_grant: Option<HostedStrongAuthGrant>,
     pub to_version: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_version: Option<u64>,
@@ -713,6 +730,7 @@ mod tests {
                         nonce: 7,
                         signature: "awviewauth:v1:deadbeef".to_string(),
                     }),
+                    strong_auth_grant: None,
                     expected_version: Some(3),
                     updated_by: Some("tester".to_string()),
                     system_prompt_override: Some(Some("system".to_string())),

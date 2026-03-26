@@ -3,11 +3,14 @@ use serde::Serialize;
 
 use super::protocol::{
     AgentChatRequest, AuthoritativeSessionRegisterRequest, GameplayActionRequest,
-    PlayerAuthProof, PlayerAuthScheme, PromptControlApplyRequest, PromptControlRollbackRequest,
+    HostedStrongAuthGrant, PlayerAuthProof, PlayerAuthScheme, PromptControlApplyRequest,
+    PromptControlRollbackRequest,
 };
 
 const VIEWER_PLAYER_AUTH_PAYLOAD_VERSION: u8 = 1;
 pub const VIEWER_PLAYER_AUTH_SIGNATURE_V1_PREFIX: &str = "awviewauth:v1:";
+const VIEWER_HOSTED_STRONG_AUTH_GRANT_PAYLOAD_VERSION: u8 = 1;
+pub const VIEWER_HOSTED_STRONG_AUTH_GRANT_SIGNATURE_V1_PREFIX: &str = "awhostedgrant:v1:";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PromptControlAuthIntent {
@@ -106,6 +109,25 @@ where
     payload: T,
     #[serde(skip_serializing_if = "Option::is_none")]
     actor: Option<&'a str>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct HostedPromptControlStrongAuthGrantSigningPayload<'a> {
+    operation: &'static str,
+    agent_id: &'a str,
+    player_id: &'a str,
+    player_public_key: &'a str,
+    issued_at_unix_ms: u64,
+    expires_at_unix_ms: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct HostedStrongAuthGrantSigningEnvelope<T>
+where
+    T: Serialize,
+{
+    version: u8,
+    payload: T,
 }
 
 pub fn sign_prompt_control_apply_auth_proof(
@@ -282,6 +304,103 @@ pub fn verify_prompt_control_rollback_auth_proof(
         public_key: proof_public_key,
         nonce: proof.nonce,
     })
+}
+
+pub fn sign_hosted_prompt_control_strong_auth_grant(
+    action_id: &str,
+    player_id: &str,
+    player_public_key: &str,
+    agent_id: &str,
+    issued_at_unix_ms: u64,
+    expires_at_unix_ms: u64,
+    signer_public_key_hex: &str,
+    signer_private_key_hex: &str,
+) -> Result<HostedStrongAuthGrant, String> {
+    if issued_at_unix_ms == 0 {
+        return Err("hosted strong-auth grant issued_at_unix_ms must be greater than zero".to_string());
+    }
+    if expires_at_unix_ms <= issued_at_unix_ms {
+        return Err(
+            "hosted strong-auth grant expires_at_unix_ms must be greater than issued_at_unix_ms"
+                .to_string(),
+        );
+    }
+    let operation = normalize_prompt_control_grant_operation(action_id)?;
+    let player_id = normalize_required_field(player_id, "hosted strong-auth player_id")?;
+    let player_public_key =
+        normalize_public_key_field(player_public_key, "hosted strong-auth player_public_key")?;
+    let agent_id = normalize_required_field(agent_id, "hosted strong-auth agent_id")?;
+    let signer_public_key = normalize_public_key_field(
+        signer_public_key_hex,
+        "hosted strong-auth signer public key",
+    )?;
+    let signing_key = signing_key_from_hex(
+        signer_private_key_hex,
+        "hosted strong-auth signer private key",
+    )?;
+    verify_keypair_match(
+        &signing_key,
+        signer_public_key.as_str(),
+        "hosted strong-auth signer public key",
+    )?;
+    let signing_payload = build_hosted_prompt_control_strong_auth_grant_payload(
+        operation,
+        player_id.as_str(),
+        player_public_key.as_str(),
+        agent_id.as_str(),
+        issued_at_unix_ms,
+        expires_at_unix_ms,
+    )?;
+    let signature = signing_key.sign(signing_payload.as_slice());
+    Ok(HostedStrongAuthGrant {
+        version: VIEWER_HOSTED_STRONG_AUTH_GRANT_PAYLOAD_VERSION,
+        action_id: operation.to_string(),
+        player_id,
+        player_public_key,
+        agent_id,
+        issued_at_unix_ms,
+        expires_at_unix_ms,
+        signer_public_key,
+        signature: format!(
+            "{VIEWER_HOSTED_STRONG_AUTH_GRANT_SIGNATURE_V1_PREFIX}{}",
+            hex::encode(signature.to_bytes())
+        ),
+    })
+}
+
+pub fn verify_hosted_prompt_control_apply_strong_auth_grant(
+    intent: PromptControlAuthIntent,
+    request: &PromptControlApplyRequest,
+    grant: &HostedStrongAuthGrant,
+    required_signer_public_key: &str,
+    now_unix_ms: u64,
+) -> Result<(), String> {
+    verify_hosted_prompt_control_strong_auth_grant(
+        prompt_control_intent_operation(intent),
+        request.agent_id.as_str(),
+        request.player_id.as_str(),
+        request.public_key.as_deref(),
+        grant,
+        required_signer_public_key,
+        now_unix_ms,
+    )
+}
+
+pub fn verify_hosted_prompt_control_rollback_strong_auth_grant(
+    request: &PromptControlRollbackRequest,
+    grant: &HostedStrongAuthGrant,
+    required_signer_public_key: &str,
+    now_unix_ms: u64,
+) -> Result<(), String> {
+    verify_hosted_prompt_control_strong_auth_grant(
+        "prompt_control_rollback",
+        request.agent_id.as_str(),
+        request.player_id.as_str(),
+        request.public_key.as_deref(),
+        grant,
+        required_signer_public_key,
+        now_unix_ms,
+    )
 }
 
 pub fn sign_agent_chat_auth_proof(
@@ -664,6 +783,30 @@ where
     serde_cbor::to_vec(&envelope).map_err(|err| format!("encode auth payload failed: {err}"))
 }
 
+fn build_hosted_prompt_control_strong_auth_grant_payload(
+    operation: &'static str,
+    player_id: &str,
+    player_public_key: &str,
+    agent_id: &str,
+    issued_at_unix_ms: u64,
+    expires_at_unix_ms: u64,
+) -> Result<Vec<u8>, String> {
+    let payload = HostedPromptControlStrongAuthGrantSigningPayload {
+        operation,
+        agent_id,
+        player_id,
+        player_public_key,
+        issued_at_unix_ms,
+        expires_at_unix_ms,
+    };
+    let envelope = HostedStrongAuthGrantSigningEnvelope {
+        version: VIEWER_HOSTED_STRONG_AUTH_GRANT_PAYLOAD_VERSION,
+        payload,
+    };
+    serde_cbor::to_vec(&envelope)
+        .map_err(|err| format!("encode hosted strong-auth grant payload failed: {err}"))
+}
+
 fn prompt_control_intent_operation(intent: PromptControlAuthIntent) -> &'static str {
     match intent {
         PromptControlAuthIntent::Preview => "prompt_control_preview",
@@ -762,6 +905,15 @@ fn normalize_public_key_field(raw: &str, label: &str) -> Result<String, String> 
     Ok(hex::encode(bytes))
 }
 
+fn normalize_prompt_control_grant_operation(raw: &str) -> Result<&'static str, String> {
+    match raw.trim() {
+        "prompt_control_preview" => Ok("prompt_control_preview"),
+        "prompt_control_apply" => Ok("prompt_control_apply"),
+        "prompt_control_rollback" => Ok("prompt_control_rollback"),
+        _ => Err("unsupported hosted strong-auth action_id".to_string()),
+    }
+}
+
 fn signing_key_from_hex(private_key_hex: &str, label: &str) -> Result<SigningKey, String> {
     let private_key_bytes = decode_hex_array::<32>(private_key_hex, label)?;
     Ok(SigningKey::from_bytes(&private_key_bytes))
@@ -794,17 +946,118 @@ fn decode_hex_array<const N: usize>(raw: &str, label: &str) -> Result<[u8; N], S
     Ok(fixed)
 }
 
+fn verify_hosted_prompt_control_strong_auth_grant(
+    expected_action_id: &str,
+    request_agent_id: &str,
+    request_player_id: &str,
+    request_public_key: Option<&str>,
+    grant: &HostedStrongAuthGrant,
+    required_signer_public_key: &str,
+    now_unix_ms: u64,
+) -> Result<(), String> {
+    if grant.version != VIEWER_HOSTED_STRONG_AUTH_GRANT_PAYLOAD_VERSION {
+        return Err(format!(
+            "hosted strong-auth grant version mismatch: expected={} actual={}",
+            VIEWER_HOSTED_STRONG_AUTH_GRANT_PAYLOAD_VERSION,
+            grant.version
+        ));
+    }
+    let action_id = normalize_prompt_control_grant_operation(grant.action_id.as_str())?;
+    if action_id != expected_action_id {
+        return Err("hosted strong-auth grant action_id does not match request".to_string());
+    }
+    let request_agent_id =
+        normalize_required_field(request_agent_id, "hosted strong-auth request agent_id")?;
+    let request_player_id =
+        normalize_required_field(request_player_id, "hosted strong-auth request player_id")?;
+    let request_public_key = normalize_required_optional_public_key(
+        request_public_key,
+        "hosted strong-auth request public_key",
+    )?;
+    let grant_player_id =
+        normalize_required_field(grant.player_id.as_str(), "hosted strong-auth grant player_id")?;
+    let grant_player_public_key = normalize_public_key_field(
+        grant.player_public_key.as_str(),
+        "hosted strong-auth grant player_public_key",
+    )?;
+    let grant_agent_id =
+        normalize_required_field(grant.agent_id.as_str(), "hosted strong-auth grant agent_id")?;
+    if request_player_id != grant_player_id {
+        return Err("hosted strong-auth grant player_id does not match request".to_string());
+    }
+    if request_public_key != grant_player_public_key {
+        return Err("hosted strong-auth grant public_key does not match request".to_string());
+    }
+    if request_agent_id != grant_agent_id {
+        return Err("hosted strong-auth grant agent_id does not match request".to_string());
+    }
+    if grant.expires_at_unix_ms <= grant.issued_at_unix_ms {
+        return Err(
+            "hosted strong-auth grant expires_at_unix_ms must be greater than issued_at_unix_ms"
+                .to_string(),
+        );
+    }
+    if now_unix_ms > grant.expires_at_unix_ms {
+        return Err("hosted strong-auth grant has expired".to_string());
+    }
+    let required_signer_public_key = normalize_public_key_field(
+        required_signer_public_key,
+        "hosted strong-auth required signer public key",
+    )?;
+    let grant_signer_public_key = normalize_public_key_field(
+        grant.signer_public_key.as_str(),
+        "hosted strong-auth grant signer public key",
+    )?;
+    if grant_signer_public_key != required_signer_public_key {
+        return Err("hosted strong-auth grant signer is not allowlisted".to_string());
+    }
+    let signing_payload = build_hosted_prompt_control_strong_auth_grant_payload(
+        action_id,
+        grant_player_id.as_str(),
+        grant_player_public_key.as_str(),
+        grant_agent_id.as_str(),
+        grant.issued_at_unix_ms,
+        grant.expires_at_unix_ms,
+    )?;
+    verify_hosted_strong_auth_grant_signature(
+        grant_signer_public_key.as_str(),
+        grant.signature.as_str(),
+        signing_payload.as_slice(),
+    )
+}
+
+fn verify_hosted_strong_auth_grant_signature(
+    public_key_hex: &str,
+    signature: &str,
+    signing_payload: &[u8],
+) -> Result<(), String> {
+    let public_key_bytes = decode_hex_array::<32>(public_key_hex, "hosted strong-auth public key")?;
+    let signature_hex = signature
+        .strip_prefix(VIEWER_HOSTED_STRONG_AUTH_GRANT_SIGNATURE_V1_PREFIX)
+        .ok_or_else(|| "hosted strong-auth signature is not awhostedgrant:v1".to_string())?;
+    let signature_bytes = decode_hex_array::<64>(signature_hex, "hosted strong-auth signature")?;
+    let verifying_key = VerifyingKey::from_bytes(&public_key_bytes)
+        .map_err(|err| format!("parse hosted strong-auth public key failed: {err}"))?;
+    verifying_key
+        .verify(signing_payload, &Signature::from_bytes(&signature_bytes))
+        .map_err(|err| format!("verify hosted strong-auth signature failed: {err}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn test_signer() -> (String, String) {
-        let private_key = [7_u8; 32];
+    fn test_signer_with_seed(seed: u8) -> (String, String) {
+        let private_key = [seed; 32];
         let signing_key = SigningKey::from_bytes(&private_key);
         (
             hex::encode(signing_key.verifying_key().to_bytes()),
             hex::encode(private_key),
         )
+    }
+
+    fn test_signer() -> (String, String) {
+        test_signer_with_seed(7)
     }
 
     #[test]
@@ -815,6 +1068,7 @@ mod tests {
             player_id: "player-a".to_string(),
             public_key: Some(public_key.clone()),
             auth: None,
+            strong_auth_grant: None,
             expected_version: Some(3),
             updated_by: Some("player-a".to_string()),
             system_prompt_override: Some(Some("system".to_string())),
@@ -848,6 +1102,7 @@ mod tests {
             player_id: "player-a".to_string(),
             public_key: Some(public_key.clone()),
             auth: None,
+            strong_auth_grant: None,
             expected_version: Some(3),
             updated_by: Some("player-a".to_string()),
             system_prompt_override: Some(Some("system".to_string())),
@@ -872,6 +1127,81 @@ mod tests {
         )
         .expect_err("tampered payload must fail");
         assert!(err.contains("verify auth signature failed"));
+    }
+
+    #[test]
+    fn hosted_prompt_control_strong_auth_grant_roundtrip() {
+        let (player_public_key, _) = test_signer();
+        let (backend_public_key, backend_private_key) = test_signer_with_seed(9);
+        let request = PromptControlApplyRequest {
+            agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
+            public_key: Some(player_public_key.clone()),
+            auth: None,
+            strong_auth_grant: None,
+            expected_version: Some(3),
+            updated_by: Some("player-a".to_string()),
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        };
+        let grant = sign_hosted_prompt_control_strong_auth_grant(
+            "prompt_control_apply",
+            "player-a",
+            player_public_key.as_str(),
+            "agent-0",
+            100,
+            200,
+            backend_public_key.as_str(),
+            backend_private_key.as_str(),
+        )
+        .expect("sign hosted strong-auth grant");
+        verify_hosted_prompt_control_apply_strong_auth_grant(
+            PromptControlAuthIntent::Apply,
+            &request,
+            &grant,
+            backend_public_key.as_str(),
+            150,
+        )
+        .expect("verify hosted strong-auth grant");
+    }
+
+    #[test]
+    fn hosted_prompt_control_strong_auth_grant_rejects_request_mismatch() {
+        let (player_public_key, _) = test_signer();
+        let (backend_public_key, backend_private_key) = test_signer_with_seed(10);
+        let request = PromptControlApplyRequest {
+            agent_id: "agent-0".to_string(),
+            player_id: "player-a".to_string(),
+            public_key: Some(player_public_key.clone()),
+            auth: None,
+            strong_auth_grant: None,
+            expected_version: Some(3),
+            updated_by: Some("player-a".to_string()),
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        };
+        let grant = sign_hosted_prompt_control_strong_auth_grant(
+            "prompt_control_apply",
+            "player-a",
+            player_public_key.as_str(),
+            "agent-1",
+            100,
+            200,
+            backend_public_key.as_str(),
+            backend_private_key.as_str(),
+        )
+        .expect("sign hosted strong-auth grant");
+        let err = verify_hosted_prompt_control_apply_strong_auth_grant(
+            PromptControlAuthIntent::Apply,
+            &request,
+            &grant,
+            backend_public_key.as_str(),
+            150,
+        )
+        .expect_err("mismatched hosted strong-auth grant must fail");
+        assert!(err.contains("agent_id"));
     }
 
     #[test]

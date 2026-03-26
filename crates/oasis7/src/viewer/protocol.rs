@@ -16,7 +16,7 @@ pub use proto::{
     GameplayActionRequest, LiveControl, PlaybackControl, PlayerAuthProof, PlayerAuthScheme,
     PromptControlApplyRequest, PromptControlCommand, PromptControlError, PromptControlOperation,
     PromptControlRollbackRequest, ViewerControl, ViewerControlProfile, ViewerEventKind,
-    ViewerRequest, ViewerStream, VIEWER_PROTOCOL_VERSION,
+    ViewerRequest, ViewerStream, HostedStrongAuthGrant, VIEWER_PROTOCOL_VERSION,
 };
 
 pub type ViewerResponse =

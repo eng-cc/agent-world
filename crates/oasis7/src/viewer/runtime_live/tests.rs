@@ -15,6 +15,7 @@ const VIEWER_OPENCLAW_CONNECT_TIMEOUT_MS_ENV: &str = "OASIS7_OPENCLAW_CONNECT_TI
 const VIEWER_OPENCLAW_AGENT_PROFILE_ENV: &str = "OASIS7_OPENCLAW_AGENT_PROFILE";
 const VIEWER_OPENCLAW_EXECUTION_MODE_ENV: &str = "OASIS7_OPENCLAW_EXECUTION_MODE";
 const RUNTIME_AGENT_CHAT_ECHO_ENV: &str = "OASIS7_RUNTIME_AGENT_CHAT_ECHO";
+const HOSTED_STRONG_AUTH_GRANT_PUBLIC_KEY_ENV: &str = "OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY";
 
 fn test_signer(seed: u8) -> (String, String) {
     let private_key = [seed; 32];
@@ -66,6 +67,30 @@ fn clear_runtime_openclaw_env() {
 fn runtime_openclaw_env_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| Mutex::new(()))
+}
+
+fn clear_hosted_strong_auth_env() {
+    std::env::remove_var(HOSTED_STRONG_AUTH_GRANT_PUBLIC_KEY_ENV);
+}
+
+fn hosted_strong_auth_env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
+fn lock_test_hosted_strong_auth_env() -> std::sync::MutexGuard<'static, ()> {
+    let guard = hosted_strong_auth_env_lock().lock().expect("env lock");
+    clear_hosted_strong_auth_env();
+    guard
+}
+
+fn test_now_unix_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .try_into()
+        .unwrap_or(u64::MAX)
 }
 
 fn signed_prompt_control_apply_request(
@@ -470,6 +495,7 @@ fn runtime_prompt_control_script_mode_requires_llm_mode() {
             player_id: "player-a".to_string(),
             public_key: None,
             auth: None,
+            strong_auth_grant: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -512,6 +538,7 @@ fn runtime_prompt_control_hosted_public_join_requires_strong_auth() {
             player_id: "player-a".to_string(),
             public_key: None,
             auth: None,
+            strong_auth_grant: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -531,6 +558,159 @@ fn runtime_prompt_control_hosted_public_join_requires_strong_auth() {
         .message
         .contains("prompt_control requires hosted strong auth"));
     assert!(server.llm_sidecar.prompt_profiles.is_empty());
+}
+
+#[test]
+fn runtime_prompt_control_hosted_public_join_accepts_valid_backend_grant() {
+    let _llm_guard = lock_test_llm_env();
+    let _strong_auth_guard = lock_test_hosted_strong_auth_env();
+    let (backend_public_key, backend_private_key) = test_signer(28);
+    std::env::set_var(
+        HOSTED_STRONG_AUTH_GRANT_PUBLIC_KEY_ENV,
+        backend_public_key.as_str(),
+    );
+
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm)
+            .with_hosted_public_join_mode(true),
+    )
+    .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let (player_public_key, player_private_key) = test_signer(29);
+    let register_ack = register_runtime_session(
+        &mut server,
+        "player-a",
+        Some(agent_id.as_str()),
+        1,
+        player_public_key.as_str(),
+        player_private_key.as_str(),
+    );
+    assert_eq!(
+        register_ack.status,
+        AuthoritativeRecoveryStatus::SessionRegistered
+    );
+    let mut request = signed_prompt_control_apply_request(
+        crate::viewer::PromptControlApplyRequest {
+            agent_id: agent_id.clone(),
+            player_id: "player-a".to_string(),
+            public_key: None,
+            auth: None,
+            strong_auth_grant: None,
+            expected_version: Some(0),
+            updated_by: Some("player-a".to_string()),
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: Some(Some("goal".to_string())),
+            long_term_goal_override: None,
+        },
+        crate::viewer::PromptControlAuthIntent::Apply,
+        2,
+        player_public_key.as_str(),
+        player_private_key.as_str(),
+    );
+    let issued_at_unix_ms = test_now_unix_ms().saturating_sub(1_000);
+    let grant = crate::viewer::sign_hosted_prompt_control_strong_auth_grant(
+        "prompt_control_apply",
+        "player-a",
+        player_public_key.as_str(),
+        agent_id.as_str(),
+        issued_at_unix_ms,
+        issued_at_unix_ms.saturating_add(60_000),
+        backend_public_key.as_str(),
+        backend_private_key.as_str(),
+    )
+    .expect("backend strong-auth grant");
+    request.strong_auth_grant = Some(grant);
+
+    let ack = server
+        .handle_prompt_control(crate::viewer::PromptControlCommand::Apply { request })
+        .expect("hosted apply with backend grant");
+    assert_eq!(ack.version, 1);
+    clear_hosted_strong_auth_env();
+}
+
+#[test]
+fn runtime_prompt_control_hosted_public_join_rejects_expired_backend_grant() {
+    let _llm_guard = lock_test_llm_env();
+    let _strong_auth_guard = lock_test_hosted_strong_auth_env();
+    let (backend_public_key, backend_private_key) = test_signer(30);
+    std::env::set_var(
+        HOSTED_STRONG_AUTH_GRANT_PUBLIC_KEY_ENV,
+        backend_public_key.as_str(),
+    );
+
+    let mut server = ViewerRuntimeLiveServer::new(
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm)
+            .with_hosted_public_join_mode(true),
+    )
+    .expect("runtime server");
+    let agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("seed agent");
+    let (player_public_key, player_private_key) = test_signer(31);
+    let register_ack = register_runtime_session(
+        &mut server,
+        "player-a",
+        Some(agent_id.as_str()),
+        1,
+        player_public_key.as_str(),
+        player_private_key.as_str(),
+    );
+    assert_eq!(
+        register_ack.status,
+        AuthoritativeRecoveryStatus::SessionRegistered
+    );
+    let mut request = signed_prompt_control_apply_request(
+        crate::viewer::PromptControlApplyRequest {
+            agent_id: agent_id.clone(),
+            player_id: "player-a".to_string(),
+            public_key: None,
+            auth: None,
+            strong_auth_grant: None,
+            expected_version: Some(0),
+            updated_by: None,
+            system_prompt_override: Some(Some("system".to_string())),
+            short_term_goal_override: None,
+            long_term_goal_override: None,
+        },
+        crate::viewer::PromptControlAuthIntent::Apply,
+        2,
+        player_public_key.as_str(),
+        player_private_key.as_str(),
+    );
+    let issued_at_unix_ms = test_now_unix_ms().saturating_sub(10_000);
+    let grant = crate::viewer::sign_hosted_prompt_control_strong_auth_grant(
+        "prompt_control_apply",
+        "player-a",
+        player_public_key.as_str(),
+        agent_id.as_str(),
+        issued_at_unix_ms,
+        issued_at_unix_ms.saturating_add(1_000),
+        backend_public_key.as_str(),
+        backend_private_key.as_str(),
+    )
+    .expect("backend strong-auth grant");
+    request.strong_auth_grant = Some(grant);
+
+    let err = server
+        .handle_prompt_control(crate::viewer::PromptControlCommand::Apply { request })
+        .expect_err("expired hosted strong-auth grant must fail");
+    assert_eq!(err.code, "strong_auth_grant_invalid");
+    assert!(err.message.contains("expired"));
+    clear_hosted_strong_auth_env();
 }
 
 #[test]
@@ -560,6 +740,7 @@ fn runtime_prompt_control_openclaw_mode_reports_unsupported() {
             player_id: "player-a".to_string(),
             public_key: None,
             auth: None,
+            strong_auth_grant: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),
@@ -601,6 +782,7 @@ fn runtime_prompt_control_apply_updates_snapshot_and_bindings() {
             player_id: "player-a".to_string(),
             public_key: None,
             auth: None,
+            strong_auth_grant: None,
             expected_version: Some(0),
             updated_by: None,
             system_prompt_override: Some(Some("system".to_string())),

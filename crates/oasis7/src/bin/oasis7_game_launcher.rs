@@ -17,6 +17,8 @@ mod hosted_access;
 mod runtime_paths;
 #[path = "oasis7_game_launcher/hosted_player_session.rs"]
 mod hosted_player_session;
+#[path = "oasis7_game_launcher/hosted_strong_auth.rs"]
+mod hosted_strong_auth;
 #[path = "oasis7_game_launcher/runtime_presence.rs"]
 mod runtime_presence;
 #[path = "oasis7_game_launcher/static_http.rs"]
