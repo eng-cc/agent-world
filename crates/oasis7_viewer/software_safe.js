@@ -483,9 +483,7 @@ function isHostedPublicJoinHint(deploymentHint) {
 function hostedActionPolicy(actionId) {
   const normalizedActionId = actionId === "prompt_control"
     ? "prompt_control_apply"
-    : actionId === "strong_auth_actions"
-      ? "main_token_transfer"
-      : actionId;
+    : actionId;
   return state.hostedAccess?.action_matrix?.find((policy) => policy?.action_id === normalizedActionId) || null;
 }
 
@@ -521,11 +519,15 @@ function playerSessionReason(auth, deploymentHint) {
 }
 
 function strongAuthReason() {
-  return "strong auth is still a separate follow-up; software_safe does not issue asset/governance proofs yet";
+  return "strong auth remains a separate upgrade plane; software_safe only previews backend reauth for prompt_control and still does not issue hosted-ready asset/governance proofs";
 }
 
 function isStrongAuthSensitiveAction(actionId) {
-  return actionId === "prompt_control";
+  const policy = hostedActionPolicy(actionId);
+  if (policy) {
+    return policy.required_auth === "strong_auth";
+  }
+  return actionId === "prompt_control" || actionId === "main_token_transfer";
 }
 
 function buildSemanticCapability(actionId) {
@@ -633,7 +635,7 @@ function buildAuthSurfaceModel() {
   const deploymentHint = authDeploymentHint(state.auth);
   const promptCapability = buildSemanticCapability("prompt_control");
   const chatCapability = buildSemanticCapability("agent_chat");
-  const strongAuthCapability = buildSemanticCapability("strong_auth_actions");
+  const mainTokenTransferCapability = buildSemanticCapability("main_token_transfer");
   const currentTier = state.auth.available ? "player_session" : "guest_session";
   const source = state.hostedAccess
     ? state.auth.available
@@ -681,7 +683,8 @@ function buildAuthSurfaceModel() {
     capabilities: {
       prompt_control: promptCapability,
       agent_chat: chatCapability,
-      strong_auth_actions: strongAuthCapability,
+      main_token_transfer: mainTokenTransferCapability,
+      strong_auth_actions: mainTokenTransferCapability,
     },
     reconnect: state.auth.available
       ? state.auth.source === "legacy_viewer_auth_bootstrap"
@@ -2755,7 +2758,7 @@ function renderSummary() {
           <div class="badge-row">
             <span class="${authSurface.capabilities.prompt_control.enabled ? "badge badge--good" : "badge badge--warn"}">prompt=${escapeHtml(authSurface.capabilities.prompt_control.enabled ? "enabled" : authSurface.capabilities.prompt_control.code)}</span>
             <span class="${authSurface.capabilities.agent_chat.enabled ? "badge badge--good" : "badge badge--warn"}">chat=${escapeHtml(authSurface.capabilities.agent_chat.enabled ? "enabled" : authSurface.capabilities.agent_chat.code)}</span>
-            <span class="badge badge--warn">strongAuth=${escapeHtml(authSurface.capabilities.strong_auth_actions.code)}</span>
+            <span class="badge badge--warn">mainToken=${escapeHtml(authSurface.capabilities.main_token_transfer.code)}</span>
           </div>
           <div class="empty">${escapeHtml(authSurface.reconnect)}</div>
         </div>
@@ -2836,6 +2839,7 @@ function renderInteractionPanel() {
   const authSurface = buildAuthSurfaceModel();
   const promptCapability = authSurface.capabilities.prompt_control;
   const chatCapability = authSurface.capabilities.agent_chat;
+  const mainTokenTransferCapability = authSurface.capabilities.main_token_transfer;
   const interactionEnabled = promptCapability.enabled;
   const strongAuthGrantHint = authSurface.capabilities.prompt_control.enabled
     && String(state.hostedAccess?.deployment_mode || "").trim() === "hosted_public_join"
@@ -2867,9 +2871,9 @@ function renderInteractionPanel() {
         <span class="badge">boundKey=${escapeHtml(binding?.publicKey ? `${binding.publicKey.slice(0, 10)}…` : "-")}</span>
         <span class="${promptCapability.enabled ? "badge badge--good" : "badge badge--warn"}">prompt=${escapeHtml(promptCapability.enabled ? "enabled" : promptCapability.code)}</span>
         <span class="${chatCapability.enabled ? "badge badge--good" : "badge badge--warn"}">chat=${escapeHtml(chatCapability.enabled ? "enabled" : chatCapability.code)}</span>
-        <span class="badge badge--warn">strongAuth=${escapeHtml(authSurface.capabilities.strong_auth_actions.code)}</span>
+        <span class="badge badge--warn">mainToken=${escapeHtml(mainTokenTransferCapability.code)}</span>
       </div>
-      <div class="empty">${escapeHtml(authSurface.capabilities.strong_auth_actions.reason)}</div>
+      <div class="empty">${escapeHtml(mainTokenTransferCapability.reason)}</div>
       <div class="panel panel--nested" style="background:rgba(255,255,255,0.02);">
         <div class="panel__header"><div class="panel__title">Prompt Overrides</div></div>
         <div class="panel__body stack">
