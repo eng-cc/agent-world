@@ -132,6 +132,11 @@
 - [ ] TASK-GAME-036 (PRD-GAME-010) [test_tier_required]: `liveops_community` 执行 1 轮 invite-only builder callout，按固定巡检窗口归档 `Blocking / Opportunity / Idea` 信号，并在出现 claim drift 时当轮纠偏。
 - [ ] TASK-GAME-037 (PRD-GAME-010) [test_tier_required]: `qa_engineer` 输出 `QA Weekly / Event Verdict`，确认当前 unified gate 是否仍保持 `pass`，并在真实反馈触发时建议 `continue / conditional go / no-go`。
 - [ ] TASK-GAME-038 (PRD-GAME-010) [test_tier_required]: `producer_system_designer` 基于 `TASK-GAME-036/037` 的真实执行样本，正式决定继续维持、收紧节奏，或触发下一轮阶段评审。
+- [x] TASK-GAME-039 (PRD-GAME-011) [test_tier_required]: 新增“agent 认领代币成本与维护机制”专题 PRD / design / project，并完成 game 根 PRD、project、索引、README 与 devlog 挂载。
+- [ ] TASK-GAME-040 (PRD-GAME-011) [test_tier_required + test_tier_full]: `runtime_engineer` 落地 agent claim canonical 状态机、claim bond/upkeep/reclaim 记账、单 owner 原子性与审计事件。
+- [ ] TASK-GAME-041 (PRD-GAME-011) [test_tier_required]: `viewer_engineer` 落地 claim quote、cooldown/grace/idle reclaim 倒计时、tier cap 阻断原因与 pure API 字段对齐。
+- [ ] TASK-GAME-042 (PRD-GAME-011) [test_tier_required + test_tier_full]: `qa_engineer` 验证 claim 并发、欠费、闲置回收、refund/slash 和经济源汇审计没有旁路。
+- [ ] TASK-GAME-043 (PRD-GAME-011) [test_tier_required]: `producer_system_designer` 基于首轮 balance 样本复核 claim 成本曲线与 tier cap，决定是否新开调参专题。
 
 ## 依赖
 - 模块设计总览：`doc/game/design.md`
@@ -146,9 +151,10 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-22
+- 更新日期: 2026-03-27
 - 当前状态: in_progress
 - 下一任务: `TASK-GAME-036（执行 1 轮受控 limited preview builder callout，并回流首批真实信号）`
+- 最新完成: `TASK-GAME-039`（已新增 `PRD-GAME-011` agent 认领代币成本专题，正式冻结“首个 claim 也不免费”的规则口径，并将 claim bond / upkeep / reclaim / tier cap 挂入 game 根入口。）
 - 最新完成: `TASK-GAME-035`（已新增 `PRD-GAME-010` 受控 limited preview 执行专题，并将 owner、handoff、done 定义与验证方式正式挂载到 game 根入口。）
 - 最新完成: `TASK-GAME-033`（`producer_system_designer` 已完成阶段评审，决定当前继续保持 `internal_playable_alpha_late`；统一 gate `pass` 不自动放宽对外 claim envelope。）
 - 最新完成: `TASK-GAME-030`（`viewer_engineer` 已完成 `PostOnboarding` 首屏降噪收口、fresh bundle headed Web/UI rerun 与 playability 卡片回写；`AgentNotFound` 历史噪音不再占据右侧 chatter 焦点。）
@@ -220,6 +226,7 @@
 - ROUND-044 进展: `producer_system_designer` 已完成 `TASK-GAME-033` 阶段评审，并正式决定继续保持 `internal_playable_alpha_late`。理由不是 QA 技术 blocker，而是当前 release / 招募节奏仍按受控技术预览管理；在 producer 明确打开下一阶段 claim envelope 之前，`closed_beta_candidate` 继续只作为目标态，不作为当前对外口径。
 - ROUND-045 进展: `producer_system_designer` 已完成 `TASK-GAME-034`，将当前有效对外口径正式收口为 `limited playable technical preview`；该调整只放宽“完全不可玩”的表述，不改变阶段判断，也不放开 `closed beta / play now / live now` 禁语。
 - ROUND-046 进展: `producer_system_designer` 已完成 `TASK-GAME-035`，新增 `PRD-GAME-010` 受控 limited preview 执行专题，并正式把下一步拆成 `TASK-GAME-036/037/038`：先由 `liveops_community` 执行 1 轮 invite-only callout，再由 `qa_engineer` 给出 `QA Weekly / Event Verdict`，最后由制作人决定 `continue / hold / reassess`。
+- ROUND-047 进展: `producer_system_designer` 已完成 `TASK-GAME-039`，新增 `doc/game/gameplay/gameplay-agent-claim-token-cost-2026-03-27.{prd,design,project}.md`，正式冻结“所有 agent claim 都要消耗 main token，首个也不免费”的规则边界；v1 采用 `activation fee + claim bond + upkeep` 三段式，并要求 `tier cap / cooldown / grace / forced reclaim / idle reclaim` 全部进入正式任务追踪。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-21.md`。
 

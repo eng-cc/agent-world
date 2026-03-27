@@ -1,7 +1,7 @@
 # game PRD 文件级索引
 审计轮次: 9
 
-更新时间：2026-03-22
+更新时间：2026-03-27
 
 ## 入口
 - 模块 PRD：`doc/game/prd.md`
@@ -11,6 +11,7 @@
 
 | 专题 PRD | 专题设计文档 | 专题项目文档 |
 | --- | --- | --- |
+| `doc/game/gameplay/gameplay-agent-claim-token-cost-2026-03-27.prd.md` | `doc/game/gameplay/gameplay-agent-claim-token-cost-2026-03-27.design.md` | `doc/game/gameplay/gameplay-agent-claim-token-cost-2026-03-27.project.md` |
 | `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.prd.md` | `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.design.md` | `doc/game/gameplay/gameplay-base-runtime-wasm-layer-split.project.md` |
 | `doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.prd.md` | `doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.design.md` | `doc/game/gameplay/gameplay-beta-balance-hardening-2026-02-22.project.md` |
 | `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.prd.md` | `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.design.md` | `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.project.md` |

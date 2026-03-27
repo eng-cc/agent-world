@@ -14,11 +14,13 @@
 - 承接体验优化、长期在线硬化与发布阻断相关设计追踪。
 - 承接当前阶段判断、封闭 Beta 准入门禁与对外口径收口。
 - 承接 `limited playable technical preview` 的受控执行、回流与继续/暂停决策。
+- 承接 agent 认领的 token 成本、claim bond、upkeep 与 reclaim 规则。
 
 ## 主题文档
 - `gameplay/`：玩法、经济、治理、战争、长稳与发布闭环专题。
 
 ## 近期专题
+- `doc/game/gameplay/gameplay-agent-claim-token-cost-2026-03-27.prd.md`
 - `doc/game/gameplay/gameplay-top-level-design.prd.md`
 - `doc/game/gameplay/gameplay-limited-preview-execution-2026-03-22.prd.md`
 - `doc/game/gameplay/gameplay-closed-beta-readiness-2026-03-21.prd.md`
