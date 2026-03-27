@@ -24,19 +24,25 @@ Options:
   --path <path>           Override target worktree path
   --worktrees-root <dir>  Override default worktrees root
   --allow-dirty-source    Allow creating from a dirty source worktree
+  --init-docs             Inspect module PRD/project and today's devlog in the new worktree
+  --with-harness          Asynchronously prewarm ./scripts/worktree-harness.sh up --no-llm in the new worktree
   --json                  Print machine-readable JSON summary only
   -h, --help              Show this help
 
 Examples:
   ./scripts/new-task-worktree.sh scripts task-worktree-bootstrap
+  ./scripts/new-task-worktree.sh scripts task-worktree-bootstrap --init-docs
   ./scripts/new-task-worktree.sh viewer hud-redesign --base main
   ./scripts/new-task-worktree.sh p2p hosted-flow --json --path ../worktrees/oasis7-codex-p2p-hosted-flow
+  ./scripts/new-task-worktree.sh viewer hud-redesign --with-harness
 USAGE
 }
 
 wh_require_git_worktree
 
 ALLOW_DIRTY_SOURCE=0
+INIT_DOCS=0
+WITH_HARNESS=0
 OUTPUT_JSON=0
 BASE_REF="HEAD"
 BRANCH_NAME=""
@@ -64,6 +70,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --allow-dirty-source)
       ALLOW_DIRTY_SOURCE=1
+      shift
+      ;;
+    --init-docs)
+      INIT_DOCS=1
+      shift
+      ;;
+    --with-harness)
+      WITH_HARNESS=1
       shift
       ;;
     --json)
@@ -122,6 +136,20 @@ else:
 PY
 }
 
+worktree_id_for_path() {
+  python3 - "$1" <<'PY'
+from __future__ import annotations
+
+import hashlib
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1]).resolve()
+digest = hashlib.sha256(str(path).encode("utf-8")).hexdigest()[:8]
+print(f"wt-{digest}")
+PY
+}
+
 branch_checkout_path() {
   git --git-dir="$COMMON_GIT_DIR" worktree list --porcelain | python3 - "$1" <<'PY'
 from __future__ import annotations
@@ -158,13 +186,29 @@ TASK_SLUG="$(slugify "$TASK_INPUT")"
 [[ -n "$TASK_SLUG" ]] || { echo "error: <task> becomes empty after slug normalization" >&2; exit 2; }
 
 REPO_ROOT="$(wh_repo_root)"
-REPO_NAME="$(basename "$REPO_ROOT")"
 COMMON_GIT_DIR="$(cd "$(git rev-parse --git-common-dir)" && pwd -P)"
-DEFAULT_WORKTREES_ROOT="$(dirname "$REPO_ROOT")/worktrees"
+CANONICAL_REPO_ROOT="$(cd "$COMMON_GIT_DIR/.." && pwd -P)"
+CURRENT_REPO_PARENT_NAME="$(basename "$(dirname "$REPO_ROOT")")"
+FAMILY_REPO_NAME="$(git config --local --get oasis7.task-worktree-family-name 2>/dev/null || true)"
+FAMILY_WORKTREES_ROOT="$(git config --local --get oasis7.task-worktrees-root 2>/dev/null || true)"
+if [[ -z "$FAMILY_REPO_NAME" ]]; then
+  if [[ "$CURRENT_REPO_PARENT_NAME" == "worktrees" ]]; then
+    FAMILY_REPO_NAME="$(basename "$CANONICAL_REPO_ROOT")"
+  else
+    FAMILY_REPO_NAME="$(basename "$REPO_ROOT")"
+  fi
+fi
+if [[ -z "$FAMILY_WORKTREES_ROOT" ]]; then
+  if [[ "$CURRENT_REPO_PARENT_NAME" == "worktrees" ]]; then
+    FAMILY_WORKTREES_ROOT="$(dirname "$CANONICAL_REPO_ROOT")/worktrees"
+  else
+    FAMILY_WORKTREES_ROOT="$(dirname "$REPO_ROOT")/worktrees"
+  fi
+fi
 if [[ -n "$WORKTREES_ROOT" ]]; then
   WORKTREES_ROOT="$(resolve_abs_path "$WORKTREES_ROOT")"
 else
-  WORKTREES_ROOT="$DEFAULT_WORKTREES_ROOT"
+  WORKTREES_ROOT="$(resolve_abs_path "$FAMILY_WORKTREES_ROOT")"
 fi
 
 if [[ -z "$BRANCH_NAME" ]]; then
@@ -174,7 +218,7 @@ fi
 if [[ -n "$TARGET_PATH" ]]; then
   TARGET_PATH="$(resolve_abs_path "$TARGET_PATH")"
 else
-  TARGET_PATH="$(resolve_abs_path "$WORKTREES_ROOT/$REPO_NAME-$MODULE_SLUG-$TASK_SLUG")"
+  TARGET_PATH="$(resolve_abs_path "$WORKTREES_ROOT/$FAMILY_REPO_NAME-$MODULE_SLUG-$TASK_SLUG")"
 fi
 
 if [[ "$ALLOW_DIRTY_SOURCE" != "1" ]] && [[ -n "$(git status --short)" ]]; then
@@ -208,8 +252,48 @@ if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
 else
   git worktree add --quiet -b "$BRANCH_NAME" "$TARGET_PATH" "$BASE_REF"
 fi
+git -C "$TARGET_PATH" config oasis7.task-worktree-family-name "$FAMILY_REPO_NAME"
+git -C "$TARGET_PATH" config oasis7.task-worktrees-root "$WORKTREES_ROOT"
 
-SUMMARY_JSON="$(python3 - "$MODULE_INPUT" "$TASK_INPUT" "$MODULE_SLUG" "$TASK_SLUG" "$BRANCH_NAME" "$TARGET_PATH" "$BASE_REF" "$MODE" "$REPO_ROOT" <<'PY'
+DOC_PRD_PATH=""
+DOC_PROJECT_PATH=""
+TODAY_DEVLOG_PATH=""
+DOC_PRD_EXISTS=0
+DOC_PROJECT_EXISTS=0
+TODAY_DEVLOG_EXISTS=0
+if [[ "$INIT_DOCS" == "1" ]]; then
+  TODAY_DEVLOG_DATE="$(date +%F)"
+  DOC_PRD_PATH="$TARGET_PATH/doc/$MODULE_SLUG/prd.md"
+  DOC_PROJECT_PATH="$TARGET_PATH/doc/$MODULE_SLUG/project.md"
+  TODAY_DEVLOG_PATH="$TARGET_PATH/doc/devlog/$TODAY_DEVLOG_DATE.md"
+  [[ -f "$DOC_PRD_PATH" ]] && DOC_PRD_EXISTS=1
+  [[ -f "$DOC_PROJECT_PATH" ]] && DOC_PROJECT_EXISTS=1
+  [[ -f "$TODAY_DEVLOG_PATH" ]] && TODAY_DEVLOG_EXISTS=1
+fi
+
+HARNESS_STATE_FILE=""
+HARNESS_BOOTSTRAP_LOG=""
+HARNESS_STATUS=""
+HARNESS_VIEWER_URL=""
+if [[ "$WITH_HARNESS" == "1" ]]; then
+  HARNESS_WORKTREE_ID="$(worktree_id_for_path "$TARGET_PATH")"
+  HARNESS_STATE_FILE="$TARGET_PATH/output/harness/$HARNESS_WORKTREE_ID/state.json"
+  HARNESS_BOOTSTRAP_LOG="$TARGET_PATH/output/harness/new-task-worktree-harness.log"
+  mkdir -p "$(dirname "$HARNESS_BOOTSTRAP_LOG")"
+  (
+    cd "$TARGET_PATH"
+    nohup ./scripts/worktree-harness.sh up --no-llm >"$HARNESS_BOOTSTRAP_LOG" 2>&1 < /dev/null &
+  )
+  for _ in $(seq 1 5); do
+    [[ -f "$HARNESS_STATE_FILE" ]] && break
+    sleep 1
+  done
+  HARNESS_STATUS="$(wh_state_get "$HARNESS_STATE_FILE" status 2>/dev/null || true)"
+  HARNESS_VIEWER_URL="$(wh_state_get "$HARNESS_STATE_FILE" viewer_url 2>/dev/null || true)"
+  [[ -n "$HARNESS_STATUS" ]] || HARNESS_STATUS="booting"
+fi
+
+SUMMARY_JSON="$(python3 - "$MODULE_INPUT" "$TASK_INPUT" "$MODULE_SLUG" "$TASK_SLUG" "$BRANCH_NAME" "$TARGET_PATH" "$BASE_REF" "$MODE" "$REPO_ROOT" "$FAMILY_REPO_NAME" "$WORKTREES_ROOT" "$INIT_DOCS" "$DOC_PRD_PATH" "$DOC_PRD_EXISTS" "$DOC_PROJECT_PATH" "$DOC_PROJECT_EXISTS" "$TODAY_DEVLOG_PATH" "$TODAY_DEVLOG_EXISTS" "$WITH_HARNESS" "$HARNESS_BOOTSTRAP_LOG" "$HARNESS_STATE_FILE" "$HARNESS_STATUS" "$HARNESS_VIEWER_URL" <<'PY'
 from __future__ import annotations
 
 import json
@@ -225,7 +309,22 @@ payload = {
     "base_ref": sys.argv[7],
     "mode": sys.argv[8],
     "repo_root": sys.argv[9],
+    "repo_name": sys.argv[10],
+    "worktrees_root": sys.argv[11],
 }
+if sys.argv[12] == "1":
+    payload["doc_checks"] = {
+        "prd": {"path": sys.argv[13], "exists": sys.argv[14] == "1"},
+        "project": {"path": sys.argv[15], "exists": sys.argv[16] == "1"},
+        "today_devlog": {"path": sys.argv[17], "exists": sys.argv[18] == "1"},
+    }
+if sys.argv[19] == "1":
+    payload["harness"] = {
+        "bootstrap_log": sys.argv[20],
+        "state_file": sys.argv[21],
+        "status": sys.argv[22],
+        "viewer_url": sys.argv[23],
+    }
 print(json.dumps(payload, ensure_ascii=False))
 PY
 )"
@@ -241,12 +340,59 @@ Task worktree is ready.
 - task: $TASK_INPUT
 - branch: $BRANCH_NAME
 - path: $TARGET_PATH
+- repo family: $FAMILY_REPO_NAME
+- worktrees root: $WORKTREES_ROOT
 - base ref: $BASE_REF
 - mode: $MODE
 
+INFO
+
+if [[ "$INIT_DOCS" == "1" ]]; then
+  cat <<INFO
+
+Docs bootstrap:
+- module PRD: $([[ "$DOC_PRD_EXISTS" == "1" ]] && printf 'present' || printf 'missing') ($DOC_PRD_PATH)
+- module project: $([[ "$DOC_PROJECT_EXISTS" == "1" ]] && printf 'present' || printf 'missing') ($DOC_PROJECT_PATH)
+- today devlog: $([[ "$TODAY_DEVLOG_EXISTS" == "1" ]] && printf 'present' || printf 'missing') ($TODAY_DEVLOG_PATH)
+INFO
+fi
+
+if [[ "$WITH_HARNESS" == "1" ]]; then
+  cat <<INFO
+
+Harness bootstrap:
+- status: ${HARNESS_STATUS:-unknown}
+- bootstrap log: $HARNESS_BOOTSTRAP_LOG
+- state file: $HARNESS_STATE_FILE
+- viewer url: ${HARNESS_VIEWER_URL:-unavailable}
+INFO
+fi
+
+cat <<INFO
+
 Next:
   cd $TARGET_PATH
-  sed -n '1,160p' doc/$MODULE_SLUG/prd.md
-  sed -n '1,160p' doc/$MODULE_SLUG/project.md
+INFO
+
+if [[ "$INIT_DOCS" == "1" ]]; then
+  if [[ "$DOC_PRD_EXISTS" == "1" ]]; then
+    printf '  sed -n '\''1,160p'\'' %s\n' "${DOC_PRD_PATH#$TARGET_PATH/}"
+  else
+    printf '  mkdir -p %s\n' "doc/$MODULE_SLUG"
+    printf '  # create %s\n' "${DOC_PRD_PATH#$TARGET_PATH/}"
+  fi
+  if [[ "$DOC_PROJECT_EXISTS" == "1" ]]; then
+    printf '  sed -n '\''1,160p'\'' %s\n' "${DOC_PROJECT_PATH#$TARGET_PATH/}"
+  else
+    printf '  # create %s\n' "${DOC_PROJECT_PATH#$TARGET_PATH/}"
+  fi
+else
+  printf '  sed -n '\''1,160p'\'' %s\n' "doc/$MODULE_SLUG/prd.md"
+  printf '  sed -n '\''1,160p'\'' %s\n' "doc/$MODULE_SLUG/project.md"
+fi
+if [[ "$WITH_HARNESS" == "1" ]]; then
+  printf '  ./scripts/worktree-harness.sh status --json\n'
+fi
+cat <<INFO
   git status -sb
 INFO
