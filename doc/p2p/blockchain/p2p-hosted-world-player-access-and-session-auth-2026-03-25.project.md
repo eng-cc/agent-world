@@ -156,6 +156,7 @@
   - `oasis7_hosted_access` 现已补 capability bypass 定向测试：即使 `OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY/PRIVATE_KEY/APPROVAL_CODE` 全部就绪、`prompt_control_*` 已升到 `public_player_plane_with_backend_reauth_preview`，`main_token_transfer` 仍必须保持 `blocked_until_strong_auth`，不能被 prompt lane 的 preview reauth 环境顺带打开。
   - `oasis7_web_launcher::server` 现已补 public snapshot 组合态回归：在同一份 env-ready snapshot 里，`prompt_control_apply` 必须显示 `public_player_plane_with_backend_reauth_preview`，而 `main_token_transfer` 仍必须显示 `blocked_until_strong_auth`，确保对外 contract 不会导出自相矛盾的 hosted verdict。
   - 现已新增浏览器侧证据 `doc/testing/evidence/hosted-world-browser-auth-surface-2026-03-26.md`：通过真实 `agent-browser` 会话确认 `Hosted Action Matrix`、`Asset / Governance Lane`、`Hosted Recovery` 与 `pending_registration_ttl_ms/release_token` 绑定都能在页面上稳定复现；同时验证 detached/agentless 页面下 `prompt_control_*` 仍不会误签发 grant、`main_token_transfer` 仍返回 `strong_auth_action_not_enabled`。
+  - 现已新增并发接入证据 `doc/testing/evidence/hosted-world-browser-concurrency-2026-03-27.md`：在显式重编 `oasis7_viewer_live` sibling bin 后，用两份独立 `agent-browser` session 实测同一 `web_bind`，确认两个页面都能稳定进入 `debug_viewer:subscribed` 并同时看到 seeded agents，不再复现第二页长期 `detached`。
 - 已实现的 `TASK-P2P-041-F` runbook first slice:
   - 已新增 `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`，冻结 hosted operator 的最小执行法：区分 `public join URL / private control plane / signer path`，并明确分享前检查、误分享后的第一响应、incident 最小记录字段与 public claims freeze 边界。
   - 已新增 `doc/testing/templates/hosted-world-operator-incident-template.md`，把误分享 operator URL / private control plane 暴露的 incident 记录字段统一成可复用模板，避免 liveops/QA 各写各的事故摘要。
@@ -174,6 +175,7 @@
 - `doc/p2p/project.md`
 - `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`
 - `doc/testing/evidence/hosted-world-browser-auth-surface-2026-03-26.md`
+- `doc/testing/evidence/hosted-world-browser-concurrency-2026-03-27.md`
 - `doc/testing/templates/hosted-world-operator-incident-template.md`
 - `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
@@ -192,4 +194,4 @@
 ## 状态
 - 当前状态: active
 - 下一步: 在 `TASK-P2P-041-C` / `TASK-P2P-041-D` 上继续推进，把当前已落的 hosted v1 `player_id issue + browser-local ephemeral key + reconnect/register` 扩到完整 revoke/world-full/admission enforcement，并把当前仅覆盖 `prompt_control_*` 的 preview-grade backend reauth 升级成更强 custody / 更完整 strong-auth matrix；`main_token_transfer` 暂继续阻断。
-- 最近更新: 2026-03-26
+- 最近更新: 2026-03-27

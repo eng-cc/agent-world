@@ -392,7 +392,7 @@
 - `.agents/skills/prd/check.md`
 
 ## 状态
-- 更新日期: 2026-03-26
+- 更新日期: 2026-03-27
 - 当前状态: active（ROUND-026）
 - 下一任务: 继续执行 `TASK-P2P-041-C` / `TASK-P2P-041-D`，把当前已落的 hosted v1 `player_id issue + browser-local ephemeral key + reconnect/register + local release + slot lease refresh` 扩到 operator kick / `world_full` / 远端 revoke enforcement，并把当前仅覆盖 `prompt_control_*` 的 preview-grade backend reauth 升级成更强 custody / 更完整 strong-auth matrix；`main_token_transfer` 暂继续阻断。
 - 最新完成: `TASK-P2P-041-A`（已完成 hosted-world P0 runtime gate：新增 `deployment_mode`，在 `hosted_public_join` 下让 `oasis7_game_launcher` 停止向公开 viewer 页面注入长期 signer bootstrap，让 `oasis7_web_launcher` 把 `/api/state`、`/api/start|stop`、`/api/chain/start|stop`、`/api/gui-agent/*` 与 console static 收口为 loopback-only private control plane，并新增 `/api/public/state` 与 admission/plane contract snapshot。）
