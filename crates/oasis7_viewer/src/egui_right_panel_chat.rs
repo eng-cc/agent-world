@@ -402,6 +402,7 @@ fn build_prompt_profile_apply_request(
         player_id: player_id.clone(),
         public_key: None,
         auth: None,
+        strong_auth_grant: None,
         expected_version: Some(current_profile.version),
         updated_by: Some(player_id),
         system_prompt_override: patch_override_with_default(

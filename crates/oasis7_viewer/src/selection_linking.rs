@@ -805,6 +805,11 @@ pub(super) fn event_primary_target(
             id: agent_id.clone(),
             name: None,
         }),
+        WorldEventKind::AgentPlayerUnbound { agent_id, .. } => Some(SelectionTarget {
+            kind: SelectionKind::Agent,
+            id: agent_id.clone(),
+            name: None,
+        }),
         WorldEventKind::ResourceTransferred { from, to, .. }
         | WorldEventKind::Power(PowerEvent::PowerTransferred { from, to, .. }) => {
             owner_to_target(from, snapshot).or_else(|| owner_to_target(to, snapshot))

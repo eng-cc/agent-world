@@ -17,7 +17,7 @@
 | --- | --- | --- | --- | --- |
 | required 套件 | `scripts/ci-tests.sh` | `scripts/pre-commit.sh` | 无 | 日常与提交门禁优先走统一 required 入口。 |
 | 站点文档治理 | `scripts/doc-governance-check.sh` | `scripts/site-manual-sync-check.sh` | 无 | 先检查文档治理，再做站点专项。 |
-| 本地游戏验证 | `scripts/run-game-test.sh` | `scripts/run-game-test-ab.sh` | 无 | AB 仅用于对比实验，不替代主入口。 |
+| 本地游戏验证 | `scripts/worktree-harness.sh` | `scripts/run-game-test.sh` | 无 | worktree harness 负责隔离端口、bundle、日志与浏览器 session；`run-game-test.sh` 降为底层 bootstrap。 |
 | Viewer Web 验证 | `scripts/run-viewer-web.sh` | `scripts/viewer-release-qa-loop.sh` | `scripts/capture-viewer-frame.sh` | Web-first 为默认链路；原生抓帧只在 Web 无法复现或 native 图形问题时使用。 |
 
 ### 2. 发布 / 打包主入口

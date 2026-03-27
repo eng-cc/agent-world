@@ -17,6 +17,10 @@ CHAIN_STATUS_BIND_ADDR=""
 BUNDLE_DIR=""
 VIEWER_STATIC_DIR_EXPLICIT="0"
 ALLOW_STALE_BUNDLE="0"
+OUTPUT_DIR=""
+RUN_ID=""
+META_FILE=""
+JSON_READY="0"
 
 usage() {
   cat <<'USAGE'
@@ -44,6 +48,10 @@ Options:
   --chain-disable          Disable chain runtime
   --chain-node-id <id>     Override chain node id (default: fresh per run)
   --chain-status-bind <a:p> Override chain status HTTP bind (default: web-bind port + 110)
+  --output-dir <path>      Override runtime log/artifact output directory
+  --run-id <id>            Override logical run id used for output dir / chain node id defaults
+  --meta-file <path>       Override metadata file path (default: <output-dir>/session.meta)
+  --json-ready             Emit one-line JSON ready payload after the stack becomes ready
   --with-llm               Enable LLM mode (default: enabled)
   --no-llm                 Disable LLM mode (fallback to built-in script)
   -h, --help               Show this help
@@ -79,6 +87,22 @@ while [[ $# -gt 0 ]]; do
       ;;
     --allow-stale-bundle)
       ALLOW_STALE_BUNDLE="1"
+      shift
+      ;;
+    --output-dir)
+      OUTPUT_DIR="${2:-}"
+      shift 2
+      ;;
+    --run-id)
+      RUN_ID="${2:-}"
+      shift 2
+      ;;
+    --meta-file)
+      META_FILE="${2:-}"
+      shift 2
+      ;;
+    --json-ready)
+      JSON_READY="1"
       shift
       ;;
     --chain-enable)
@@ -219,13 +243,39 @@ check_port_free() {
   fi
 }
 
+resolve_source_mode_target_dir() {
+  local base_dir
+  if [[ -n "${CARGO_TARGET_DIR:-}" ]]; then
+    if [[ "${CARGO_TARGET_DIR}" == /* ]]; then
+      base_dir="${CARGO_TARGET_DIR}"
+    else
+      base_dir="$ROOT_DIR/${CARGO_TARGET_DIR}"
+    fi
+  else
+    base_dir="$ROOT_DIR/target"
+  fi
+  printf '%s/debug\n' "$base_dir"
+}
+
+ensure_launcher_alive() {
+  local pid="$1"
+  if [[ -n "$pid" ]] && ! kill -0 "$pid" >/dev/null 2>&1; then
+    return 1
+  fi
+  return 0
+}
+
 wait_for_http_ready() {
   local url="$1"
   local timeout_secs="$2"
+  local launcher_pid="${3:-}"
   local i
   for ((i = 0; i < timeout_secs; i++)); do
     if curl -fsS "$url" >/dev/null 2>&1; then
       return 0
+    fi
+    if ! ensure_launcher_alive "$launcher_pid"; then
+      return 2
     fi
     sleep 1
   done
@@ -235,6 +285,7 @@ wait_for_http_ready() {
 wait_for_tcp_listener_ready() {
   local port="$1"
   local timeout_secs="$2"
+  local launcher_pid="${3:-}"
   local i
   if ! command -v lsof >/dev/null 2>&1 && ! command -v ss >/dev/null 2>&1; then
     echo "warning: neither lsof nor ss found; skip passive listener probe for port ${port}" >&2
@@ -243,6 +294,9 @@ wait_for_tcp_listener_ready() {
   for ((i = 0; i < timeout_secs; i++)); do
     if port_in_use "$port"; then
       return 0
+    fi
+    if ! ensure_launcher_alive "$launcher_pid"; then
+      return 2
     fi
     sleep 1
   done
@@ -261,7 +315,9 @@ tail_logs_on_error() {
 check_port_free "$VIEWER_PORT"
 check_port_free "$WEB_BRIDGE_PORT"
 
-RUN_ID="$(date +%Y%m%d-%H%M%S)"
+if [[ -z "$RUN_ID" ]]; then
+  RUN_ID="$(date +%Y%m%d-%H%M%S)"
+fi
 if [[ "$CHAIN_ENABLED" == "1" ]]; then
   if [[ -z "$CHAIN_STATUS_BIND_ADDR" ]]; then
     CHAIN_STATUS_BIND_PORT=$((WEB_BRIDGE_PORT + 110))
@@ -277,7 +333,13 @@ if [[ "$CHAIN_ENABLED" == "1" ]]; then
     CHAIN_NODE_ID="viewer-live-node-playtest-${RUN_ID}"
   fi
 fi
-OUTPUT_DIR="$ROOT_DIR/output/playwright/playability/startup-${RUN_ID}"
+if [[ -n "$OUTPUT_DIR" ]]; then
+  if [[ "$OUTPUT_DIR" != /* ]]; then
+    OUTPUT_DIR="$ROOT_DIR/$OUTPUT_DIR"
+  fi
+else
+  OUTPUT_DIR="$ROOT_DIR/output/playwright/playability/startup-${RUN_ID}"
+fi
 mkdir -p "$OUTPUT_DIR"
 
 if [[ -n "$BUNDLE_DIR" ]]; then
@@ -296,7 +358,14 @@ fi
 
 WORLD_LOG="$OUTPUT_DIR/oasis7_viewer_live.log"
 WEB_LOG="$OUTPUT_DIR/web_viewer.log"
-META_FILE="$OUTPUT_DIR/session.meta"
+if [[ -n "$META_FILE" ]]; then
+  if [[ "$META_FILE" != /* ]]; then
+    META_FILE="$ROOT_DIR/$META_FILE"
+  fi
+else
+  META_FILE="$OUTPUT_DIR/session.meta"
+fi
+mkdir -p "$(dirname "$META_FILE")"
 
 LAUNCHER_PID=""
 
@@ -347,10 +416,34 @@ if [[ -n "$BUNDLE_DIR" ]]; then
   ) &
 else
   LAUNCH_MODE="source"
-  LAUNCH_CMD="cargo run -p oasis7 --bin oasis7_game_launcher"
+  SOURCE_MODE_TARGET_DIR="$(resolve_source_mode_target_dir)"
+  SOURCE_MODE_LAUNCHER_BIN="$SOURCE_MODE_TARGET_DIR/oasis7_game_launcher"
+  SOURCE_MODE_VIEWER_LIVE_BIN="$SOURCE_MODE_TARGET_DIR/oasis7_viewer_live"
+  SOURCE_MODE_CHAIN_RUNTIME_BIN="$SOURCE_MODE_TARGET_DIR/oasis7_chain_runtime"
+  SOURCE_BUILD_ARGS=(
+    build
+    -p
+    oasis7
+    --bin
+    oasis7_game_launcher
+    --bin
+    oasis7_viewer_live
+  )
+  if [[ "$CHAIN_ENABLED" == "1" ]]; then
+    SOURCE_BUILD_ARGS+=(--bin oasis7_chain_runtime)
+  fi
+  env -u RUSTC_WRAPPER cargo "${SOURCE_BUILD_ARGS[@]}"
+  [[ -x "$SOURCE_MODE_LAUNCHER_BIN" ]] || { echo "error: built launcher binary missing: $SOURCE_MODE_LAUNCHER_BIN" >&2; exit 1; }
+  [[ -x "$SOURCE_MODE_VIEWER_LIVE_BIN" ]] || { echo "error: built viewer live binary missing: $SOURCE_MODE_VIEWER_LIVE_BIN" >&2; exit 1; }
+  if [[ "$CHAIN_ENABLED" == "1" ]]; then
+    [[ -x "$SOURCE_MODE_CHAIN_RUNTIME_BIN" ]] || { echo "error: built chain runtime binary missing: $SOURCE_MODE_CHAIN_RUNTIME_BIN" >&2; exit 1; }
+  fi
+  LAUNCH_CMD="$SOURCE_MODE_LAUNCHER_BIN"
   (
     cd "$ROOT_DIR"
-    env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_game_launcher -- "${WORLD_ARGS[@]}" >"$WORLD_LOG" 2>&1
+    OASIS7_VIEWER_LIVE_BIN="$SOURCE_MODE_VIEWER_LIVE_BIN" \
+    OASIS7_CHAIN_RUNTIME_BIN="$SOURCE_MODE_CHAIN_RUNTIME_BIN" \
+    "$SOURCE_MODE_LAUNCHER_BIN" "${WORLD_ARGS[@]}" >"$WORLD_LOG" 2>&1
   ) &
 fi
 LAUNCHER_PID=$!
@@ -375,16 +468,25 @@ INFO
   echo "LAUNCH_MODE=$LAUNCH_MODE"
   echo "LAUNCH_CMD=$LAUNCH_CMD"
   echo "BUNDLE_DIR=$BUNDLE_DIR"
+  echo "STACK_READY=0"
 } >"$META_FILE"
 
-if ! wait_for_http_ready "http://${VIEWER_HOST}:${VIEWER_PORT}/" 180; then
-  echo "error: viewer HTTP did not become ready in time" >&2
+if ! wait_for_http_ready "http://${VIEWER_HOST}:${VIEWER_PORT}/" 180 "$LAUNCHER_PID"; then
+  if ensure_launcher_alive "$LAUNCHER_PID"; then
+    echo "error: viewer HTTP did not become ready in time" >&2
+  else
+    echo "error: launcher exited before viewer HTTP became ready" >&2
+  fi
   tail_logs_on_error
   exit 1
 fi
 
-if ! wait_for_tcp_listener_ready "$WEB_BRIDGE_PORT" 60; then
-  echo "error: web bridge port ${WEB_BRIDGE_PORT} did not become ready in time" >&2
+if ! wait_for_tcp_listener_ready "$WEB_BRIDGE_PORT" 60 "$LAUNCHER_PID"; then
+  if ensure_launcher_alive "$LAUNCHER_PID"; then
+    echo "error: web bridge port ${WEB_BRIDGE_PORT} did not become ready in time" >&2
+  else
+    echo "error: launcher exited before web bridge port ${WEB_BRIDGE_PORT} became ready" >&2
+  fi
   tail_logs_on_error
   exit 1
 fi
@@ -399,6 +501,54 @@ if [[ "$URL_WS_HOST" == "0.0.0.0" ]]; then
 fi
 
 GAME_URL="http://${URL_VIEWER_HOST}:${VIEWER_PORT}/?ws=ws://${URL_WS_HOST}:${WEB_BRIDGE_PORT}&test_api=1"
+
+{
+  echo "RUN_ID=$RUN_ID"
+  echo "OUTPUT_DIR=$OUTPUT_DIR"
+  echo "WORLD_PID=$LAUNCHER_PID"
+  echo "WEB_PID="
+  echo "LAUNCHER_PID=$LAUNCHER_PID"
+  echo "LIVE_BIND_ADDR=$LIVE_BIND_ADDR"
+  echo "WEB_BRIDGE_ADDR=$WEB_BRIDGE_ADDR"
+  echo "VIEWER_HOST=$VIEWER_HOST"
+  echo "VIEWER_PORT=$VIEWER_PORT"
+  echo "CHAIN_ENABLED=$CHAIN_ENABLED"
+  echo "CHAIN_NODE_ID=$CHAIN_NODE_ID"
+  echo "CHAIN_STATUS_BIND_ADDR=$CHAIN_STATUS_BIND_ADDR"
+  echo "LAUNCH_MODE=$LAUNCH_MODE"
+  echo "LAUNCH_CMD=$LAUNCH_CMD"
+  echo "BUNDLE_DIR=$BUNDLE_DIR"
+  echo "STACK_READY=1"
+  echo "GAME_URL=$GAME_URL"
+} >"$META_FILE"
+
+if [[ "$JSON_READY" == "1" ]]; then
+  python3 - "$RUN_ID" "$OUTPUT_DIR" "$LAUNCHER_PID" "$LIVE_BIND_ADDR" "$WEB_BRIDGE_ADDR" "$VIEWER_HOST" "$VIEWER_PORT" "$CHAIN_ENABLED" "$CHAIN_NODE_ID" "$CHAIN_STATUS_BIND_ADDR" "$LAUNCH_MODE" "$LAUNCH_CMD" "$BUNDLE_DIR" "$GAME_URL" "$META_FILE" <<'PY'
+from __future__ import annotations
+
+import json
+import sys
+
+payload = {
+    "run_id": sys.argv[1],
+    "output_dir": sys.argv[2],
+    "launcher_pid": int(sys.argv[3]),
+    "live_bind_addr": sys.argv[4],
+    "web_bridge_addr": sys.argv[5],
+    "viewer_host": sys.argv[6],
+    "viewer_port": int(sys.argv[7]),
+    "chain_enabled": sys.argv[8] == "1",
+    "chain_node_id": sys.argv[9],
+    "chain_status_bind_addr": sys.argv[10],
+    "launch_mode": sys.argv[11],
+    "launch_cmd": sys.argv[12],
+    "bundle_dir": sys.argv[13],
+    "game_url": sys.argv[14],
+    "meta_file": sys.argv[15],
+}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+fi
 
 cat <<INFO
 Game test stack is ready.

@@ -38,6 +38,7 @@
   - SC-6: `doc/scripts/precommit/**` 等活跃脚本手册中的当前 crate 命令、依赖说明与 CI 帮助文案必须统一使用 `oasis7*` 口径；旧品牌包名仅允许保留在历史记录或外部原文引用中。
   - SC-7: `doc/scripts/viewer-tools/capture-viewer-frame.{prd,project}.md` 中当前 native fallback viewer 调试说明必须统一使用 `oasis7_viewer` / `OASIS7_VIEWER_*` 口径；旧品牌 viewer 包名与前缀仅允许保留在历史记录或外部原文引用中。
   - SC-8: repo-owned OpenClaw real-play helper 文档与脚本（`.agents/skills/oasis7/**`）中的当前 cargo 运行命令与入口路径必须统一使用 `oasis7` / `crates/oasis7*`；旧品牌包名与源码路径仅允许保留在兼容说明、历史证据或外部原文引用中。
+  - SC-9: `run-game-test.sh`、`run-producer-playtest.sh` 与新的 worktree harness 主入口必须支持“每个 git worktree 一套独立端口、独立 bundle、独立日志 / 产物目录、独立浏览器 session”的隔离执行，不再默认复用全局端口与全局 bundle 目录。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -53,6 +54,7 @@
   - PRD-SCRIPTS-001: As a 开发者, I want stable script entry points, so that daily workflows are reliable.
   - PRD-SCRIPTS-002: As a CI 维护者, I want deterministic script contracts, so that pipeline changes are controlled.
   - PRD-SCRIPTS-003: As a 排障人员, I want explicit fallback tooling rules, so that issue triage is faster.
+  - PRD-SCRIPTS-004: As a `qa_engineer`, I want a worktree-isolated harness for Viewer Web / launcher stack, so that multiple agent tasks can boot, verify, and tear down isolated stacks without port, artifact, or browser-session collisions.
 - Critical User Flows:
   1. Flow-SCR-001: `调用主入口脚本 -> 执行检查/测试 -> 输出结构化结果`
   2. Flow-SCR-002: `CI 触发脚本 -> 失败定位到参数/环境 -> 修复后重跑`
@@ -64,6 +66,7 @@
 | 参数契约 | 必填参数、默认值、失败语义 | 参数校验失败即阻断 | `validating -> accepted/rejected` | 必填项优先校验 | 维护者可更新契约 |
 | fallback 规则 | 触发条件、替代脚本、产物要求 | 满足条件后才允许 fallback | `normal -> fallback -> diagnosed` | 常规链路优先 | 仅排障场景允许触发 |
 | 标题品牌治理 | 标题前缀、适用专题、兼容命名说明 | 将脚本治理专题标题统一切到 `oasis7` | `legacy_title -> oasis7_title -> audited` | 先改治理主入口，再改周边专题 | owner 可改，治理门禁复核 |
+| worktree-isolated harness | `worktree_id`、端口组、状态文件、bundle 根目录、artifact 根目录、browser session | 通过单一 harness 入口执行 `up/down/status/url/logs/smoke` | `idle -> booting -> ready -> verifying -> torn_down` | 先按 worktree 生成稳定身份，再为该 worktree 派生 bundle / port / output | `qa_engineer` 维护主入口，runtime/viewer 协同实现 |
 - Acceptance Criteria:
   - AC-1: scripts PRD 明确脚本分类、入口、约束。
   - AC-2: scripts project 文档维护脚本治理任务。
@@ -73,6 +76,9 @@
   - AC-6: `doc/scripts/precommit/pre-commit.{prd,project}.md` 中当前 viewer wasm 编译门禁、依赖说明与 CI 帮助文案必须写为 `oasis7_viewer` / `cargo check -p oasis7_viewer`；旧品牌 viewer 包名仅允许保留在历史记录或外部原文引用中。
   - AC-7: `doc/scripts/viewer-tools/capture-viewer-frame.{prd,project}.md` 中当前 native fallback viewer 调试说明必须写为 `oasis7_viewer` / `OASIS7_VIEWER_*`；旧品牌 viewer 包名与前缀仅允许保留在历史记录或外部原文引用中。
   - AC-8: `.agents/skills/oasis7/SKILL.md`、`.agents/skills/oasis7/references/real-play-config.md` 与 `.agents/skills/oasis7/scripts/oasis7-run.sh` 中当前 `cargo run -p` 命令和入口路径必须写为 `oasis7` / `crates/oasis7*`；旧品牌包名与源码路径仅允许保留在兼容说明、历史证据或外部原文引用中。
+  - AC-9: 新增 `scripts/worktree-harness.sh` 作为 worktree 级主入口，至少提供 `up/down/status/url/logs/smoke` 六个动作，并把当前 worktree 的运行状态写入稳定 `state.json`。
+  - AC-10: `scripts/run-game-test.sh` 必须支持把 `run-id`、`output-dir`、`meta-file` 与 ready payload 交给上层 harness 注入，避免上层通过 grep stdout 猜测 URL/日志路径。
+  - AC-11: `scripts/run-producer-playtest.sh` 默认 bundle 根目录必须可按 worktree 隔离，不再强制复用全局 `output/release/game-launcher-producer-local`。
 - Non-Goals:
   - 不在 scripts PRD 中替代业务功能设计。
   - 不承诺所有历史脚本长期向后兼容。
@@ -88,6 +94,9 @@
   - `doc/scripts/precommit/`
   - `doc/scripts/viewer-tools/`
   - `doc/scripts/wasm/`
+  - `scripts/run-game-test.sh`
+  - `scripts/run-producer-playtest.sh`
+  - `scripts/worktree-harness.sh`
   - `testing-manual.md`
   - `.github/workflows/*`
 - Edge Cases & Error Handling:
@@ -97,12 +106,15 @@
   - 权限不足：不可写目录或权限异常时给出路径修复建议。
   - 并发冲突：同产物目录并发执行时强制隔离输出。
   - fallback 误用：未满足触发条件时拒绝 fallback。
+  - worktree 并行：同一分支或同一用户同时开多个 worktree 时，端口、bundle、日志、browser session 与 chain node id 必须按 worktree 隔离，避免互相踩踏。
 - Non-Functional Requirements:
   - NFR-SCR-1: 核心脚本具备可读帮助信息与失败语义说明。
   - NFR-SCR-2: 主入口脚本在 Linux/macOS 环境可执行一致。
   - NFR-SCR-3: CI 脚本接口稳定，破坏性改动需预告与回归。
   - NFR-SCR-4: 脚本默认输出不得包含敏感信息。
   - NFR-SCR-5: fallback 流程必须可追溯到故障诊断记录。
+  - NFR-SCR-6: worktree harness 的状态文件必须机器可读，允许 agent 直接拿到 URL、端口组、输出目录与 PID，而不依赖 stdout 文本解析。
+  - NFR-SCR-7: 同一仓库下至少两份 worktree 可在默认配置下并行起栈，不因固定端口或全局 bundle 目录直接冲突。
 - Security & Privacy: 脚本不得在默认输出中泄漏密钥；涉及网络调用时需要显式参数与最小权限。
 
 ## 5. Risks & Roadmap
@@ -113,6 +125,7 @@
 - Technical Risks:
   - 风险-1: 历史脚本行为差异导致切换成本。
   - 风险-2: 入口过多导致文档与实际调用脱节。
+  - 风险-3: 若 worktree harness 只包壳而不下沉到 `run-game-test.sh` / `run-producer-playtest.sh` 契约层，后续上层脚本仍会靠 grep stdout 和全局目录工作，隔离性会继续失真。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -121,6 +134,7 @@
 | PRD-SCRIPTS-001 | TASK-SCRIPTS-001/002/005/009/011 | `test_tier_required` | 脚本分层与入口清单核验 | 日常开发链路稳定性 |
 | PRD-SCRIPTS-002 | TASK-SCRIPTS-002/003/005 | `test_tier_required` + `test_tier_full` | 参数契约与失败语义回归 | CI 稳定性与故障定位效率 |
 | PRD-SCRIPTS-003 | TASK-SCRIPTS-003/004/005/010 | `test_tier_required` | fallback 使用条件抽样检查 | 排障闭环和风险控制 |
+| PRD-SCRIPTS-004 | TASK-SCRIPTS-014 | `test_tier_required` | `bash -n` + `--help` + 双实例并行 smoke + `state.json` / ready payload 检查 + 文档治理检查 | 多 worktree 并行执行稳定性与 agent 可驱动性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

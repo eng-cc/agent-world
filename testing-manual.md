@@ -121,7 +121,7 @@
 
 ### L4 UI 闭环层（Web 为默认）
 - 目标：验证真实用户路径可用性（加载、交互、状态可见、无 console error）。
-- 默认：制作人试玩 / 发布前人工验收优先使用 `./scripts/run-producer-playtest.sh`（需要自动打开浏览器时加 `--open-headed`）；其内部会自动准备/复用 bundle 并进入 `run-game-test.sh --bundle-dir <bundle>`，且该脚本退出时会自动关闭自己拉起的 `agent-browser` 会话。`--open-headed` 与 `run-game-test-ab.sh` 默认会通过 `agent-browser --args '--use-angle=gl,--ignore-gpu-blocklist'` 固定硬件 WebGL 路径；如需覆盖，再显式设置 `AGENT_BROWSER_ARGS`。`scripts/run-game-test.sh` 保留为开发回归 bootstrap，并支持 `--bundle-dir <bundle>` 复用产物入口；当 bundle 缺少 freshness manifest 或已落后于当前工作区源码时，脚本会默认阻断，制作人入口则会自动重建。
+- 默认：agent / QA 在当前 git worktree 内做开发回归时，优先使用 `./scripts/worktree-harness.sh up --no-llm` 起一套 worktree 隔离 Web 栈；它会为当前 worktree 派生独立端口组、bundle / runtime / artifact 根目录与浏览器 session，并把状态写到 `output/harness/<worktree_id>/state.json`。制作人试玩 / 发布前人工验收仍优先使用 `./scripts/run-producer-playtest.sh`（需要自动打开浏览器时加 `--open-headed`）；其默认 bundle 根目录也会落到当前 worktree 自己的 `output/harness/<worktree_id>/bundle/` 下。`scripts/run-game-test.sh` 保留为底层 bootstrap，并支持 `--bundle-dir <bundle>` 复用产物入口；当 bundle 缺少 freshness manifest 或已落后于当前工作区源码时，脚本会默认阻断，制作人入口则会自动重建。
 - source-tree `oasis7-run.sh play` 与 `run-game-test.sh` 的 Viewer Web 开发态入口都必须走 freshness gate；当 `crates/oasis7_viewer/index.html`、`software_safe.html`、`software_safe.js` 或相关静态资源比 `dist/` 更新时，默认应优先重建 fresh dist，而不是继续拿 stale `dist` 给 Web 闭环下结论。
 - native 抓图：仅 fallback（Web 无法复现或 native 图形链路问题）。
 
@@ -326,6 +326,7 @@ env -u RUSTC_WRAPPER cargo check -p oasis7_viewer --target wasm32-unknown-unknow
   - `renderMode=software_safe`：允许继续做最小闭环验证（连接、选择目标、`step`、新反馈）。
   - `renderMode!=software_safe`：仍按图形环境阻断处理；默认先使用 `--use-angle=gl,--ignore-gpu-blocklist` 固定硬件路径。
 - `oasis7_web_launcher` / launcher Web 控制面：默认优先使用 GUI Agent 驱动产品动作，再用 Web 页面做状态与字段校验；Canvas 直点仅作补充。制作人试玩与发布前人工验收若要进入真实产品路径，优先直接执行 `./scripts/run-producer-playtest.sh`（需要自动打开浏览器时加 `--open-headed`，脚本退出时会自动关闭该浏览器会话）；如需手动控制 bundle，再使用 `<bundle>/run-game.sh` 或 `./scripts/run-game-test.sh --bundle-dir <bundle>` 启动。
+- agent / QA 若只是想在当前 worktree 内起一套隔离回归栈，优先执行 `./scripts/worktree-harness.sh up --no-llm`，然后通过 `./scripts/worktree-harness.sh url` / `status --json` / `logs` 获取 URL 与状态；`run-game-test.sh` 继续作为该 harness 的底层启动器，不应再被当作并行 worktree 回归的顶层主入口。
 - 不要把 Viewer 页面专用的 `agent-browser` 操作步骤直接套用到 launcher 控制面动作执行上。
 - 涉及 `Explorer / Transfer` 的闭环时，先准备可观测数据，再执行查询与字段断言；不得只以“页面打开了/接口返回 200”判定通过。
 - 防误用约束：
@@ -364,6 +365,9 @@ cargo run -q -p oasis7 --bin oasis7_pure_api_client -- --addr 127.0.0.1:5023 rec
 ```bash
 ./scripts/run-producer-playtest.sh --no-llm
 ./scripts/run-producer-playtest.sh --no-llm --open-headed
+./scripts/worktree-harness.sh up --no-llm
+./scripts/worktree-harness.sh status --json
+./scripts/worktree-harness.sh down
 ./scripts/build-game-launcher-bundle.sh --out-dir output/release/game-launcher-local
 ./scripts/run-game-test.sh --bundle-dir output/release/game-launcher-local --no-llm
 ./scripts/run-game-test-ab.sh --bundle-dir output/release/game-launcher-local --no-llm

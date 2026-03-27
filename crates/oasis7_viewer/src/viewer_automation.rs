@@ -687,6 +687,7 @@ fn dispatch_agent_chat_step(
         public_key: Some(signer.public_key.clone()),
         auth: None,
         requested_agent_id: Some(agent_id.to_string()),
+        force_rebind: false,
     };
     let register_proof = oasis7::viewer::sign_session_register_auth_proof(
         &session_register,
@@ -743,6 +744,7 @@ fn dispatch_prompt_override_step(
         public_key: Some(signer.public_key.clone()),
         auth: None,
         requested_agent_id: Some(agent_id.to_string()),
+        force_rebind: false,
     };
     let register_proof = oasis7::viewer::sign_session_register_auth_proof(
         &session_register,
@@ -758,6 +760,7 @@ fn dispatch_prompt_override_step(
         player_id: signer.player_id.clone(),
         public_key: Some(signer.public_key.clone()),
         auth: None,
+        strong_auth_grant: None,
         expected_version: None,
         updated_by: Some(signer.player_id.clone()),
         system_prompt_override: None,

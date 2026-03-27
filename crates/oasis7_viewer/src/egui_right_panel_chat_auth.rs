@@ -225,6 +225,7 @@ pub(super) fn build_session_register_request(
         public_key: Some(signer.public_key.clone()),
         auth: None,
         requested_agent_id,
+        force_rebind: false,
     };
     let proof = oasis7::viewer::sign_session_register_auth_proof(
         &request,
