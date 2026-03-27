@@ -2374,7 +2374,7 @@ fn runtime_authoritative_recovery_rotate_and_revoke_session_enforced_for_agent_c
         .handle_agent_chat(rotated_request)
         .expect("new key should be accepted");
 
-    let _ = server
+    let (revoke_ack, emit_snapshot_after_ack) = server
         .handle_authoritative_recovery(AuthoritativeRecoveryCommand::RevokeSession {
             request: AuthoritativeSessionRevokeRequest {
                 player_id: "player-a".to_string(),
@@ -2384,6 +2384,54 @@ fn runtime_authoritative_recovery_rotate_and_revoke_session_enforced_for_agent_c
             },
         })
         .expect("revoke session");
+    assert!(!emit_snapshot_after_ack);
+    assert_eq!(
+        revoke_ack.status,
+        AuthoritativeRecoveryStatus::SessionRevoked
+    );
+    assert_eq!(revoke_ack.revoke_reason.as_deref(), Some("compromised"));
+    assert_eq!(revoke_ack.revoked_by.as_deref(), Some("ops"));
+
+    let revoked_reconnect_err = server
+        .handle_authoritative_recovery(AuthoritativeRecoveryCommand::ReconnectSync {
+            request: AuthoritativeReconnectSyncRequest {
+                player_id: "player-a".to_string(),
+                session_pubkey: Some(public_key_v2.clone()),
+                last_known_log_cursor: None,
+                expected_reorg_epoch: None,
+            },
+        })
+        .expect_err("reconnect should surface revoke metadata");
+    assert_eq!(revoked_reconnect_err.code, "session_revoked");
+    assert_eq!(
+        revoked_reconnect_err.revoke_reason.as_deref(),
+        Some("compromised")
+    );
+    assert_eq!(revoked_reconnect_err.revoked_by.as_deref(), Some("ops"));
+
+    let revoked_register_request = signed_session_register_request(
+        crate::viewer::AuthoritativeSessionRegisterRequest {
+            player_id: "player-a".to_string(),
+            public_key: None,
+            auth: None,
+            requested_agent_id: Some(agent_id.clone()),
+            force_rebind: false,
+        },
+        5,
+        public_key_v2.as_str(),
+        private_key_v2.as_str(),
+    );
+    let revoked_register_err = server
+        .handle_authoritative_recovery(AuthoritativeRecoveryCommand::RegisterSession {
+            request: revoked_register_request,
+        })
+        .expect_err("register should surface revoke metadata");
+    assert_eq!(revoked_register_err.code, "session_revoked");
+    assert_eq!(
+        revoked_register_err.revoke_reason.as_deref(),
+        Some("compromised")
+    );
+    assert_eq!(revoked_register_err.revoked_by.as_deref(), Some("ops"));
 
     let revoked_request = signed_agent_chat_request(
         crate::viewer::AgentChatRequest {

@@ -427,6 +427,10 @@ pub struct AuthoritativeRecoveryAck<Time> {
     pub session_epoch: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revoke_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revoked_by: Option<String>,
     pub acknowledged_at_tick: Time,
 }
 
@@ -440,6 +444,10 @@ pub struct AuthoritativeRecoveryError {
     pub player_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_pubkey: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revoke_reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revoked_by: Option<String>,
 }
 
 // Legacy mixed control channel. Prefer PlaybackControl/LiveControl.
@@ -1084,6 +1092,8 @@ mod tests {
                 replaced_by_pubkey: Some("new-key".to_string()),
                 session_epoch: Some(5),
                 message: Some("session rotated".to_string()),
+                revoke_reason: Some("compromised".to_string()),
+                revoked_by: Some("ops".to_string()),
                 acknowledged_at_tick: 89,
             },
         };

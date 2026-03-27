@@ -72,6 +72,8 @@ const state = {
     privateKey: null,
     releaseToken: null,
     error: null,
+    revokeReason: null,
+    revokedBy: null,
     source: "guest_only",
     registrationStatus: "guest",
     sessionEpoch: null,
@@ -193,6 +195,8 @@ function resolveAuthBootstrap() {
       privateKey: null,
       releaseToken: null,
       error: "viewer auth bootstrap is unavailable",
+      revokeReason: null,
+      revokedBy: null,
       source: "guest_only",
       registrationStatus: "guest",
       sessionEpoch: null,
@@ -223,6 +227,8 @@ function resolveAuthBootstrap() {
       privateKey: privateKey || null,
       releaseToken: null,
       error: "viewer auth bootstrap is incomplete",
+      revokeReason: null,
+      revokedBy: null,
       source: "guest_only",
       registrationStatus: "guest",
       sessionEpoch: null,
@@ -245,6 +251,8 @@ function resolveAuthBootstrap() {
     privateKey,
     releaseToken: null,
     error: null,
+    revokeReason: null,
+    revokedBy: null,
     source: "legacy_viewer_auth_bootstrap",
     registrationStatus: "registered",
     sessionEpoch: 1,
@@ -319,6 +327,8 @@ function resolveStoredHostedPlayerSession() {
       privateKey,
       releaseToken,
       error: null,
+      revokeReason: null,
+      revokedBy: null,
       source: "hosted_browser_storage",
       registrationStatus: "issued",
       sessionEpoch: parsed?.sessionEpoch == null ? null : Number(parsed.sessionEpoch),
@@ -723,6 +733,8 @@ function buildHostedRecoveryHint() {
     return null;
   }
   const errorText = String(state.auth.error || "").trim();
+  const revokeReason = String(state.auth.revokeReason || "").trim();
+  const revokedBy = String(state.auth.revokedBy || "").trim();
   if (!errorText) {
     return null;
   }
@@ -734,11 +746,15 @@ function buildHostedRecoveryHint() {
       cta: "Acquire Hosted Player Session",
     };
   }
-  if (errorText.includes("revoked")) {
+  if (errorText.includes("revoked") || revokeReason || revokedBy) {
+    const actorText = revokedBy ? ` by ${revokedBy}` : "";
+    const reasonText = revokeReason
+      ? ` Reason: ${revokeReason}.`
+      : "";
     return {
       kind: "revoked",
       title: "Hosted player session was revoked",
-      detail: "The runtime or operator revoked this browser session. You need to acquire a fresh hosted player session before gameplay, chat, or prompt actions can continue.",
+      detail: `The runtime or operator revoked this browser session${actorText}.${reasonText} You need to acquire a fresh hosted player session before gameplay, chat, or prompt actions can continue.`,
       cta: "Re-acquire Hosted Player Session",
     };
   }
@@ -837,6 +853,8 @@ function getState() {
     authPlayerId: state.auth.playerId,
     authPublicKey: state.auth.publicKey,
     authError: state.auth.error,
+    authRevokeReason: state.auth.revokeReason,
+    authRevokedBy: state.auth.revokedBy,
     authRegistrationStatus: state.auth.registrationStatus,
     authSessionEpoch: state.auth.sessionEpoch,
     authRecoveryErrorCode: state.auth.recoveryErrorCode,
@@ -1568,6 +1586,8 @@ async function issueHostedPlayerIdentity() {
       privateKey: keypair.privateKey,
       releaseToken: String(payload.grant.release_token || "").trim() || null,
       error: null,
+      revokeReason: null,
+      revokedBy: null,
       source: "hosted_browser_storage",
       registrationStatus: "issued",
       sessionEpoch: null,
@@ -1723,10 +1743,12 @@ async function releaseHostedPlayerSlot() {
   return payload;
 }
 
-function resetHostedPlayerAuthState(errorMessage = null) {
+function resetHostedPlayerAuthState(errorMessage = null, revocationMeta = null) {
   stopHostedSessionRefreshLoop();
   clearHostedPlayerSession();
   const bootstrap = resolveAuthBootstrap();
+  const revokeReason = String(revocationMeta?.revokeReason || "").trim() || null;
+  const revokedBy = String(revocationMeta?.revokedBy || "").trim() || null;
   state.auth = bootstrap.available
     ? bootstrap
     : {
@@ -1734,6 +1756,8 @@ function resetHostedPlayerAuthState(errorMessage = null) {
         source: "guest_only",
         registrationStatus: "guest",
         error: errorMessage,
+        revokeReason,
+        revokedBy,
         sessionEpoch: null,
         issuedAtUnixMs: null,
         releaseToken: null,
@@ -2344,6 +2368,8 @@ function adoptHostedRecoveryAck(ack) {
   state.auth.recoveryErrorCode = null;
   state.auth.recoveryErrorMessage = null;
   state.auth.error = null;
+  state.auth.revokeReason = null;
+  state.auth.revokedBy = null;
   if (ack.player_id) {
     state.auth.playerId = ack.player_id;
   }
@@ -2371,7 +2397,13 @@ function adoptHostedRecoveryAck(ack) {
       : "registered_unbound";
   if (ack.status === "session_revoked") {
     void releaseHostedPlayerSlot().catch(() => {});
-    resetHostedPlayerAuthState(ack.message || "hosted player session was revoked");
+    resetHostedPlayerAuthState(
+      ack.message || "hosted player session was revoked",
+      {
+        revokeReason: ack.revoke_reason || ack.message || null,
+        revokedBy: ack.revoked_by || null,
+      },
+    );
   } else {
     persistHostedPlayerSession(state.auth);
     void refreshHostedPlayerLease();
@@ -2397,7 +2429,19 @@ async function recoverHostedSessionFromError(error) {
     await ensureRegisteredPlayerSession(latestRequestedAgentId());
     return;
   }
-  if (["session_key_mismatch", "session_revoked", "session_player_id_invalid"].includes(code)) {
+  if (code === "session_revoked") {
+    void releaseHostedPlayerSlot().catch(() => {});
+    resetHostedPlayerAuthState(
+      error?.message || code || "hosted player session failed",
+      {
+        revokeReason: error?.revoke_reason || error?.message || null,
+        revokedBy: error?.revoked_by || null,
+      },
+    );
+    render();
+    return;
+  }
+  if (["session_key_mismatch", "session_player_id_invalid"].includes(code)) {
     void releaseHostedPlayerSlot().catch(() => {});
     resetHostedPlayerAuthState(error?.message || code || "hosted player session failed");
     render();
@@ -2444,6 +2488,8 @@ function handleAuthoritativeRecoveryError(error) {
   state.auth.recoveryErrorCode = error?.code || null;
   state.auth.recoveryErrorMessage = error?.message || null;
   state.auth.error = error?.message || error?.code || "authoritative recovery failed";
+  state.auth.revokeReason = error?.revoke_reason || null;
+  state.auth.revokedBy = error?.revoked_by || null;
   state.auth.registrationStatus = "issued";
   state.auth.runtimeStatus = error?.code === "session_revoked"
     ? "revoked"

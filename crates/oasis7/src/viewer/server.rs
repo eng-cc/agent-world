@@ -297,6 +297,8 @@ impl<'a> ViewerSession<'a> {
                             batch_id: None,
                             player_id: None,
                             session_pubkey: None,
+                            revoke_reason: None,
+                            revoked_by: None,
                         },
                     },
                 )?;

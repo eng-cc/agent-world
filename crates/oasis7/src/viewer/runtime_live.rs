@@ -68,6 +68,12 @@ struct RuntimeRecoveryCursor {
     stable_batch_id: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RuntimeSessionRevokeMetadata {
+    revoke_reason: Option<String>,
+    revoked_by: Option<String>,
+}
+
 #[derive(Debug, Clone, Default)]
 struct RuntimeSessionPolicy {
     active_pubkey_by_player: BTreeMap<String, String>,
@@ -472,6 +478,7 @@ pub struct ViewerRuntimeLiveServer {
     stable_checkpoints: VecDeque<RuntimeStableCheckpoint>,
     reorg_epoch: u64,
     session_policy: RuntimeSessionPolicy,
+    session_revoke_metadata: BTreeMap<(String, String), RuntimeSessionRevokeMetadata>,
     settlement_ranking_gate: RuntimeSettlementRankingGate,
     latest_player_gameplay_feedback: Option<PlayerGameplayRecentFeedback>,
 }
@@ -499,6 +506,7 @@ impl ViewerRuntimeLiveServer {
             stable_checkpoints: VecDeque::new(),
             reorg_epoch: 0,
             session_policy: RuntimeSessionPolicy::default(),
+            session_revoke_metadata: BTreeMap::new(),
             settlement_ranking_gate: RuntimeSettlementRankingGate::default(),
             latest_player_gameplay_feedback: None,
         })
@@ -665,6 +673,8 @@ impl ViewerRuntimeLiveServer {
                                 replaced_by_pubkey: None,
                                 session_epoch: None,
                                 message: Some("snapshot_sync_metadata".to_string()),
+                                revoke_reason: None,
+                                revoked_by: None,
                                 acknowledged_at_tick: self.world.state().time,
                             },
                         },
@@ -1408,6 +1418,8 @@ impl ViewerRuntimeLiveServer {
             replaced_by_pubkey: None,
             session_epoch: None,
             message: Some("rollback applied to stable checkpoint".to_string()),
+            revoke_reason: None,
+            revoked_by: None,
             acknowledged_at_tick: self.world.state().time,
         })
     }
@@ -1434,18 +1446,19 @@ impl ViewerRuntimeLiveServer {
                 request.public_key.clone(),
             )
         })?;
-        let session_epoch = self
+        let session_epoch = match self
             .session_policy
             .register_session(verified.player_id.as_str(), verified.public_key.as_str())
-            .map_err(|message| {
-                recovery_error(
-                    map_session_policy_error_code(message.as_str()),
+        {
+            Ok(session_epoch) => session_epoch,
+            Err(message) => {
+                return Err(self.recovery_error_from_session_policy(
                     message,
-                    None,
-                    Some(verified.player_id.clone()),
+                    verified.player_id.clone(),
                     Some(verified.public_key.clone()),
-                )
-            })?;
+                ));
+            }
+        };
         self.llm_sidecar
             .consume_player_auth_nonce(verified.player_id.as_str(), verified.nonce)
             .map_err(|message| {
@@ -1510,6 +1523,8 @@ impl ViewerRuntimeLiveServer {
             replaced_by_pubkey: None,
             session_epoch: Some(session_epoch),
             message: Some("session_registered".to_string()),
+            revoke_reason: None,
+            revoked_by: None,
             acknowledged_at_tick: self.world.state().time,
         })
     }
@@ -1537,18 +1552,19 @@ impl ViewerRuntimeLiveServer {
             .map(ToOwned::to_owned);
         let mut session_epoch = None;
         if let Some(pubkey) = session_pubkey.as_deref() {
-            let epoch = self
+            let epoch = match self
                 .session_policy
                 .validate_known_session_key(player_id.as_str(), pubkey)
-                .map_err(|message| {
-                    recovery_error(
-                        map_session_policy_error_code(message.as_str()),
+            {
+                Ok(epoch) => epoch,
+                Err(message) => {
+                    return Err(self.recovery_error_from_session_policy(
                         message,
-                        None,
-                        Some(player_id.clone()),
+                        player_id.clone(),
                         Some(pubkey.to_string()),
-                    )
-                })?;
+                    ));
+                }
+            };
             session_epoch = Some(epoch);
         }
 
@@ -1614,6 +1630,8 @@ impl ViewerRuntimeLiveServer {
             replaced_by_pubkey: None,
             session_epoch,
             message,
+            revoke_reason: None,
+            revoked_by: None,
             acknowledged_at_tick: self.world.state().time,
         })
     }
@@ -1645,6 +1663,15 @@ impl ViewerRuntimeLiveServer {
                     request.session_pubkey.clone(),
                 )
             })?;
+        let revoke_metadata = RuntimeSessionRevokeMetadata {
+            revoke_reason: normalize_optional_string(Some(request.revoke_reason.as_str())),
+            revoked_by: normalize_optional_string(request.revoked_by.as_deref()),
+        };
+        self.record_session_revoke_metadata(
+            player_id.as_str(),
+            revoked_pubkey.as_str(),
+            revoke_metadata.clone(),
+        );
         self.clear_player_auth_runtime_state(player_id.as_str());
         self.apply_session_revoke_binding(player_id.as_str(), revoked_pubkey.as_str());
 
@@ -1670,6 +1697,8 @@ impl ViewerRuntimeLiveServer {
             replaced_by_pubkey: None,
             session_epoch: Some(session_epoch),
             message: Some(request.revoke_reason.trim().to_string()),
+            revoke_reason: revoke_metadata.revoke_reason,
+            revoked_by: revoke_metadata.revoked_by,
             acknowledged_at_tick: self.world.state().time,
         })
     }
@@ -1737,6 +1766,8 @@ impl ViewerRuntimeLiveServer {
             replaced_by_pubkey: Some(request.new_session_pubkey),
             session_epoch: Some(session_epoch),
             message: Some(request.rotate_reason.trim().to_string()),
+            revoke_reason: None,
+            revoked_by: None,
             acknowledged_at_tick: self.world.state().time,
         })
     }
@@ -1847,6 +1878,54 @@ impl ViewerRuntimeLiveServer {
                     .insert(agent_id, new_pubkey.to_string());
             }
         }
+    }
+
+    fn record_session_revoke_metadata(
+        &mut self,
+        player_id: &str,
+        session_pubkey: &str,
+        metadata: RuntimeSessionRevokeMetadata,
+    ) {
+        self.session_revoke_metadata.insert(
+            session_revoke_metadata_key(player_id, session_pubkey),
+            metadata,
+        );
+    }
+
+    fn session_revoke_metadata(
+        &self,
+        player_id: &str,
+        session_pubkey: &str,
+    ) -> Option<&RuntimeSessionRevokeMetadata> {
+        self.session_revoke_metadata
+            .get(&session_revoke_metadata_key(player_id, session_pubkey))
+    }
+
+    fn recovery_error_from_session_policy(
+        &self,
+        message: String,
+        player_id: String,
+        session_pubkey: Option<String>,
+    ) -> AuthoritativeRecoveryError {
+        let code = map_session_policy_error_code(message.as_str());
+        let (revoke_reason, revoked_by) = if code == "session_revoked" {
+            session_pubkey
+                .as_deref()
+                .and_then(|pubkey| self.session_revoke_metadata(player_id.as_str(), pubkey))
+                .map(|metadata| (metadata.revoke_reason.clone(), metadata.revoked_by.clone()))
+                .unwrap_or((None, None))
+        } else {
+            (None, None)
+        };
+        recovery_error_with_revoke_metadata(
+            code,
+            message,
+            None,
+            Some(player_id),
+            session_pubkey,
+            revoke_reason,
+            revoked_by,
+        )
     }
 
     fn bind_player_session_agent(
@@ -2314,13 +2393,49 @@ fn recovery_error(
     player_id: Option<String>,
     session_pubkey: Option<String>,
 ) -> AuthoritativeRecoveryError {
+    recovery_error_with_revoke_metadata(
+        code,
+        message,
+        batch_id,
+        player_id,
+        session_pubkey,
+        None,
+        None,
+    )
+}
+
+fn recovery_error_with_revoke_metadata(
+    code: impl Into<String>,
+    message: impl Into<String>,
+    batch_id: Option<String>,
+    player_id: Option<String>,
+    session_pubkey: Option<String>,
+    revoke_reason: Option<String>,
+    revoked_by: Option<String>,
+) -> AuthoritativeRecoveryError {
     AuthoritativeRecoveryError {
         code: code.into(),
         message: message.into(),
         batch_id,
         player_id,
         session_pubkey,
+        revoke_reason,
+        revoked_by,
     }
+}
+
+fn normalize_optional_string(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn session_revoke_metadata_key(player_id: &str, session_pubkey: &str) -> (String, String) {
+    (
+        player_id.trim().to_string(),
+        session_pubkey.trim().to_string(),
+    )
 }
 
 fn map_session_policy_error_code(message: &str) -> &'static str {
