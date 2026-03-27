@@ -1,6 +1,7 @@
 use super::platform_ops::viewer_dev_dist_candidates;
 use super::{
     build_chain_runtime_args, build_game_url, build_launcher_args, chain_runtime_status_from_web,
+    should_request_auto_chain_start,
     collect_chain_required_config_issues, collect_required_config_issues,
     config_ui::{issue_field_ids, StartupGuideTarget},
     encode_query_value, encoded_query_pair,
@@ -725,6 +726,35 @@ fn apply_web_snapshot_clears_dirty_flag_when_snapshot_matches_local_config() {
 
     app.apply_web_snapshot(snapshot);
     assert!(!app.config_dirty);
+}
+
+#[test]
+fn auto_chain_start_waits_for_initial_control_plane_snapshot() {
+    assert!(!should_request_auto_chain_start(false, true, false, false));
+    assert!(should_request_auto_chain_start(false, true, false, true));
+    assert!(!should_request_auto_chain_start(true, true, false, true));
+    assert!(!should_request_auto_chain_start(false, true, true, true));
+    assert!(!should_request_auto_chain_start(false, false, false, true));
+}
+
+#[test]
+fn apply_web_snapshot_marks_control_plane_snapshot_received() {
+    let mut app = ClientLauncherApp::default();
+    assert!(!app.control_plane_snapshot_received);
+
+    let snapshot = WebStateSnapshot {
+        status: "idle".to_string(),
+        detail: None,
+        chain_status: "not_started".to_string(),
+        chain_detail: None,
+        chain_recovery: None,
+        game_url: "http://127.0.0.1:4173/".to_string(),
+        config: app.config.clone(),
+        logs: vec![],
+    };
+
+    app.apply_web_snapshot(snapshot);
+    assert!(app.control_plane_snapshot_received);
 }
 
 #[test]

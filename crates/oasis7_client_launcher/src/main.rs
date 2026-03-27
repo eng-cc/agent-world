@@ -256,6 +256,18 @@ fn read_named_env_value(env_names: &[&'static str]) -> Option<(&'static str, Str
     read_named_env_value_with(&|env_name| env::var(env_name).ok(), env_names)
 }
 
+fn should_request_auto_chain_start(
+    chain_auto_start_attempted: bool,
+    chain_enabled: bool,
+    control_action_inflight: bool,
+    control_plane_snapshot_received: bool,
+) -> bool {
+    !chain_auto_start_attempted
+        && chain_enabled
+        && !control_action_inflight
+        && control_plane_snapshot_received
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 fn resolve_control_plane_env_with<F>(lookup: &F) -> (Option<String>, String, String, bool)
 where
@@ -1054,6 +1066,7 @@ struct ClientLauncherApp {
     web_api_rx: Receiver<WebApiEvent>,
     web_request_inflight: WebRequestInflight,
     last_web_poll_at: Option<Instant>,
+    control_plane_snapshot_received: bool,
     web_game_url: Option<String>,
     #[cfg(not(target_arch = "wasm32"))]
     control_api_base: String,
@@ -1112,6 +1125,7 @@ impl Default for ClientLauncherApp {
             web_api_rx,
             web_request_inflight: WebRequestInflight::default(),
             last_web_poll_at: None,
+            control_plane_snapshot_received: false,
             web_game_url: None,
             #[cfg(not(target_arch = "wasm32"))]
             control_api_base,

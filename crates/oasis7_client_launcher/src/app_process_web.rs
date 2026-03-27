@@ -20,7 +20,12 @@ impl ClientLauncherApp {
             self.chain_auto_start_attempted = true;
             return;
         }
-        if self.web_request_inflight_for(WebRequestDomain::ControlAction) {
+        if !should_request_auto_chain_start(
+            self.chain_auto_start_attempted,
+            self.config.chain_enabled,
+            self.web_request_inflight_for(WebRequestDomain::ControlAction),
+            self.control_plane_snapshot_received,
+        ) {
             return;
         }
         self.chain_auto_start_attempted = true;
@@ -497,6 +502,7 @@ impl ClientLauncherApp {
             snapshot.chain_detail.as_deref(),
         );
         self.chain_recovery = snapshot.chain_recovery;
+        self.control_plane_snapshot_received = true;
         self.web_game_url = Some(snapshot.game_url);
         if self.config_dirty {
             if self.config == snapshot.config {
