@@ -8,6 +8,7 @@ use super::hosted_strong_auth::{
     issue_hosted_strong_auth_grant, HostedStrongAuthGrantResponse,
     HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE, HOSTED_STRONG_AUTH_GRANT_ROUTE,
 };
+use super::runtime_presence::query_runtime_bound_players;
 use super::*;
 use serde::Serialize;
 use std::ffi::OsStr;
@@ -20,6 +21,7 @@ use std::time::Duration;
 pub(super) fn handle_http_connection(
     mut stream: TcpStream,
     root_dir: &Path,
+    live_bind: &str,
     deployment_mode: DeploymentMode,
     hosted_session_issuer: &Arc<Mutex<HostedPlayerSessionIssuer>>,
 ) -> Result<(), String> {
@@ -54,6 +56,11 @@ pub(super) fn handle_http_connection(
     let is_release_route = path_only == HOSTED_PLAYER_SESSION_RELEASE_ROUTE;
     let is_strong_auth_grant_route = path_only == HOSTED_STRONG_AUTH_GRANT_ROUTE
         || path_only == HOSTED_PROMPT_CONTROL_STRONG_AUTH_GRANT_ROUTE;
+    let is_hosted_player_route = is_admission_route
+        || is_refresh_route
+        || is_issue_route
+        || is_release_route
+        || is_strong_auth_grant_route;
     let allow_post = is_release_route || is_refresh_route;
     if !method.eq_ignore_ascii_case("GET")
         && !head_only
@@ -62,6 +69,9 @@ pub(super) fn handle_http_connection(
         write_http_response(&mut stream, 405, "text/plain", b"Method Not Allowed", false)
             .map_err(|err| format!("failed to write 405 response: {err}"))?;
         return Ok(());
+    }
+    if is_hosted_player_route {
+        reconcile_hosted_runtime_presence(live_bind, hosted_session_issuer);
     }
     if is_admission_route {
         let response = hosted_player_session_admission(deployment_mode, hosted_session_issuer)?;
@@ -160,6 +170,22 @@ pub(super) fn handle_http_connection(
     }
 
     Ok(())
+}
+
+fn reconcile_hosted_runtime_presence(
+    live_bind: &str,
+    hosted_session_issuer: &Arc<Mutex<HostedPlayerSessionIssuer>>,
+) {
+    let probe_result = query_runtime_bound_players(live_bind);
+    let Ok(mut issuer) = hosted_session_issuer.lock() else {
+        return;
+    };
+    match probe_result {
+        Ok(active_players) => {
+            issuer.observe_runtime_active_players(active_players.iter().map(String::as_str));
+        }
+        Err(err) => issuer.record_runtime_probe_failure(err),
+    }
 }
 
 fn hosted_player_session_admission(

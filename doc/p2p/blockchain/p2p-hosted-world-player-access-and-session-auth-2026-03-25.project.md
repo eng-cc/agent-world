@@ -142,6 +142,9 @@
   - `oasis7_web_launcher` 在 `deployment_mode=hosted_public_join` 下会显式拒绝 `POST /api/chain/transfer`，返回结构化 `strong_auth_required`，不再让 public join 路径继续借用 trusted-local signer bootstrap。
   - `oasis7_game_launcher` 的 public player plane 现已新增通用 `/api/public/strong-auth/grant`：会先校验 `player_id + release_token` 仍对应有效 hosted player session，再要求后端 `approval_code` 正确，最后用服务端环境变量中的 signer 生成短期 `HostedStrongAuthGrant`。
   - `oasis7_game_launcher -> oasis7_viewer_live -> runtime-live` 现已透传 hosted deployment mode；在 `hosted_public_join` 下，`prompt_control preview/apply/rollback` 不再一律拒绝，而是要求“玩家本地签名的 `player_session` proof + backend-signed grant”同时成立，缺失时返回 `strong_auth_required`，篡改/过期/错 signer 时返回 `strong_auth_grant_invalid`。
+  - 真实联调现已确认这条 preview lane 的 blocker 不再是 transport/并发：伪造的 env signer 会被显式拒绝为 `hosted strong-auth signer public key does not match private key`；换成真实匹配的 Ed25519 keypair 后，不带 `--with-llm` 时会正确停在 `llm_mode_required`，带 `--with-llm` 时则进一步暴露当前真实主 blocker `release_token does not map to an active player slot`。
+  - 上述 `release_token` 错误发生时，浏览器与 runtime 侧仍可同时显示 `authRegistrationStatus=registered`、`authRuntimeStatus=registered` 与 `authBoundAgentId=agent-0`，但 public admission 已漂移到 `active_player_sessions=0`、`runtime_bound_player_sessions=1`、`runtime_only_player_sessions=1`、`released_players_total=1`；当前判断是 issuer 在 runtime 仍持有绑定时提前释放了 active slot，属于 hosted session issuer / release-token 生命周期竞争，而不是 grant route、viewer attach 或 signer 校验本身未打通。
+  - 针对上述竞争，`HostedPlayerSessionIssuer::observe_runtime_active_players()` 现已改为“先用当前 runtime probe snapshot 给仍在 runtime 里活跃的 active slot 续租，再执行过期清理”，不再在本轮 probe 明明已经看到该 player 仍绑定时，先因历史 `last_seen` 过期把 release token 剪掉。新增回归 `hosted_player_session_runtime_probe_refreshes_runtime_bound_slot_before_expiry_prune` 已冻结这一修复。
   - `software_safe.js` 现会在 hosted public join 的 `prompt_control` lane 显示 `Backend Approval Code`，并改走同源通用 strong-auth grant route；`__AW_TEST__.getState()` 也会回出 `strongAuthApprovalCodeConfigured/strongAuthLastGrant*` 供 QA 取证。
   - `software_safe.js` 的 `authSurface.capabilities` 与页面 badge 现会显式导出 `main_token_transfer`，不再继续用 `strong_auth_actions` 这类代理概念代指真实资产动作；即便前端仍未开放资产操作，QA 也能直接看到真实 action_id 的 hosted verdict。
   - viewer summary 现已新增可读的 `Hosted Action Matrix` 面板，并把同一份结果同步暴露到 `__AW_TEST__.getState().hostedActionMatrix`；QA 不必再手抄 `hostedAccess.action_matrix` JSON 或靠按钮状态倒推 hosted verdict。
@@ -157,13 +160,14 @@
   - `oasis7_web_launcher::server` 现已补 public snapshot 组合态回归：在同一份 env-ready snapshot 里，`prompt_control_apply` 必须显示 `public_player_plane_with_backend_reauth_preview`，而 `main_token_transfer` 仍必须显示 `blocked_until_strong_auth`，确保对外 contract 不会导出自相矛盾的 hosted verdict。
   - 现已新增浏览器侧证据 `doc/testing/evidence/hosted-world-browser-auth-surface-2026-03-26.md`：通过真实 `agent-browser` 会话确认 `Hosted Action Matrix`、`Asset / Governance Lane`、`Hosted Recovery` 与 `pending_registration_ttl_ms/release_token` 绑定都能在页面上稳定复现；同时验证 detached/agentless 页面下 `prompt_control_*` 仍不会误签发 grant、`main_token_transfer` 仍返回 `strong_auth_action_not_enabled`。
   - 现已新增并发接入证据 `doc/testing/evidence/hosted-world-browser-concurrency-2026-03-27.md`：在显式重编 `oasis7_viewer_live` sibling bin 后，用两份独立 `agent-browser` session 实测同一 `web_bind`，确认两个页面都能稳定进入 `debug_viewer:subscribed` 并同时看到 seeded agents，不再复现第二页长期 `detached`。
+  - 现已新增真实 strong-auth 成功证据 `doc/testing/evidence/hosted-world-browser-strong-auth-success-2026-03-27.md`：在真实 signer + `--with-llm` 的 hosted 栈上，用浏览器本地临时 key、approval code 与未绑定的 `agent-1` 实测 `prompt_control preview/apply`，确认 `strongAuthLastGrantError = null` 且最终拿到 `preview_ack/apply_ack`，不再复现 `release_token does not map to an active player slot`。
 - 已实现的 `TASK-P2P-041-F` runbook first slice:
   - 已新增 `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`，冻结 hosted operator 的最小执行法：区分 `public join URL / private control plane / signer path`，并明确分享前检查、误分享后的第一响应、incident 最小记录字段与 public claims freeze 边界。
   - 已新增 `doc/testing/templates/hosted-world-operator-incident-template.md`，把误分享 operator URL / private control plane 暴露的 incident 记录字段统一成可复用模板，避免 liveops/QA 各写各的事故摘要。
 - 当前 blocker:
   - `guest session -> player session` 的最小 issuer 已落成，且 `max_player_sessions` 已开始在 public issue 面按“issuer active slot + runtime-only occupancy”的有效占用生效；未完成 register 的 pending slot 也会按更短 TTL 自动回收。public player plane 现在也会通过独立后台 runtime presence 周期性短连 probe 把已消失的历史绑定玩家回收到 issuer slot；revoke、same-agent rebind 与 same-player explicit rebind 都已有最小事件/恢复链路，但更完整的 operator kick / hosted handoff product flow 仍未收口。
   - hosted v1 目前已支持浏览器本地 player session issue + reconnect/register + local release/logout，并能通过周期性 `reconnect_sync` 探针发现部分 remote revoke；同一玩家切换 agent 时也已具备最小 `force_rebind` 自动恢复、register-ack gating、进行中提示与成功提示，但更完整的确认 UI、operator kick 的公开玩家面即时回流与更稳定的 resume token 仍未收口。
-  - 先前几层 hosted attach starvation 都已修复：fresh `oasis7_game_launcher --deployment-mode hosted_public_join --chain-disable` 栈上的 ws 探针现在能稳定收到 `snapshot/authoritative_recovery_ack/metrics`，浏览器保持打开时 `/api/public/player-session/admission.runtime_probe_status` 仍可维持 `ok`，且第二个浏览器页面不再被 web-bridge 串行 accept 永久卡在 `debug_viewer:detached`。当前剩余缺口已回到产品/证据层面，即还没有带真实 hosted auth 升级链路的 runtime-attached `prompt_control` success evidence。
+  - 先前几层 hosted attach starvation 都已修复：fresh `oasis7_game_launcher --deployment-mode hosted_public_join --chain-disable` 栈上的 ws 探针现在能稳定收到 `snapshot/authoritative_recovery_ack/metrics`，浏览器保持打开时 `/api/public/player-session/admission.runtime_probe_status` 仍可维持 `ok`，且第二个浏览器页面不再被 web-bridge 串行 accept 永久卡在 `debug_viewer:detached`。`release_token` 生命周期竞争现已通过“runtime probe 先续租 active slot”与“public player plane 路由前同步 reconcile live snapshot”两层修复关闭，并已在真实 signer + `--with-llm` 的 hosted 栈上验证 `prompt_control preview/apply` 成功。
   - `session_register` 目前仍是 runtime-live 内显式注册；host restart / rollback 之后按 v1 规则仍要求重新注册，不是持久化 session registry。
   - 当前只为 `prompt_control_*` 实现了 preview-grade backend reauth slice，而不是完整 `strong_auth` challenge/proof/verification lane；后端 signer 仍是 env 托管 + `approval_code`，`main token transfer` 继续显式阻断，尚未进入 hosted-ready 放行范围。
   - `agent_chat` 仍归 `player_session` 级低风险交互；更细的 hosted action matrix、resume issuer 与真正 strong-auth proof 仍待后续专题收口。
@@ -176,6 +180,7 @@
 - `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`
 - `doc/testing/evidence/hosted-world-browser-auth-surface-2026-03-26.md`
 - `doc/testing/evidence/hosted-world-browser-concurrency-2026-03-27.md`
+- `doc/testing/evidence/hosted-world-browser-strong-auth-success-2026-03-27.md`
 - `doc/testing/templates/hosted-world-operator-incident-template.md`
 - `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
@@ -193,5 +198,5 @@
 
 ## 状态
 - 当前状态: active
-- 下一步: 在 `TASK-P2P-041-C` / `TASK-P2P-041-D` 上继续推进，把当前已落的 hosted v1 `player_id issue + browser-local ephemeral key + reconnect/register` 扩到完整 revoke/world-full/admission enforcement，并把当前仅覆盖 `prompt_control_*` 的 preview-grade backend reauth 升级成更强 custody / 更完整 strong-auth matrix；`main_token_transfer` 暂继续阻断。
+- 下一步: 在 `TASK-P2P-041-D` 上继续把当前已通过实链验证的 `prompt_control_*` preview-grade backend reauth 扩到更强 custody / 更完整 strong-auth matrix，并保持 `main_token_transfer` 继续阻断；同时在 `TASK-P2P-041-C/F` 上推进 operator kick / hosted handoff / revoke 公开玩家面回流与 runbook 收口。
 - 最近更新: 2026-03-27

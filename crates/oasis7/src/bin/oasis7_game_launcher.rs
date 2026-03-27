@@ -457,6 +457,7 @@ fn start_static_http_server(
             listener,
             deployment_mode,
             root_dir,
+            live_bind,
             hosted_session_issuer,
             stop_rx,
         ) {
@@ -477,6 +478,7 @@ fn run_static_http_loop(
     listener: TcpListener,
     deployment_mode: DeploymentMode,
     root_dir: Arc<PathBuf>,
+    live_bind: Arc<String>,
     hosted_session_issuer: Arc<Mutex<HostedPlayerSessionIssuer>>,
     stop_rx: Receiver<()>,
 ) -> Result<(), String> {
@@ -489,12 +491,14 @@ fn run_static_http_loop(
         match listener.accept() {
             Ok((stream, _addr)) => {
                 let root_dir = Arc::clone(&root_dir);
+                let live_bind = Arc::clone(&live_bind);
                 let deployment_mode = deployment_mode;
                 let hosted_session_issuer = Arc::clone(&hosted_session_issuer);
                 thread::spawn(move || {
                     if let Err(err) = handle_http_connection(
                         stream,
                         root_dir.as_path(),
+                        live_bind.as_str(),
                         deployment_mode,
                         &hosted_session_issuer,
                     ) {

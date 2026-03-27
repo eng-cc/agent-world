@@ -99,24 +99,29 @@ impl HostedPlayerSessionIssuer {
         I: IntoIterator<Item = &'a str>,
     {
         self.prune_old_timestamps();
-        self.prune_expired_slots();
         let runtime_active_players: BTreeSet<String> = active_players
             .into_iter()
             .map(str::trim)
             .filter(|player_id| !player_id.is_empty())
             .map(ToOwned::to_owned)
             .collect();
+        let observed_at_unix_ms = now_unix_ms();
         self.last_runtime_active_players = runtime_active_players.clone();
         self.last_observed_runtime_bound_player_sessions = runtime_active_players.len() as u64;
-        self.last_runtime_probe_unix_ms = Some(now_unix_ms());
+        self.last_runtime_probe_unix_ms = Some(observed_at_unix_ms);
         self.last_runtime_probe_error = None;
 
         for player_id in &runtime_active_players {
-            if self.active_release_tokens_by_player.contains_key(player_id) {
+            if let Some(release_token) =
+                self.active_release_tokens_by_player.get(player_id).cloned()
+            {
                 self.runtime_seen_players.insert(player_id.clone());
                 self.runtime_revoked_players.remove(player_id);
+                self.last_seen_unix_ms_by_release_token
+                    .insert(release_token, observed_at_unix_ms);
             }
         }
+        self.prune_expired_slots();
 
         let stale_players: Vec<String> = self
             .runtime_seen_players
@@ -802,5 +807,37 @@ mod tests {
         assert!(response.ok);
         assert_eq!(response.admission.active_player_sessions, 1);
         assert_eq!(response.admission.effective_player_sessions, 1);
+    }
+
+    #[test]
+    fn hosted_player_session_runtime_probe_refreshes_runtime_bound_slot_before_expiry_prune() {
+        let mut issuer = HostedPlayerSessionIssuer::default();
+        let issue = issuer.issue(DeploymentMode::HostedPublicJoin);
+        let grant = issue.grant.expect("grant");
+        issuer.observe_runtime_active_players([grant.player_id.as_str()]);
+
+        let stale_seen_at = now_unix_ms()
+            .saturating_sub(SLOT_LEASE_TTL_MS)
+            .saturating_sub(1);
+        issuer
+            .last_seen_unix_ms_by_release_token
+            .insert(grant.release_token.clone(), stale_seen_at);
+
+        issuer.observe_runtime_active_players([grant.player_id.as_str()]);
+
+        let admission = issuer.admission(DeploymentMode::HostedPublicJoin);
+        assert!(admission.ok);
+        assert_eq!(admission.admission.active_player_sessions, 1);
+        assert_eq!(admission.admission.runtime_bound_player_sessions, 1);
+        assert_eq!(admission.admission.runtime_only_player_sessions, 0);
+        assert_eq!(admission.admission.effective_player_sessions, 1);
+        assert_eq!(admission.admission.released_players_total, 0);
+
+        let refresh = issuer.refresh(
+            DeploymentMode::HostedPublicJoin,
+            grant.player_id.as_str(),
+            grant.release_token.as_str(),
+        );
+        assert!(refresh.ok);
     }
 }
