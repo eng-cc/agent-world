@@ -13,38 +13,38 @@
 - Related Module PRD: `doc/scripts/prd.md` (`PRD-SCRIPTS-007`)
 
 ## 1. Executive Summary
-- Problem Statement: 仓库已经要求“每个需求默认新开一个 task worktree”，但任务完成后如何把结果稳定回流到 `main` 仍停留在人工 `git checkout` / `git rebase` / `git merge` 组合拳。不同执行者容易混用 merge 策略、跳过 clean-state 检查、在错误 worktree 上操作，导致 `main` 真值不稳定，也让后续 task worktree 的回收时机缺少统一口径。
-- Proposed Solution: 新增 `scripts/land-task-worktree.sh` 作为标准 landing 入口。默认以当前 task branch 为 source、`main` 为 target；脚本在 source worktree 上执行 clean-state 检查与 rebase，在 target worktree 上执行 fast-forward merge，并输出结构化摘要与 cleanup 建议。
+- Problem Statement: 仓库已经要求“每个需求默认新开一个 task worktree”，但任务完成后如何把结果稳定回流到本地 `main` 仍停留在人工 `git checkout` / `git rebase` / `git merge` 组合拳。不同执行者容易混用 merge 策略、跳过 clean-state 检查、在错误 worktree 上操作，导致 `main` 真值不稳定，也让后续 task worktree 的回收时机缺少统一口径。
+- Proposed Solution: 新增 `scripts/land-task-worktree.sh` 作为标准 landing 入口。默认以当前 task branch 为 source、本地 `main` 为 target；脚本在 source worktree 上执行 clean-state 检查与 rebase，在 target worktree 上执行 fast-forward merge，并输出结构化摘要与 cleanup 建议。
 - Success Criteria:
-  - SC-1: task branch 可通过单一入口而非手写 git 序列合入 `main`。
+  - SC-1: task branch 可通过单一入口而非手写 git 序列合入本地 `main`。
   - SC-2: source / target 任一 worktree 脏时，脚本快速失败并给出修复建议。
   - SC-3: 默认 landing 策略为“rebase target -> fast-forward target”，确保线性历史与可审计性。
   - SC-4: agent 可通过 `--json` 读取 landing 前后提交、source/target worktree 路径与结果状态。
 
 ## 2. User Experience & Functionality
 - User Personas:
-  - `producer_system_designer`: 需要稳定回流任务结果到 `main`，避免流程分叉。
+  - `producer_system_designer`: 需要稳定回流任务结果到本地 `main`，避免流程分叉。
   - `qa_engineer`: 需要 landing 失败时有明确失败签名和修复建议。
   - agent executor: 需要结构化输出，自动驱动 cleanup 或下一步验证。
 - User Stories:
-  - PRD-SCRIPTS-WTL-001: As a `producer_system_designer`, I want one landing command, so that every completed task returns to `main` through the same audited workflow.
-  - PRD-SCRIPTS-WTL-002: As a `qa_engineer`, I want clean-state and fast-forward guards, so that landing failures surface before `main` is mutated.
+  - PRD-SCRIPTS-WTL-001: As a `producer_system_designer`, I want one landing command, so that every completed task returns to the local `main` through the same audited workflow.
+  - PRD-SCRIPTS-WTL-002: As a `qa_engineer`, I want clean-state and fast-forward guards, so that landing failures surface before the local `main` is mutated.
   - PRD-SCRIPTS-WTL-003: As an agent executor, I want JSON output for landing results, so that I can automate follow-up cleanup or verification.
 - Critical User Flows:
-  1. `scripts/land-task-worktree.sh -> 读取当前 branch 作为 source -> 检查 source/main worktree 干净 -> source rebase main -> main fast-forward merge source -> 输出 cleanup 建议`
+  1. `scripts/land-task-worktree.sh -> 读取当前 branch 作为 source -> 检查 source/本地 main worktree 干净 -> source rebase 本地 main -> 本地 main fast-forward merge source -> 输出 cleanup 建议`
   2. `scripts/land-task-worktree.sh task/<module>-<task> --target main --json -> 上层读取 source/target worktree、commit 前后变化与 landing 状态 -> 决定是否继续 cleanup`
   3. `source 或 target worktree 脏 / target branch 未被任何 worktree 检出 / rebase 冲突 -> 立即失败 -> 输出修复建议`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 动作行为 | 状态转换 | 计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
 | source 解析 | `source_branch`、`source_worktree` | 默认取当前 branch；也允许显式传入 source branch | `input -> source_resolved` | source branch 必须被某个 worktree 检出 | 执行者可用 |
-| target 解析 | `target_branch`、`target_worktree` | 默认 target=`main`；读取其当前 worktree | `input -> target_resolved` | target branch 必须被某个 worktree 检出 | 执行者可用 |
+| target 解析 | `target_branch`、`target_worktree` | 默认 target=本地 `main`；读取其当前 worktree | `input -> target_resolved` | target branch 必须被某个 worktree 检出 | 执行者可用 |
 | clean-state 围栏 | `source_clean`、`target_clean` | 任一 worktree 脏则阻断 | `resolved -> guarded/rejected` | 用 `git status --short` 判定 | `qa_engineer` 定义失败语义 |
 | landing 执行 | `source_head_before`、`source_head_after`、`target_head_after`、`result` | 在 source 执行 `git rebase <target>`，在 target 执行 `git merge --ff-only <source>` | `guarded -> rebased -> landed` | 目标历史保持线性；若已 landing 则返回 no-op | `producer_system_designer` 定流程 |
 | 摘要输出 | `cleanup_commands`、`result` | 输出人类摘要或 JSON | `landed -> ready` | `--json` 时 stdout 仅输出单对象 | 人类 / agent 皆可读 |
 - Acceptance Criteria:
   - AC-1: `scripts/land-task-worktree.sh --help` 明确列出 source branch、`--target`、`--json`、`--dry-run`。
-  - AC-2: 默认 source 为当前 branch，默认 target 为 `main`。
+  - AC-2: 默认 source 为当前 branch，默认 target 为本地 `main`。
   - AC-3: source / target 任一 worktree 脏、source/target branch 未被任何 worktree 检出时，脚本必须阻断。
   - AC-4: 脚本必须先在 source worktree 上执行 `git rebase <target>`，再在 target worktree 上执行 `git merge --ff-only <source>`。
   - AC-5: `--json` 至少输出 `source_branch`、`source_worktree`、`target_branch`、`target_worktree`、`source_head_before`、`source_head_after`、`target_head_after`、`result`。
@@ -56,7 +56,7 @@
 
 ## 3. AI System Requirements (If Applicable)
 - Tool Requirements: Bash、`git worktree`、`git rebase`、`git merge --ff-only`
-- Evaluation Strategy: 以“landing 到 `main` 的步骤数、失败语义清晰度、是否保持线性历史”评估落地效果。
+- Evaluation Strategy: 以“landing 到本地 `main` 的步骤数、失败语义清晰度、是否保持线性历史”评估落地效果。
 
 ## 4. Technical Specifications
 - Architecture Overview: landing 入口复用当前仓库 `git-common-dir` 作为真值，通过 branch -> worktree 映射定位 source/target，再把“rebase source”与“ff merge target”拆成两个明确阶段。
@@ -69,7 +69,7 @@
 - Edge Cases & Error Handling:
   - detached HEAD：拒绝默认 source 解析，要求显式传入 branch。
   - source=target：拒绝 landing。
-  - target 未被任何 worktree 检出：阻断并要求先挂载 `main` worktree。
+  - target 未被任何 worktree 检出：阻断并要求先挂载本地 `main` worktree。
   - rebase 冲突：立即失败并保留冲突现场，不做 reset。
   - target 已经包含 source：返回 `already_landed`，不重复 merge。
 - Non-Functional Requirements:
@@ -83,18 +83,18 @@
 
 ## 5. Risks & Roadmap
 - Technical Risks:
-  - 风险-1: 若 target=`main` 未在本地 worktree 中常驻，脚本会频繁因缺少 target worktree 失败。
-  - 风险-2: 若团队仍绕过脚本手写 git 命令，`main` 合入路径会再次分叉。
+  - 风险-1: 若 target=本地 `main` 未在本地 worktree 中常驻，脚本会频繁因缺少 target worktree 失败。
+  - 风险-2: 若团队仍绕过脚本手写 git 命令，本地 `main` 合入路径会再次分叉。
   - 风险-3: 若未来需要 squash / merge-commit 策略，本轮线性历史假设需要重新评估。
 - Roadmap:
-  - v1: 本地 `main` landing 标准化。
+  - v1: 默认合入本地 `main` 的 landing 标准化。
   - v1.1: 视需要补 `--cleanup` 或远端 push/PR 辅助，但不在本轮实现。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
 | PRD-ID | 对应任务 | 测试层级 | 验证方法 | 回归影响范围 |
 | --- | --- | --- | --- | --- |
-| PRD-SCRIPTS-WTL-001/002/003 | WTL-1 | `test_tier_required` | `bash -n` + `--help` + dry-run JSON + 临时 source/target worktree landing smoke + 文档治理检查 | task worktree 回流 `main` 的工程闭环 |
+| PRD-SCRIPTS-WTL-001/002/003 | WTL-1 | `test_tier_required` | `bash -n` + `--help` + dry-run JSON + 临时 source/target worktree landing smoke + 文档治理检查 | task worktree 回流本地 `main` 的工程闭环 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

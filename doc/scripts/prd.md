@@ -41,7 +41,7 @@
   - SC-9: `run-game-test.sh`、`run-producer-playtest.sh` 与新的 worktree harness 主入口必须支持“每个 git worktree 一套独立端口、独立 bundle、独立日志 / 产物目录、独立浏览器 session”的隔离执行，不再默认复用全局端口与全局 bundle 目录。
   - SC-10: 仓库必须提供标准化 `git worktree` 创建入口，让每个新需求都能按统一命名、统一路径和统一失败语义落到独立 worktree，而不是依赖人工手写 `git worktree add`。
   - SC-11: 标准化 task worktree bootstrap 入口必须支持“创建后立刻检查模块 PRD / project / 当日 devlog”和“可选预热该 worktree 的隔离 harness”，让新需求能直接进入文档与验证闭环。
-  - SC-12: 仓库必须提供标准化 task worktree landing 入口，让已完成需求能够在干净状态下统一 rebase 到 `main`、fast-forward 合入 `main`，并输出回收 task worktree/branch 的下一步。
+  - SC-12: 仓库必须提供标准化 task worktree landing 入口，让已完成需求能够在干净状态下统一 rebase 到本地 `main`、fast-forward 合入本地 `main`，并输出回收 task worktree/branch 的下一步。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -67,7 +67,7 @@
   3. Flow-SCR-003: `常规链路无法复现 -> 触发 fallback 工具 -> 采集诊断证据`
   4. Flow-SCR-004: `new-task-worktree.sh <module> <task> -> 校验源 worktree 状态 -> 创建 task/<module>-<task> 分支与独立 worktree -> 输出进入新 worktree 的下一步命令`
   5. Flow-SCR-005: `new-task-worktree.sh <module> <task> --init-docs --with-harness -> 检查 doc/<module>/{prd,project}.md 与当日 devlog -> 在新 worktree 中后台预热 worktree-harness.sh up --no-llm -> 输出文档检查与 harness 摘要`
-  6. Flow-SCR-006: `land-task-worktree.sh [task/<module>-<task>] -> 检查 source/main worktree 干净状态 -> 在任务 worktree 上 rebase main -> 在 main worktree 上 fast-forward 合入 -> 输出 cleanup 建议 / JSON 摘要`
+  6. Flow-SCR-006: `land-task-worktree.sh [task/<module>-<task>] -> 检查 source/本地 main worktree 干净状态 -> 在任务 worktree 上 rebase 本地 main -> 在本地 main worktree 上 fast-forward 合入 -> 输出 cleanup 建议 / JSON 摘要`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -78,7 +78,7 @@
 | worktree-isolated harness | `worktree_id`、端口组、状态文件、bundle 根目录、artifact 根目录、browser session | 通过单一 harness 入口执行 `up/down/status/url/logs/smoke` | `idle -> booting -> ready -> verifying -> torn_down` | 先按 worktree 生成稳定身份，再为该 worktree 派生 bundle / port / output | `qa_engineer` 维护主入口，runtime/viewer 协同实现 |
 | task worktree bootstrap | `module_slug`、`task_slug`、`branch_name`、`worktree_path`、`base_ref` | 通过统一入口创建或附着任务 worktree，并输出下一步命令 / JSON 摘要 | `draft -> validated -> created/attached -> ready` | 默认派生 `task/<module>-<task>` 分支与 `../worktrees/<repo>-<module>-<task>` 路径 | `producer_system_designer` 定流程，scripts owner 维护入口 |
 | task bootstrap followups | `doc_checks`、`today_devlog_path`、`harness_mode`、`harness_state_file`、`viewer_url` | 通过 `--init-docs` / `--with-harness` 补齐文档检查与 harness 预热 | `ready -> doc_checked -> harness_booted` | `--init-docs` 只读检查模块文档；`--with-harness` 默认调用 `worktree-harness.sh up --no-llm` | `qa_engineer` 与 scripts owner 协同维护 |
-| task worktree landing | `source_branch`、`source_worktree`、`target_branch`、`target_worktree`、`rebase_status`、`landed_commit` | 通过统一入口把任务分支 rebase 到 `main` 并在 `main` worktree fast-forward 合入 | `ready_to_land -> rebased -> landed` | 默认源分支取当前 branch，目标分支默认 `main`，landing 完成后输出 cleanup 建议 | `producer_system_designer` 定流程，scripts owner 维护入口 |
+| task worktree landing | `source_branch`、`source_worktree`、`target_branch`、`target_worktree`、`rebase_status`、`landed_commit` | 通过统一入口把任务分支 rebase 到本地 `main` 并在本地 `main` worktree fast-forward 合入 | `ready_to_land -> rebased -> landed` | 默认源分支取当前 branch，目标分支默认本地 `main`，landing 完成后输出 cleanup 建议 | `producer_system_designer` 定流程，scripts owner 维护入口 |
 - Acceptance Criteria:
   - AC-1: scripts PRD 明确脚本分类、入口、约束。
   - AC-2: scripts project 文档维护脚本治理任务。
@@ -96,7 +96,7 @@
   - AC-14: `scripts/new-task-worktree.sh --json` 必须输出机器可读摘要，至少包含 `branch`、`worktree_path`、`module`、`task`、`base_ref` 与 `mode`。
   - AC-15: `scripts/new-task-worktree.sh --help` 必须列出 `--init-docs` 与 `--with-harness`；前者输出 `doc/<module>/prd.md`、`doc/<module>/project.md` 和当日 `doc/devlog/YYYY-MM-DD.md` 的存在性摘要，后者在新 worktree 中后台预热 `./scripts/worktree-harness.sh up --no-llm`。
   - AC-16: `scripts/new-task-worktree.sh --json --init-docs` 必须输出机器可读 `doc_checks`；加 `--with-harness` 时，stdout 仍保持单个 JSON 对象，并附带 `harness` 摘要字段。
-  - AC-17: 新增 `scripts/land-task-worktree.sh`，默认以当前 task branch 为 source、以 `main` 为 target，执行“source clean 检查 -> target clean 检查 -> source rebase target -> target fast-forward merge source”。
+  - AC-17: 新增 `scripts/land-task-worktree.sh`，默认以当前 task branch 为 source、以本地 `main` 为 target，执行“source clean 检查 -> target clean 检查 -> source rebase target -> target fast-forward merge source”。
   - AC-18: `scripts/land-task-worktree.sh --help` 必须明确列出 `--target`、`--json`、`--dry-run`；`--json` 至少输出 `source_branch`、`source_worktree`、`target_branch`、`target_worktree`、`source_head_before`、`source_head_after`、`target_head_after` 与 landing 结果。
   - AC-19: 当 source/target 任一 worktree 脏、source 分支未被任何 worktree 检出、target 分支未被任何 worktree 检出，或 fast-forward 条件不成立时，脚本必须阻断并给出修复建议。
 - Non-Goals:

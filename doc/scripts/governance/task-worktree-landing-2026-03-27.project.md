@@ -14,7 +14,7 @@
 | 字段 | 默认值 |
 | --- | --- |
 | source branch | 当前 branch |
-| target branch | `main` |
+| target branch | 本地 `main` |
 | strategy | `rebase <target>` -> `merge --ff-only <source>` |
 | cleanup | 只输出建议命令，不默认自动删除 worktree/branch |
 
@@ -23,7 +23,7 @@
 | --- | --- |
 | `source_branch` | 被合入的 task branch |
 | `source_worktree` | source branch 对应 worktree |
-| `target_branch` | 目标 branch，默认 `main` |
+| `target_branch` | 目标 branch，默认本地 `main` |
 | `target_worktree` | target branch 对应 worktree |
 | `source_head_before` | landing 前 source head |
 | `source_head_after` | landing 后 source head |
@@ -43,4 +43,4 @@
 - 更新日期：2026-03-27
 - 当前阶段：已完成
 - 阻塞项：无
-- 下一步：若后续要补远端 `push`、PR 创建、review gate 或 landing 后自动 cleanup，应新开下一轮交付专题；本轮仅冻结本地 `main` landing 契约。
+- 下一步：若后续要补远端 `push`、PR 创建、review gate 或 landing 后自动 cleanup，应新开下一轮交付专题；本轮仅冻结“默认合入本地 `main`”的 landing 契约。

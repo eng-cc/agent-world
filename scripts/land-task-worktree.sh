@@ -13,11 +13,11 @@ Rebase one task branch onto a checked-out target branch and fast-forward land it
 
 Default conventions:
 - source branch: current branch
-- target branch: main
+- target branch: local main
 - strategy: rebase source onto target, then merge --ff-only source into target
 
 Options:
-  --target <branch>       Target branch to land into (default: main)
+  --target <branch>       Target branch to land into (default: local main)
   --dry-run               Validate and report landing plan without mutating git history
   --json                  Print machine-readable JSON summary only
   -h, --help              Show this help

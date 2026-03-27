@@ -11,7 +11,7 @@
 ## 模块职责
 - 维护仓内高频脚本的主入口、参数契约与 fallback 围栏口径。
 - 维护 worktree 级隔离 harness，让 agent / QA 能并行起栈并读取稳定状态文件。
-- 维护标准化 task worktree bootstrap 与 landing 入口，让每个新需求按统一 branch/path 命名落到独立 worktree，并可选直接检查模块文档、预热 harness、标准化合入 `main`。
+- 维护标准化 task worktree bootstrap 与 landing 入口，让每个新需求按统一 branch/path 命名落到独立 worktree，并可选直接检查模块文档、预热 harness、标准化合入本地 `main`。
 - 汇总 precommit、viewer-tools、wasm 与治理专题文档。
 - 承接脚本稳定性趋势、文档门禁与运行约束收口。
 
@@ -39,4 +39,4 @@
 - 脚本行为变化需同步更新对应文档、测试口径与参数契约说明。
 - 新增专题后，需同步回写 `doc/scripts/prd.index.md` 与本目录索引。
 - `scripts/new-task-worktree.sh` 为新需求默认入口；`--init-docs` 用于检查模块 PRD / project / 当日 devlog，`--with-harness` 用于在新 worktree 中后台预热 `./scripts/worktree-harness.sh up --no-llm`。
-- `scripts/land-task-worktree.sh` 为任务完成后的默认 landing 入口；负责在干净 task worktree 与干净 `main` worktree 之间执行标准化 rebase + fast-forward 合入，并输出回收建议。
+- `scripts/land-task-worktree.sh` 为任务完成后的默认 landing 入口；负责在干净 task worktree 与干净本地 `main` worktree 之间执行标准化 rebase + fast-forward 合入，并输出回收建议。
