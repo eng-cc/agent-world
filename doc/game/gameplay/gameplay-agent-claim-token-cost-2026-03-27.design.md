@@ -76,3 +76,19 @@
 - 先落文档与任务拆解，冻结“首个也不免费”的正式口径。
 - 再落 runtime canonical 字段与记账事件。
 - 最后补 Viewer / pure API 表达与 QA abuse suite，再决定是否进入新一轮平衡调参。
+
+## 8. 首轮平衡复核结论
+- `TASK-GAMEPLAY-AGC-005`（2026-03-27）当前结论：继续维持 v1 默认值，不新开调参专题。
+- 维持项：
+  - `slot multiplier = 1.0 / 1.5 / 2.0`
+  - `grace_epochs = 2`
+  - `forced_reclaim_penalty_bps = 2000`
+  - `tier cap = 1 / 2 / 3`
+- 维持理由：
+  - runtime / viewer / QA 三条闭环都已通过，说明当前更缺“真实持有行为样本”，而不是“再造一轮默认值”。
+  - 当前成本曲线仍满足本专题最重要的结构边界：首个 claim 非免费、额外槽位单调更贵、欠费与闲置都能回收、refund/slash 可审计。
+  - 在还没有真实 claim 分布、平均持有时长、grace 命中率、forced reclaim 占比之前，提前改参数只会稀释对当前默认值的验证意义。
+- 后续只有在以下任一条件成立时，才重新开调参专题：
+  - `liveops_community` 回流显示 claim churn、grace 命中率或 idle reclaim 占比异常。
+  - `qa_engineer` 发现当前 cap / penalty 造成稳定的玩法退化或反滥用失效。
+  - producer 拿到首轮真实组织扩张数据，能证明 `slot-2/3` 或 `tier cap` 已经系统性过轻或过重。
