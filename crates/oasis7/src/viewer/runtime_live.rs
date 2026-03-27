@@ -34,6 +34,7 @@ use super::protocol::{
 };
 #[path = "runtime_live/control_plane.rs"]
 mod control_plane;
+mod claim_snapshot;
 mod gameplay_snapshot;
 mod mapping;
 mod player_gameplay;
@@ -41,6 +42,7 @@ mod player_gameplay;
 mod tests;
 
 use control_plane::RuntimeLlmSidecar;
+use claim_snapshot::build_player_agent_claim_snapshot;
 use gameplay_snapshot::{
     build_player_gameplay_snapshot, player_gameplay_feedback_from_control_ack,
 };
@@ -2009,6 +2011,19 @@ impl ViewerRuntimeLiveServer {
         let runtime_journal_len = runtime_snapshot.journal_len;
         let next_event_id = runtime_snapshot.last_event_id.saturating_add(1).max(1);
         let next_action_id = runtime_snapshot.next_action_id.max(1);
+        let primary_agent_claim = self
+            .world
+            .state()
+            .agents
+            .keys()
+            .next()
+            .and_then(|agent_id| {
+                build_player_agent_claim_snapshot(
+                    self.world.state(),
+                    agent_id.as_str(),
+                    self.world.governance_execution_policy().epoch_length_ticks,
+                )
+            });
         WorldSnapshot {
             version: SNAPSHOT_VERSION,
             chunk_generation_schema_version: CHUNK_GENERATION_SCHEMA_VERSION,
@@ -2020,6 +2035,7 @@ impl ViewerRuntimeLiveServer {
                 self.world.state(),
                 self.latest_player_gameplay_feedback.as_ref(),
                 self.llm_sidecar.is_llm_mode() && self.llm_sidecar.supports_agent_chat(),
+                primary_agent_claim,
             )),
             chunk_runtime: ChunkRuntimeConfig::default(),
             next_event_id,

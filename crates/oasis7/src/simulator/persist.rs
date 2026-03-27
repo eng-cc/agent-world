@@ -96,6 +96,58 @@ pub struct PlayerGameplayRecentFeedback {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerAgentClaimQuoteSnapshot {
+    pub slot_index: u8,
+    pub reputation_tier: u8,
+    pub claim_cap: u8,
+    pub owned_claim_count: u8,
+    pub activation_fee_amount: u64,
+    pub claim_bond_amount: u64,
+    pub upkeep_per_epoch: u64,
+    pub total_upfront_amount: u64,
+    pub release_cooldown_epochs: u64,
+    pub grace_epochs: u64,
+    pub idle_warning_epochs: u64,
+    pub forced_idle_reclaim_epochs: u64,
+    pub forced_reclaim_penalty_bps: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blocked_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerAgentClaimOwnedSnapshot {
+    pub target_agent_id: String,
+    pub status: String,
+    pub upkeep_paid_through_epoch: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_ready_at_epoch: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_ready_in_epochs: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grace_deadline_epoch: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grace_remaining_epochs: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub idle_warning_in_epochs: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub forced_reclaim_in_epochs: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerAgentClaimSnapshot {
+    pub claimer_agent_id: String,
+    pub current_epoch: u64,
+    pub reputation_tier: u8,
+    pub claim_cap: u8,
+    pub owned_claim_count: u8,
+    pub liquid_main_token_balance: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_claim_quote: Option<PlayerAgentClaimQuoteSnapshot>,
+    #[serde(default)]
+    pub owned_claims: Vec<PlayerAgentClaimOwnedSnapshot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerGameplaySnapshot {
     pub stage_id: PlayerGameplayStageId,
     pub stage_status: PlayerGameplayStageStatus,
@@ -117,6 +169,8 @@ pub struct PlayerGameplaySnapshot {
     pub available_actions: Vec<PlayerGameplayAction>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub recent_feedback: Option<PlayerGameplayRecentFeedback>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_claim: Option<PlayerAgentClaimSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

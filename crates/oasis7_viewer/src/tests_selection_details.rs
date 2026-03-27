@@ -1,6 +1,92 @@
 use super::tests_ui_text::{build_selection_details_text, default_locale};
 use super::*;
 
+#[cfg(not(target_arch = "wasm32"))]
+fn fetch_runtime_live_snapshot() -> oasis7::simulator::WorldSnapshot {
+    use std::io::{BufRead, BufReader, BufWriter, Write};
+    use std::net::{TcpListener, TcpStream};
+    use std::thread;
+    use std::time::Duration;
+
+    fn send_request(
+        writer: &mut BufWriter<TcpStream>,
+        request: &oasis7::viewer::ViewerRequest,
+    ) {
+        serde_json::to_writer(&mut *writer, request).expect("write viewer request");
+        writer.write_all(b"\n").expect("write request newline");
+        writer.flush().expect("flush viewer request");
+    }
+
+    fn read_response(reader: &mut BufReader<TcpStream>) -> oasis7::viewer::ViewerResponse {
+        let mut line = String::new();
+        reader.read_line(&mut line).expect("read viewer response");
+        serde_json::from_str(line.trim_end()).expect("decode viewer response")
+    }
+
+    let listener = TcpListener::bind("127.0.0.1:0").expect("reserve port");
+    let addr = listener.local_addr().expect("local addr");
+    drop(listener);
+
+    let server_addr = addr.to_string();
+    let handle = thread::spawn(move || {
+        let mut server = oasis7::viewer::ViewerRuntimeLiveServer::new(
+            oasis7::viewer::ViewerRuntimeLiveServerConfig::new(
+                oasis7::simulator::WorldScenario::Minimal,
+            )
+            .with_bind_addr(server_addr),
+        )
+        .expect("create runtime live server");
+        server.run_once().expect("run runtime live server once");
+    });
+
+    let stream = (0..50)
+        .find_map(|_| match TcpStream::connect(addr) {
+            Ok(stream) => Some(stream),
+            Err(_) => {
+                thread::sleep(Duration::from_millis(20));
+                None
+            }
+        })
+        .expect("connect runtime live server");
+    stream.set_nodelay(true).expect("set_nodelay");
+    stream
+        .set_read_timeout(Some(Duration::from_millis(500)))
+        .expect("set read timeout");
+    stream
+        .set_write_timeout(Some(Duration::from_millis(500)))
+        .expect("set write timeout");
+
+    let reader_stream = stream.try_clone().expect("clone runtime live stream");
+    let mut reader = BufReader::new(reader_stream);
+    let mut writer = BufWriter::new(stream);
+    send_request(
+        &mut writer,
+        &oasis7::viewer::ViewerRequest::Hello {
+            client: "viewer-selection-details-test".to_string(),
+            version: oasis7::viewer::VIEWER_PROTOCOL_VERSION,
+        },
+    );
+    loop {
+        if matches!(
+            read_response(&mut reader),
+            oasis7::viewer::ViewerResponse::HelloAck { .. }
+        ) {
+            break;
+        }
+    }
+    send_request(&mut writer, &oasis7::viewer::ViewerRequest::RequestSnapshot);
+    let snapshot = loop {
+        match read_response(&mut reader) {
+            oasis7::viewer::ViewerResponse::Snapshot { snapshot } => break snapshot,
+            _ => continue,
+        }
+    };
+    drop(writer);
+    drop(reader);
+    handle.join().expect("join runtime live server");
+    snapshot
+}
+
 #[test]
 fn update_ui_populates_agent_selection_details_with_llm_trace() {
     let selection = ViewerSelection {
@@ -105,6 +191,104 @@ fn update_ui_populates_agent_selection_details_with_llm_trace() {
     assert!(details_text.contains("latency_ms: 123"));
     assert!(details_text.contains("tokens: prompt=77 completion=9 total=86"));
     assert!(details_text.contains("retries: 1"));
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn update_ui_populates_agent_selection_details_with_claim_state() {
+    let mut snapshot = fetch_runtime_live_snapshot();
+    let primary_agent_id = snapshot
+        .model
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("primary agent");
+    let target_agent_id = "agent-claim-target".to_string();
+    let mut target_agent = snapshot
+        .model
+        .agents
+        .get(primary_agent_id.as_str())
+        .expect("primary agent model")
+        .clone();
+    target_agent.id = target_agent_id.clone();
+    target_agent.pos = oasis7::geometry::GeoPos::new(4.0, 5.0, 6.0);
+    snapshot
+        .model
+        .agents
+        .insert(target_agent_id.clone(), target_agent);
+
+    let runtime_snapshot = snapshot
+        .runtime_snapshot
+        .as_mut()
+        .expect("typed runtime snapshot");
+    runtime_snapshot.state.time = 4;
+    runtime_snapshot.governance_execution_policy.epoch_length_ticks = 1;
+    let mut target_cell = runtime_snapshot
+        .state
+        .agents
+        .get(primary_agent_id.as_str())
+        .expect("primary agent cell")
+        .clone();
+    target_cell.state.agent_id = target_agent_id.clone();
+    target_cell.state.pos = oasis7::geometry::GeoPos::new(4.0, 5.0, 6.0);
+    target_cell.last_active = 2;
+    runtime_snapshot
+        .state
+        .agents
+        .insert(target_agent_id.clone(), target_cell);
+    runtime_snapshot.state.agent_claims.insert(
+        target_agent_id.clone(),
+        oasis7::runtime::AgentClaimState {
+            target_agent_id: target_agent_id.clone(),
+            claim_owner_id: primary_agent_id.clone(),
+            reputation_tier: 0,
+            slot_index: 1,
+            activation_fee_amount: 100,
+            activation_fee_burn_amount: 50,
+            activation_fee_treasury_amount: 50,
+            claim_bond_amount: 200,
+            locked_bond_amount: 200,
+            upkeep_per_epoch: 25,
+            release_cooldown_epochs: 3,
+            grace_epochs: 2,
+            idle_warning_epochs: 7,
+            forced_idle_reclaim_epochs: 10,
+            forced_reclaim_penalty_bps: 2_000,
+            claimed_at_epoch: 3,
+            upkeep_paid_through_epoch: 4,
+            delinquent_since_epoch: None,
+            grace_deadline_epoch: None,
+            release_requested_at_epoch: Some(3),
+            release_ready_at_epoch: Some(6),
+            idle_warning_emitted_at_epoch: None,
+        },
+    );
+
+    let selection = ViewerSelection {
+        current: Some(SelectionInfo {
+            entity: Entity::from_raw_u32(9).expect("entity"),
+            kind: SelectionKind::Agent,
+            id: target_agent_id,
+            name: None,
+        }),
+    };
+    let state = ViewerState {
+        status: ConnectionStatus::Connected,
+        snapshot: Some(snapshot),
+        events: Vec::new(),
+        decision_traces: Vec::new(),
+        metrics: None,
+    };
+    let details_text =
+        build_selection_details_text(&selection, &state, Some(&Viewer3dConfig::default()), default_locale());
+
+    assert!(details_text.contains("Agent Claim:"));
+    assert!(details_text.contains(format!("Owner: {}", primary_agent_id).as_str()));
+    assert!(details_text.contains("Status: release_cooldown"));
+    assert!(details_text.contains("Bond Locked: 200 | Upkeep/Epoch: 25"));
+    assert!(details_text.contains("Release Ready In Epochs: 2"));
+    assert!(details_text.contains("Forced Reclaim In Epochs: 8"));
 }
 
 #[test]

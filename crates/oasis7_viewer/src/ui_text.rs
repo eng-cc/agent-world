@@ -1,4 +1,5 @@
 use crate::industry_graph_view_model::{IndustryGraphViewModel, IndustrySemanticZoomLevel};
+use crate::ui_text_claims::extend_agent_details_with_claim_lines;
 use oasis7::geometry::GeoPos;
 use oasis7::simulator::{
     chunk_bounds, Action, AgentDecision, AgentDecisionTrace, Asset, AssetKind, ChunkCoord,
@@ -379,6 +380,8 @@ fn agent_details_summary(
 
     lines.push("Resources:".to_string());
     lines.extend(format_resource_stock(&agent.resources.amounts));
+
+    extend_agent_details_with_claim_lines(agent_id, snapshot, &mut lines);
 
     lines.push("".to_string());
     lines.push("Recent Events:".to_string());

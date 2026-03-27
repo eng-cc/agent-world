@@ -28,7 +28,7 @@ mod module_visual;
 mod openclaw_adapter;
 #[cfg(not(target_arch = "wasm32"))]
 mod openclaw_local_http;
-mod persist;
+pub(crate) mod persist;
 mod power;
 mod runner;
 mod runtime_perf;
@@ -103,9 +103,10 @@ pub use openclaw_local_http::{
     OpenClawLocalHttpError, OpenClawProviderHealth, OpenClawProviderInfo,
 };
 pub use persist::{
-    PersistError, PlayerGameplayAction, PlayerGameplayGoalKind, PlayerGameplayRecentFeedback,
-    PlayerGameplaySnapshot, PlayerGameplayStageId, PlayerGameplayStageStatus, WorldJournal,
-    WorldSnapshot,
+    PersistError, PlayerAgentClaimOwnedSnapshot, PlayerAgentClaimQuoteSnapshot,
+    PlayerAgentClaimSnapshot, PlayerGameplayAction, PlayerGameplayGoalKind,
+    PlayerGameplayRecentFeedback, PlayerGameplaySnapshot, PlayerGameplayStageId,
+    PlayerGameplayStageStatus, WorldJournal, WorldSnapshot,
 };
 pub use runner::{
     AgentQuota, AgentRunner, AgentStats, AgentTickResult, RateLimitPolicy, RateLimitState,

@@ -1261,6 +1261,84 @@ fn compat_snapshot_exposes_player_gameplay_snapshot() {
 }
 
 #[test]
+fn compat_snapshot_exposes_player_agent_claim_overview() {
+    let mut server =
+        ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))
+            .expect("runtime server");
+    let primary_agent_id = server
+        .world
+        .state()
+        .agents
+        .keys()
+        .next()
+        .cloned()
+        .expect("primary agent");
+
+    server
+        .world
+        .set_governance_execution_policy(crate::runtime::GovernanceExecutionPolicy {
+            epoch_length_ticks: 1,
+            ..crate::runtime::GovernanceExecutionPolicy::default()
+        })
+        .expect("set governance policy");
+    server
+        .world
+        .set_agent_reputation_score(primary_agent_id.as_str(), 0)
+        .expect("set reputation");
+    server
+        .world
+        .set_main_token_supply(crate::runtime::MainTokenSupplyState {
+            total_supply: 1_000,
+            circulating_supply: 1_000,
+            ..crate::runtime::MainTokenSupplyState::default()
+        });
+    server
+        .world
+        .set_main_token_account_balance(primary_agent_id.as_str(), 1_000, 0)
+        .expect("seed main token balance");
+    server.world.submit_action(crate::runtime::Action::RegisterAgent {
+        agent_id: "agent-claim-target".to_string(),
+        pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+    });
+    server.world.step().expect("register claim target");
+    server.world.submit_action(crate::runtime::Action::ClaimAgent {
+        claimer_agent_id: primary_agent_id.clone(),
+        target_agent_id: "agent-claim-target".to_string(),
+    });
+    server.world.step().expect("claim target");
+    server
+        .world
+        .submit_action(crate::runtime::Action::ReleaseAgentClaim {
+            claimer_agent_id: primary_agent_id.clone(),
+            target_agent_id: "agent-claim-target".to_string(),
+        });
+    server.world.step().expect("request release");
+
+    let snapshot = server.compat_snapshot();
+    let claim = snapshot
+        .player_gameplay
+        .as_ref()
+        .and_then(|gameplay| gameplay.agent_claim.as_ref())
+        .expect("player agent claim snapshot");
+    assert_eq!(claim.claimer_agent_id, primary_agent_id);
+    assert_eq!(claim.claim_cap, 1);
+    assert_eq!(claim.owned_claim_count, 1);
+    assert_eq!(claim.current_epoch, snapshot.time);
+
+    let quote = claim.next_claim_quote.as_ref().expect("next claim quote");
+    assert_eq!(
+        quote.blocked_reason.as_deref(),
+        Some("agent claim cap exceeded: owned=1 cap=1")
+    );
+
+    let owned = claim.owned_claims.first().expect("owned claim entry");
+    assert_eq!(owned.target_agent_id, "agent-claim-target");
+    assert_eq!(owned.status, "release_cooldown");
+    assert!(owned.release_ready_in_epochs.is_some());
+    assert!(owned.forced_reclaim_in_epochs.is_some());
+}
+
+#[test]
 fn compat_snapshot_promotes_to_post_onboarding_after_control_feedback() {
     let mut server =
         ViewerRuntimeLiveServer::new(ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal))

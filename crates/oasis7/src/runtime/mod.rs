@@ -110,7 +110,10 @@ pub use gameplay_state::{
     MetaProgressState, WarParticipantOutcome, WarState,
     GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT,
 };
-pub use agent_claims::AgentClaimCostQuote;
+pub use agent_claims::{
+    agent_claim_cap_for_tier, agent_claim_quote, agent_claim_reputation_tier,
+    AgentClaimCostQuote,
+};
 pub use modules::{
     EconomyModuleKind, FactoryBuildDecision, FactoryBuildRequest, FactoryModuleApi,
     FactoryModuleSpec, FactoryProfileV1, GameplayContract, GameplayModuleKind,

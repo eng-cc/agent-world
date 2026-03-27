@@ -371,6 +371,7 @@ fn build_player_post_onboarding_snapshot_prefers_canonical_player_gameplay_snaps
         branch_hint: Some("Branches unlocked: production expansion".to_string()),
         available_actions: Vec::new(),
         recent_feedback: None,
+        agent_claim: None,
     });
     let snapshot = build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
 
@@ -398,6 +399,7 @@ fn build_player_post_onboarding_snapshot_uses_canonical_blocker_fields() {
         branch_hint: None,
         available_actions: Vec::new(),
         recent_feedback: None,
+        agent_claim: None,
     });
     let snapshot = build_player_post_onboarding_snapshot(&state, None, crate::i18n::UiLocale::EnUs);
 

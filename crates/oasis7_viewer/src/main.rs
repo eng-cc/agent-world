@@ -90,6 +90,7 @@ mod timeline_controls;
 mod ui_locale_text;
 mod ui_state_types;
 mod ui_text;
+mod ui_text_claims;
 mod viewer_3d_config;
 mod viewer_automation;
 mod viewer_env;

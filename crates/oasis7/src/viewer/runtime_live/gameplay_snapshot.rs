@@ -1,7 +1,8 @@
 use crate::runtime::{FactoryProductionStatus, WorldState};
-use crate::simulator::{
-    PlayerGameplayAction, PlayerGameplayGoalKind, PlayerGameplayRecentFeedback,
-    PlayerGameplaySnapshot, PlayerGameplayStageId, PlayerGameplayStageStatus,
+use crate::simulator::persist::{
+    PlayerAgentClaimSnapshot, PlayerGameplayAction, PlayerGameplayGoalKind,
+    PlayerGameplayRecentFeedback, PlayerGameplaySnapshot, PlayerGameplayStageId,
+    PlayerGameplayStageStatus,
 };
 use crate::viewer::{ControlCompletionAck, ControlCompletionStatus, ViewerControl};
 
@@ -54,6 +55,7 @@ pub(super) fn build_player_gameplay_snapshot(
     state: &WorldState,
     recent_feedback: Option<&PlayerGameplayRecentFeedback>,
     supports_agent_chat: bool,
+    agent_claim: Option<PlayerAgentClaimSnapshot>,
 ) -> PlayerGameplaySnapshot {
     let first_agent_id = state.agents.keys().next().cloned();
     let mut available_actions =
@@ -113,6 +115,7 @@ pub(super) fn build_player_gameplay_snapshot(
             branch_hint: None,
             available_actions,
             recent_feedback: recent_feedback.cloned(),
+            agent_claim,
         };
     }
 
@@ -135,6 +138,7 @@ pub(super) fn build_player_gameplay_snapshot(
             ),
             available_actions,
             recent_feedback: recent_feedback.cloned(),
+            agent_claim,
         };
     }
 
@@ -158,6 +162,7 @@ pub(super) fn build_player_gameplay_snapshot(
             branch_hint: None,
             available_actions,
             recent_feedback: recent_feedback.cloned(),
+            agent_claim,
         };
     }
 
@@ -177,6 +182,7 @@ pub(super) fn build_player_gameplay_snapshot(
             branch_hint: None,
             available_actions,
             recent_feedback: recent_feedback.cloned(),
+            agent_claim,
         };
     }
 
@@ -196,6 +202,7 @@ pub(super) fn build_player_gameplay_snapshot(
             branch_hint: None,
             available_actions,
             recent_feedback: recent_feedback.cloned(),
+            agent_claim,
         };
     }
 
@@ -215,6 +222,7 @@ pub(super) fn build_player_gameplay_snapshot(
             branch_hint: None,
             available_actions,
             recent_feedback: recent_feedback.cloned(),
+            agent_claim,
         };
     }
 
@@ -233,6 +241,7 @@ pub(super) fn build_player_gameplay_snapshot(
         branch_hint: None,
         available_actions,
         recent_feedback: recent_feedback.cloned(),
+        agent_claim,
     }
 }
 
