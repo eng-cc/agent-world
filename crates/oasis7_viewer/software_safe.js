@@ -1520,9 +1520,7 @@ async function buildSessionRegisterAuthProof(request, auth) {
   if (request.requested_agent_id != null) {
     payload.requested_agent_id = request.requested_agent_id;
   }
-  if (request.force_rebind === true) {
-    payload.force_rebind = true;
-  }
+  payload.force_rebind = request.force_rebind === true;
   const signingPayload = buildAuthEnvelope(payload);
   return {
     scheme: "ed25519",

@@ -111,6 +111,7 @@
   - `__AW_TEST__.getState()` 已补 `authTier`、`authSource`、`authDeploymentHint` 与 `authSurface`，便于后续 QA/agent-browser 对 hosted public join 的 session/capability 状态做证据采样。
   - `software_safe.js` 现在会在 `hosted_public_join` 下优先尝试 `GET /api/public/player-session/issue`，拿到 server-issued `player_id` 后由浏览器本地生成/持久化临时 Ed25519 key，并在 page reload 后复用这份本地会话态。
   - viewer 现已消费 `authoritative_recovery register_session/reconnect_sync` ack/error：首次 issue 后会注册 player session，刷新或断线重连后会先走 `reconnect_sync`，若 runtime 返回 `session_not_found` 则回退到显式重新注册。
+  - `software_safe.js` 现已把 `session_register` 浏览器签名 payload 中的 `force_rebind` 固定编码为布尔字段，即使值为 `false` 也不再省略；这修正了 hosted public join 首次注册时 `verify auth signature failed` 的浏览器/Rust CBOR 载荷不一致。
   - viewer 现已提供显式 `Release Hosted Player Session` 动作：会向 runtime 发送 `revoke_session`，并向同源 public player plane 发送 `/api/public/player-session/release` 归还 active slot，然后清掉浏览器本地持久化的 hosted player session。
   - viewer 现已可直接读取 `/api/public/player-session/admission`，并在 guest lane 显示当前 `activeSlots/issueBudget`；若先前因为 `world_full/rate_limited` 留在 guest，也可以通过显式 `Acquire Hosted Player Session` 动作重试，不必靠发送 chat/prompt 侧向触发。
   - admission snapshot 现还会回出最近一次 runtime probe 看到的 `runtime_bound_player_sessions`；viewer summary 会并排显示 `activeSlots` 和 `runtimeBound`，便于 QA 区分“issuer 占位”和“runtime 真正还绑着几个玩家”。
