@@ -139,8 +139,82 @@
   - 再补 operator runbook 演练记录
   - 再由 `producer_system_designer` 决定是否扩大分享范围
 
-## 11. 下一步待补
+## 11. Session Revoke 实操步骤
+适用场景：
+- 公开玩家被确认需要踢出
+- 浏览器侧 session 疑似泄露或异常复用
+- hosted handoff 前需要显式回收旧 session
+- 误分享 operator URL 后，无法确认旧浏览器 session 是否仍应继续存活
+
+执行前先确认 4 项：
+1. 你要撤销的是 `public player plane` 的浏览器 session，不是 operator 自己的 private control plane。
+2. 你已经拿到目标 `player_id`，必要时也拿到 `session_pubkey`。
+3. 你已经准备好可审计的 `revoke_reason`，不要只写 `test`、`kick` 这类模糊词。
+4. 你知道当前 runtime live 地址，例如 `127.0.0.1:<live_bind_port>`。
+
+建议的数据来源：
+- 浏览器 QA/事故证据中的 `__AW_TEST__.getState()`：
+  - `authPlayerId`
+  - `authPublicKey`
+- runtime / operator 记录中的当前绑定关系
+- incident 模板中的受影响玩家条目
+
+推荐命令：
+```bash
+env -u RUSTC_WRAPPER cargo run -q -p oasis7 --bin oasis7_pure_api_client -- \
+  --addr 127.0.0.1:<live_bind_port> \
+  --client <operator_id> \
+  revoke-session \
+  --player-id <player_id> \
+  --session-pubkey <session_pubkey> \
+  --revoke-reason <reason>
+```
+
+字段要求：
+- `--client`:
+  - 使用可审计的 operator 标识，例如 `hosted-revoke-operator`、`ops-oncall-a`
+- `--revoke-reason`:
+  - 使用面向 incident 可复盘的原因，例如 `operator_kick_for_abuse_drill`
+  - 避免含糊表述，如 `kick`、`cleanup`
+
+预期返回：
+- `authoritative_recovery_ack.status = session_revoked`
+- `revoke_reason = <reason>`
+- `revoked_by = <operator_id>`
+- `session_epoch` 递增
+
+执行后检查：
+1. 若目标页面仍在线，等待下一轮 hosted heartbeat。
+2. 玩家面应收敛到：
+   - `authTier = guest_session`
+   - `authRevokeReason = <reason>`
+   - `authRevokedBy = <operator_id>`
+   - `hostedRecoveryHint.kind = revoked`
+3. 如需留证，优先记录：
+   - operator 命令输出
+   - 浏览器 `__AW_TEST__.getState()`
+   - `Hosted Recovery` 页面截图
+
+执行后必须回写：
+- `doc/testing/templates/hosted-world-operator-incident-template.md` 对应 incident
+- 当日 `doc/devlog/YYYY-MM-DD.md`
+- 若已对外沟通，再补 `correction_message_ref`
+
+## 12. 对外更正模板
+模板入口：
+- `doc/testing/templates/hosted-world-share-correction-template.md`
+
+使用时机：
+- 分享了错误 URL，需要公开更正
+- 玩家已经接触到错误口径，需要统一说法
+- revoke/incident 后需要恢复正确 join URL
+
+使用规则：
+1. 先替换错误 URL，再发更正文案。
+2. 只发 `public join URL`，不要附带 operator/control 地址。
+3. 继续使用 preview 口径，不升级任何对外承诺。
+4. 若当前还在排查，不给出“已完全修复/生产可用”之类表述。
+
+## 13. 下一步待补
 - 更接近真实部署的 tunnel / reverse proxy 配置示例
-- operator mis-share incident 模板
-- hosted share announcement / correction 模板
-- 远程 operator 值班与 session revoke 实操步骤
+- hosted share announcement 模板

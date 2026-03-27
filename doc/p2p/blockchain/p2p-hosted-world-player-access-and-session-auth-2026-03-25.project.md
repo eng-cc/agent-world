@@ -166,6 +166,8 @@
 - 已实现的 `TASK-P2P-041-F` runbook first slice:
   - 已新增 `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`，冻结 hosted operator 的最小执行法：区分 `public join URL / private control plane / signer path`，并明确分享前检查、误分享后的第一响应、incident 最小记录字段与 public claims freeze 边界。
   - 已新增 `doc/testing/templates/hosted-world-operator-incident-template.md`，把误分享 operator URL / private control plane 暴露的 incident 记录字段统一成可复用模板，避免 liveops/QA 各写各的事故摘要。
+  - runbook 现已补 `session revoke` 实操步骤：明确 `player_id/session_pubkey/revoke_reason` 的收集来源、推荐 `oasis7_pure_api_client revoke-session` 命令、预期 `session_revoked` ack 字段，以及执行后应如何在浏览器侧确认 `Hosted Recovery` 与 `authRevokeReason/authRevokedBy` 已回流到玩家面。
+  - 已新增 `doc/testing/templates/hosted-world-share-correction-template.md`，统一“错误 URL 更正 / revoke 后重新获取 hosted player session / preview 口径不升级”的对外文案骨架，避免不同 operator 在纠正消息里混入过度承诺或再次暴露错误入口。
 - 当前 blocker:
   - `guest session -> player session` 的最小 issuer 已落成，且 `max_player_sessions` 已开始在 public issue 面按“issuer active slot + runtime-only occupancy”的有效占用生效；未完成 register 的 pending slot 也会按更短 TTL 自动回收。public player plane 现在也会通过独立后台 runtime presence 周期性短连 probe 把已消失的历史绑定玩家回收到 issuer slot；revoke、same-agent rebind 与 same-player explicit rebind 都已有最小事件/恢复链路，但更完整的 operator kick / hosted handoff product flow 仍未收口。
   - hosted v1 目前已支持浏览器本地 player session issue + reconnect/register + local release/logout；周期性 `reconnect_sync` 探针在命中 remote revoke / operator kick 时，也已能把 `revoke_reason/revoked_by` 结构化回流到公开玩家面，并要求玩家显式重新获取 hosted player session。同一玩家切换 agent 时也已具备最小 `force_rebind` 自动恢复、register-ack gating、进行中提示与成功提示，但更完整的确认 UI、hosted handoff product flow 与更稳定的 resume token 仍未收口。
@@ -174,7 +176,7 @@
   - 当前只为 `prompt_control_*` 实现了 preview-grade backend reauth slice，而不是完整 `strong_auth` challenge/proof/verification lane；后端 signer 仍是 env 托管 + `approval_code`，`main token transfer` 继续显式阻断，尚未进入 hosted-ready 放行范围。
   - `agent_chat` 仍归 `player_session` 级低风险交互；更细的 hosted action matrix、resume issuer 与真正 strong-auth proof 仍待后续专题收口。
   - `TASK-P2P-041-E` 目前已覆盖 strong-auth abuse 与 operator/public URL 混淆 first slice；capability bypass、admission full-matrix 与分享 runbook 仍待后续 QA/LiveOps 专题继续扩展。
-  - `TASK-P2P-041-F` 目前只有 hosted operator runbook first slice；incident 模板、远程 operator tunnel/policy、session revoke 实操步骤与对外更正模板仍待补齐。
+  - `TASK-P2P-041-F` 现已具备 hosted operator runbook、incident 模板、session revoke 实操步骤与对外更正模板；远程 operator tunnel/policy 与 hosted share announcement 模板仍待补齐。
 
 ## 依赖
 - `doc/p2p/prd.md`
@@ -185,6 +187,7 @@
 - `doc/testing/evidence/hosted-world-browser-strong-auth-success-2026-03-27.md`
 - `doc/testing/evidence/hosted-world-browser-revoke-recovery-2026-03-27.md`
 - `doc/testing/templates/hosted-world-operator-incident-template.md`
+- `doc/testing/templates/hosted-world-share-correction-template.md`
 - `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-governance-signer-externalization-2026-03-23.prd.md`
