@@ -11,6 +11,17 @@ const BUILTIN_WASM_ENV_PREFIX: &str = "OASIS7_BUILTIN_WASM_";
 
 #[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_FETCH_TIMEOUT_MS: u64 = 1_500;
+#[cfg(not(target_arch = "wasm32"))]
+const DEFAULT_WASM_TOOLCHAIN: &str = "nightly-2025-12-11";
+#[cfg(not(target_arch = "wasm32"))]
+const DEFAULT_WASM_TARGET: &str = "wasm32-unknown-unknown";
+#[cfg(not(target_arch = "wasm32"))]
+const DEFAULT_WASM_BUILDER_IMAGE_REF: &str = "oasis7/wasm-builder:nightly-2025-12-11";
+#[cfg(not(target_arch = "wasm32"))]
+const DEFAULT_WASM_BUILDER_IMAGE_DIGEST: &str =
+    "sha256:08cb684c3ecc06e4e31e2dc9a4cfdb13bb140ea88619a47fb7a39c2fdab07e9a";
+#[cfg(not(target_arch = "wasm32"))]
+const DEFAULT_WASM_CANONICAL_CONTAINER_PLATFORM: &str = "linux-x86_64";
 const BUILTIN_WASM_BUILD_PROFILE: &str = "release";
 const M1_BUILTIN_MODULE_IDS_PATH: &str =
     "crates/oasis7/src/runtime/world/artifacts/m1_builtin_module_ids.txt";
@@ -247,6 +258,36 @@ fn compile_via_default_script(
     // Tests may run under a stable rustup alias (for example 1.92.0-...); fallback
     // build should pick the canonical wasm toolchain on its own.
     command.env_remove("RUSTUP_TOOLCHAIN");
+    if host_native_wasm_build_ready() {
+        // Prefer a host-native wasm build when the pinned nightly toolchain is
+        // already installed. This avoids flaky network/docker metadata fetches
+        // during test-time builtin materialization while keeping the existing
+        // Docker path available as a fallback on machines without the toolchain.
+        command.env("OASIS7_WASM_BUILD_IN_CONTAINER", "1");
+        command.env(
+            "OASIS7_WASM_TOOLCHAIN",
+            wasm_env_or_default("TOOLCHAIN", DEFAULT_WASM_TOOLCHAIN),
+        );
+        command.env(
+            "OASIS7_WASM_TARGET",
+            wasm_env_or_default("TARGET", DEFAULT_WASM_TARGET),
+        );
+        command.env(
+            "OASIS7_WASM_BUILDER_IMAGE_REF",
+            wasm_env_or_default("BUILDER_IMAGE_REF", DEFAULT_WASM_BUILDER_IMAGE_REF),
+        );
+        command.env(
+            "OASIS7_WASM_BUILDER_IMAGE_DIGEST",
+            wasm_env_or_default("BUILDER_IMAGE_DIGEST", DEFAULT_WASM_BUILDER_IMAGE_DIGEST),
+        );
+        command.env(
+            "OASIS7_WASM_CANONICAL_CONTAINER_PLATFORM",
+            wasm_env_or_default(
+                "CANONICAL_CONTAINER_PLATFORM",
+                DEFAULT_WASM_CANONICAL_CONTAINER_PLATFORM,
+            ),
+        );
+    }
     command
         .arg("--module-id")
         .arg(module_id)
@@ -286,6 +327,58 @@ fn compile_via_default_script(
     })?;
     let _ = fs::remove_dir_all(&out_dir);
     Ok(bytes)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn host_native_wasm_build_ready() -> bool {
+    let toolchain = wasm_env_or_default("TOOLCHAIN", DEFAULT_WASM_TOOLCHAIN);
+    let target = wasm_env_or_default("TARGET", DEFAULT_WASM_TARGET);
+
+    let Ok(toolchains) = Command::new("rustup").arg("toolchain").arg("list").output() else {
+        return false;
+    };
+    if !toolchains.status.success() {
+        return false;
+    }
+    let toolchain_available = String::from_utf8_lossy(&toolchains.stdout)
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .any(|line| {
+            let candidate = line.split_whitespace().next().unwrap_or_default();
+            candidate == toolchain || candidate.starts_with(&format!("{toolchain}-"))
+        });
+    if !toolchain_available {
+        return false;
+    }
+
+    let Ok(targets) = Command::new("rustup")
+        .arg("target")
+        .arg("list")
+        .arg("--toolchain")
+        .arg(&toolchain)
+        .arg("--installed")
+        .output()
+    else {
+        return false;
+    };
+    if !targets.status.success() {
+        return false;
+    }
+
+    String::from_utf8_lossy(&targets.stdout)
+        .lines()
+        .map(str::trim)
+        .any(|line| line == target)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn wasm_env_or_default(suffix: &str, default: &str) -> String {
+    std::env::var(format!("OASIS7_WASM_{suffix}"))
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| default.to_string())
 }
 
 fn builtin_module_ids_path_for(module_id: &str, repo_root: &Path) -> Option<PathBuf> {

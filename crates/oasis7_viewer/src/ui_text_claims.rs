@@ -1,132 +1,177 @@
-use oasis7::runtime::{
-    agent_claim_cap_for_tier, agent_claim_quote, agent_claim_reputation_tier, AgentClaimState,
-};
 use oasis7::simulator::WorldSnapshot;
+use serde_json::Value;
 
 pub(super) fn extend_agent_details_with_claim_lines(
     agent_id: &str,
     snapshot: &WorldSnapshot,
     lines: &mut Vec<String>,
 ) {
-    let Some(runtime_snapshot) = snapshot.runtime_snapshot.as_ref() else {
-        return;
-    };
-
     lines.push("".to_string());
     lines.push("Agent Claim:".to_string());
-    let current_epoch = agent_claim_epoch(
-        runtime_snapshot.state.time,
-        runtime_snapshot.governance_execution_policy.epoch_length_ticks,
-    );
 
-    if let Some(claim) = runtime_snapshot.state.agent_claims.get(agent_id) {
-        lines.push(format!("- Owner: {}", claim.claim_owner_id));
-        lines.push(format!("- Status: {}", claim_status(claim, current_epoch)));
-        lines.push(format!(
-            "- Bond Locked: {} | Upkeep/Epoch: {}",
-            claim.locked_bond_amount, claim.upkeep_per_epoch
-        ));
-        if let Some(remaining) = claim
-            .release_ready_at_epoch
-            .map(|epoch| epoch.saturating_sub(current_epoch))
-        {
-            lines.push(format!("- Release Ready In Epochs: {remaining}"));
-        }
-        if let Some(remaining) = claim
-            .grace_deadline_epoch
-            .map(|epoch| epoch.saturating_sub(current_epoch))
-        {
-            lines.push(format!("- Grace Remaining Epochs: {remaining}"));
-        }
-        let last_control_epoch = runtime_snapshot
-            .state
-            .agents
-            .get(agent_id)
-            .map(|cell| {
-                agent_claim_epoch(
-                    cell.last_active,
-                    runtime_snapshot.governance_execution_policy.epoch_length_ticks,
-                )
-            })
-            .unwrap_or(current_epoch);
-        let forced_reclaim_in_epochs = last_control_epoch
-            .saturating_add(claim.forced_idle_reclaim_epochs)
-            .saturating_sub(current_epoch);
-        lines.push(format!(
-            "- Forced Reclaim In Epochs: {forced_reclaim_in_epochs}"
-        ));
+    if extend_claim_lines_from_runtime_snapshot(agent_id, snapshot, lines) {
         return;
     }
 
     lines.push("- Status: unclaimed".to_string());
-    let Some(primary_agent_id) = snapshot.model.agents.keys().next() else {
-        lines.push("- Quote: unavailable (no primary agent)".to_string());
+    extend_claim_quote_lines(agent_id, snapshot, lines);
+}
+
+fn extend_claim_lines_from_runtime_snapshot(
+    agent_id: &str,
+    snapshot: &WorldSnapshot,
+    lines: &mut Vec<String>,
+) -> bool {
+    let Some(runtime_snapshot) = snapshot.runtime_snapshot.as_ref() else {
+        return false;
+    };
+    let runtime_snapshot = runtime_snapshot_to_value(runtime_snapshot);
+    let state = runtime_snapshot.get("state").and_then(Value::as_object);
+    let Some(state) = state else {
+        return false;
+    };
+
+    let current_epoch = agent_claim_epoch(
+        value_u64(state.get("time")),
+        value_u64(
+            runtime_snapshot
+                .get("governance_execution_policy")
+                .and_then(|policy| policy.get("epoch_length_ticks")),
+        ),
+    );
+    let Some(claim) = state
+        .get("agent_claims")
+        .and_then(|claims| claims.get(agent_id))
+        .and_then(Value::as_object)
+    else {
+        return false;
+    };
+
+    let owner = claim
+        .get("claim_owner_id")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
+    lines.push(format!("- Owner: {owner}"));
+    lines.push(format!("- Status: {}", claim_status(claim, current_epoch)));
+    lines.push(format!(
+        "- Bond Locked: {} | Upkeep/Epoch: {}",
+        value_u64(claim.get("locked_bond_amount")),
+        value_u64(claim.get("upkeep_per_epoch"))
+    ));
+
+    if let Some(remaining) = claim
+        .get("release_ready_at_epoch")
+        .and_then(Value::as_u64)
+        .map(|epoch| epoch.saturating_sub(current_epoch))
+    {
+        lines.push(format!("- Release Ready In Epochs: {remaining}"));
+    }
+    if let Some(remaining) = claim
+        .get("grace_deadline_epoch")
+        .and_then(Value::as_u64)
+        .map(|epoch| epoch.saturating_sub(current_epoch))
+    {
+        lines.push(format!("- Grace Remaining Epochs: {remaining}"));
+    }
+
+    let last_control_epoch = state
+        .get("agents")
+        .and_then(|agents| agents.get(agent_id))
+        .and_then(|cell| cell.get("last_active"))
+        .and_then(Value::as_u64)
+        .map(|last_active| {
+            agent_claim_epoch(
+                last_active,
+                value_u64(
+                    runtime_snapshot
+                        .get("governance_execution_policy")
+                        .and_then(|policy| policy.get("epoch_length_ticks")),
+                ),
+            )
+        })
+        .unwrap_or(current_epoch);
+    let forced_reclaim_in_epochs = last_control_epoch
+        .saturating_add(value_u64(claim.get("forced_idle_reclaim_epochs")))
+        .saturating_sub(current_epoch);
+    lines.push(format!(
+        "- Forced Reclaim In Epochs: {forced_reclaim_in_epochs}"
+    ));
+    true
+}
+
+fn extend_claim_quote_lines(agent_id: &str, snapshot: &WorldSnapshot, lines: &mut Vec<String>) {
+    let Some(primary_claim) = snapshot
+        .player_gameplay
+        .as_ref()
+        .and_then(|gameplay| gameplay.agent_claim.as_ref())
+    else {
+        let primary_agent = snapshot.model.agents.keys().next().map(String::as_str);
+        let label = primary_agent.unwrap_or("unknown");
+        lines.push(format!(
+            "- Quote For {label}: unavailable (missing player gameplay snapshot)"
+        ));
         return;
     };
-    let owned_claim_count = runtime_snapshot
-        .state
-        .agent_claims
-        .values()
-        .filter(|claim| claim.claim_owner_id == *primary_agent_id)
-        .count();
-    let reputation_score = runtime_snapshot
-        .state
-        .reputation_scores
-        .get(primary_agent_id)
-        .copied()
-        .unwrap_or(0);
-    let reputation_tier = agent_claim_reputation_tier(reputation_score);
-    let claim_cap = agent_claim_cap_for_tier(reputation_tier);
-    let liquid_main_token_balance = runtime_snapshot
-        .state
-        .main_token_balances
-        .get(primary_agent_id)
-        .map(|balance| balance.liquid_balance)
-        .unwrap_or(0);
 
-    match agent_claim_quote(reputation_score, owned_claim_count) {
-        Ok(quote) => {
-            let upfront = quote
-                .activation_fee_amount
-                .saturating_add(quote.claim_bond_amount)
-                .saturating_add(quote.upkeep_per_epoch);
-            lines.push(format!(
-                "- Quote For {}: slot={} tier={} cap={} owned={} upfront={} upkeep={}",
-                primary_agent_id,
-                quote.slot_index,
-                quote.reputation_tier,
-                quote.claim_cap,
-                owned_claim_count,
-                upfront,
-                quote.upkeep_per_epoch
-            ));
-            if liquid_main_token_balance < upfront {
-                lines.push(format!(
-                    "- Claim Blocker: insufficient_liquid_main_token balance={} required={}",
-                    liquid_main_token_balance, upfront
-                ));
-            }
+    if let Some(owned_claim) = primary_claim
+        .owned_claims
+        .iter()
+        .find(|claim| claim.target_agent_id == agent_id)
+    {
+        lines.push(format!("- Owner: {}", primary_claim.claimer_agent_id));
+        lines.push(format!("- Status: {}", owned_claim.status));
+        if let Some(remaining) = owned_claim.release_ready_in_epochs {
+            lines.push(format!("- Release Ready In Epochs: {remaining}"));
         }
-        Err(reason) => {
-            lines.push(format!(
-                "- Quote For {}: tier={} cap={} owned={}",
-                primary_agent_id, reputation_tier, claim_cap, owned_claim_count
-            ));
-            lines.push(format!("- Claim Blocker: {reason}"));
+        if let Some(remaining) = owned_claim.grace_remaining_epochs {
+            lines.push(format!("- Grace Remaining Epochs: {remaining}"));
         }
+        if let Some(remaining) = owned_claim.forced_reclaim_in_epochs {
+            lines.push(format!("- Forced Reclaim In Epochs: {remaining}"));
+        }
+        return;
+    }
+
+    let Some(quote) = primary_claim.next_claim_quote.as_ref() else {
+        lines.push(format!(
+            "- Quote For {}: unavailable",
+            primary_claim.claimer_agent_id
+        ));
+        return;
+    };
+
+    lines.push(format!(
+        "- Quote For {}: slot={} tier={} cap={} owned={} upfront={} upkeep={}",
+        primary_claim.claimer_agent_id,
+        quote.slot_index,
+        quote.reputation_tier,
+        quote.claim_cap,
+        quote.owned_claim_count,
+        quote.total_upfront_amount,
+        quote.upkeep_per_epoch
+    ));
+    if let Some(reason) = quote.blocked_reason.as_deref() {
+        lines.push(format!("- Claim Blocker: {reason}"));
     }
 }
 
-fn claim_status(claim: &AgentClaimState, current_epoch: u64) -> &'static str {
-    if claim.grace_deadline_epoch.is_some() {
+fn claim_status(claim: &serde_json::Map<String, Value>, current_epoch: u64) -> &'static str {
+    if claim
+        .get("grace_deadline_epoch")
+        .is_some_and(|value| !value.is_null())
+    {
         "upkeep_grace"
-    } else if let Some(ready_at_epoch) = claim.release_ready_at_epoch {
+    } else if let Some(ready_at_epoch) = claim.get("release_ready_at_epoch").and_then(Value::as_u64)
+    {
         if current_epoch >= ready_at_epoch {
             "release_ready"
         } else {
             "release_cooldown"
         }
-    } else if claim.idle_warning_emitted_at_epoch.is_some() {
+    } else if claim
+        .get("idle_warning_emitted_at_epoch")
+        .is_some_and(|value| !value.is_null())
+    {
         "idle_reclaim_candidate"
     } else {
         "claimed_active"
@@ -135,4 +180,21 @@ fn claim_status(claim: &AgentClaimState, current_epoch: u64) -> &'static str {
 
 fn agent_claim_epoch(time: u64, epoch_length_ticks: u64) -> u64 {
     time / epoch_length_ticks.max(1)
+}
+
+fn value_u64(value: Option<&Value>) -> u64 {
+    value.and_then(Value::as_u64).unwrap_or(0)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn runtime_snapshot_to_value(runtime_snapshot: &Value) -> Value {
+    runtime_snapshot.clone()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn runtime_snapshot_to_value<T>(runtime_snapshot: &T) -> Value
+where
+    T: serde::Serialize,
+{
+    serde_json::to_value(runtime_snapshot).unwrap_or(Value::Null)
 }

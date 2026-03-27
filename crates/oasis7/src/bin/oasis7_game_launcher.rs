@@ -11,7 +11,7 @@ use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-#[path = "oasis7_hosted_access.rs"]
+#[path = "../hosted_access.rs"]
 mod hosted_access;
 #[path = "oasis7_game_launcher/hosted_player_session.rs"]
 mod hosted_player_session;

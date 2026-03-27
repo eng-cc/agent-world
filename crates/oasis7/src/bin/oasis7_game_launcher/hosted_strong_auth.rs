@@ -215,6 +215,12 @@ mod tests {
         LOCK.get_or_init(|| Mutex::new(()))
     }
 
+    fn lock_hosted_strong_auth_env() -> std::sync::MutexGuard<'static, ()> {
+        hosted_strong_auth_env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
     fn set_env(name: &str, value: &str) {
         std::env::set_var(name, value);
     }
@@ -240,7 +246,7 @@ mod tests {
 
     #[test]
     fn hosted_prompt_control_strong_auth_grant_requires_approval_code() {
-        let _guard = hosted_strong_auth_env_lock().lock().expect("env lock");
+        let _guard = lock_hosted_strong_auth_env();
         clear_env();
         let (public_key, private_key) = signer(41);
         set_env(HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV, public_key.as_str());
@@ -270,7 +276,7 @@ mod tests {
 
     #[test]
     fn hosted_prompt_control_strong_auth_grant_issues_preview_grant() {
-        let _guard = hosted_strong_auth_env_lock().lock().expect("env lock");
+        let _guard = lock_hosted_strong_auth_env();
         clear_env();
         let (public_key, private_key) = signer(42);
         set_env(HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV, public_key.as_str());
@@ -306,7 +312,7 @@ mod tests {
 
     #[test]
     fn hosted_strong_auth_grant_rejects_main_token_transfer_until_lane_lands() {
-        let _guard = hosted_strong_auth_env_lock().lock().expect("env lock");
+        let _guard = lock_hosted_strong_auth_env();
         clear_env();
         let (public_key, private_key) = signer(43);
         set_env(HOSTED_STRONG_AUTH_PUBLIC_KEY_ENV, public_key.as_str());

@@ -1,7 +1,6 @@
 use super::platform_ops::viewer_dev_dist_candidates;
 use super::{
     build_chain_runtime_args, build_game_url, build_launcher_args, chain_runtime_status_from_web,
-    should_request_auto_chain_start,
     collect_chain_required_config_issues, collect_required_config_issues,
     config_ui::{issue_field_ids, StartupGuideTarget},
     encode_query_value, encoded_query_pair,
@@ -18,6 +17,7 @@ use super::{
     },
     self_guided_blocked_actions::resolve_disabled_cta_plan,
     self_guided_preflight::{resolve_chain_runtime_preflight_state, PreflightCheckState},
+    should_request_auto_chain_start,
     transfer_window::{
         hosted_public_join_transfer_blocked, recommend_default_from_account,
         recommend_transfer_account_ids, resolve_transfer_timeline, transfer_amount_presets,

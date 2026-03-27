@@ -49,8 +49,8 @@ fn test_module_artifact_signing_key() -> SigningKey {
     SigningKey::from_bytes(&private_key_bytes)
 }
 
-mod agent_default_modules;
 mod agent_claims;
+mod agent_default_modules;
 mod audit;
 mod basic;
 mod body;

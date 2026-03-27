@@ -63,12 +63,12 @@ impl World {
         claim: &AgentClaimState,
         emitted: &mut Vec<WorldEvent>,
     ) -> Result<(), WorldError> {
-        let Some(latest_claim) = self.state.agent_claims.get(&claim.target_agent_id).cloned() else {
+        let Some(latest_claim) = self.state.agent_claims.get(&claim.target_agent_id).cloned()
+        else {
             return Ok(());
         };
 
-        let Some((charged_epochs, amount_due)) =
-            claim_amount_due(&latest_claim, current_epoch)?
+        let Some((charged_epochs, amount_due)) = claim_amount_due(&latest_claim, current_epoch)?
         else {
             return self.process_agent_claim_release_or_idle(current_epoch, &latest_claim, emitted);
         };
@@ -94,7 +94,11 @@ impl World {
             else {
                 return Ok(());
             };
-            return self.process_agent_claim_release_or_idle(current_epoch, &refreshed_claim, emitted);
+            return self.process_agent_claim_release_or_idle(
+                current_epoch,
+                &refreshed_claim,
+                emitted,
+            );
         }
 
         if let Some(grace_deadline_epoch) = latest_claim.grace_deadline_epoch {
@@ -182,7 +186,8 @@ impl World {
             return Ok(());
         }
 
-        if idle_epochs >= claim.idle_warning_epochs && claim.idle_warning_emitted_at_epoch.is_none() {
+        if idle_epochs >= claim.idle_warning_epochs && claim.idle_warning_emitted_at_epoch.is_none()
+        {
             self.append_agent_claim_event(
                 DomainEvent::AgentClaimIdleWarning {
                     claimer_agent_id: claim.claim_owner_id.clone(),
@@ -227,7 +232,10 @@ impl World {
     }
 }
 
-fn claim_amount_due(claim: &AgentClaimState, current_epoch: u64) -> Result<Option<(u64, u64)>, WorldError> {
+fn claim_amount_due(
+    claim: &AgentClaimState,
+    current_epoch: u64,
+) -> Result<Option<(u64, u64)>, WorldError> {
     let charged_epochs = current_epoch.saturating_sub(claim.upkeep_paid_through_epoch);
     if charged_epochs == 0 {
         return Ok(None);
@@ -251,9 +259,11 @@ fn reclaim_bond_settlement(
 ) -> (u64, u64, u64) {
     let collected_upkeep_amount = locked_bond_amount.min(upkeep_arrears_amount);
     let remaining_after_upkeep = locked_bond_amount.saturating_sub(collected_upkeep_amount);
-    let penalty_amount = remaining_after_upkeep
-        .saturating_mul(u64::from(penalty_bps))
-        / 10_000;
+    let penalty_amount = remaining_after_upkeep.saturating_mul(u64::from(penalty_bps)) / 10_000;
     let refunded_bond_amount = remaining_after_upkeep.saturating_sub(penalty_amount);
-    (collected_upkeep_amount, penalty_amount, refunded_bond_amount)
+    (
+        collected_upkeep_amount,
+        penalty_amount,
+        refunded_bond_amount,
+    )
 }

@@ -99,6 +99,9 @@ pub use manifest::{
 };
 
 // Modules
+pub use agent_claims::{
+    agent_claim_cap_for_tier, agent_claim_quote, agent_claim_reputation_tier, AgentClaimCostQuote,
+};
 pub use gameplay::{
     ActiveGameplayModule, GameplayKindCoverage, GameplayModeReadiness, GAMEPLAY_BASELINE_KINDS,
 };
@@ -109,10 +112,6 @@ pub use gameplay_state::{
     GovernanceVoteBallotState, GovernanceVoteState, GovernanceVoteWeightSnapshotState,
     MetaProgressState, WarParticipantOutcome, WarState,
     GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT,
-};
-pub use agent_claims::{
-    agent_claim_cap_for_tier, agent_claim_quote, agent_claim_reputation_tier,
-    AgentClaimCostQuote,
 };
 pub use modules::{
     EconomyModuleKind, FactoryBuildDecision, FactoryBuildRequest, FactoryModuleApi,

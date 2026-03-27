@@ -1296,15 +1296,19 @@ fn compat_snapshot_exposes_player_agent_claim_overview() {
         .world
         .set_main_token_account_balance(primary_agent_id.as_str(), 1_000, 0)
         .expect("seed main token balance");
-    server.world.submit_action(crate::runtime::Action::RegisterAgent {
-        agent_id: "agent-claim-target".to_string(),
-        pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
-    });
+    server
+        .world
+        .submit_action(crate::runtime::Action::RegisterAgent {
+            agent_id: "agent-claim-target".to_string(),
+            pos: crate::geometry::GeoPos::new(0.0, 0.0, 0.0),
+        });
     server.world.step().expect("register claim target");
-    server.world.submit_action(crate::runtime::Action::ClaimAgent {
-        claimer_agent_id: primary_agent_id.clone(),
-        target_agent_id: "agent-claim-target".to_string(),
-    });
+    server
+        .world
+        .submit_action(crate::runtime::Action::ClaimAgent {
+            claimer_agent_id: primary_agent_id.clone(),
+            target_agent_id: "agent-claim-target".to_string(),
+        });
     server.world.step().expect("claim target");
     server
         .world

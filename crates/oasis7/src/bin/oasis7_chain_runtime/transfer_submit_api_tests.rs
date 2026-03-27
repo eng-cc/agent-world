@@ -30,7 +30,7 @@ use std::io::Read;
 use std::net::{TcpListener, TcpStream};
 use std::path::Path;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs};
 
@@ -96,6 +96,16 @@ fn reset_transfer_state_for_tests() {
     });
     super::NEXT_TRANSFER_ACTION_ID.store(1, Ordering::Relaxed);
     super::super::explorer_p0_api::reset_store_for_tests();
+}
+
+fn lock_transfer_test_state() -> std::sync::MutexGuard<'static, ()> {
+    static TEST_GUARD: OnceLock<Mutex<()>> = OnceLock::new();
+    let guard = TEST_GUARD.get_or_init(|| Mutex::new(()));
+    let guard = guard
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    reset_transfer_state_for_tests();
+    guard
 }
 
 fn transfer_test_signer(seed: u8) -> (String, String) {
@@ -216,6 +226,7 @@ fn seed_world_for_explorer_p1(temp_dir: &Path) {
 
 #[test]
 fn parse_transfer_submit_request_rejects_same_account() {
+    let _guard = lock_transfer_test_state();
     let (public_key, private_key) = transfer_test_signer(7);
     let account_id = main_token_account_id_from_node_public_key(public_key.as_str());
     let request = build_signed_transfer_request_with_accounts(
@@ -234,6 +245,7 @@ fn parse_transfer_submit_request_rejects_same_account() {
 
 #[test]
 fn build_transfer_submit_action_payload_encodes_runtime_action() {
+    let _guard = lock_transfer_test_state();
     let request = build_signed_transfer_request(7, 8, 7, 2);
     let body = serialize_transfer_request(&request);
     let request = parse_transfer_submit_request(body.as_slice()).expect("request should parse");
@@ -261,6 +273,7 @@ fn build_transfer_submit_action_payload_encodes_runtime_action() {
 
 #[test]
 fn verify_transfer_submit_request_auth_accepts_live_browser_captured_signature() {
+    let _guard = lock_transfer_test_state();
     let request = ChainTransferSubmitRequest {
         from_account_id:
             "awt:pk:fded5085f1e8099257b7bfb2346eb6bd4194c3351d8f97686b18cfcc5969e0a3"
@@ -301,6 +314,7 @@ fn verify_transfer_submit_request_auth_accepts_live_browser_captured_signature()
 
 #[test]
 fn transfer_submit_handler_returns_invalid_request_for_bad_payload() {
+    let _guard = lock_transfer_test_state();
     let runtime = Arc::new(Mutex::new(NodeRuntime::new(
         NodeConfig::new(
             "node-transfer-submit-bad",
@@ -357,6 +371,7 @@ fn transfer_submit_handler_returns_invalid_request_for_bad_payload() {
 
 #[test]
 fn transfer_submit_handler_rejects_missing_signature() {
+    let _guard = lock_transfer_test_state();
     let runtime = Arc::new(Mutex::new(NodeRuntime::new(
         NodeConfig::new(
             "node-transfer-submit-missing-signature",
@@ -409,6 +424,7 @@ fn transfer_submit_handler_rejects_missing_signature() {
 
 #[test]
 fn transfer_submit_handler_rejects_invalid_signature() {
+    let _guard = lock_transfer_test_state();
     let runtime = Arc::new(Mutex::new(NodeRuntime::new(
         NodeConfig::new(
             "node-transfer-submit-invalid-signature",
@@ -457,6 +473,7 @@ fn transfer_submit_handler_rejects_invalid_signature() {
 
 #[test]
 fn transfer_submit_handler_rejects_account_auth_mismatch() {
+    let _guard = lock_transfer_test_state();
     let runtime = Arc::new(Mutex::new(NodeRuntime::new(
         NodeConfig::new(
             "node-transfer-submit-auth-mismatch",
@@ -510,6 +527,7 @@ fn transfer_submit_handler_rejects_account_auth_mismatch() {
 
 #[test]
 fn transfer_status_and_history_endpoint_report_confirmed_record() {
+    let _guard = lock_transfer_test_state();
     let config = NodeConfig::new(
         "node-transfer-query-ok",
         "world-transfer-query-ok",
@@ -640,6 +658,7 @@ fn transfer_status_and_history_endpoint_report_confirmed_record() {
 
 #[test]
 fn explorer_overview_and_transaction_queries_return_expected_payloads() {
+    let _guard = lock_transfer_test_state();
     let config = NodeConfig::new(
         "node-transfer-explorer-ok",
         "world-transfer-explorer-ok",
@@ -829,6 +848,7 @@ fn explorer_overview_and_transaction_queries_return_expected_payloads() {
 
 #[test]
 fn explorer_transactions_reject_invalid_status_filter() {
+    let _guard = lock_transfer_test_state();
     let runtime = Arc::new(Mutex::new(NodeRuntime::new(
         NodeConfig::new(
             "node-transfer-explorer-filter",
@@ -871,7 +891,7 @@ fn explorer_transactions_reject_invalid_status_filter() {
 
 #[test]
 fn explorer_p0_blocks_txs_tx_search_queries_return_expected_payloads() {
-    super::super::explorer_p0_api::reset_store_for_tests();
+    let _guard = lock_transfer_test_state();
     let temp_dir = make_temp_dir("explorer_p0_queries");
 
     let config = NodeConfig::new(
@@ -1085,7 +1105,7 @@ fn explorer_p0_blocks_txs_tx_search_queries_return_expected_payloads() {
 
 #[test]
 fn explorer_p0_blocks_rejects_invalid_cursor_parameter() {
-    super::super::explorer_p0_api::reset_store_for_tests();
+    let _guard = lock_transfer_test_state();
     let temp_dir = make_temp_dir("explorer_p0_invalid_cursor");
     let runtime = Arc::new(Mutex::new(NodeRuntime::new(
         NodeConfig::new(
@@ -1131,7 +1151,7 @@ fn explorer_p0_blocks_rejects_invalid_cursor_parameter() {
 
 #[test]
 fn explorer_p1_endpoints_return_expected_payloads() {
-    reset_transfer_state_for_tests();
+    let _guard = lock_transfer_test_state();
     let temp_dir = make_temp_dir("explorer_p1_ok");
     seed_world_for_explorer_p1(temp_dir.as_path());
     let runtime = Arc::new(Mutex::new(NodeRuntime::new(
@@ -1315,7 +1335,7 @@ fn explorer_p1_endpoints_return_expected_payloads() {
 
 #[test]
 fn explorer_p1_mempool_rejects_invalid_status_parameter() {
-    reset_transfer_state_for_tests();
+    let _guard = lock_transfer_test_state();
     let temp_dir = make_temp_dir("explorer_p1_invalid_mempool_status");
     let runtime = Arc::new(Mutex::new(NodeRuntime::new(
         NodeConfig::new(
@@ -1361,7 +1381,7 @@ fn explorer_p1_mempool_rejects_invalid_status_parameter() {
 
 #[test]
 fn explorer_p1_address_returns_not_found_for_unknown_account() {
-    reset_transfer_state_for_tests();
+    let _guard = lock_transfer_test_state();
     let temp_dir = make_temp_dir("explorer_p1_address_not_found");
     let runtime = Arc::new(Mutex::new(NodeRuntime::new(
         NodeConfig::new(

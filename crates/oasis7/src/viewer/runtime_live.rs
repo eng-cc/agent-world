@@ -32,17 +32,17 @@ use super::protocol::{
     ViewerControl, ViewerControlProfile, ViewerEventKind, ViewerRequest, ViewerResponse,
     ViewerStream, VIEWER_PROTOCOL_VERSION,
 };
+mod claim_snapshot;
 #[path = "runtime_live/control_plane.rs"]
 mod control_plane;
-mod claim_snapshot;
 mod gameplay_snapshot;
 mod mapping;
 mod player_gameplay;
 #[cfg(test)]
 mod tests;
 
-use control_plane::RuntimeLlmSidecar;
 use claim_snapshot::build_player_agent_claim_snapshot;
+use control_plane::RuntimeLlmSidecar;
 use gameplay_snapshot::{
     build_player_gameplay_snapshot, player_gameplay_feedback_from_control_ack,
 };

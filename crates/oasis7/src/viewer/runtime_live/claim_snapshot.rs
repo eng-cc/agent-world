@@ -119,12 +119,11 @@ fn owned_claim_to_snapshot(
     let grace_remaining_epochs = claim
         .grace_deadline_epoch
         .map(|epoch| epoch.saturating_sub(current_epoch));
-    let idle_warning_in_epochs =
-        (claim.idle_warning_emitted_at_epoch.is_none()).then(|| {
-            last_control_epoch
-                .saturating_add(claim.idle_warning_epochs)
-                .saturating_sub(current_epoch)
-        });
+    let idle_warning_in_epochs = (claim.idle_warning_emitted_at_epoch.is_none()).then(|| {
+        last_control_epoch
+            .saturating_add(claim.idle_warning_epochs)
+            .saturating_sub(current_epoch)
+    });
     let forced_reclaim_in_epochs = Some(
         last_control_epoch
             .saturating_add(claim.forced_idle_reclaim_epochs)

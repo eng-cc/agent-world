@@ -67,15 +67,9 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::AgentClaimEnteredGrace { .. } => {
                 "domain.gameplay.agent_claim_entered_grace"
             }
-            DomainEvent::AgentClaimIdleWarning { .. } => {
-                "domain.gameplay.agent_claim_idle_warning"
-            }
-            DomainEvent::AgentClaimReleased { .. } => {
-                "domain.gameplay.agent_claim_released"
-            }
-            DomainEvent::AgentClaimReclaimed { .. } => {
-                "domain.gameplay.agent_claim_reclaimed"
-            }
+            DomainEvent::AgentClaimIdleWarning { .. } => "domain.gameplay.agent_claim_idle_warning",
+            DomainEvent::AgentClaimReleased { .. } => "domain.gameplay.agent_claim_released",
+            DomainEvent::AgentClaimReclaimed { .. } => "domain.gameplay.agent_claim_reclaimed",
             DomainEvent::MaterialTransferred { .. } => "domain.material_transferred",
             DomainEvent::MaterialTransitStarted { .. } => "domain.material_transit_started",
             DomainEvent::MaterialTransitCompleted { .. } => "domain.material_transit_completed",

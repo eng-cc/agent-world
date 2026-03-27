@@ -23,12 +23,11 @@ fn setup_claim_world(balance: u64, reputation_score: i64) -> World {
     world
         .set_agent_reputation_score("alice", reputation_score)
         .expect("set alice reputation");
-    world
-        .set_main_token_supply(MainTokenSupplyState {
-            total_supply: balance,
-            circulating_supply: balance,
-            ..MainTokenSupplyState::default()
-        });
+    world.set_main_token_supply(MainTokenSupplyState {
+        total_supply: balance,
+        circulating_supply: balance,
+        ..MainTokenSupplyState::default()
+    });
     world
         .set_main_token_account_balance("alice", balance, 0)
         .expect("seed alice main token balance");
@@ -77,7 +76,10 @@ fn first_agent_claim_is_non_free_and_locks_bond() {
     assert!(claim.upkeep_per_epoch > 0);
     assert_eq!(claim.locked_bond_amount, claim.claim_bond_amount);
     let upfront_amount = claim_upfront_amount(claim);
-    assert_eq!(world.main_token_liquid_balance("alice"), 1_000 - upfront_amount);
+    assert_eq!(
+        world.main_token_liquid_balance("alice"),
+        1_000 - upfront_amount
+    );
     assert_eq!(
         world.main_token_treasury_balance("ecosystem_pool"),
         claim.activation_fee_treasury_amount + claim.upkeep_per_epoch
@@ -109,7 +111,10 @@ fn concurrent_claim_conflict_charges_only_winner() {
 
     let claim = world.agent_claim("bob").expect("winning claim persisted");
     assert_eq!(claim.claim_owner_id, "alice");
-    assert_eq!(world.main_token_liquid_balance("alice"), 1_000 - claim_upfront_amount(claim));
+    assert_eq!(
+        world.main_token_liquid_balance("alice"),
+        1_000 - claim_upfront_amount(claim)
+    );
     assert_eq!(world.main_token_liquid_balance("carol"), 1_000);
     assert_eq!(
         world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL),
@@ -136,7 +141,9 @@ fn concurrent_claim_conflict_charges_only_winner() {
         }
     }
     assert_eq!(claim_events, 1);
-    assert!(rejection_notes.iter().any(|note| note.contains("already claimed")));
+    assert!(rejection_notes
+        .iter()
+        .any(|note| note.contains("already claimed")));
 }
 
 #[test]
@@ -400,7 +407,10 @@ fn idle_claim_emits_warning_then_reclaims() {
             break;
         }
     }
-    assert!(saw_warning, "expected idle warning by epoch {warning_epochs}");
+    assert!(
+        saw_warning,
+        "expected idle warning by epoch {warning_epochs}"
+    );
 
     while world.agent_claim("bob").is_some() {
         world.step().expect("advance to idle reclaim");

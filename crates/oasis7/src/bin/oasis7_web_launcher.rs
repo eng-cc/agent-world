@@ -13,7 +13,7 @@ use std::time::Instant;
 mod control_plane;
 #[path = "oasis7_web_launcher/gui_agent_api.rs"]
 mod gui_agent_api;
-#[path = "oasis7_hosted_access.rs"]
+#[path = "../hosted_access.rs"]
 mod hosted_access;
 #[path = "oasis7_web_launcher/http_codec.rs"]
 mod http_codec;

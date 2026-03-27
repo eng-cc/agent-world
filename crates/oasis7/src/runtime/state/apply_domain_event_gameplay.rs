@@ -515,14 +515,15 @@ impl WorldState {
                     .get(claimer_agent_id)
                     .copied()
                     .unwrap_or(0);
-                let quote = agent_claim_quote(reputation_score, owned_claim_count).map_err(
-                    |reason| WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "agent claim quote mismatch: owner={} reason={reason}",
-                            claimer_agent_id
-                        ),
-                    },
-                )?;
+                let quote =
+                    agent_claim_quote(reputation_score, owned_claim_count).map_err(|reason| {
+                        WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "agent claim quote mismatch: owner={} reason={reason}",
+                                claimer_agent_id
+                            ),
+                        }
+                    })?;
                 if quote.reputation_tier != *reputation_tier
                     || quote.slot_index != *slot_index
                     || quote.activation_fee_amount != *activation_fee_amount
@@ -627,12 +628,11 @@ impl WorldState {
                 requested_at_epoch,
                 ready_at_epoch,
             } => {
-                let claim =
-                    self.agent_claims
-                        .get_mut(target_agent_id)
-                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                            reason: format!("agent claim not found: target={target_agent_id}"),
-                        })?;
+                let claim = self.agent_claims.get_mut(target_agent_id).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!("agent claim not found: target={target_agent_id}"),
+                    }
+                })?;
                 if claim.claim_owner_id != *claimer_agent_id {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: format!(
@@ -715,12 +715,13 @@ impl WorldState {
                     MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL,
                     *amount,
                 )?;
-                let claim =
-                    self.agent_claims
-                        .get_mut(target_agent_id)
-                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                            reason: format!("agent claim not found after debit: target={target_agent_id}"),
-                        })?;
+                let claim = self.agent_claims.get_mut(target_agent_id).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim not found after debit: target={target_agent_id}"
+                        ),
+                    }
+                })?;
                 claim.upkeep_paid_through_epoch = *upkeep_paid_through_epoch;
                 claim.delinquent_since_epoch = None;
                 claim.grace_deadline_epoch = None;
@@ -738,12 +739,11 @@ impl WorldState {
                 grace_deadline_epoch,
                 upkeep_arrears_amount,
             } => {
-                let claim =
-                    self.agent_claims
-                        .get_mut(target_agent_id)
-                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                            reason: format!("agent claim not found: target={target_agent_id}"),
-                        })?;
+                let claim = self.agent_claims.get_mut(target_agent_id).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!("agent claim not found: target={target_agent_id}"),
+                    }
+                })?;
                 if claim.claim_owner_id != *claimer_agent_id {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: format!(
@@ -776,12 +776,11 @@ impl WorldState {
                 warning_emitted_at_epoch,
                 forced_reclaim_at_epoch,
             } => {
-                let claim =
-                    self.agent_claims
-                        .get_mut(target_agent_id)
-                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                            reason: format!("agent claim not found: target={target_agent_id}"),
-                        })?;
+                let claim = self.agent_claims.get_mut(target_agent_id).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!("agent claim not found: target={target_agent_id}"),
+                    }
+                })?;
                 if claim.claim_owner_id != *claimer_agent_id {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: format!(
@@ -829,8 +828,9 @@ impl WorldState {
                 }
                 credit_main_token_liquid_balance(self, claimer_agent_id, *refunded_bond_amount)?;
                 increase_main_token_circulating_supply(self, *refunded_bond_amount)?;
-                self.agent_claim_last_processed_epoch =
-                    self.agent_claim_last_processed_epoch.max(*released_at_epoch);
+                self.agent_claim_last_processed_epoch = self
+                    .agent_claim_last_processed_epoch
+                    .max(*released_at_epoch);
                 self.agents
                     .get_mut(claimer_agent_id)
                     .expect("claimer existence prechecked")
@@ -892,11 +892,16 @@ impl WorldState {
                     )?;
                 }
                 if *refunded_bond_amount > 0 {
-                    credit_main_token_liquid_balance(self, claimer_agent_id, *refunded_bond_amount)?;
+                    credit_main_token_liquid_balance(
+                        self,
+                        claimer_agent_id,
+                        *refunded_bond_amount,
+                    )?;
                     increase_main_token_circulating_supply(self, *refunded_bond_amount)?;
                 }
-                self.agent_claim_last_processed_epoch =
-                    self.agent_claim_last_processed_epoch.max(*reclaimed_at_epoch);
+                self.agent_claim_last_processed_epoch = self
+                    .agent_claim_last_processed_epoch
+                    .max(*reclaimed_at_epoch);
                 self.agents
                     .get_mut(claimer_agent_id)
                     .expect("claimer existence prechecked")
@@ -1242,7 +1247,10 @@ impl WorldState {
     }
 }
 
-fn ensure_agent_claim_actor_exists(state: &WorldState, claimer_agent_id: &str) -> Result<(), WorldError> {
+fn ensure_agent_claim_actor_exists(
+    state: &WorldState,
+    claimer_agent_id: &str,
+) -> Result<(), WorldError> {
     if state.agents.contains_key(claimer_agent_id) {
         Ok(())
     } else {
@@ -1252,7 +1260,10 @@ fn ensure_agent_claim_actor_exists(state: &WorldState, claimer_agent_id: &str) -
     }
 }
 
-fn ensure_agent_claim_target_exists(state: &WorldState, target_agent_id: &str) -> Result<(), WorldError> {
+fn ensure_agent_claim_target_exists(
+    state: &WorldState,
+    target_agent_id: &str,
+) -> Result<(), WorldError> {
     if state.agents.contains_key(target_agent_id) {
         Ok(())
     } else {
@@ -1305,16 +1316,14 @@ fn credit_main_token_liquid_balance(
             account_id: account_id.to_string(),
             ..MainTokenAccountBalance::default()
         });
-    account.liquid_balance =
-        account
-            .liquid_balance
-            .checked_add(amount)
-            .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                reason: format!(
-                    "main token liquid credit overflow: account={} current={} amount={}",
-                    account_id, account.liquid_balance, amount
-                ),
-            })?;
+    account.liquid_balance = account.liquid_balance.checked_add(amount).ok_or_else(|| {
+        WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token liquid credit overflow: account={} current={} amount={}",
+                account_id, account.liquid_balance, amount
+            ),
+        }
+    })?;
     Ok(())
 }
 

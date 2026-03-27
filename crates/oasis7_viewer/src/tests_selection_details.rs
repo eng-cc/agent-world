@@ -8,10 +8,7 @@ fn fetch_runtime_live_snapshot() -> oasis7::simulator::WorldSnapshot {
     use std::thread;
     use std::time::Duration;
 
-    fn send_request(
-        writer: &mut BufWriter<TcpStream>,
-        request: &oasis7::viewer::ViewerRequest,
-    ) {
+    fn send_request(writer: &mut BufWriter<TcpStream>, request: &oasis7::viewer::ViewerRequest) {
         serde_json::to_writer(&mut *writer, request).expect("write viewer request");
         writer.write_all(b"\n").expect("write request newline");
         writer.flush().expect("flush viewer request");
@@ -223,7 +220,9 @@ fn update_ui_populates_agent_selection_details_with_claim_state() {
         .as_mut()
         .expect("typed runtime snapshot");
     runtime_snapshot.state.time = 4;
-    runtime_snapshot.governance_execution_policy.epoch_length_ticks = 1;
+    runtime_snapshot
+        .governance_execution_policy
+        .epoch_length_ticks = 1;
     let mut target_cell = runtime_snapshot
         .state
         .agents
@@ -280,8 +279,12 @@ fn update_ui_populates_agent_selection_details_with_claim_state() {
         decision_traces: Vec::new(),
         metrics: None,
     };
-    let details_text =
-        build_selection_details_text(&selection, &state, Some(&Viewer3dConfig::default()), default_locale());
+    let details_text = build_selection_details_text(
+        &selection,
+        &state,
+        Some(&Viewer3dConfig::default()),
+        default_locale(),
+    );
 
     assert!(details_text.contains("Agent Claim:"));
     assert!(details_text.contains(format!("Owner: {}", primary_agent_id).as_str()));

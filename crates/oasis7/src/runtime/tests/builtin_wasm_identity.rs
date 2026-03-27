@@ -7,7 +7,7 @@ use super::super::{
 fn builtin_identity_manifest_resolves_m1_entry() {
     let identity = m1_builtin_module_artifact_identity(
         "m1.rule.move",
-        "a395547deac1bc38aef18e2d85fbbc823e268389c17a800cacc9b544dddd0e3f",
+        "7b4c97aa886d99a589a4ed7a2d6ef884f9f15d4ae6a11c5fa6c0ca8db6874a64",
     )
     .expect("resolve m1 identity");
     assert!(identity.is_complete());
@@ -37,7 +37,7 @@ fn builtin_identity_manifest_resolves_m1_entry() {
 fn builtin_identity_manifest_resolves_m4_entry() {
     let identity = m4_builtin_module_artifact_identity(
         "m4.factory.miner.mk1",
-        "b9272aa867836c2adc49bba02bf35b33e4fae2c93adbe0807142f6065a6842b6",
+        "6e4573f87d6c723c7a472ad1857746c3f3ea0cdaf0944851e22f9a2d7fbb28ef",
     )
     .expect("resolve m4 identity");
     assert!(identity.is_complete());
@@ -67,7 +67,7 @@ fn builtin_identity_manifest_resolves_m4_entry() {
 fn builtin_identity_manifest_resolves_m5_entry() {
     let identity = m5_builtin_module_artifact_identity(
         "m5.gameplay.war.core",
-        "74f65cc151fafccdb7ce10ff47235d392539e0ebf5b8b42ec74576ce62877782",
+        "9c19a832b28ddb8ee4db1dcc73dd41fe34b34c077a0f9386599e45bf466f8c15",
     )
     .expect("resolve m5 identity");
     assert!(identity.is_complete());
