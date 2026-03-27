@@ -1,6 +1,7 @@
 //! The World struct - core runtime implementation.
 
 mod actions;
+mod agent_claims;
 mod audit;
 mod base_layer;
 mod body;

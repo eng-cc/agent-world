@@ -9,6 +9,7 @@
 //! - Agent scheduling
 
 mod agent_cell;
+mod agent_claims;
 mod audit;
 mod blob_store;
 mod builtin_wasm_identity_manifest;
@@ -102,12 +103,14 @@ pub use gameplay::{
     ActiveGameplayModule, GameplayKindCoverage, GameplayModeReadiness, GAMEPLAY_BASELINE_KINDS,
 };
 pub use gameplay_state::{
-    AllianceState, CrisisState, CrisisStatus, EconomicContractState, EconomicContractStatus,
-    GameplayPolicyState, GovernanceIdentityProfileState, GovernanceIdentityStatus,
-    GovernanceProposalState, GovernanceProposalStatus, GovernanceVoteBallotState,
-    GovernanceVoteState, GovernanceVoteWeightSnapshotState, MetaProgressState,
-    WarParticipantOutcome, WarState, GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT,
+    AgentClaimState, AllianceState, CrisisState, CrisisStatus, EconomicContractState,
+    EconomicContractStatus, GameplayPolicyState, GovernanceIdentityProfileState,
+    GovernanceIdentityStatus, GovernanceProposalState, GovernanceProposalStatus,
+    GovernanceVoteBallotState, GovernanceVoteState, GovernanceVoteWeightSnapshotState,
+    MetaProgressState, WarParticipantOutcome, WarState,
+    GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT,
 };
+pub use agent_claims::AgentClaimCostQuote;
 pub use modules::{
     EconomyModuleKind, FactoryBuildDecision, FactoryBuildRequest, FactoryModuleApi,
     FactoryModuleSpec, FactoryProfileV1, GameplayContract, GameplayModuleKind,

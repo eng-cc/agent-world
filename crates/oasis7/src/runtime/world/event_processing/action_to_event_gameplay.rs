@@ -7,6 +7,131 @@ impl World {
         action: &Action,
     ) -> Result<WorldEventBody, WorldError> {
         match action {
+            Action::ClaimAgent {
+                claimer_agent_id,
+                target_agent_id,
+            } => {
+                if !self.state.agents.contains_key(claimer_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: claimer_agent_id.clone(),
+                        },
+                    }));
+                }
+                if !self.state.agents.contains_key(target_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: target_agent_id.clone(),
+                        },
+                    }));
+                }
+                if self.state.agent_claims.contains_key(target_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "agent already claimed: target_agent_id={target_agent_id}"
+                            )],
+                        },
+                    }));
+                }
+
+                let quote = match self.agent_claim_quote_for_owner(claimer_agent_id) {
+                    Ok(quote) => quote,
+                    Err(err) => {
+                        return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                            action_id,
+                            reason: RejectReason::RuleDenied {
+                                notes: vec![format!("claim agent rejected: {err:?}")],
+                            },
+                        }));
+                    }
+                };
+                let current_epoch = self.current_governance_epoch();
+                let event = DomainEvent::AgentClaimed {
+                    claimer_agent_id: claimer_agent_id.clone(),
+                    target_agent_id: target_agent_id.clone(),
+                    reputation_tier: quote.reputation_tier,
+                    slot_index: quote.slot_index,
+                    activation_fee_amount: quote.activation_fee_amount,
+                    activation_fee_burn_amount: quote.activation_fee_burn_amount,
+                    activation_fee_treasury_amount: quote.activation_fee_treasury_amount,
+                    claim_bond_amount: quote.claim_bond_amount,
+                    upkeep_per_epoch: quote.upkeep_per_epoch,
+                    claimed_at_epoch: current_epoch,
+                    upkeep_paid_through_epoch: current_epoch,
+                    release_cooldown_epochs: quote.release_cooldown_epochs,
+                    grace_epochs: quote.grace_epochs,
+                    idle_warning_epochs: quote.idle_warning_epochs,
+                    forced_idle_reclaim_epochs: quote.forced_idle_reclaim_epochs,
+                    forced_reclaim_penalty_bps: quote.forced_reclaim_penalty_bps,
+                };
+                let mut preview_state = self.state.clone();
+                if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("claim agent rejected: {err:?}")],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(event))
+            }
+            Action::ReleaseAgentClaim {
+                claimer_agent_id,
+                target_agent_id,
+            } => {
+                if !self.state.agents.contains_key(claimer_agent_id) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::AgentNotFound {
+                            agent_id: claimer_agent_id.clone(),
+                        },
+                    }));
+                }
+                let Some(claim) = self.state.agent_claims.get(target_agent_id) else {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "agent claim not found: target_agent_id={target_agent_id}"
+                            )],
+                        },
+                    }));
+                };
+                if claim.claim_owner_id != *claimer_agent_id {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!(
+                                "agent claim owner mismatch: target_agent_id={} owner={} claimer={}",
+                                target_agent_id, claim.claim_owner_id, claimer_agent_id
+                            )],
+                        },
+                    }));
+                }
+                let requested_at_epoch = self.current_governance_epoch();
+                let ready_at_epoch =
+                    requested_at_epoch.saturating_add(claim.release_cooldown_epochs);
+                let event = DomainEvent::AgentClaimReleaseRequested {
+                    claimer_agent_id: claimer_agent_id.clone(),
+                    target_agent_id: target_agent_id.clone(),
+                    requested_at_epoch,
+                    ready_at_epoch,
+                };
+                let mut preview_state = self.state.clone();
+                if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+                    return Ok(WorldEventBody::Domain(DomainEvent::ActionRejected {
+                        action_id,
+                        reason: RejectReason::RuleDenied {
+                            notes: vec![format!("release agent claim rejected: {err:?}")],
+                        },
+                    }));
+                }
+                Ok(WorldEventBody::Domain(event))
+            }
             Action::FormAlliance {
                 proposer_agent_id,
                 alliance_id,

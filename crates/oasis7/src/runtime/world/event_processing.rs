@@ -185,6 +185,9 @@ impl World {
             | Action::GrantMetaProgress { .. } => {
                 self.action_to_event_gameplay(action_id, &envelope.action)
             }
+            Action::ClaimAgent { .. } | Action::ReleaseAgentClaim { .. } => {
+                self.action_to_event_gameplay(action_id, &envelope.action)
+            }
             Action::UpdateGameplayPolicy { .. }
             | Action::OpenEconomicContract { .. }
             | Action::AcceptEconomicContract { .. }

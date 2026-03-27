@@ -14,11 +14,12 @@ use super::error::WorldError;
 use super::events::ModuleProfileChanges;
 use super::events::{DomainEvent, IndustryStage, MaterialMarketQuote, MaterialTransitPriority};
 use super::gameplay_state::{
-    AllianceState, CrisisState, CrisisStatus, EconomicContractState, EconomicContractStatus,
-    GameplayPolicyState, GovernanceIdentityProfileState, GovernanceIdentityStatus,
-    GovernanceProposalState, GovernanceProposalStatus, GovernanceVoteBallotState,
-    GovernanceVoteState, GovernanceVoteWeightSnapshotState, MetaProgressState,
-    WarParticipantOutcome, WarState, GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT,
+    AgentClaimState, AllianceState, CrisisState, CrisisStatus, EconomicContractState,
+    EconomicContractStatus, GameplayPolicyState, GovernanceIdentityProfileState,
+    GovernanceIdentityStatus, GovernanceProposalState, GovernanceProposalStatus,
+    GovernanceVoteBallotState, GovernanceVoteState, GovernanceVoteWeightSnapshotState,
+    MetaProgressState, WarParticipantOutcome, WarState,
+    GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT,
 };
 use super::governance::{GovernanceFinalitySignerRegistry, GovernanceMainTokenControllerRegistry};
 use super::main_token::{
@@ -415,6 +416,10 @@ pub struct WorldState {
     #[serde(default)]
     pub economic_contracts: BTreeMap<String, EconomicContractState>,
     #[serde(default)]
+    pub agent_claims: BTreeMap<String, AgentClaimState>,
+    #[serde(default)]
+    pub agent_claim_last_processed_epoch: u64,
+    #[serde(default)]
     pub contract_pair_last_success_settled_at: BTreeMap<String, WorldTime>,
     #[serde(default)]
     pub reputation_reward_window_started_at: BTreeMap<String, WorldTime>,
@@ -528,6 +533,8 @@ impl Default for WorldState {
             gameplay_policy: GameplayPolicyState::default(),
             data_access_permissions: BTreeMap::new(),
             economic_contracts: BTreeMap::new(),
+            agent_claims: BTreeMap::new(),
+            agent_claim_last_processed_epoch: 0,
             contract_pair_last_success_settled_at: BTreeMap::new(),
             reputation_reward_window_started_at: BTreeMap::new(),
             reputation_reward_window_accumulated: BTreeMap::new(),
@@ -928,6 +935,13 @@ impl WorldState {
             | DomainEvent::EconomicContractAccepted { .. }
             | DomainEvent::EconomicContractSettled { .. }
             | DomainEvent::EconomicContractExpired { .. }
+            | DomainEvent::AgentClaimed { .. }
+            | DomainEvent::AgentClaimReleaseRequested { .. }
+            | DomainEvent::AgentClaimUpkeepSettled { .. }
+            | DomainEvent::AgentClaimEnteredGrace { .. }
+            | DomainEvent::AgentClaimIdleWarning { .. }
+            | DomainEvent::AgentClaimReleased { .. }
+            | DomainEvent::AgentClaimReclaimed { .. }
             | DomainEvent::AllianceFormed { .. }
             | DomainEvent::AllianceJoined { .. }
             | DomainEvent::AllianceLeft { .. }

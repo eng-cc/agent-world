@@ -277,6 +277,53 @@ pub struct EconomicContractState {
     pub settlement_notes: Option<String>,
 }
 
+/// Persisted agent claim ownership and upkeep state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentClaimState {
+    pub target_agent_id: String,
+    pub claim_owner_id: String,
+    #[serde(default)]
+    pub reputation_tier: u8,
+    #[serde(default)]
+    pub slot_index: u8,
+    #[serde(default)]
+    pub activation_fee_amount: u64,
+    #[serde(default)]
+    pub activation_fee_burn_amount: u64,
+    #[serde(default)]
+    pub activation_fee_treasury_amount: u64,
+    #[serde(default)]
+    pub claim_bond_amount: u64,
+    #[serde(default)]
+    pub locked_bond_amount: u64,
+    #[serde(default)]
+    pub upkeep_per_epoch: u64,
+    #[serde(default)]
+    pub release_cooldown_epochs: u64,
+    #[serde(default)]
+    pub grace_epochs: u64,
+    #[serde(default)]
+    pub idle_warning_epochs: u64,
+    #[serde(default)]
+    pub forced_idle_reclaim_epochs: u64,
+    #[serde(default)]
+    pub forced_reclaim_penalty_bps: u16,
+    #[serde(default)]
+    pub claimed_at_epoch: u64,
+    #[serde(default)]
+    pub upkeep_paid_through_epoch: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delinquent_since_epoch: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grace_deadline_epoch: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_requested_at_epoch: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release_ready_at_epoch: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub idle_warning_emitted_at_epoch: Option<u64>,
+}
+
 fn default_policy_max_open_contracts_per_agent() -> u16 {
     4
 }

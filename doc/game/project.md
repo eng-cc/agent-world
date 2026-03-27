@@ -133,7 +133,7 @@
 - [ ] TASK-GAME-037 (PRD-GAME-010) [test_tier_required]: `qa_engineer` 输出 `QA Weekly / Event Verdict`，确认当前 unified gate 是否仍保持 `pass`，并在真实反馈触发时建议 `continue / conditional go / no-go`。
 - [ ] TASK-GAME-038 (PRD-GAME-010) [test_tier_required]: `producer_system_designer` 基于 `TASK-GAME-036/037` 的真实执行样本，正式决定继续维持、收紧节奏，或触发下一轮阶段评审。
 - [x] TASK-GAME-039 (PRD-GAME-011) [test_tier_required]: 新增“agent 认领代币成本与维护机制”专题 PRD / design / project，并完成 game 根 PRD、project、索引、README 与 devlog 挂载。
-- [ ] TASK-GAME-040 (PRD-GAME-011) [test_tier_required + test_tier_full]: `runtime_engineer` 落地 agent claim canonical 状态机、claim bond/upkeep/reclaim 记账、单 owner 原子性与审计事件。
+- [x] TASK-GAME-040 (PRD-GAME-011) [test_tier_required + test_tier_full]: `runtime_engineer` 已落地 agent claim canonical 状态机、claim bond/upkeep/reclaim 记账、单 owner 原子性与审计事件，并补齐 required 定向回归。
 - [ ] TASK-GAME-041 (PRD-GAME-011) [test_tier_required]: `viewer_engineer` 落地 claim quote、cooldown/grace/idle reclaim 倒计时、tier cap 阻断原因与 pure API 字段对齐。
 - [ ] TASK-GAME-042 (PRD-GAME-011) [test_tier_required + test_tier_full]: `qa_engineer` 验证 claim 并发、欠费、闲置回收、refund/slash 和经济源汇审计没有旁路。
 - [ ] TASK-GAME-043 (PRD-GAME-011) [test_tier_required]: `producer_system_designer` 基于首轮 balance 样本复核 claim 成本曲线与 tier cap，决定是否新开调参专题。
@@ -154,6 +154,7 @@
 - 更新日期: 2026-03-27
 - 当前状态: in_progress
 - 下一任务: `TASK-GAME-036（执行 1 轮受控 limited preview builder callout，并回流首批真实信号）`
+- 最新完成: `TASK-GAME-040`（`runtime_engineer` 已在 `oasis7` runtime 内落地 `ClaimAgent / ReleaseAgentClaim`、claim bond/upkeep/grace/idle reclaim 状态机与 main token 账本联动；当前 runtime v1 暂以 `100/200/25` base defaults 和 `0/10/25` reputation score tier gates 闭环，后续仍待 `TASK-GAME-043` 复核调参。）
 - 最新完成: `TASK-GAME-039`（已新增 `PRD-GAME-011` agent 认领代币成本专题，正式冻结“首个 claim 也不免费”的规则口径，并将 claim bond / upkeep / reclaim / tier cap 挂入 game 根入口。）
 - 最新完成: `TASK-GAME-035`（已新增 `PRD-GAME-010` 受控 limited preview 执行专题，并将 owner、handoff、done 定义与验证方式正式挂载到 game 根入口。）
 - 最新完成: `TASK-GAME-033`（`producer_system_designer` 已完成阶段评审，决定当前继续保持 `internal_playable_alpha_late`；统一 gate `pass` 不自动放宽对外 claim envelope。）

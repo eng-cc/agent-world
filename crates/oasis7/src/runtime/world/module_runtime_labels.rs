@@ -57,6 +57,25 @@ pub(super) fn event_kind_label(body: &WorldEventBody) -> &'static str {
             DomainEvent::MainTokenTreasuryDistributed { .. } => {
                 "domain.main_token.treasury_distributed"
             }
+            DomainEvent::AgentClaimed { .. } => "domain.gameplay.agent_claimed",
+            DomainEvent::AgentClaimReleaseRequested { .. } => {
+                "domain.gameplay.agent_claim_release_requested"
+            }
+            DomainEvent::AgentClaimUpkeepSettled { .. } => {
+                "domain.gameplay.agent_claim_upkeep_settled"
+            }
+            DomainEvent::AgentClaimEnteredGrace { .. } => {
+                "domain.gameplay.agent_claim_entered_grace"
+            }
+            DomainEvent::AgentClaimIdleWarning { .. } => {
+                "domain.gameplay.agent_claim_idle_warning"
+            }
+            DomainEvent::AgentClaimReleased { .. } => {
+                "domain.gameplay.agent_claim_released"
+            }
+            DomainEvent::AgentClaimReclaimed { .. } => {
+                "domain.gameplay.agent_claim_reclaimed"
+            }
             DomainEvent::MaterialTransferred { .. } => "domain.material_transferred",
             DomainEvent::MaterialTransitStarted { .. } => "domain.material_transit_started",
             DomainEvent::MaterialTransitCompleted { .. } => "domain.material_transit_completed",
@@ -193,6 +212,8 @@ pub(super) fn action_kind_label(action: &Action) -> &'static str {
         Action::SettleMainTokenFee { .. } => "action.main_token.settle_fee",
         Action::UpdateMainTokenPolicy { .. } => "action.main_token.update_policy",
         Action::DistributeMainTokenTreasury { .. } => "action.main_token.distribute_treasury",
+        Action::ClaimAgent { .. } => "action.gameplay.claim_agent",
+        Action::ReleaseAgentClaim { .. } => "action.gameplay.release_agent_claim",
         Action::TransferMaterial { .. } => "action.transfer_material",
         Action::FormAlliance { .. } => "action.gameplay.form_alliance",
         Action::JoinAlliance { .. } => "action.gameplay.join_alliance",

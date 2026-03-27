@@ -28,6 +28,11 @@
   - `activation fee`: 非退款，立即拆到 burn / treasury。
   - `claim bond`: 锁定后可在 release / reclaim 时按规则退款或 slash。
   - `upkeep`: 每个 epoch 结算一次，持续表达“占有这个 agent 就要持续承担成本”。
+- runtime v1 暂定默认值（用于 canonical 实现与测试，不等于最终平衡定价承诺）：
+  - `base activation fee = 100`
+  - `base claim bond = 200`
+  - `base upkeep = 25`
+  - `activation fee burn split = 50%`
 - 槽位曲线：
   - `slot-1 multiplier = 1.0`
   - `slot-2 multiplier = 1.5`
@@ -36,6 +41,7 @@
   - `tier-0 cap = 1`
   - `tier-1 cap = 2`
   - `tier-2+ cap = 3`
+  - runtime v1 暂按 `reputation_score < 10 / >= 10 / >= 25` 映射到 `tier-0 / tier-1 / tier-2+`，后续由平衡专题复核。
 
 ## 4. 回收与退款
 - 主动释放：

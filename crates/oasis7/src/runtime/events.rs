@@ -378,6 +378,14 @@ pub enum Action {
         bucket_id: String,
         distributions: Vec<MainTokenTreasuryDistribution>,
     },
+    ClaimAgent {
+        claimer_agent_id: String,
+        target_agent_id: String,
+    },
+    ReleaseAgentClaim {
+        claimer_agent_id: String,
+        target_agent_id: String,
+    },
     TransferMaterial {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,
@@ -654,6 +662,12 @@ impl Action {
             | Action::SettleMainTokenFee { .. }
             | Action::UpdateMainTokenPolicy { .. }
             | Action::DistributeMainTokenTreasury { .. } => None,
+            Action::ClaimAgent {
+                claimer_agent_id, ..
+            }
+            | Action::ReleaseAgentClaim {
+                claimer_agent_id, ..
+            } => Some(claimer_agent_id.as_str()),
             Action::TransferMaterial {
                 requester_agent_id, ..
             }
@@ -1049,6 +1063,67 @@ pub enum DomainEvent {
         total_amount: u64,
         distributions: Vec<MainTokenTreasuryDistribution>,
     },
+    AgentClaimed {
+        claimer_agent_id: String,
+        target_agent_id: String,
+        reputation_tier: u8,
+        slot_index: u8,
+        activation_fee_amount: u64,
+        activation_fee_burn_amount: u64,
+        activation_fee_treasury_amount: u64,
+        claim_bond_amount: u64,
+        upkeep_per_epoch: u64,
+        claimed_at_epoch: u64,
+        upkeep_paid_through_epoch: u64,
+        release_cooldown_epochs: u64,
+        grace_epochs: u64,
+        idle_warning_epochs: u64,
+        forced_idle_reclaim_epochs: u64,
+        forced_reclaim_penalty_bps: u16,
+    },
+    AgentClaimReleaseRequested {
+        claimer_agent_id: String,
+        target_agent_id: String,
+        requested_at_epoch: u64,
+        ready_at_epoch: u64,
+    },
+    AgentClaimUpkeepSettled {
+        claimer_agent_id: String,
+        target_agent_id: String,
+        settled_at_epoch: u64,
+        charged_epochs: u64,
+        amount: u64,
+        upkeep_paid_through_epoch: u64,
+    },
+    AgentClaimEnteredGrace {
+        claimer_agent_id: String,
+        target_agent_id: String,
+        delinquent_since_epoch: u64,
+        grace_deadline_epoch: u64,
+        upkeep_arrears_amount: u64,
+    },
+    AgentClaimIdleWarning {
+        claimer_agent_id: String,
+        target_agent_id: String,
+        warning_emitted_at_epoch: u64,
+        forced_reclaim_at_epoch: u64,
+    },
+    AgentClaimReleased {
+        claimer_agent_id: String,
+        target_agent_id: String,
+        released_at_epoch: u64,
+        refunded_bond_amount: u64,
+    },
+    AgentClaimReclaimed {
+        claimer_agent_id: String,
+        target_agent_id: String,
+        reclaimed_at_epoch: u64,
+        reason: String,
+        upkeep_arrears_amount: u64,
+        collected_upkeep_amount: u64,
+        penalty_amount: u64,
+        refunded_bond_amount: u64,
+    },
     MaterialTransferred {
         requester_agent_id: String,
         from_ledger: MaterialLedgerId,
@@ -1428,6 +1503,27 @@ impl DomainEvent {
             DomainEvent::MainTokenFeeSettled { .. } => None,
             DomainEvent::MainTokenPolicyUpdateScheduled { .. } => None,
             DomainEvent::MainTokenTreasuryDistributed { .. } => None,
+            DomainEvent::AgentClaimed {
+                claimer_agent_id, ..
+            }
+            | DomainEvent::AgentClaimReleaseRequested {
+                claimer_agent_id, ..
+            }
+            | DomainEvent::AgentClaimUpkeepSettled {
+                claimer_agent_id, ..
+            }
+            | DomainEvent::AgentClaimEnteredGrace {
+                claimer_agent_id, ..
+            }
+            | DomainEvent::AgentClaimIdleWarning {
+                claimer_agent_id, ..
+            }
+            | DomainEvent::AgentClaimReleased {
+                claimer_agent_id, ..
+            }
+            | DomainEvent::AgentClaimReclaimed {
+                claimer_agent_id, ..
+            } => Some(claimer_agent_id.as_str()),
             DomainEvent::MaterialTransferred {
                 requester_agent_id, ..
             } => Some(requester_agent_id.as_str()),

@@ -1,3 +1,7 @@
+use super::super::agent_claims::agent_claim_quote;
+use super::super::main_token::{
+    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL, MAIN_TOKEN_TREASURY_BUCKET_SLASH,
+};
 use super::*;
 
 const ECONOMIC_CONTRACT_REPUTATION_WINDOW_TICKS: u64 = 20;
@@ -480,6 +484,424 @@ impl WorldState {
                     cell.last_active = now;
                 }
             }
+            DomainEvent::AgentClaimed {
+                claimer_agent_id,
+                target_agent_id,
+                reputation_tier,
+                slot_index,
+                activation_fee_amount,
+                activation_fee_burn_amount,
+                activation_fee_treasury_amount,
+                claim_bond_amount,
+                upkeep_per_epoch,
+                claimed_at_epoch,
+                upkeep_paid_through_epoch,
+                release_cooldown_epochs,
+                grace_epochs,
+                idle_warning_epochs,
+                forced_idle_reclaim_epochs,
+                forced_reclaim_penalty_bps,
+            } => {
+                ensure_agent_claim_actor_exists(self, claimer_agent_id)?;
+                ensure_agent_claim_target_exists(self, target_agent_id)?;
+                if self.agent_claims.contains_key(target_agent_id) {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!("agent claim already exists: target={target_agent_id}"),
+                    });
+                }
+                let owned_claim_count = owner_claim_count(self, claimer_agent_id);
+                let reputation_score = self
+                    .reputation_scores
+                    .get(claimer_agent_id)
+                    .copied()
+                    .unwrap_or(0);
+                let quote = agent_claim_quote(reputation_score, owned_claim_count).map_err(
+                    |reason| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim quote mismatch: owner={} reason={reason}",
+                            claimer_agent_id
+                        ),
+                    },
+                )?;
+                if quote.reputation_tier != *reputation_tier
+                    || quote.slot_index != *slot_index
+                    || quote.activation_fee_amount != *activation_fee_amount
+                    || quote.activation_fee_burn_amount != *activation_fee_burn_amount
+                    || quote.activation_fee_treasury_amount != *activation_fee_treasury_amount
+                    || quote.claim_bond_amount != *claim_bond_amount
+                    || quote.upkeep_per_epoch != *upkeep_per_epoch
+                    || quote.release_cooldown_epochs != *release_cooldown_epochs
+                    || quote.grace_epochs != *grace_epochs
+                    || quote.idle_warning_epochs != *idle_warning_epochs
+                    || quote.forced_idle_reclaim_epochs != *forced_idle_reclaim_epochs
+                    || quote.forced_reclaim_penalty_bps != *forced_reclaim_penalty_bps
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim quote fields diverged: owner={} target={}",
+                            claimer_agent_id, target_agent_id
+                        ),
+                    });
+                }
+                if *activation_fee_amount == 0 || *claim_bond_amount == 0 || *upkeep_per_epoch == 0
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim costs must be positive: target={target_agent_id}"
+                        ),
+                    });
+                }
+                if *upkeep_paid_through_epoch < *claimed_at_epoch {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim upkeep epoch mismatch: target={} claimed={} paid_through={}",
+                            target_agent_id, claimed_at_epoch, upkeep_paid_through_epoch
+                        ),
+                    });
+                }
+
+                let upfront_amount = activation_fee_amount
+                    .checked_add(*claim_bond_amount)
+                    .and_then(|value| value.checked_add(*upkeep_per_epoch))
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim upfront overflow: target={} activation={} bond={} upkeep={}",
+                            target_agent_id, activation_fee_amount, claim_bond_amount, upkeep_per_epoch
+                        ),
+                    })?;
+                debit_main_token_liquid_balance(self, claimer_agent_id, upfront_amount)?;
+                decrease_main_token_circulating_supply(self, upfront_amount)?;
+                burn_main_token_supply(self, *activation_fee_burn_amount)?;
+                add_main_token_treasury_balance(
+                    self,
+                    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL,
+                    activation_fee_treasury_amount
+                        .checked_add(*upkeep_per_epoch)
+                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "agent claim treasury overflow: target={} activation_treasury={} upkeep={}",
+                                target_agent_id,
+                                activation_fee_treasury_amount,
+                                upkeep_per_epoch
+                            ),
+                        })?,
+                )?;
+
+                self.agent_claims.insert(
+                    target_agent_id.clone(),
+                    AgentClaimState {
+                        target_agent_id: target_agent_id.clone(),
+                        claim_owner_id: claimer_agent_id.clone(),
+                        reputation_tier: *reputation_tier,
+                        slot_index: *slot_index,
+                        activation_fee_amount: *activation_fee_amount,
+                        activation_fee_burn_amount: *activation_fee_burn_amount,
+                        activation_fee_treasury_amount: *activation_fee_treasury_amount,
+                        claim_bond_amount: *claim_bond_amount,
+                        locked_bond_amount: *claim_bond_amount,
+                        upkeep_per_epoch: *upkeep_per_epoch,
+                        release_cooldown_epochs: *release_cooldown_epochs,
+                        grace_epochs: *grace_epochs,
+                        idle_warning_epochs: *idle_warning_epochs,
+                        forced_idle_reclaim_epochs: *forced_idle_reclaim_epochs,
+                        forced_reclaim_penalty_bps: *forced_reclaim_penalty_bps,
+                        claimed_at_epoch: *claimed_at_epoch,
+                        upkeep_paid_through_epoch: *upkeep_paid_through_epoch,
+                        delinquent_since_epoch: None,
+                        grace_deadline_epoch: None,
+                        release_requested_at_epoch: None,
+                        release_ready_at_epoch: None,
+                        idle_warning_emitted_at_epoch: None,
+                    },
+                );
+                self.agent_claim_last_processed_epoch =
+                    self.agent_claim_last_processed_epoch.max(*claimed_at_epoch);
+                self.agents
+                    .get_mut(claimer_agent_id)
+                    .expect("claimer existence prechecked")
+                    .last_active = now;
+            }
+            DomainEvent::AgentClaimReleaseRequested {
+                claimer_agent_id,
+                target_agent_id,
+                requested_at_epoch,
+                ready_at_epoch,
+            } => {
+                let claim =
+                    self.agent_claims
+                        .get_mut(target_agent_id)
+                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                            reason: format!("agent claim not found: target={target_agent_id}"),
+                        })?;
+                if claim.claim_owner_id != *claimer_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim release owner mismatch: target={} owner={} claimer={}",
+                            target_agent_id, claim.claim_owner_id, claimer_agent_id
+                        ),
+                    });
+                }
+                if claim.release_requested_at_epoch.is_some() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim release already requested: target={target_agent_id}"
+                        ),
+                    });
+                }
+                if *ready_at_epoch < *requested_at_epoch {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim release epoch mismatch: target={} requested={} ready={}",
+                            target_agent_id, requested_at_epoch, ready_at_epoch
+                        ),
+                    });
+                }
+                claim.release_requested_at_epoch = Some(*requested_at_epoch);
+                claim.release_ready_at_epoch = Some(*ready_at_epoch);
+                self.agents
+                    .get_mut(claimer_agent_id)
+                    .expect("claimer existence prechecked")
+                    .last_active = now;
+            }
+            DomainEvent::AgentClaimUpkeepSettled {
+                claimer_agent_id,
+                target_agent_id,
+                settled_at_epoch,
+                charged_epochs,
+                amount,
+                upkeep_paid_through_epoch,
+            } => {
+                let claim = self.agent_claims.get(target_agent_id).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!("agent claim not found: target={target_agent_id}"),
+                    }
+                })?;
+                if claim.claim_owner_id != *claimer_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim upkeep owner mismatch: target={} owner={} claimer={}",
+                            target_agent_id, claim.claim_owner_id, claimer_agent_id
+                        ),
+                    });
+                }
+                if *charged_epochs == 0 || *amount == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim upkeep settlement must be positive: target={target_agent_id}"
+                        ),
+                    });
+                }
+                let expected_amount = claim
+                    .upkeep_per_epoch
+                    .checked_mul(*charged_epochs)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim upkeep overflow: target={} upkeep={} epochs={}",
+                            target_agent_id, claim.upkeep_per_epoch, charged_epochs
+                        ),
+                    })?;
+                if expected_amount != *amount {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim upkeep mismatch: target={} expected={} actual={}",
+                            target_agent_id, expected_amount, amount
+                        ),
+                    });
+                }
+                debit_main_token_liquid_balance(self, claimer_agent_id, *amount)?;
+                decrease_main_token_circulating_supply(self, *amount)?;
+                add_main_token_treasury_balance(
+                    self,
+                    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL,
+                    *amount,
+                )?;
+                let claim =
+                    self.agent_claims
+                        .get_mut(target_agent_id)
+                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                            reason: format!("agent claim not found after debit: target={target_agent_id}"),
+                        })?;
+                claim.upkeep_paid_through_epoch = *upkeep_paid_through_epoch;
+                claim.delinquent_since_epoch = None;
+                claim.grace_deadline_epoch = None;
+                self.agent_claim_last_processed_epoch =
+                    self.agent_claim_last_processed_epoch.max(*settled_at_epoch);
+                self.agents
+                    .get_mut(claimer_agent_id)
+                    .expect("claimer existence prechecked")
+                    .last_active = now;
+            }
+            DomainEvent::AgentClaimEnteredGrace {
+                claimer_agent_id,
+                target_agent_id,
+                delinquent_since_epoch,
+                grace_deadline_epoch,
+                upkeep_arrears_amount,
+            } => {
+                let claim =
+                    self.agent_claims
+                        .get_mut(target_agent_id)
+                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                            reason: format!("agent claim not found: target={target_agent_id}"),
+                        })?;
+                if claim.claim_owner_id != *claimer_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim grace owner mismatch: target={} owner={} claimer={}",
+                            target_agent_id, claim.claim_owner_id, claimer_agent_id
+                        ),
+                    });
+                }
+                if *upkeep_arrears_amount == 0 {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim grace arrears must be positive: target={target_agent_id}"
+                        ),
+                    });
+                }
+                if *grace_deadline_epoch < *delinquent_since_epoch {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim grace epoch mismatch: target={} delinquent={} deadline={}",
+                            target_agent_id, delinquent_since_epoch, grace_deadline_epoch
+                        ),
+                    });
+                }
+                claim.delinquent_since_epoch = Some(*delinquent_since_epoch);
+                claim.grace_deadline_epoch = Some(*grace_deadline_epoch);
+            }
+            DomainEvent::AgentClaimIdleWarning {
+                claimer_agent_id,
+                target_agent_id,
+                warning_emitted_at_epoch,
+                forced_reclaim_at_epoch,
+            } => {
+                let claim =
+                    self.agent_claims
+                        .get_mut(target_agent_id)
+                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                            reason: format!("agent claim not found: target={target_agent_id}"),
+                        })?;
+                if claim.claim_owner_id != *claimer_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim idle warning owner mismatch: target={} owner={} claimer={}",
+                            target_agent_id, claim.claim_owner_id, claimer_agent_id
+                        ),
+                    });
+                }
+                if *forced_reclaim_at_epoch < *warning_emitted_at_epoch {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim idle warning epoch mismatch: target={} warning={} forced={}",
+                            target_agent_id, warning_emitted_at_epoch, forced_reclaim_at_epoch
+                        ),
+                    });
+                }
+                claim.idle_warning_emitted_at_epoch = Some(*warning_emitted_at_epoch);
+            }
+            DomainEvent::AgentClaimReleased {
+                claimer_agent_id,
+                target_agent_id,
+                released_at_epoch,
+                refunded_bond_amount,
+            } => {
+                let claim = self.agent_claims.remove(target_agent_id).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!("agent claim not found: target={target_agent_id}"),
+                    }
+                })?;
+                if claim.claim_owner_id != *claimer_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim release owner mismatch: target={} owner={} claimer={}",
+                            target_agent_id, claim.claim_owner_id, claimer_agent_id
+                        ),
+                    });
+                }
+                if *refunded_bond_amount != claim.locked_bond_amount {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim release refund mismatch: target={} expected={} actual={}",
+                            target_agent_id, claim.locked_bond_amount, refunded_bond_amount
+                        ),
+                    });
+                }
+                credit_main_token_liquid_balance(self, claimer_agent_id, *refunded_bond_amount)?;
+                increase_main_token_circulating_supply(self, *refunded_bond_amount)?;
+                self.agent_claim_last_processed_epoch =
+                    self.agent_claim_last_processed_epoch.max(*released_at_epoch);
+                self.agents
+                    .get_mut(claimer_agent_id)
+                    .expect("claimer existence prechecked")
+                    .last_active = now;
+            }
+            DomainEvent::AgentClaimReclaimed {
+                claimer_agent_id,
+                target_agent_id,
+                reclaimed_at_epoch,
+                reason: _,
+                upkeep_arrears_amount,
+                collected_upkeep_amount,
+                penalty_amount,
+                refunded_bond_amount,
+            } => {
+                let claim = self.agent_claims.remove(target_agent_id).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!("agent claim not found: target={target_agent_id}"),
+                    }
+                })?;
+                if claim.claim_owner_id != *claimer_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim reclaim owner mismatch: target={} owner={} claimer={}",
+                            target_agent_id, claim.claim_owner_id, claimer_agent_id
+                        ),
+                    });
+                }
+                let expected_collected = claim.locked_bond_amount.min(*upkeep_arrears_amount);
+                let remaining_after_upkeep =
+                    claim.locked_bond_amount.saturating_sub(expected_collected);
+                let expected_penalty = remaining_after_upkeep
+                    .saturating_mul(u64::from(claim.forced_reclaim_penalty_bps))
+                    / 10_000;
+                let expected_refund = remaining_after_upkeep.saturating_sub(expected_penalty);
+                if expected_collected != *collected_upkeep_amount
+                    || expected_penalty != *penalty_amount
+                    || expected_refund != *refunded_bond_amount
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "agent claim reclaim settlement mismatch: target={} collected={} penalty={} refund={}",
+                            target_agent_id, collected_upkeep_amount, penalty_amount, refunded_bond_amount
+                        ),
+                    });
+                }
+                if *collected_upkeep_amount > 0 {
+                    add_main_token_treasury_balance(
+                        self,
+                        MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL,
+                        *collected_upkeep_amount,
+                    )?;
+                }
+                if *penalty_amount > 0 {
+                    add_main_token_treasury_balance(
+                        self,
+                        MAIN_TOKEN_TREASURY_BUCKET_SLASH,
+                        *penalty_amount,
+                    )?;
+                }
+                if *refunded_bond_amount > 0 {
+                    credit_main_token_liquid_balance(self, claimer_agent_id, *refunded_bond_amount)?;
+                    increase_main_token_circulating_supply(self, *refunded_bond_amount)?;
+                }
+                self.agent_claim_last_processed_epoch =
+                    self.agent_claim_last_processed_epoch.max(*reclaimed_at_epoch);
+                self.agents
+                    .get_mut(claimer_agent_id)
+                    .expect("claimer existence prechecked")
+                    .last_active = now;
+            }
             DomainEvent::AllianceFormed {
                 proposer_agent_id,
                 alliance_id,
@@ -818,4 +1240,167 @@ impl WorldState {
         }
         Ok(())
     }
+}
+
+fn ensure_agent_claim_actor_exists(state: &WorldState, claimer_agent_id: &str) -> Result<(), WorldError> {
+    if state.agents.contains_key(claimer_agent_id) {
+        Ok(())
+    } else {
+        Err(WorldError::AgentNotFound {
+            agent_id: claimer_agent_id.to_string(),
+        })
+    }
+}
+
+fn ensure_agent_claim_target_exists(state: &WorldState, target_agent_id: &str) -> Result<(), WorldError> {
+    if state.agents.contains_key(target_agent_id) {
+        Ok(())
+    } else {
+        Err(WorldError::AgentNotFound {
+            agent_id: target_agent_id.to_string(),
+        })
+    }
+}
+
+fn owner_claim_count(state: &WorldState, claimer_agent_id: &str) -> usize {
+    state
+        .agent_claims
+        .values()
+        .filter(|claim| claim.claim_owner_id == claimer_agent_id)
+        .count()
+}
+
+fn debit_main_token_liquid_balance(
+    state: &mut WorldState,
+    account_id: &str,
+    amount: u64,
+) -> Result<(), WorldError> {
+    let account = state
+        .main_token_balances
+        .get_mut(account_id)
+        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+            reason: format!("main token account not found: {account_id}"),
+        })?;
+    if account.liquid_balance < amount {
+        return Err(WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token liquid balance insufficient: account={} balance={} amount={}",
+                account_id, account.liquid_balance, amount
+            ),
+        });
+    }
+    account.liquid_balance -= amount;
+    Ok(())
+}
+
+fn credit_main_token_liquid_balance(
+    state: &mut WorldState,
+    account_id: &str,
+    amount: u64,
+) -> Result<(), WorldError> {
+    let account = state
+        .main_token_balances
+        .entry(account_id.to_string())
+        .or_insert_with(|| MainTokenAccountBalance {
+            account_id: account_id.to_string(),
+            ..MainTokenAccountBalance::default()
+        });
+    account.liquid_balance =
+        account
+            .liquid_balance
+            .checked_add(amount)
+            .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                reason: format!(
+                    "main token liquid credit overflow: account={} current={} amount={}",
+                    account_id, account.liquid_balance, amount
+                ),
+            })?;
+    Ok(())
+}
+
+fn add_main_token_treasury_balance(
+    state: &mut WorldState,
+    bucket_id: &str,
+    amount: u64,
+) -> Result<(), WorldError> {
+    let next = state
+        .main_token_treasury_balances
+        .get(bucket_id)
+        .copied()
+        .unwrap_or(0)
+        .checked_add(amount)
+        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token treasury overflow: bucket={} amount={}",
+                bucket_id, amount
+            ),
+        })?;
+    state
+        .main_token_treasury_balances
+        .insert(bucket_id.to_string(), next);
+    Ok(())
+}
+
+fn burn_main_token_supply(state: &mut WorldState, burn_amount: u64) -> Result<(), WorldError> {
+    if state.main_token_supply.total_supply < burn_amount {
+        return Err(WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token total supply insufficient for burn: total={} burn={}",
+                state.main_token_supply.total_supply, burn_amount
+            ),
+        });
+    }
+    state.main_token_supply.total_supply -= burn_amount;
+    state.main_token_supply.total_burned = state
+        .main_token_supply
+        .total_burned
+        .checked_add(burn_amount)
+        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token total_burned overflow: current={} burn={}",
+                state.main_token_supply.total_burned, burn_amount
+            ),
+        })?;
+    Ok(())
+}
+
+fn decrease_main_token_circulating_supply(
+    state: &mut WorldState,
+    amount: u64,
+) -> Result<(), WorldError> {
+    if state.main_token_supply.circulating_supply < amount {
+        return Err(WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token circulating supply insufficient: circulating={} amount={}",
+                state.main_token_supply.circulating_supply, amount
+            ),
+        });
+    }
+    state.main_token_supply.circulating_supply -= amount;
+    Ok(())
+}
+
+fn increase_main_token_circulating_supply(
+    state: &mut WorldState,
+    amount: u64,
+) -> Result<(), WorldError> {
+    state.main_token_supply.circulating_supply = state
+        .main_token_supply
+        .circulating_supply
+        .checked_add(amount)
+        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token circulating supply overflow: current={} amount={}",
+                state.main_token_supply.circulating_supply, amount
+            ),
+        })?;
+    if state.main_token_supply.circulating_supply > state.main_token_supply.total_supply {
+        return Err(WorldError::ResourceBalanceInvalid {
+            reason: format!(
+                "main token circulating exceeds total supply: circulating={} total={}",
+                state.main_token_supply.circulating_supply, state.main_token_supply.total_supply
+            ),
+        });
+    }
+    Ok(())
 }
