@@ -9,41 +9,48 @@
    1. `prd.md` 只写目标态规格（Why/What/Done），`project.md` 只写执行计划（How/When/Who），`devlog` 只写当天过程
    2. PRD 写作与审查门禁以 `.agents/skills/prd/SKILL.md` 与 `.agents/skills/prd/check.md` 为准
 
-2. 新需求先确定 `owner role`
+2. 每个新需求默认新开独立 `git worktree`
+   1. 一个 `worktree` 只承载一个需求或一个明确任务切片，避免并行任务互相污染
+   2. 该需求的代码、文档、测试、`devlog`、验证产物都必须在对应 `worktree` 内闭环
+   3. 进入实施前先确认当前 `worktree` 是否已绑定其他未完成任务；若已绑定，必须新开 `worktree`
+   4. 只有用户明确要求复用当前 `worktree` 时，才允许不新开
+   5. 涉及本地 Viewer Web / launcher / `agent-browser` / smoke 的任务，默认使用该需求自己的 `worktree` 与隔离 harness
+
+3. 新需求先确定 `owner role`
    1. 在 `.agents/roles/*.md` 中确认牵头角色；跨角色任务按“最先落地代码/文档的 owner”牵头
    2. 需要交接时优先使用模板：
       1. 低风险、短任务：`./.agents/roles/templates/handoff-brief.md`
       2. 跨模块、高风险：`./.agents/roles/templates/handoff-detailed.md`
    3. 接收方开始前必须确认目标、输入、输出、完成定义和验证方式
 
-3. 先更新 `prd.md`，再拆 `project.md`
+4. 先更新 `prd.md`，再拆 `project.md`
    1. 需求、行为、边界变化时必须先更新 `prd.md`
    2. `project.md` 必须写清 PRD-ID、任务、依赖、状态和测试层级
    3. handoff 只用于协作，不替代 PRD / project 正式追踪
 
-4. 按任务闭环执行代码、文档、测试
+5. 按任务闭环执行代码、文档、测试
    1. 所有代码和功能（含 UI）都必须可测试
    2. 测试统一分 `test_tier_required` / `test_tier_full`
    3. 套件矩阵统一参考 `testing-manual.md`
    4. 影响体验、对外口径或线上行为的变更，除 `qa_engineer` 外，还要评估是否需要 `liveops_community` 回流
 
-5. 角色协作规则
+6. 角色协作规则
    1. `producer_system_designer` 管目标、规则、资源与玩法口径
    2. `runtime_engineer` / `wasm_platform_engineer` / `agent_engineer` / `viewer_engineer` 管对应实现闭环
    3. `qa_engineer` 管验证、失败签名、阻断结论与回归建议
    4. `liveops_community` 管运营反馈、社区信号、线上事故摘要和对外口径回流
    5. 跨角色交付时，发起方写 handoff，接收方确认 done，最终 owner 回写 PRD / project / devlog
 
-6. 改完后必须回写文档
+7. 改完后必须回写文档
    1. 保证代码 / 测试 / 文档可追溯到 PRD-ID
    2. 模块需求或行为改动时，必须同步更新 `prd.md`
    3. 交接中若边界、风险或完成定义变化，也要同步更新 PRD / project
 
-7. 工程约束
+8. 工程约束
    1. 单个 Rust 文件不能超过 1200 行，超限需拆分
    2. 文档组织、allowlist、互链、引用可达性等继续遵守工程治理门禁
 
-8. 每个任务完成后都要写日志并跑对应测试
+9. 每个任务完成后都要写日志并跑对应测试
    1. `devlog` 继续按日期存档：每天只维护一个 `doc/devlog/YYYY-MM-DD.md`
    2. 不按角色拆分 `devlog` 文件；角色信息写在单条日志项里
    3. 日志至少包含：时刻、角色、完成内容、遗留事项
@@ -51,9 +58,9 @@
    5. `qa_engineer` 和 `liveops_community` 的关键结论也应回写日志或正式文档
    6. `devlog`、handoff 与角色相关文档中的角色名，只能使用 `.agents/roles/*.md` 中已存在的标准角色名，禁止自造别名
 
-9. 每个任务（写文档也算）一个 commit；若用户明确要求“先不要提交”，则只保留本地改动，但仍要完成文档与测试闭环
+10. 每个任务（写文档也算）一个 commit；若用户明确要求“先不要提交”，则只保留本地改动，但仍要完成文档与测试闭环
 
-10. 当前 `project.md` 还有后续任务时，不要中断；完成一个任务后继续下一个
+11. 当前 `project.md` 还有后续任务时，不要中断；完成一个任务后继续下一个
 
 ## 工程架构
 - 各个子模块各自闭环基础模块功能
