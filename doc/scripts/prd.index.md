@@ -2,7 +2,7 @@
 
 审计轮次: 6
 
-更新时间：2026-03-11
+更新时间：2026-03-27
 
 ## 入口
 - 模块 PRD：`doc/scripts/prd.md`
@@ -25,6 +25,7 @@
 | `doc/scripts/governance/script-parameter-contracts-2026-03-11.prd.md` | `doc/scripts/governance/script-parameter-contracts-2026-03-11.design.md` | `doc/scripts/governance/script-parameter-contracts-2026-03-11.project.md` |
 | `doc/scripts/governance/script-stability-trend-tracking-2026-03-11.prd.md` | `doc/scripts/governance/script-stability-trend-tracking-2026-03-11.design.md` | `doc/scripts/governance/script-stability-trend-tracking-2026-03-11.project.md` |
 | `doc/scripts/governance/worktree-isolated-harness-2026-03-27.prd.md` | `doc/scripts/governance/worktree-isolated-harness-2026-03-27.design.md` | `doc/scripts/governance/worktree-isolated-harness-2026-03-27.project.md` |
+| `doc/scripts/governance/task-worktree-bootstrap-2026-03-27.prd.md` | `doc/scripts/governance/task-worktree-bootstrap-2026-03-27.design.md` | `doc/scripts/governance/task-worktree-bootstrap-2026-03-27.project.md` |
 
 ## 说明
 - 本索引用于保证模块专题文档在根入口文档树中可达。

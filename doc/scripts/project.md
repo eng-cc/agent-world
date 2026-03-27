@@ -91,6 +91,26 @@
     - `./scripts/worktree-harness.sh down`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-SCRIPTS-015 (PRD-SCRIPTS-005) [test_tier_required]: 新增标准化 task worktree bootstrap 入口，统一新需求的 branch/path 命名、脏源 worktree 围栏与机器可读摘要输出，并同步 scripts 治理文档。
+  - 产物文件:
+    - `scripts/new-task-worktree.sh`
+    - `doc/scripts/governance/task-worktree-bootstrap-2026-03-27.prd.md`
+    - `doc/scripts/governance/task-worktree-bootstrap-2026-03-27.design.md`
+    - `doc/scripts/governance/task-worktree-bootstrap-2026-03-27.project.md`
+    - `doc/scripts/prd.md`
+    - `doc/scripts/project.md`
+    - `doc/scripts/prd.index.md`
+    - `doc/scripts/README.md`
+    - `AGENTS.md`
+    - `doc/devlog/2026-03-27.md`
+  - 验收命令 (`test_tier_required`):
+    - `bash -n scripts/new-task-worktree.sh`
+    - `./scripts/new-task-worktree.sh --help`
+    - `./scripts/new-task-worktree.sh scripts worktree-bootstrap-smoke --json --path <tmp-path>`
+    - `git worktree remove -f <tmp-path>`
+    - `git branch -D task/scripts-worktree-bootstrap-smoke`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/scripts/design.md`
@@ -104,6 +124,7 @@
 - 更新日期: 2026-03-27
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-SCRIPTS-015`（新增标准化 task worktree bootstrap 入口，统一新需求的 branch/path 命名、脏源 worktree 围栏与机器可读摘要输出。）
 - 最新完成: `TASK-SCRIPTS-014`（新增 worktree-isolated harness 主入口，收口 `run-game-test.sh` / `run-producer-playtest.sh` 的 worktree 隔离契约，并同步 scripts/testing 文档。）
 - 最新完成: `TASK-SCRIPTS-013`（`doc/scripts/wasm/**` 活跃手册中遗漏的 builtin wasm artifact 当前路径已统一切到 `crates/oasis7/...`。）
 - 最新完成: `TASK-SCRIPTS-012`（texture-inspector 活跃专题中遗漏的 viewer crate、环境变量与运行命令口径已统一切到 `oasis7_viewer` / `OASIS7_VIEWER_*`。）

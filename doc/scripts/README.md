@@ -11,6 +11,7 @@
 ## 模块职责
 - 维护仓内高频脚本的主入口、参数契约与 fallback 围栏口径。
 - 维护 worktree 级隔离 harness，让 agent / QA 能并行起栈并读取稳定状态文件。
+- 维护标准化 task worktree bootstrap 入口，让每个新需求按统一 branch/path 命名落到独立 worktree。
 - 汇总 precommit、viewer-tools、wasm 与治理专题文档。
 - 承接脚本稳定性趋势、文档门禁与运行约束收口。
 
@@ -18,13 +19,14 @@
 - `precommit/`：提交前检查与门禁策略。
 - `viewer-tools/`：viewer 抓帧与纹理质检工具链路。
 - `wasm/`：WASM 构建脚本与环境约束。
-- `governance/`：脚本分层、参数契约、稳定性趋势与 worktree harness 专题。
+- `governance/`：脚本分层、参数契约、稳定性趋势、worktree harness 与 task worktree bootstrap 专题。
 
 ## 近期专题
 - `doc/scripts/governance/script-entry-layering-2026-03-11.prd.md`
 - `doc/scripts/governance/script-parameter-contracts-2026-03-11.prd.md`
 - `doc/scripts/governance/script-stability-trend-tracking-2026-03-11.prd.md`
 - `doc/scripts/governance/worktree-isolated-harness-2026-03-27.prd.md`
+- `doc/scripts/governance/task-worktree-bootstrap-2026-03-27.prd.md`
 - `doc/scripts/precommit/pre-commit.prd.md`
 - `doc/scripts/viewer-tools/capture-viewer-frame.prd.md`
 

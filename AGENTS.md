@@ -14,7 +14,8 @@
    2. 该需求的代码、文档、测试、`devlog`、验证产物都必须在对应 `worktree` 内闭环
    3. 进入实施前先确认当前 `worktree` 是否已绑定其他未完成任务；若已绑定，必须新开 `worktree`
    4. 只有用户明确要求复用当前 `worktree` 时，才允许不新开
-   5. 涉及本地 Viewer Web / launcher / `agent-browser` / smoke 的任务，默认使用该需求自己的 `worktree` 与隔离 harness
+   5. 推荐优先通过 `./scripts/new-task-worktree.sh <module> <task>` 创建标准 worktree，而不是手写 `git worktree add`
+   6. 涉及本地 Viewer Web / launcher / `agent-browser` / smoke 的任务，默认使用该需求自己的 `worktree` 与隔离 harness
 
 3. 新需求先确定 `owner role`
    1. 在 `.agents/roles/*.md` 中确认牵头角色；跨角色任务按“最先落地代码/文档的 owner”牵头
