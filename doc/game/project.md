@@ -229,6 +229,7 @@
 - ROUND-046 进展: `producer_system_designer` 已完成 `TASK-GAME-035`，新增 `PRD-GAME-010` 受控 limited preview 执行专题，并正式把下一步拆成 `TASK-GAME-036/037/038`：先由 `liveops_community` 执行 1 轮 invite-only callout，再由 `qa_engineer` 给出 `QA Weekly / Event Verdict`，最后由制作人决定 `continue / hold / reassess`。
 - ROUND-047 进展: `producer_system_designer` 已完成 `TASK-GAME-039`，新增 `doc/game/gameplay/gameplay-agent-claim-token-cost-2026-03-27.{prd,design,project}.md`，正式冻结“所有 agent claim 都要消耗 main token，首个也不免费”的规则边界；v1 采用 `activation fee + claim bond + upkeep` 三段式，并要求 `tier cap / cooldown / grace / forced reclaim / idle reclaim` 全部进入正式任务追踪。
 - ROUND-048 进展: `viewer_engineer` 已完成 `TASK-GAMEPLAY-AGC-003`，把 agent claim canonical 概览接入 `player_gameplay.agent_claim`，使 pure API `--player-gameplay-only` 可直接输出 claim quote / claimed state / cooldown-grace-idle reclaim 倒计时 / cap blocker；同时 viewer 选中 agent 详情现已显示 claim owner、bond/upkeep 与剩余 epoch 文案，下一步转入 `qa_engineer` 执行 `TASK-GAMEPLAY-AGC-004` 的并发与经济审计矩阵。
+- ROUND-049 进展: `qa_engineer` 已完成 `TASK-GAMEPLAY-AGC-004`，在 `crates/oasis7/src/runtime/tests/agent_claims.rs` 补齐 claim 并发、tier cap、grace 恢复、release refund、欠费/闲置 reclaim slash-refund 对账断言，并新增 `doc/testing/evidence/game-agent-claim-abuse-matrix-2026-03-27.md` 收口 required/full 证据；当前 claim 专题下一步转入 `producer_system_designer` 执行 `TASK-GAMEPLAY-AGC-005` 的平衡复核。
 - 说明: 本文档仅维护 game 设计执行状态；过程记录在 `doc/devlog/2026-03-05.md`、`doc/devlog/2026-03-06.md`、`doc/devlog/2026-03-07.md`、`doc/devlog/2026-03-15.md` 与 `doc/devlog/2026-03-18.md`。
   - 最新过程记录补充见 `doc/devlog/2026-03-21.md`。
 

@@ -38,6 +38,26 @@ fn setup_claim_world(balance: u64, reputation_score: i64) -> World {
     world
 }
 
+fn claim_upfront_amount(claim: &AgentClaimState) -> u64 {
+    claim.activation_fee_amount + claim.claim_bond_amount + claim.upkeep_per_epoch
+}
+
+fn upkeep_settlement_total(world: &World, target_agent_id: &str) -> u64 {
+    world
+        .journal()
+        .events
+        .iter()
+        .filter_map(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::AgentClaimUpkeepSettled {
+                target_agent_id: event_target_agent_id,
+                amount,
+                ..
+            }) if event_target_agent_id == target_agent_id => Some(*amount),
+            _ => None,
+        })
+        .sum()
+}
+
 #[test]
 fn first_agent_claim_is_non_free_and_locks_bond() {
     let mut world = setup_claim_world(1_000, 0);
@@ -56,7 +76,7 @@ fn first_agent_claim_is_non_free_and_locks_bond() {
     assert!(claim.claim_bond_amount > 0);
     assert!(claim.upkeep_per_epoch > 0);
     assert_eq!(claim.locked_bond_amount, claim.claim_bond_amount);
-    let upfront_amount = claim.activation_fee_amount + claim.claim_bond_amount + claim.upkeep_per_epoch;
+    let upfront_amount = claim_upfront_amount(claim);
     assert_eq!(world.main_token_liquid_balance("alice"), 1_000 - upfront_amount);
     assert_eq!(
         world.main_token_treasury_balance("ecosystem_pool"),
@@ -70,6 +90,53 @@ fn first_agent_claim_is_non_free_and_locks_bond() {
         world.main_token_supply().circulating_supply,
         1_000 - upfront_amount
     );
+}
+
+#[test]
+fn concurrent_claim_conflict_charges_only_winner() {
+    let mut world = setup_claim_world(1_000, 0);
+    let journal_len_before = world.journal().events.len();
+
+    world.submit_action(Action::ClaimAgent {
+        claimer_agent_id: "alice".to_string(),
+        target_agent_id: "bob".to_string(),
+    });
+    world.submit_action(Action::ClaimAgent {
+        claimer_agent_id: "carol".to_string(),
+        target_agent_id: "bob".to_string(),
+    });
+    world.step().expect("process competing claims");
+
+    let claim = world.agent_claim("bob").expect("winning claim persisted");
+    assert_eq!(claim.claim_owner_id, "alice");
+    assert_eq!(world.main_token_liquid_balance("alice"), 1_000 - claim_upfront_amount(claim));
+    assert_eq!(world.main_token_liquid_balance("carol"), 1_000);
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL),
+        claim.activation_fee_treasury_amount + claim.upkeep_per_epoch
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_SLASH),
+        0
+    );
+
+    let mut claim_events = 0;
+    let mut rejection_notes = Vec::new();
+    for event in &world.journal().events[journal_len_before..] {
+        match &event.body {
+            WorldEventBody::Domain(DomainEvent::AgentClaimed { .. }) => {
+                claim_events += 1;
+            }
+            WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => {
+                if let RejectReason::RuleDenied { notes } = reason {
+                    rejection_notes.extend(notes.iter().cloned());
+                }
+            }
+            _ => {}
+        }
+    }
+    assert_eq!(claim_events, 1);
+    assert!(rejection_notes.iter().any(|note| note.contains("already claimed")));
 }
 
 #[test]
@@ -107,6 +174,57 @@ fn claimed_agent_rejects_second_owner() {
 }
 
 #[test]
+fn reputation_tier_scales_second_slot_and_enforces_claim_cap() {
+    let mut world = setup_claim_world(4_000, 10);
+    register_agent(&mut world, "dave");
+    register_agent(&mut world, "erin");
+
+    world.submit_action(Action::ClaimAgent {
+        claimer_agent_id: "alice".to_string(),
+        target_agent_id: "bob".to_string(),
+    });
+    world.step().expect("claim slot 1");
+    let first_claim = world.agent_claim("bob").expect("slot 1 claim").clone();
+
+    world.submit_action(Action::ClaimAgent {
+        claimer_agent_id: "alice".to_string(),
+        target_agent_id: "carol".to_string(),
+    });
+    world.step().expect("claim slot 2");
+    let second_claim = world.agent_claim("carol").expect("slot 2 claim").clone();
+
+    assert_eq!(first_claim.reputation_tier, 1);
+    assert_eq!(first_claim.slot_index, 1);
+    assert_eq!(second_claim.reputation_tier, 1);
+    assert_eq!(second_claim.slot_index, 2);
+    assert!(claim_upfront_amount(&second_claim) > claim_upfront_amount(&first_claim));
+    assert_eq!(world.claimed_agent_count("alice"), 2);
+
+    let journal_len_before = world.journal().events.len();
+    world.submit_action(Action::ClaimAgent {
+        claimer_agent_id: "alice".to_string(),
+        target_agent_id: "dave".to_string(),
+    });
+    world.step().expect("reject slot 3 over cap");
+
+    let rejection = world.journal().events[journal_len_before..]
+        .iter()
+        .find_map(|event| match &event.body {
+            WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) => Some(reason),
+            _ => None,
+        })
+        .expect("cap rejection event");
+    match rejection {
+        RejectReason::RuleDenied { notes } => {
+            assert!(notes.iter().any(|note| note.contains("cap exceeded")));
+        }
+        other => panic!("expected rule denied, got {other:?}"),
+    }
+    assert!(world.agent_claim("dave").is_none());
+    assert_eq!(world.claimed_agent_count("alice"), 2);
+}
+
+#[test]
 fn release_refunds_remaining_bond_after_cooldown() {
     let mut world = setup_claim_world(2_000, 0);
 
@@ -115,10 +233,8 @@ fn release_refunds_remaining_bond_after_cooldown() {
         target_agent_id: "bob".to_string(),
     });
     world.step().expect("claim agent");
-    let cooldown_epochs = world
-        .agent_claim("bob")
-        .expect("claim")
-        .release_cooldown_epochs;
+    let claim = world.agent_claim("bob").expect("claim").clone();
+    let cooldown_epochs = claim.release_cooldown_epochs;
 
     world.submit_action(Action::ReleaseAgentClaim {
         claimer_agent_id: "alice".to_string(),
@@ -138,7 +254,16 @@ fn release_refunds_remaining_bond_after_cooldown() {
     world.step().expect("finalize release");
 
     assert!(world.agent_claim("bob").is_none());
+    let settled_upkeep = upkeep_settlement_total(&world, "bob");
     assert!(world.main_token_liquid_balance("alice") > balance_before_final_step);
+    assert_eq!(
+        world.main_token_liquid_balance("alice"),
+        2_000 - claim_upfront_amount(&claim) - settled_upkeep + claim.locked_bond_amount
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_SLASH),
+        0
+    );
     match &world.journal().events.last().expect("event").body {
         WorldEventBody::Domain(DomainEvent::AgentClaimReleased {
             target_agent_id,
@@ -146,10 +271,49 @@ fn release_refunds_remaining_bond_after_cooldown() {
             ..
         }) => {
             assert_eq!(target_agent_id, "bob");
-            assert!(*refunded_bond_amount > 0);
+            assert_eq!(*refunded_bond_amount, claim.locked_bond_amount);
         }
         other => panic!("expected AgentClaimReleased, got {other:?}"),
     }
+}
+
+#[test]
+fn grace_claim_recovers_when_owner_refills_before_deadline() {
+    let mut world = setup_claim_world(325, 0);
+
+    world.submit_action(Action::ClaimAgent {
+        claimer_agent_id: "alice".to_string(),
+        target_agent_id: "bob".to_string(),
+    });
+    world.step().expect("claim agent");
+    world.step().expect("enter grace");
+
+    let grace_claim = world.agent_claim("bob").expect("claim in grace").clone();
+    assert!(grace_claim.grace_deadline_epoch.is_some());
+
+    let topup = grace_claim.upkeep_per_epoch * 2;
+    let mut supply = world.main_token_supply().clone();
+    supply.total_supply += topup;
+    supply.circulating_supply += topup;
+    world.set_main_token_supply(supply);
+    world
+        .set_main_token_account_balance("alice", topup, 0)
+        .expect("top up alice");
+
+    world.step().expect("recover from grace");
+
+    let recovered = world.agent_claim("bob").expect("claim recovered");
+    assert_eq!(
+        recovered.upkeep_paid_through_epoch,
+        grace_claim.upkeep_paid_through_epoch + 2
+    );
+    assert!(recovered.grace_deadline_epoch.is_none());
+    assert!(recovered.delinquent_since_epoch.is_none());
+    assert_eq!(world.main_token_liquid_balance("alice"), 0);
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL),
+        grace_claim.activation_fee_treasury_amount + grace_claim.upkeep_per_epoch + topup
+    );
 }
 
 #[test]
@@ -162,6 +326,7 @@ fn missed_upkeep_enters_grace_then_forced_reclaim() {
     });
     world.step().expect("claim agent");
     assert_eq!(world.main_token_liquid_balance("alice"), 0);
+    let initial_claim = world.agent_claim("bob").expect("claim exists").clone();
 
     world.step().expect("enter grace");
     let claim = world.agent_claim("bob").expect("claim still held");
@@ -185,13 +350,30 @@ fn missed_upkeep_enters_grace_then_forced_reclaim() {
         WorldEventBody::Domain(DomainEvent::AgentClaimReclaimed {
             target_agent_id,
             reason,
+            upkeep_arrears_amount,
+            collected_upkeep_amount,
+            penalty_amount,
+            refunded_bond_amount,
             ..
         }) => {
             assert_eq!(target_agent_id, "bob");
             assert_eq!(reason, "upkeep_delinquent");
+            assert_eq!(*upkeep_arrears_amount, 75);
+            assert_eq!(*collected_upkeep_amount, 75);
+            assert_eq!(*penalty_amount, 25);
+            assert_eq!(*refunded_bond_amount, 100);
         }
         other => panic!("expected AgentClaimReclaimed, got {other:?}"),
     }
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL),
+        initial_claim.activation_fee_treasury_amount + initial_claim.upkeep_per_epoch + 75
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_SLASH),
+        25
+    );
+    assert_eq!(world.main_token_liquid_balance("alice"), 100);
 }
 
 #[test]
@@ -203,7 +385,7 @@ fn idle_claim_emits_warning_then_reclaims() {
         target_agent_id: "bob".to_string(),
     });
     world.step().expect("claim agent");
-    let claim = world.agent_claim("bob").expect("claim");
+    let claim = world.agent_claim("bob").expect("claim").clone();
     let warning_epochs = claim.idle_warning_epochs;
     let reclaim_epochs = claim.forced_idle_reclaim_epochs;
 
@@ -227,11 +409,32 @@ fn idle_claim_emits_warning_then_reclaims() {
         WorldEventBody::Domain(DomainEvent::AgentClaimReclaimed {
             target_agent_id,
             reason,
+            upkeep_arrears_amount,
+            collected_upkeep_amount,
+            penalty_amount,
+            refunded_bond_amount,
             ..
         }) => {
             assert_eq!(target_agent_id, "bob");
             assert_eq!(reason, "idle_timeout");
+            assert_eq!(*upkeep_arrears_amount, 0);
+            assert_eq!(*collected_upkeep_amount, 0);
+            assert_eq!(*penalty_amount, 40);
+            assert_eq!(*refunded_bond_amount, 160);
         }
         other => panic!("expected AgentClaimReclaimed, got {other:?}"),
     }
+    let settled_upkeep = upkeep_settlement_total(&world, "bob");
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL),
+        claim.activation_fee_treasury_amount + claim.upkeep_per_epoch + settled_upkeep
+    );
+    assert_eq!(
+        world.main_token_treasury_balance(MAIN_TOKEN_TREASURY_BUCKET_SLASH),
+        40
+    );
+    assert_eq!(
+        world.main_token_liquid_balance("alice"),
+        2_000 - claim_upfront_amount(&claim) - settled_upkeep + 160
+    );
 }
