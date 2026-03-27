@@ -155,6 +155,22 @@
     - `git branch -D landing-smoke-target`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-SCRIPTS-018 (PRD-SCRIPTS-008) [test_tier_required]: 收紧 task worktree 生命周期口径，明确每个已完成 task `worktree` 在 landing 成功后必须删除，并同步 landing 脚本/文档输出。
+  - 产物文件:
+    - `scripts/land-task-worktree.sh`
+    - `doc/scripts/governance/task-worktree-landing-2026-03-27.prd.md`
+    - `doc/scripts/governance/task-worktree-landing-2026-03-27.design.md`
+    - `doc/scripts/governance/task-worktree-landing-2026-03-27.project.md`
+    - `doc/scripts/prd.md`
+    - `doc/scripts/project.md`
+    - `doc/scripts/README.md`
+    - `AGENTS.md`
+    - `doc/devlog/2026-03-27.md`
+  - 验收命令 (`test_tier_required`):
+    - `./scripts/land-task-worktree.sh --help`
+    - `rg -n "必须.*回收|必须.*删除|Required Cleanup" AGENTS.md doc/scripts scripts/land-task-worktree.sh`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/scripts/design.md`
@@ -168,6 +184,7 @@
 - 更新日期: 2026-03-27
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-SCRIPTS-018`（收紧 task worktree 生命周期口径，要求 landing 成功后必须删除已完成 task worktree / branch。）
 - 最新完成: `TASK-SCRIPTS-017`（新增标准化 task worktree landing 入口，统一任务分支 rebase 到本地 `main` 并 fast-forward 合入本地 `main` 的闭环。）
 - 最新完成: `TASK-SCRIPTS-016`（为标准化 task worktree bootstrap 入口补齐 `--init-docs` 与 `--with-harness`。）
 - 最新完成: `TASK-SCRIPTS-015`（新增标准化 task worktree bootstrap 入口，统一新需求的 branch/path 命名、脏源 worktree 围栏与机器可读摘要输出。）

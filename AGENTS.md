@@ -62,7 +62,8 @@
 10. 任务完成后必须标准化合入本地 `main`
    1. 合入前先确认任务 `worktree` 与 `main` 所在 `worktree` 都是干净状态
    2. 优先通过 `./scripts/land-task-worktree.sh` 执行标准化 landing，而不是手写 `git rebase` / `git merge`
-   3. landing 成功后，再回收对应 task `worktree` 与 branch；若失败，先在任务 `worktree` 解决冲突/补验证，再重试
+   3. landing 成功后，必须立即回收对应 task `worktree` 与 branch；若当前 shell 仍停在 source `worktree`，先切走再删除
+   4. 若失败，先在任务 `worktree` 解决冲突/补验证，再重试
 
 11. 每个任务（写文档也算）一个 commit；若用户明确要求“先不要提交”，则只保留本地改动，但仍要完成文档与测试闭环
 

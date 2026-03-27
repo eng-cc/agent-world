@@ -11,7 +11,7 @@
 - worktree 映射层：通过 `git worktree list --porcelain` 找出 source/target 对应 worktree 路径。
 - 围栏层：检查 source / target worktree 是否干净，阻断 detached HEAD、source=target、缺少 target worktree 等错误。
 - 执行层：在 source worktree 上做 `git rebase <target>`；在 target worktree 上做 `git merge --ff-only <source>`。
-- 输出层：打印人类摘要与 cleanup 建议；`--json` 时只输出结构化结果。
+- 输出层：打印人类摘要与必做 cleanup 命令；`--json` 时只输出结构化结果。
 
 ## 3. Interface
 - 主入口：`scripts/land-task-worktree.sh`
@@ -49,4 +49,4 @@
 
 ## 6. Rationale
 - 选择在 source worktree rebase，而不是在 target worktree merge 后再修线性历史，是因为 task worktree 模型天然适合“每个需求自己整理历史，再进入本地 `main`”。
-- 默认不自动 cleanup，是为了避免脚本在 source worktree 内自删当前目录，也保留 landing 后即时复核的余地。
+- 默认不自动 cleanup，是为了避免脚本在 source worktree 内自删当前目录，也保留 landing 后即时复核的余地；但 cleanup 仍被视为 landing 成功后的必做步骤，而非可选建议。

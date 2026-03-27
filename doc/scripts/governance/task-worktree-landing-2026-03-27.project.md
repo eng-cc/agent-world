@@ -16,7 +16,7 @@
 | source branch | 当前 branch |
 | target branch | 本地 `main` |
 | strategy | `rebase <target>` -> `merge --ff-only <source>` |
-| cleanup | 只输出建议命令，不默认自动删除 worktree/branch |
+| cleanup | 只输出命令，不默认自动删除；landing 成功后必须执行 |
 
 ### 2. JSON 输出字段
 | 字段 | 含义 |
@@ -31,7 +31,7 @@
 | `target_head_after` | landing 后 target head |
 | `rebase_status` | `already_up_to_date` / `rebased` / `would_rebase` |
 | `result` | `dry_run` / `landed` / `already_landed` |
-| `cleanup_commands` | 建议回收 source worktree / branch 的命令 |
+| `cleanup_commands` | landing 成功后必须执行的 source worktree / branch 回收命令 |
 
 ## 依赖
 - `AGENTS.md`
@@ -43,4 +43,4 @@
 - 更新日期：2026-03-27
 - 当前阶段：已完成
 - 阻塞项：无
-- 下一步：若后续要补远端 `push`、PR 创建、review gate 或 landing 后自动 cleanup，应新开下一轮交付专题；本轮仅冻结“默认合入本地 `main`”的 landing 契约。
+- 下一步：若后续要补远端 `push`、PR 创建、review gate 或 landing 后自动 cleanup，应新开下一轮交付专题；本轮仅冻结“默认合入本地 `main` 且 landing 后必须手动 cleanup”的契约。

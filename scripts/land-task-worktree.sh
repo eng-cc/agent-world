@@ -232,7 +232,7 @@ Task worktree landing summary:
 - rebase status: $REBASE_STATUS
 - result: $RESULT
 
-Cleanup:
+Required Cleanup:
   $CLEANUP_CMD_1
   $CLEANUP_CMD_2
 INFO
