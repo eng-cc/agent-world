@@ -162,6 +162,7 @@
   - 现已新增浏览器侧证据 `doc/testing/evidence/hosted-world-browser-auth-surface-2026-03-26.md`：通过真实 `agent-browser` 会话确认 `Hosted Action Matrix`、`Asset / Governance Lane`、`Hosted Recovery` 与 `pending_registration_ttl_ms/release_token` 绑定都能在页面上稳定复现；同时验证 detached/agentless 页面下 `prompt_control_*` 仍不会误签发 grant、`main_token_transfer` 仍返回 `strong_auth_action_not_enabled`。
   - 现已新增并发接入证据 `doc/testing/evidence/hosted-world-browser-concurrency-2026-03-27.md`：在显式重编 `oasis7_viewer_live` sibling bin 后，用两份独立 `agent-browser` session 实测同一 `web_bind`，确认两个页面都能稳定进入 `debug_viewer:subscribed` 并同时看到 seeded agents，不再复现第二页长期 `detached`。
   - 现已新增真实 strong-auth 成功证据 `doc/testing/evidence/hosted-world-browser-strong-auth-success-2026-03-27.md`：在真实 signer + `--with-llm` 的 hosted 栈上，用浏览器本地临时 key、approval code 与未绑定的 `agent-1` 实测 `prompt_control preview/apply`，确认 `strongAuthLastGrantError = null` 且最终拿到 `preview_ack/apply_ack`，不再复现 `release_token does not map to an active player slot`。
+  - 现已新增 remote revoke 浏览器证据 `doc/testing/evidence/hosted-world-browser-revoke-recovery-2026-03-27.md`：通过真实 `agent-browser` 页面 + 外部 `oasis7_pure_api_client revoke-session`，确认下一轮 hosted heartbeat 会把页面收敛到 `guest_session`，并同时显示 `authRevokeReason/authRevokedBy` 与带操作者/原因的 `Hosted Recovery` 文案。
 - 已实现的 `TASK-P2P-041-F` runbook first slice:
   - 已新增 `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`，冻结 hosted operator 的最小执行法：区分 `public join URL / private control plane / signer path`，并明确分享前检查、误分享后的第一响应、incident 最小记录字段与 public claims freeze 边界。
   - 已新增 `doc/testing/templates/hosted-world-operator-incident-template.md`，把误分享 operator URL / private control plane 暴露的 incident 记录字段统一成可复用模板，避免 liveops/QA 各写各的事故摘要。
@@ -182,6 +183,7 @@
 - `doc/testing/evidence/hosted-world-browser-auth-surface-2026-03-26.md`
 - `doc/testing/evidence/hosted-world-browser-concurrency-2026-03-27.md`
 - `doc/testing/evidence/hosted-world-browser-strong-auth-success-2026-03-27.md`
+- `doc/testing/evidence/hosted-world-browser-revoke-recovery-2026-03-27.md`
 - `doc/testing/templates/hosted-world-operator-incident-template.md`
 - `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
