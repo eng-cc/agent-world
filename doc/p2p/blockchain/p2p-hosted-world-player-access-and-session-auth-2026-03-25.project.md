@@ -6,11 +6,11 @@
 审计轮次: 1
 ## 任务拆解（含 PRD-ID 映射）
 - [x] TASK-P2P-041-A (PRD-P2P-023-A/B/C) [test_tier_required + test_tier_full]: `runtime_engineer` 拆分 public player plane 与 private control plane，冻结 endpoint taxonomy、`/api/gui-agent/action` split 策略、hosted verdict 与 admission control，并移除 hosted-world 公共路径中的浏览器长期 signer bootstrap。
-- [ ] TASK-P2P-041-B (PRD-P2P-023-B/D) [test_tier_required + test_tier_full]: `viewer_engineer` 落地 `guest session -> player session` 网页 join/login/reconnect UX，并按 capability 禁用敏感动作。
-- [ ] TASK-P2P-041-C (PRD-P2P-023-B/C) [test_tier_required + test_tier_full]: `runtime_engineer` + `agent_engineer` 落地 session 验证、`player_id -> entity` 绑定、resume/revoke 与 ownership 冲突处理。
-- [ ] TASK-P2P-041-D (PRD-P2P-023-B/D) [test_tier_required + test_tier_full]: `runtime_engineer` + `viewer_engineer` 落地 `strong auth` 升级链路，覆盖 `main token transfer` 与敏感 prompt/control 动作。
-- [ ] TASK-P2P-041-E (PRD-P2P-023-C/E) [test_tier_required + test_tier_full]: `qa_engineer` 建立 hosted-world abuse suite，覆盖 replay、expired session、revocation、operator/public URL 混淆、admission limit 和 capability bypass。
-- [ ] TASK-P2P-041-F (PRD-P2P-023-E) [test_tier_required]: `liveops_community` 建立 hosted operator runbook、分享规范、incident/rotation 流程与 claims boundary。
+- [x] TASK-P2P-041-B (PRD-P2P-023-B/D) [test_tier_required + test_tier_full]: `viewer_engineer` 落地 `guest session -> player session` 网页 join/login/reconnect UX，并按 capability 禁用敏感动作。
+- [x] TASK-P2P-041-C (PRD-P2P-023-B/C) [test_tier_required + test_tier_full]: `runtime_engineer` + `agent_engineer` 落地 session 验证、`player_id -> entity` 绑定、resume/revoke 与 ownership 冲突处理。
+- [x] TASK-P2P-041-D (PRD-P2P-023-B/D) [test_tier_required + test_tier_full]: `runtime_engineer` + `viewer_engineer` 落地 `strong auth` 升级链路，覆盖 `main token transfer` 与敏感 prompt/control 动作。
+- [x] TASK-P2P-041-E (PRD-P2P-023-C/E) [test_tier_required + test_tier_full]: `qa_engineer` 建立 hosted-world abuse suite，覆盖 replay、expired session、revocation、operator/public URL 混淆、admission limit 和 capability bypass。
+- [x] TASK-P2P-041-F (PRD-P2P-023-E) [test_tier_required]: `liveops_community` 建立 hosted operator runbook、分享规范、incident/rotation 流程与 claims boundary。
 
 ## 角色拆解
 ### TASK-P2P-041-A / runtime_engineer
@@ -105,7 +105,7 @@
   - `oasis7_web_launcher --deployment-mode hosted_public_join` 会把 `/api/state`、`/api/start`、`/api/stop`、`/api/chain/start`、`/api/chain/stop`、`/api/gui-agent/*` 与 console static 路径收口为 loopback-only private control plane。
   - 新增 `/api/public/state`，对外只暴露 join 级 public snapshot，不再把 operator state / logs / config 作为默认公共面。
   - launcher snapshot 现已冻结 `deployment_mode`、hosted verdict、`gui-agent` surface 状态与 admission contract 默认值，供后续 viewer/runtime/QA 接续。
-- 已实现的 `TASK-P2P-041-B` viewer first slice:
+- 已完成的 `TASK-P2P-041-B` viewer UX 收口:
   - `software_safe.js` 现会显式显示 `guest_session / player_session / strong_auth` 梯度、`deploymentHint`、`auth source` 与 reconnect 提示，不再只显示 `auth=ready|missing`。
   - prompt/chat 现在会按 capability 给出结构化禁用原因：至少区分 `guest_session`、`observer_only` 与 `strong_auth_required` 占位，而不是继续用单一 “viewer auth bootstrap is unavailable”。
   - `__AW_TEST__.getState()` 已补 `authTier`、`authSource`、`authDeploymentHint` 与 `authSurface`，便于后续 QA/agent-browser 对 hosted public join 的 session/capability 状态做证据采样。
@@ -124,7 +124,7 @@
   - viewer 的语义动作现在会等待 `session_registered` ack 后再继续发送 chat/prompt；若首个 `register_session` 因 explicit rebind 被拒，当前动作会留在队列里，等 `force_rebind` 成功后继续，而不是要求玩家手动再点一次。
   - viewer summary 现会在 rebind 期间显式显示 `rebind target/mode` 与“当前动作会在注册成功后继续”的提示，让 same-player explicit rebind 不再只是后台自动恢复。
   - viewer 现还会在 rebind 成功后保留一条人类可读的完成提示；`__AW_TEST__.getState()` 也会同步暴露 `authRebindNotice`，避免提示只在进行中可见、成功后立即消失。
-- 已实现的 `TASK-P2P-041-C` runtime first slice:
+- 已完成的 `TASK-P2P-041-C` session/bind 收口:
   - runtime-live 新增显式 `session_register`，并要求 prompt/chat/gameplay 在 player action 之前先完成 session 注册；原先“第一个签名动作自动注册 active key”的隐式登录已收口。
   - `RuntimeSessionPolicy::validate_known_session_key` 现会在未注册 session 时返回 `session_not_found`，不再把未注册玩家默认为 epoch 0 放行。
   - runtime 现额外维护 `player_id -> agent_id` 单实体占用真值；同一 player 默认不能静默切到第二个 agent，必须走签名保护的显式 `force_rebind`。
@@ -138,7 +138,7 @@
   - `viewer::auth` 现已补 `session_register` 定向回归，要求篡改 `requested_agent_id` 或 `force_rebind` 都会触发签名校验失败，避免 explicit rebind 退化成“字段在协议里存在，但不在签名约束里”。
   - hosted admission 的 `world_full` 现不再只看 issuer active slot：`HostedPlayerSessionAdmissionSnapshot` 新增 `effective_player_sessions/runtime_only_player_sessions`，会把 runtime 当前已绑定但不在 issuer 内的 runtime-only occupancy 一并计入有效占用，避免 host restart / issuer 漂移后继续超发 player session。
   - hosted issuer 现已把“刚 issue 但还没 register”的 pending slot 与正常在线 slot 分开处理：未完成 runtime register 的 slot 只享有更短的 `pending_registration_ttl_ms`，不会继续按完整 lease TTL 长时间占位。
-- 已实现的 `TASK-P2P-041-D` strong-auth barrier + backend reauth preview slice:
+- 已完成的 `TASK-P2P-041-D` hosted strong-auth preview 收口:
   - `oasis7_web_launcher` 在 `deployment_mode=hosted_public_join` 下会显式拒绝 `POST /api/chain/transfer`，返回结构化 `strong_auth_required`，不再让 public join 路径继续借用 trusted-local signer bootstrap。
   - `oasis7_game_launcher` 的 public player plane 现已新增通用 `/api/public/strong-auth/grant`：会先校验 `player_id + release_token` 仍对应有效 hosted player session，再要求后端 `approval_code` 正确，最后用服务端环境变量中的 signer 生成短期 `HostedStrongAuthGrant`。
   - `oasis7_game_launcher -> oasis7_viewer_live -> runtime-live` 现已透传 hosted deployment mode；在 `hosted_public_join` 下，`prompt_control preview/apply/rollback` 不再一律拒绝，而是要求“玩家本地签名的 `player_session` proof + backend-signed grant”同时成立，缺失时返回 `strong_auth_required`，篡改/过期/错 signer 时返回 `strong_auth_grant_invalid`。
@@ -154,7 +154,7 @@
   - `/api/public/state` 的 `hosted_access` contract 现已导出动态 `action_matrix`：若 `OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY/PRIVATE_KEY/APPROVAL_CODE` 已配置，则 `prompt_control_*` 会从 `blocked_until_strong_auth` 升为 `public_player_plane_with_backend_reauth_preview`；`main_token_transfer` 仍保持 `blocked_until_strong_auth`。
   - 当前 grant route 虽已泛化到 `action_id` 维度，但 allowlist 仍只放行 `prompt_control_*`；若请求 `main_token_transfer`，public player plane 会显式返回 `strong_auth_action_not_enabled`，避免 route 泛化后被误读成 hosted 资产动作已可用。
   - 这条 hosted `prompt_control` strong-auth lane 仍明确属于 preview-grade backend reauth：后端 signer 当前只支持 env 托管 + approval code，不是 production signer custody，也不代表资产动作已具备 hosted-ready 安全级别。
-- 已实现的 `TASK-P2P-041-E` QA first slice:
+- 已完成的 `TASK-P2P-041-E` abuse suite 收口:
   - runtime-live 现已补 hosted `prompt_control` abuse 定向测试，至少覆盖 `expired grant -> strong_auth_grant_invalid`、`replayed player auth nonce -> auth_nonce_replay` 与 `session revoked after grant issuance -> session_revoked` 三条高风险签名，证明 preview-grade backend reauth 不能单靠 grant 穿透 session 生命周期与 nonce 防重放。
   - `oasis7_web_launcher::server` 现已补 remote private-control-plane matrix 回归，覆盖 `/api/state`、`/api/start|stop`、`/api/chain/start|stop`、`/api/gui-agent/*` 与 `/api/ui/schema` 的远端拒绝路径，要求统一返回 `operator_plane_only` 且只携带 public snapshot，避免误分享 operator URL 时把私有控制面状态直接暴露给公网访客。
   - `oasis7_hosted_access` 现已补 capability bypass 定向测试：即使 `OASIS7_HOSTED_STRONG_AUTH_PUBLIC_KEY/PRIVATE_KEY/APPROVAL_CODE` 全部就绪、`prompt_control_*` 已升到 `public_player_plane_with_backend_reauth_preview`，`main_token_transfer` 仍必须保持 `blocked_until_strong_auth`，不能被 prompt lane 的 preview reauth 环境顺带打开。
@@ -163,20 +163,19 @@
   - 现已新增并发接入证据 `doc/testing/evidence/hosted-world-browser-concurrency-2026-03-27.md`：在显式重编 `oasis7_viewer_live` sibling bin 后，用两份独立 `agent-browser` session 实测同一 `web_bind`，确认两个页面都能稳定进入 `debug_viewer:subscribed` 并同时看到 seeded agents，不再复现第二页长期 `detached`。
   - 现已新增真实 strong-auth 成功证据 `doc/testing/evidence/hosted-world-browser-strong-auth-success-2026-03-27.md`：在真实 signer + `--with-llm` 的 hosted 栈上，用浏览器本地临时 key、approval code 与未绑定的 `agent-1` 实测 `prompt_control preview/apply`，确认 `strongAuthLastGrantError = null` 且最终拿到 `preview_ack/apply_ack`，不再复现 `release_token does not map to an active player slot`。
   - 现已新增 remote revoke 浏览器证据 `doc/testing/evidence/hosted-world-browser-revoke-recovery-2026-03-27.md`：通过真实 `agent-browser` 页面 + 外部 `oasis7_pure_api_client revoke-session`，确认下一轮 hosted heartbeat 会把页面收敛到 `guest_session`，并同时显示 `authRevokeReason/authRevokedBy` 与带操作者/原因的 `Hosted Recovery` 文案。
-- 已实现的 `TASK-P2P-041-F` runbook first slice:
+  - 本轮已新增 `doc/testing/evidence/hosted-world-abuse-suite-matrix-2026-03-27.md`，把 replay / expiry / revocation / operator-public URL confusion / admission limit / capability bypass 的 required/full 证据和实跑命令汇总成统一矩阵。
+- 已完成的 `TASK-P2P-041-F` liveops/runbook 收口:
   - 已新增 `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`，冻结 hosted operator 的最小执行法：区分 `public join URL / private control plane / signer path`，并明确分享前检查、误分享后的第一响应、incident 最小记录字段与 public claims freeze 边界。
   - 已新增 `doc/testing/templates/hosted-world-operator-incident-template.md`，把误分享 operator URL / private control plane 暴露的 incident 记录字段统一成可复用模板，避免 liveops/QA 各写各的事故摘要。
   - runbook 现已补 `session revoke` 实操步骤：明确 `player_id/session_pubkey/revoke_reason` 的收集来源、推荐 `oasis7_pure_api_client revoke-session` 命令、预期 `session_revoked` ack 字段，以及执行后应如何在浏览器侧确认 `Hosted Recovery` 与 `authRevokeReason/authRevokedBy` 已回流到玩家面。
   - 已新增 `doc/testing/templates/hosted-world-share-correction-template.md`，统一“错误 URL 更正 / revoke 后重新获取 hosted player session / preview 口径不升级”的对外文案骨架，避免不同 operator 在纠正消息里混入过度承诺或再次暴露错误入口。
-- 当前 blocker:
-  - `guest session -> player session` 的最小 issuer 已落成，且 `max_player_sessions` 已开始在 public issue 面按“issuer active slot + runtime-only occupancy”的有效占用生效；未完成 register 的 pending slot 也会按更短 TTL 自动回收。public player plane 现在也会通过独立后台 runtime presence 周期性短连 probe 把已消失的历史绑定玩家回收到 issuer slot；revoke、same-agent rebind 与 same-player explicit rebind 都已有最小事件/恢复链路，但更完整的 operator kick / hosted handoff product flow 仍未收口。
-  - hosted v1 目前已支持浏览器本地 player session issue + reconnect/register + local release/logout；周期性 `reconnect_sync` 探针在命中 remote revoke / operator kick 时，也已能把 `revoke_reason/revoked_by` 结构化回流到公开玩家面，并要求玩家显式重新获取 hosted player session。同一玩家切换 agent 时也已具备最小 `force_rebind` 自动恢复、register-ack gating、进行中提示与成功提示，但更完整的确认 UI、hosted handoff product flow 与更稳定的 resume token 仍未收口。
-  - 先前几层 hosted attach starvation 都已修复：fresh `oasis7_game_launcher --deployment-mode hosted_public_join --chain-disable` 栈上的 ws 探针现在能稳定收到 `snapshot/authoritative_recovery_ack/metrics`，浏览器保持打开时 `/api/public/player-session/admission.runtime_probe_status` 仍可维持 `ok`，且第二个浏览器页面不再被 web-bridge 串行 accept 永久卡在 `debug_viewer:detached`。`release_token` 生命周期竞争现已通过“runtime probe 先续租 active slot”与“public player plane 路由前同步 reconcile live snapshot”两层修复关闭，并已在真实 signer + `--with-llm` 的 hosted 栈上验证 `prompt_control preview/apply` 成功。
-  - `session_register` 目前仍是 runtime-live 内显式注册；host restart / rollback 之后按 v1 规则仍要求重新注册，不是持久化 session registry。
-  - 当前只为 `prompt_control_*` 实现了 preview-grade backend reauth slice，而不是完整 `strong_auth` challenge/proof/verification lane；后端 signer 仍是 env 托管 + `approval_code`，`main token transfer` 继续显式阻断，尚未进入 hosted-ready 放行范围。
-  - `agent_chat` 仍归 `player_session` 级低风险交互；更细的 hosted action matrix、resume issuer 与真正 strong-auth proof 仍待后续专题收口。
-  - `TASK-P2P-041-E` 目前已覆盖 strong-auth abuse 与 operator/public URL 混淆 first slice；capability bypass、admission full-matrix 与分享 runbook 仍待后续 QA/LiveOps 专题继续扩展。
-  - `TASK-P2P-041-F` 现已具备 hosted operator runbook、incident 模板、session revoke 实操步骤与对外更正模板；远程 operator tunnel/policy 与 hosted share announcement 模板仍待补齐。
+  - runbook 现已补远程 operator tunnel / reverse proxy 最低策略，要求公网只暴露玩家 join 面，operator/control 面继续留在 loopback、VPN 或人工 tunnel 内。
+  - 已新增 `doc/testing/templates/hosted-world-share-announcement-template.md`，统一首轮对外分享、重复提醒与 preview claims 边界文案，补齐“分享 / 误分享 / 撤销 / 事故通报”四类 liveops 输出物。
+- 后续增强议题（不阻断本专题完成定义）:
+  - hosted handoff / batch kick / operator kick 的产品化操作流仍可继续做得更顺手，但不影响当前 `player_id -> agent` 单 owner、revoke 和 rebind 规则已经成立。
+  - host restart / rollback 后当前仍要求重新注册 session；若后续要做持久化 resume registry，应另立专题处理，而不是回退到浏览器长期 signer bootstrap。
+  - 当前 hosted strong-auth 仍是 preview-grade backend reauth，后续若要升级到 production custody / wallet 插件 / externalized signer，应另立更高等级 strong-auth 专题；这不影响本专题“浏览器不持有长期 signer、prompt-control 走 strong-auth、main_token_transfer 继续阻断”的完成判定。
+  - 更细粒度的 hosted action matrix 和更高等级 proof 仍可继续演进，但不影响当前 PRD 所需的三档 session ladder、敏感动作分级和 QA/LiveOps 边界已经冻结。
 
 ## 依赖
 - `doc/p2p/prd.md`
@@ -186,7 +185,9 @@
 - `doc/testing/evidence/hosted-world-browser-concurrency-2026-03-27.md`
 - `doc/testing/evidence/hosted-world-browser-strong-auth-success-2026-03-27.md`
 - `doc/testing/evidence/hosted-world-browser-revoke-recovery-2026-03-27.md`
+- `doc/testing/evidence/hosted-world-abuse-suite-matrix-2026-03-27.md`
 - `doc/testing/templates/hosted-world-operator-incident-template.md`
+- `doc/testing/templates/hosted-world-share-announcement-template.md`
 - `doc/testing/templates/hosted-world-share-correction-template.md`
 - `doc/p2p/token/mainchain-token-signed-transaction-authorization-2026-03-23.prd.md`
 - `doc/p2p/blockchain/p2p-production-signer-custody-keystore-2026-03-23.prd.md`
@@ -203,6 +204,6 @@
 - `git diff --check`
 
 ## 状态
-- 当前状态: active
-- 下一步: 在 `TASK-P2P-041-D` 上继续把当前已通过实链验证的 `prompt_control_*` preview-grade backend reauth 扩到更强 custody / 更完整 strong-auth matrix，并保持 `main_token_transfer` 继续阻断；同时在 `TASK-P2P-041-C/F` 上推进 operator kick / hosted handoff / revoke 公开玩家面回流与 runbook 收口。
+- 当前状态: completed
+- 下一步: 如需继续提升 hosted-world 安全等级，应另立 production custody / wallet / hosted handoff hardening 子专题；不再占用 `TASK-P2P-041` 的完成定义。
 - 最近更新: 2026-03-27

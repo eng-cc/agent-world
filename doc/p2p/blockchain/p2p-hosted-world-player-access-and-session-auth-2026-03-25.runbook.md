@@ -60,6 +60,8 @@
 - 推荐同时补一句说明：
   - `这是一个 limited playable technical preview。`
   - `如果你能打开页面并进入世界，说明你拿到的是玩家入口，不是 operator 管理入口。`
+- 推荐直接复用公告模板：
+  - `doc/testing/templates/hosted-world-share-announcement-template.md`
 - 不要分享：
   - launcher console URL
   - 任意 `/api/state`
@@ -67,7 +69,31 @@
   - 任意 `/api/chain/start`、`/api/chain/stop`
   - 任意 `/api/gui-agent/*`
 
-## 5. 如何判断自己分享错了
+## 5. 远程 Operator Tunnel / Reverse Proxy 最低策略
+如果 operator 不是在本机 loopback 上操作，而是通过远程 tunnel / reverse proxy / 云主机对外提供 hosted world，至少满足下面 6 条：
+
+1. 公网玩家入口与 operator/control 入口必须分离。
+   - 最低要求是不同 origin 或不同仅内网可达的 bind。
+2. 面向公网的代理只允许转发：
+   - viewer/game 静态页
+   - `public player plane`
+   - WebSocket 玩家连接
+3. 下面这些路径必须继续停留在 loopback、VPN 或人工 tunnel 内，不得直接暴露公网：
+   - `/api/state`
+   - `/api/start`、`/api/stop`
+   - `/api/chain/start`、`/api/chain/stop`
+   - `/api/gui-agent/*`
+   - console/operator 静态页
+4. 如果边缘层做白名单路由，默认拒绝未知路径，不要用“整站转发再靠应用层兜底”的方式上线。
+5. 如果必须远程操作，优先用 SSH tunnel、Tailscale/WireGuard、堡垒机或等价内网链路，只把 operator 面开放给受控操作者。
+6. 如果你无法确认代理是否只暴露了玩家 join 面，就不要对外分享该世界。
+
+上线前最小自查：
+1. 从公网玩家视角访问分享链接，只能看到 game/viewer 页面。
+2. 从公网玩家视角访问上述 operator 路径，应统一失败或返回 `operator_plane_only`，而不是进入控制台。
+3. 对外公告、群消息、文档里只出现玩家 join URL，不出现 operator 地址。
+
+## 6. 如何判断自己分享错了
 下面任一条成立，都按“误分享 operator URL / operator 面暴露”处理：
 
 - 访客反馈自己打开的是控制台、管理面或非游戏页面。
@@ -75,7 +101,7 @@
 - 你发现自己发出去的是 launcher/control origin，而不是 game/viewer URL。
 - 反向代理或 tunnel 把 operator/control 面一起暴露到了公网。
 
-## 6. 误分享后的第一响应
+## 7. 误分享后的第一响应
 按顺序执行，不要跳步：
 
 1. 立即停止继续传播错误链接。
@@ -89,7 +115,7 @@
    - 暂停 public claims
    - 重新开一个干净的分享窗口再恢复
 
-## 7. 最小 Incident 记录
+## 8. 最小 Incident 记录
 每次误分享或疑似暴露，至少记录以下字段：
 
 - `incident_id`
@@ -110,7 +136,7 @@
 - `doc/devlog/YYYY-MM-DD.md`
 - 当前 topic 的 `project.md`
 
-## 8. 何时必须 Freeze 对外口径
+## 9. 何时必须 Freeze 对外口径
 出现下面任一情况，立刻冻结对外升级口径，只保留 preview 表述：
 
 - operator/control 面被公网直接访问
@@ -123,13 +149,13 @@
 - `hosted access hardening is in progress。`
 - `operator boundary issue is being corrected before wider sharing。`
 
-## 9. 当前已知边界
+## 10. 当前已知边界
 - 当前不支持 invite-only 作为基础安全方案。
 - 当前 `main_token_transfer` 仍不能通过 hosted public join 放行。
 - 当前 hosted `prompt_control` 只是 preview-grade backend reauth，不是 production custody。
-- 当前 operator 仍以 loopback private control plane 为主；远程 operator URL / tunnel 策略还没有正式完成版。
+- 当前 operator 仍以 loopback private control plane 为主；即使走远程 tunnel，也只能把受控 operator 面留在私网或人工链路内。
 
-## 10. 当前推荐执行法
+## 11. 当前推荐执行法
 - 小范围分享时：
   - 只发 join URL
   - 不发 operator/control URL
@@ -139,7 +165,7 @@
   - 再补 operator runbook 演练记录
   - 再由 `producer_system_designer` 决定是否扩大分享范围
 
-## 11. Session Revoke 实操步骤
+## 12. Session Revoke 实操步骤
 适用场景：
 - 公开玩家被确认需要踢出
 - 浏览器侧 session 疑似泄露或异常复用
@@ -200,7 +226,22 @@ env -u RUSTC_WRAPPER cargo run -q -p oasis7 --bin oasis7_pure_api_client -- \
 - 当日 `doc/devlog/YYYY-MM-DD.md`
 - 若已对外沟通，再补 `correction_message_ref`
 
-## 12. 对外更正模板
+## 13. 对外分享公告模板
+模板入口：
+- `doc/testing/templates/hosted-world-share-announcement-template.md`
+
+使用时机：
+- 第一次把 hosted world 发给玩家
+- 需要重复提醒“哪个才是正确 join URL”
+- 需要把 preview claims、重入提示与 join discipline 一起说清楚
+
+使用规则：
+1. 对外只发 `public join URL`，不要附带 operator/control 地址。
+2. 文案里必须保留 `limited playable technical preview` 口径。
+3. 不要写 `hosted-ready`、`production-ready`、`invite-only secure` 一类升级承诺。
+4. 若玩家可能命中过旧页面，可在公告里提示“若页面提示 Hosted Recovery / Re-acquire Hosted Player Session，请按页面提示重新获取会话”。
+
+## 14. 对外更正模板
 模板入口：
 - `doc/testing/templates/hosted-world-share-correction-template.md`
 
@@ -214,7 +255,3 @@ env -u RUSTC_WRAPPER cargo run -q -p oasis7 --bin oasis7_pure_api_client -- \
 2. 只发 `public join URL`，不要附带 operator/control 地址。
 3. 继续使用 preview 口径，不升级任何对外承诺。
 4. 若当前还在排查，不给出“已完全修复/生产可用”之类表述。
-
-## 13. 下一步待补
-- 更接近真实部署的 tunnel / reverse proxy 配置示例
-- hosted share announcement 模板

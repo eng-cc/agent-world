@@ -394,7 +394,7 @@
 ## 状态
 - 更新日期: 2026-03-27
 - 当前状态: active（ROUND-026）
-- 下一任务: 继续执行 `TASK-P2P-041-C` / `TASK-P2P-041-D`，把当前已在真实 hosted 栈验证通过的 `prompt_control_*` preview-grade backend reauth 继续扩到 operator kick / `world_full` / 远端 revoke enforcement 与更强 custody / 更完整 strong-auth matrix；`main_token_transfer` 暂继续阻断。
+- 下一任务: 若要继续提升 hosted-world 等级，另立 production custody / wallet-plugin / hosted handoff hardening 子专题；`TASK-P2P-041` 当前范围已完成，不再继续在本主题内追加 blocker。
 - 最新完成: `TASK-P2P-041-A`（已完成 hosted-world P0 runtime gate：新增 `deployment_mode`，在 `hosted_public_join` 下让 `oasis7_game_launcher` 停止向公开 viewer 页面注入长期 signer bootstrap，让 `oasis7_web_launcher` 把 `/api/state`、`/api/start|stop`、`/api/chain/start|stop`、`/api/gui-agent/*` 与 console static 收口为 loopback-only private control plane，并新增 `/api/public/state` 与 admission/plane contract snapshot。）
 - 最新进展: `TASK-P2P-041-B` 已完成 viewer first slice：`software_safe.js` 现会显式显示 `guest_session/player_session/strong_auth`、`deploymentHint` 与 capability gate 原因，并把 `__AW_TEST__.getState()` 扩到 `authTier/authSource/authDeploymentHint/authSurface`；正式 session issue/resume/revoke 仍待后续实现。
 - 最新进展: `TASK-P2P-041-C` 已完成 runtime first slice：runtime-live 新增显式 `session_register`，prompt/chat/gameplay 改为先注册 session 再放行动作，`validate_known_session_key` 在未注册时会返回 `session_not_found`，并新增 `player_id -> agent_id` 单实体占用规则与 recovery ack 的 `agent_id` 回传。
@@ -442,6 +442,9 @@
 - 最新进展: `TASK-P2P-041-F` 已补 hosted operator runbook first slice：新增 `doc/p2p/blockchain/p2p-hosted-world-player-access-and-session-auth-2026-03-25.runbook.md`，冻结 join URL 分享纪律、operator/public URL 混淆后的 first response、incident 最小记录字段与 public claims freeze 边界。
 - 最新进展: `TASK-P2P-041-F` 已补 incident 模板入口：新增 `doc/testing/templates/hosted-world-operator-incident-template.md`，统一 hosted operator URL 误分享 / private control plane 暴露时的 incident 记录字段，便于 liveops/QA/producer 共享同一份事故骨架。
 - 最新进展: `TASK-P2P-041-F` 已补 revoke SOP 与对外更正模板：runbook 现已明确 `oasis7_pure_api_client revoke-session` 的执行步骤、回执检查和浏览器侧复核项，并新增 `doc/testing/templates/hosted-world-share-correction-template.md` 统一错误 URL 更正与 revoke 后重新入场文案。
+- 最新完成: `TASK-P2P-041-F`（已补齐 hosted operator runbook、incident 模板、分享 announcement 模板、对外更正模板与远程 tunnel/reverse-proxy 最低策略，`分享 / 误分享 / 撤销 / 事故通报` 四类 liveops 输出物已具备正式模板与执行边界。）
+- 最新完成: `TASK-P2P-041-B/C/D/E`（已把 hosted viewer join/login/reconnect UX、runtime player-session bind/revoke、preview-grade hosted strong-auth、abuse-suite six-case matrix 一并收口；`doc/testing/evidence/hosted-world-abuse-suite-matrix-2026-03-27.md` 已把 replay / expiry / revocation / operator-public URL confusion / admission limit / capability bypass 汇总成可追溯证据矩阵。）
+- 最新完成: `TASK-P2P-041`（已完成 hosted world 玩家访问与会话鉴权专题执行闭环：`public player plane / private control plane / signer plane`、`guest/player/strong-auth`、admission control、revoke/runbook 与 public claims boundary 均已冻结；剩余 production custody / wallet / hosted handoff 属于后续增强，不再阻断本专题。）
 - 最新完成: `TASK-P2P-041`（已完成 hosted-world player access / session-auth 专题建档，正式冻结 `public player plane/private control plane/signer plane`、`guest/player/strong-auth`、无需 invite-only 的 base hosted-world 边界、`gui-agent` split 与 `specified_not_implemented` 口径。）
 - 最新完成: `TASK-P2P-040`（已完成 `RTMIN-4A` short-window follow-up：`shared-devnet-20260324-06` 已在 candidate `shared-devnet-20260324-05` 上留下真实 S9/S10 evidence，shared-devnet 剩余 blocker 现仅为 `shared_access` 与 `rollback_target_ready`。）
 - 最新完成: `TASK-P2P-038`（已完成 mainnet/public claims policy 复评专题建档，正式冻结当前只允许 `limited playable technical preview` + `crypto-hardened preview`，并把 `mainnet-grade`、`production mint ready` 等口径放入 denylist。）
