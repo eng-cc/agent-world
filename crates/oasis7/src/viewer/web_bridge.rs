@@ -61,11 +61,15 @@ impl ViewerWebBridge {
                     continue;
                 }
             };
-            if let Err(err) = self.serve_stream(stream) {
-                if !is_expected_bridge_disconnect(&err) {
-                    eprintln!("viewer web bridge error: {err:?}");
+            let config = self.config.clone();
+            thread::spawn(move || {
+                let bridge = ViewerWebBridge::new(config);
+                if let Err(err) = bridge.serve_stream(stream) {
+                    if !is_expected_bridge_disconnect(&err) {
+                        eprintln!("viewer web bridge error: {err:?}");
+                    }
                 }
-            }
+            });
         }
         Ok(())
     }
@@ -333,6 +337,94 @@ mod tests {
         )));
     }
 
+    #[test]
+    fn bridge_run_accepts_second_websocket_while_first_stays_open() {
+        let upstream_listener = TcpListener::bind("127.0.0.1:0").expect("bind upstream");
+        let upstream_addr = upstream_listener.local_addr().expect("upstream addr");
+        let bridge_listener = TcpListener::bind("127.0.0.1:0").expect("bind bridge");
+        let bridge_addr = bridge_listener.local_addr().expect("bridge addr");
+        drop(bridge_listener);
+
+        let (upstream_tx, upstream_rx) = mpsc::channel::<String>();
+        let (release_first_tx, release_first_rx) = mpsc::channel::<()>();
+
+        let upstream_thread = thread::spawn(move || {
+            let stream_one = accept_with_timeout(&upstream_listener, Duration::from_secs(2))
+                .expect("accept first upstream session");
+            let mut reader_one = BufReader::new(stream_one);
+            let mut line = String::new();
+            reader_one
+                .read_line(&mut line)
+                .expect("read first line from first session");
+            upstream_tx
+                .send(format!("session1:{}", line.trim()))
+                .expect("send session1 line");
+
+            let stream_two = accept_with_timeout(&upstream_listener, Duration::from_secs(2))
+                .expect("accept second upstream session");
+            let mut reader_two = BufReader::new(stream_two);
+            line.clear();
+            reader_two
+                .read_line(&mut line)
+                .expect("read first line from second session");
+            upstream_tx
+                .send(format!("session2:{}", line.trim()))
+                .expect("send session2 line");
+        });
+
+        let bridge_addr_string = bridge_addr.to_string();
+        let upstream_addr_string = upstream_addr.to_string();
+        thread::spawn(move || {
+            let bridge = ViewerWebBridge::new(ViewerWebBridgeConfig::new(
+                bridge_addr_string,
+                upstream_addr_string,
+            ));
+            bridge.run().expect("run bridge");
+        });
+        wait_for_listener(bridge_addr);
+
+        let first_client_release_rx = release_first_rx;
+        let first_client = thread::spawn(move || {
+            let url = format!("ws://{bridge_addr}");
+            let (mut client, _) = connect(url.as_str()).expect("connect first ws client");
+            client
+                .send(Message::Text("first-request".to_string().into()))
+                .expect("send first ws payload");
+            first_client_release_rx
+                .recv()
+                .expect("release first ws client");
+            client.close(None).expect("close first ws client");
+        });
+
+        assert_eq!(
+            upstream_rx
+                .recv_timeout(Duration::from_secs(1))
+                .expect("session1 message"),
+            "session1:first-request"
+        );
+
+        let second_client = thread::spawn(move || {
+            let url = format!("ws://{bridge_addr}");
+            let (mut client, _) = connect(url.as_str()).expect("connect second ws client");
+            client
+                .send(Message::Text("second-request".to_string().into()))
+                .expect("send second ws payload");
+            client.close(None).expect("close second ws client");
+        });
+
+        assert_eq!(
+            upstream_rx
+                .recv_timeout(Duration::from_secs(1))
+                .expect("session2 message"),
+            "session2:second-request"
+        );
+
+        release_first_tx.send(()).expect("release first client");
+        first_client.join().expect("join first client");
+        second_client.join().expect("join second client");
+        upstream_thread.join().expect("join upstream thread");
+    }
+
     fn run_ws_session(bridge: &ViewerWebBridge, payload: &str) {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind ws listener");
         let ws_addr = listener.local_addr().expect("ws addr");
@@ -376,5 +468,16 @@ mod tests {
                 }
             }
         }
+    }
+
+    fn wait_for_listener(addr: std::net::SocketAddr) {
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_secs(2) {
+            if TcpStream::connect(addr).is_ok() {
+                return;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        panic!("listener did not become ready at {addr}");
     }
 }
