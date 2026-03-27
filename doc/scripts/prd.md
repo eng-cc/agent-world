@@ -41,6 +41,7 @@
   - SC-9: `run-game-test.sh`、`run-producer-playtest.sh` 与新的 worktree harness 主入口必须支持“每个 git worktree 一套独立端口、独立 bundle、独立日志 / 产物目录、独立浏览器 session”的隔离执行，不再默认复用全局端口与全局 bundle 目录。
   - SC-10: 仓库必须提供标准化 `git worktree` 创建入口，让每个新需求都能按统一命名、统一路径和统一失败语义落到独立 worktree，而不是依赖人工手写 `git worktree add`。
   - SC-11: 标准化 task worktree bootstrap 入口必须支持“创建后立刻检查模块 PRD / project / 当日 devlog”和“可选预热该 worktree 的隔离 harness”，让新需求能直接进入文档与验证闭环。
+  - SC-12: 仓库必须提供标准化 task worktree landing 入口，让已完成需求能够在干净状态下统一 rebase 到 `main`、fast-forward 合入 `main`，并输出回收 task worktree/branch 的下一步。
 
 ## 2. User Experience & Functionality
 - User Personas:
@@ -59,12 +60,14 @@
   - PRD-SCRIPTS-004: As a `qa_engineer`, I want a worktree-isolated harness for Viewer Web / launcher stack, so that multiple agent tasks can boot, verify, and tear down isolated stacks without port, artifact, or browser-session collisions.
   - PRD-SCRIPTS-005: As a `producer_system_designer`, I want a standard task-worktree bootstrap script, so that every new requirement starts from one isolated branch/worktree with consistent naming and minimal manual git ceremony.
   - PRD-SCRIPTS-006: As a `qa_engineer`, I want the task-worktree bootstrap command to optionally inspect module docs and prewarm the worktree harness, so that a new task can move from creation to “read docs + boot isolated stack” in one hop.
+  - PRD-SCRIPTS-007: As a `producer_system_designer`, I want a standard task-worktree landing command, so that completed work can be merged back into `main` with one consistent, auditable path instead of ad hoc git sequences.
 - Critical User Flows:
   1. Flow-SCR-001: `调用主入口脚本 -> 执行检查/测试 -> 输出结构化结果`
   2. Flow-SCR-002: `CI 触发脚本 -> 失败定位到参数/环境 -> 修复后重跑`
   3. Flow-SCR-003: `常规链路无法复现 -> 触发 fallback 工具 -> 采集诊断证据`
   4. Flow-SCR-004: `new-task-worktree.sh <module> <task> -> 校验源 worktree 状态 -> 创建 task/<module>-<task> 分支与独立 worktree -> 输出进入新 worktree 的下一步命令`
   5. Flow-SCR-005: `new-task-worktree.sh <module> <task> --init-docs --with-harness -> 检查 doc/<module>/{prd,project}.md 与当日 devlog -> 在新 worktree 中后台预热 worktree-harness.sh up --no-llm -> 输出文档检查与 harness 摘要`
+  6. Flow-SCR-006: `land-task-worktree.sh [task/<module>-<task>] -> 检查 source/main worktree 干净状态 -> 在任务 worktree 上 rebase main -> 在 main worktree 上 fast-forward 合入 -> 输出 cleanup 建议 / JSON 摘要`
 - Functional Specification Matrix:
 | 功能点 | 字段定义 | 按钮/动作行为 | 状态转换 | 排序/计算规则 | 权限逻辑 |
 | --- | --- | --- | --- | --- | --- |
@@ -75,6 +78,7 @@
 | worktree-isolated harness | `worktree_id`、端口组、状态文件、bundle 根目录、artifact 根目录、browser session | 通过单一 harness 入口执行 `up/down/status/url/logs/smoke` | `idle -> booting -> ready -> verifying -> torn_down` | 先按 worktree 生成稳定身份，再为该 worktree 派生 bundle / port / output | `qa_engineer` 维护主入口，runtime/viewer 协同实现 |
 | task worktree bootstrap | `module_slug`、`task_slug`、`branch_name`、`worktree_path`、`base_ref` | 通过统一入口创建或附着任务 worktree，并输出下一步命令 / JSON 摘要 | `draft -> validated -> created/attached -> ready` | 默认派生 `task/<module>-<task>` 分支与 `../worktrees/<repo>-<module>-<task>` 路径 | `producer_system_designer` 定流程，scripts owner 维护入口 |
 | task bootstrap followups | `doc_checks`、`today_devlog_path`、`harness_mode`、`harness_state_file`、`viewer_url` | 通过 `--init-docs` / `--with-harness` 补齐文档检查与 harness 预热 | `ready -> doc_checked -> harness_booted` | `--init-docs` 只读检查模块文档；`--with-harness` 默认调用 `worktree-harness.sh up --no-llm` | `qa_engineer` 与 scripts owner 协同维护 |
+| task worktree landing | `source_branch`、`source_worktree`、`target_branch`、`target_worktree`、`rebase_status`、`landed_commit` | 通过统一入口把任务分支 rebase 到 `main` 并在 `main` worktree fast-forward 合入 | `ready_to_land -> rebased -> landed` | 默认源分支取当前 branch，目标分支默认 `main`，landing 完成后输出 cleanup 建议 | `producer_system_designer` 定流程，scripts owner 维护入口 |
 - Acceptance Criteria:
   - AC-1: scripts PRD 明确脚本分类、入口、约束。
   - AC-2: scripts project 文档维护脚本治理任务。
@@ -92,6 +96,9 @@
   - AC-14: `scripts/new-task-worktree.sh --json` 必须输出机器可读摘要，至少包含 `branch`、`worktree_path`、`module`、`task`、`base_ref` 与 `mode`。
   - AC-15: `scripts/new-task-worktree.sh --help` 必须列出 `--init-docs` 与 `--with-harness`；前者输出 `doc/<module>/prd.md`、`doc/<module>/project.md` 和当日 `doc/devlog/YYYY-MM-DD.md` 的存在性摘要，后者在新 worktree 中后台预热 `./scripts/worktree-harness.sh up --no-llm`。
   - AC-16: `scripts/new-task-worktree.sh --json --init-docs` 必须输出机器可读 `doc_checks`；加 `--with-harness` 时，stdout 仍保持单个 JSON 对象，并附带 `harness` 摘要字段。
+  - AC-17: 新增 `scripts/land-task-worktree.sh`，默认以当前 task branch 为 source、以 `main` 为 target，执行“source clean 检查 -> target clean 检查 -> source rebase target -> target fast-forward merge source”。
+  - AC-18: `scripts/land-task-worktree.sh --help` 必须明确列出 `--target`、`--json`、`--dry-run`；`--json` 至少输出 `source_branch`、`source_worktree`、`target_branch`、`target_worktree`、`source_head_before`、`source_head_after`、`target_head_after` 与 landing 结果。
+  - AC-19: 当 source/target 任一 worktree 脏、source 分支未被任何 worktree 检出、target 分支未被任何 worktree 检出，或 fast-forward 条件不成立时，脚本必须阻断并给出修复建议。
 - Non-Goals:
   - 不在 scripts PRD 中替代业务功能设计。
   - 不承诺所有历史脚本长期向后兼容。
@@ -111,6 +118,7 @@
   - `scripts/run-producer-playtest.sh`
   - `scripts/worktree-harness.sh`
   - `scripts/new-task-worktree.sh`
+  - `scripts/land-task-worktree.sh`
   - `testing-manual.md`
   - `.github/workflows/*`
 - Edge Cases & Error Handling:
@@ -123,6 +131,7 @@
   - worktree 并行：同一分支或同一用户同时开多个 worktree 时，端口、bundle、日志、browser session 与 chain node id 必须按 worktree 隔离，避免互相踩踏。
   - worktree bootstrap：源 worktree 脏、目标路径已存在、目标分支已在其他 worktree 检出或 `<module>/<task>` 为空时，必须阻断并打印修复建议。
   - bootstrap followups：`--json` 模式下即便开启 `--with-harness`，也不得把 harness 子命令的人类输出混入 JSON；模块文档不存在时只报告缺失，不替用户静默创建空文档。
+  - task landing：若 `main` 已前进且 task branch 尚未 rebase，必须先在 source worktree 上完成 rebase；若 rebase/fast-forward 失败，脚本只中断并保留现场，不擅自 `reset` 或删除 branch/worktree。
 - Non-Functional Requirements:
   - NFR-SCR-1: 核心脚本具备可读帮助信息与失败语义说明。
   - NFR-SCR-2: 主入口脚本在 Linux/macOS 环境可执行一致。
@@ -133,6 +142,7 @@
   - NFR-SCR-7: 同一仓库下至少两份 worktree 可在默认配置下并行起栈，不因固定端口或全局 bundle 目录直接冲突。
   - NFR-SCR-8: task worktree bootstrap 入口必须生成稳定默认分支名 / 路径，并支持 JSON 摘要，便于 agent 或上层脚本直接消费。
   - NFR-SCR-9: task worktree bootstrap 入口在开启 followup 选项后，仍需保证 stdout 契约稳定；JSON 模式下所有附加说明必须写入结构化字段或 stderr。
+  - NFR-SCR-10: task worktree landing 入口必须默认使用非交互、可审计的线性历史策略；JSON 模式下 stdout 只能输出单个结构化对象。
 - Security & Privacy: 脚本不得在默认输出中泄漏密钥；涉及网络调用时需要显式参数与最小权限。
 
 ## 5. Risks & Roadmap
@@ -146,6 +156,7 @@
   - 风险-3: 若 worktree harness 只包壳而不下沉到 `run-game-test.sh` / `run-producer-playtest.sh` 契约层，后续上层脚本仍会靠 grep stdout 和全局目录工作，隔离性会继续失真。
   - 风险-4: 若 worktree 创建仍停留在口头规范而无标准脚本，团队会继续混用手工 branch/path 命名，导致多任务并行难以搜索、回收与审计。
   - 风险-5: 若 `--with-harness` 破坏 JSON/stdout 纯度，agent 侧自动化会从“稳定入口”退回“半结构化抓取”。
+  - 风险-6: 若 landing 到 `main` 仍依赖手工 git 序列，不同人会混用 merge/rebase/checkout 路径，导致 main 真值和 task worktree 回收时机失控。
 
 ## 6. Validation & Decision Record
 - Test Plan & Traceability:
@@ -157,6 +168,7 @@
 | PRD-SCRIPTS-004 | TASK-SCRIPTS-014 | `test_tier_required` | `bash -n` + `--help` + 双实例并行 smoke + `state.json` / ready payload 检查 + 文档治理检查 | 多 worktree 并行执行稳定性与 agent 可驱动性 |
 | PRD-SCRIPTS-005 | TASK-SCRIPTS-015 | `test_tier_required` | `bash -n` + `--help` + 真实 create/remove smoke + JSON 字段检查 + 文档治理检查 | 多任务并行的 worktree/branch 命名一致性与启动成本 |
 | PRD-SCRIPTS-006 | TASK-SCRIPTS-016 | `test_tier_required` | `--init-docs` / `--with-harness` 真机 create/remove smoke + JSON 字段检查 + 文档治理检查 | 新任务从创建到文档/验证闭环的一跳成本 |
+| PRD-SCRIPTS-007 | TASK-SCRIPTS-017 | `test_tier_required` | `bash -n` + `--help` + 临时 source/target worktree landing smoke + JSON 字段检查 + 文档治理检查 | 多 task worktree 向 `main` 回流的一致性与可审计性 |
 - Decision Log:
 | 决策ID | 选定方案 | 备选方案（否决） | 依据 |
 | --- | --- | --- | --- |

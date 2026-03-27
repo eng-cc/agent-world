@@ -132,6 +132,29 @@
     - `git branch -D task/scripts-followup-harness-smoke`
     - `./scripts/doc-governance-check.sh`
     - `git diff --check`
+- [x] TASK-SCRIPTS-017 (PRD-SCRIPTS-007) [test_tier_required]: 为 task worktree 闭环补齐标准化 landing 入口，统一“任务分支 rebase 到 `main` 并 fast-forward 合入 `main`”的脚本、文档与失败语义。
+  - 产物文件:
+    - `scripts/land-task-worktree.sh`
+    - `doc/scripts/governance/task-worktree-landing-2026-03-27.prd.md`
+    - `doc/scripts/governance/task-worktree-landing-2026-03-27.design.md`
+    - `doc/scripts/governance/task-worktree-landing-2026-03-27.project.md`
+    - `doc/scripts/prd.md`
+    - `doc/scripts/project.md`
+    - `doc/scripts/prd.index.md`
+    - `doc/scripts/README.md`
+    - `AGENTS.md`
+    - `doc/devlog/2026-03-27.md`
+  - 验收命令 (`test_tier_required`):
+    - `bash -n scripts/land-task-worktree.sh`
+    - `./scripts/land-task-worktree.sh --help`
+    - `./scripts/land-task-worktree.sh --dry-run --json`
+    - `./scripts/land-task-worktree.sh task/scripts-landing-smoke --target landing-smoke-target --json`
+    - `git -C <canonical-repo-root> worktree remove -f <tmp-source-worktree>`
+    - `git -C <canonical-repo-root> worktree remove -f <tmp-target-worktree>`
+    - `git branch -D task/scripts-landing-smoke`
+    - `git branch -D landing-smoke-target`
+    - `./scripts/doc-governance-check.sh`
+    - `git diff --check`
 
 ## 依赖
 - 模块设计总览：`doc/scripts/design.md`
@@ -145,6 +168,7 @@
 - 更新日期: 2026-03-27
 - 当前状态: completed
 - 下一任务: 无（当前模块主项目无未完成任务）
+- 最新完成: `TASK-SCRIPTS-017`（新增标准化 task worktree landing 入口，统一任务分支 rebase 到 `main` 并 fast-forward 合入 `main` 的闭环。）
 - 最新完成: `TASK-SCRIPTS-016`（为标准化 task worktree bootstrap 入口补齐 `--init-docs` 与 `--with-harness`。）
 - 最新完成: `TASK-SCRIPTS-015`（新增标准化 task worktree bootstrap 入口，统一新需求的 branch/path 命名、脏源 worktree 围栏与机器可读摘要输出。）
 - 最新完成: `TASK-SCRIPTS-014`（新增 worktree-isolated harness 主入口，收口 `run-game-test.sh` / `run-producer-playtest.sh` 的 worktree 隔离契约，并同步 scripts/testing 文档。）

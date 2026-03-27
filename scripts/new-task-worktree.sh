@@ -151,26 +151,32 @@ PY
 }
 
 branch_checkout_path() {
-  git --git-dir="$COMMON_GIT_DIR" worktree list --porcelain | python3 - "$1" <<'PY'
+  python3 - "$COMMON_GIT_DIR" "$1" <<'PY'
 from __future__ import annotations
 
+import subprocess
 import sys
 
-target = f"refs/heads/{sys.argv[1]}"
+git_dir = sys.argv[1]
+target = f"refs/heads/{sys.argv[2]}"
 current: dict[str, str] = {}
+raw = subprocess.check_output(
+    ["git", f"--git-dir={git_dir}", "worktree", "list", "--porcelain"],
+    text=True,
+)
 
 def emit(record: dict[str, str]) -> None:
     if record.get("branch") == target:
         print(record.get("worktree", ""))
         raise SystemExit(0)
 
-for raw in sys.stdin.read().splitlines():
-    if not raw:
+for line in raw.splitlines():
+    if not line:
       if current:
         emit(current)
         current = {}
       continue
-    key, _, value = raw.partition(" ")
+    key, _, value = line.partition(" ")
     current[key] = value
 
 if current:

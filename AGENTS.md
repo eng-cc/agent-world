@@ -59,9 +59,14 @@
    5. `qa_engineer` 和 `liveops_community` 的关键结论也应回写日志或正式文档
    6. `devlog`、handoff 与角色相关文档中的角色名，只能使用 `.agents/roles/*.md` 中已存在的标准角色名，禁止自造别名
 
-10. 每个任务（写文档也算）一个 commit；若用户明确要求“先不要提交”，则只保留本地改动，但仍要完成文档与测试闭环
+10. 任务完成后必须标准化合入 `main`
+   1. 合入前先确认任务 `worktree` 与 `main` 所在 `worktree` 都是干净状态
+   2. 优先通过 `./scripts/land-task-worktree.sh` 执行标准化 landing，而不是手写 `git rebase` / `git merge`
+   3. landing 成功后，再回收对应 task `worktree` 与 branch；若失败，先在任务 `worktree` 解决冲突/补验证，再重试
 
-11. 当前 `project.md` 还有后续任务时，不要中断；完成一个任务后继续下一个
+11. 每个任务（写文档也算）一个 commit；若用户明确要求“先不要提交”，则只保留本地改动，但仍要完成文档与测试闭环
+
+12. 当前 `project.md` 还有后续任务时，不要中断；完成一个任务后继续下一个
 
 ## 工程架构
 - 各个子模块各自闭环基础模块功能
