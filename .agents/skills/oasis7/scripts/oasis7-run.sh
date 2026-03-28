@@ -30,7 +30,7 @@ Options:
   --bridge-log <path>             Bridge log path (default: <repo>/.tmp/oasis7-bridge.log or ./.tmp/oasis7-bridge.log)
   --skip-agent-setup              Skip runtime agent bootstrap
   --reuse-bridge                  Reuse existing bridge at --base-url
-  --no-open-browser               Pass through to world_game_launcher
+  --no-open-browser               Pass through to oasis7_game_launcher
   --json                          Emit machine-readable JSON for doctor mode
   -h, --help                      Show help
 USAGE
@@ -969,7 +969,7 @@ if [[ "$need_cargo" == "1" ]]; then
         echo "error: bundle is valid at $bundle_dir, but repo-backed bridge/bootstrap for '$mode' requires cargo" >&2
         echo "hint: install cargo so oasis7 can auto-start the bridge/bootstrap path, or reuse an already running bridge via --reuse-bridge --skip-agent-setup" >&2
       else
-        echo "error: source-tree '$mode' requires cargo to launch world_game_launcher or the repo-backed bridge/bootstrap path" >&2
+        echo "error: source-tree '$mode' requires cargo to launch oasis7_game_launcher or the repo-backed bridge/bootstrap path" >&2
         echo "hint: install cargo, or switch to a downloaded bundle and reuse an already running bridge via --bundle-dir <path> --reuse-bridge --skip-agent-setup" >&2
       fi
       exit 1
@@ -997,7 +997,7 @@ if [[ "$reuse_bridge" != "1" ]]; then
   wait_for_http "http://127.0.0.1:18789/health" 20 0.5
   (
     cd "$repo_root"
-    exec env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_openclaw_local_bridge -- --openclaw-agent "$agent_id"
+    exec env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_openclaw_local_bridge -- --openclaw-agent "$agent_id"
   ) >"$bridge_log" 2>&1 &
   cleanup_bridge_pid="$!"
 fi
@@ -1019,7 +1019,7 @@ case "$mode" in
       viewer_static_out_dir="$repo_root/output/oasis7/viewer-static-$(date +%Y%m%d-%H%M%S)"
       resolved_viewer_static_dir="$(resolve_source_tree_viewer_static_dir "$repo_root" "$viewer_static_out_dir")"
       cd "$repo_root"
-      cmd=(env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher --
+      cmd=(env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_game_launcher --
         --scenario "$scenario"
         --with-llm
         --agent-provider-mode openclaw_local_http

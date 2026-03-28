@@ -107,7 +107,7 @@ Current behavior:
 
 If you still suspect leftovers:
 
-1. inspect `ps -ef | grep -E 'world_game_launcher|world_chain_runtime|world_viewer_live'`
+1. inspect `ps -ef | grep -E 'oasis7_game_launcher|oasis7_chain_runtime|oasis7_viewer_live'`
 2. rerun `.agents/skills/oasis7/scripts/oasis7-run-shutdown-test.sh`
 3. confirm no stale bridge or launcher ports remain occupied
 

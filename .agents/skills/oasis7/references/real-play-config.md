@@ -62,7 +62,7 @@ bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
 
 ## Chain Default and Node Key Safety
 
-Current default: the `run-game.sh` / `world_game_launcher` product path still starts `world_chain_runtime` unless you explicitly pass `--chain-disable`. So even in OpenClaw mode, the selected chain profile may load node key material.
+Current default: the `run-game.sh` / `oasis7_game_launcher` product path still starts `oasis7_chain_runtime` unless you explicitly pass `--chain-disable`. So even in OpenClaw mode, the selected chain profile may load node key material.
 
 Operator rules:
 
@@ -116,7 +116,7 @@ Prefer the repo-owned lightweight runtime agent:
 ### Repo source path
 
 ```bash
-env -u RUSTC_WRAPPER cargo run -p oasis7 --bin world_game_launcher -- \
+env -u RUSTC_WRAPPER cargo run -p oasis7 --bin oasis7_game_launcher -- \
   --scenario llm_bootstrap \
   --with-llm \
   --agent-provider-mode openclaw_local_http \
@@ -141,7 +141,7 @@ bundle_dir="$(.agents/skills/oasis7/scripts/oasis7-run.sh download)"
 Current boundary:
 
 - runtime agent installer is repo-backed: `scripts/setup-openclaw-oasis7-runtime.sh`
-- local bridge is repo-backed: `world_openclaw_local_bridge`
+- local bridge is repo-backed: `oasis7_openclaw_local_bridge`
 - parity smoke is repo-backed: `scripts/openclaw-parity-p0.sh`
 
 So a downloaded game bundle is enough for real play. If bridge and runtime agent are already running, prefer `--reuse-bridge --skip-agent-setup` as the no-`cargo` path; only auto bridge bootstrap, runtime-agent install, source-tree launch, and `smoke` still need repo access + `cargo`.
@@ -168,4 +168,4 @@ bash scripts/openclaw-parity-p0.sh \
 
 ## Shutdown Contract
 
-Killing `oasis7-run.sh play` now performs best-effort teardown of the launched play subtree. In the bundle-backed path this includes the wrapper-started launcher stack instead of leaving residual `world_game_launcher` / `world_chain_runtime` / `world_viewer_live` behind.
+Killing `oasis7-run.sh play` now performs best-effort teardown of the launched play subtree. In the bundle-backed path this includes the wrapper-started launcher stack instead of leaving residual `oasis7_game_launcher` / `oasis7_chain_runtime` / `oasis7_viewer_live` behind.
