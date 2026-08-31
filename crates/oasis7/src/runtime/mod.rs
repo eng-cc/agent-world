@@ -267,10 +267,10 @@ pub use snapshot::{
 
 // State
 pub use state::{
-    FactoryBuildJobState, FactoryProductionState, FactoryProductionStatus, FactoryState,
-    IndustryProgressState, LogisticsRouteV1, MaterialTransferReceiptV1, MaterialTransitJobState,
-    ModuleInstanceState, ModuleReleaseAttestationState, ModuleReleaseManifestMappingState,
-    RecipeJobState, WorldState,
+    BodyOverlay, FactoryBuildJobState, FactoryProductionState, FactoryProductionStatus,
+    FactoryState, IndustryProgressState, LogisticsRouteV1, MaterialTransferReceiptV1,
+    MaterialTransitJobState, ModuleInstanceState, ModuleReleaseAttestationState,
+    ModuleReleaseManifestMappingState, RecipeJobState, WorldState, WorldStateProjection,
 };
 
 // World

@@ -379,6 +379,8 @@ pub struct World {
     rollback_nonce_outcomes: BTreeMap<String, super::RollbackNonceOutcome>,
     #[cfg(test)]
     fail_next_append_after_reducer: bool,
+    #[cfg(test)]
+    fail_next_append_after_publication_prepare: bool,
 }
 
 impl World {
@@ -500,6 +502,8 @@ impl World {
             rollback_nonce_outcomes: BTreeMap::new(),
             #[cfg(test)]
             fail_next_append_after_reducer: false,
+            #[cfg(test)]
+            fail_next_append_after_publication_prepare: false,
         };
         world
             .refresh_capability_authorization_root()
@@ -721,6 +725,21 @@ impl World {
         false
     }
 
+    #[cfg(test)]
+    pub(crate) fn fail_next_append_after_publication_prepare_for_test(&mut self) {
+        self.fail_next_append_after_publication_prepare = true;
+    }
+
+    #[cfg(test)]
+    fn take_fail_next_append_after_publication_prepare_for_test(&mut self) -> bool {
+        std::mem::take(&mut self.fail_next_append_after_publication_prepare)
+    }
+
+    #[cfg(not(test))]
+    fn take_fail_next_append_after_publication_prepare_for_test(&mut self) -> bool {
+        false
+    }
+
     pub fn with_runtime_memory_limits(mut self, limits: WorldRuntimeMemoryLimits) -> Self {
         self.runtime_memory_limits = limits;
         self.enforce_runtime_memory_limits();
@@ -729,6 +748,13 @@ impl World {
 
     pub(super) fn allocate_next_event_id(&mut self) -> WorldEventId {
         Self::allocate_rolling_sequence_id(&mut self.next_event_id, &mut self.next_event_id_era)
+    }
+
+    pub(super) fn preview_next_event_id(
+        next_id: WorldEventId,
+        era: u64,
+    ) -> (WorldEventId, WorldEventId, u64) {
+        Self::preview_rolling_sequence_id(next_id, era)
     }
 
     pub(super) fn allocate_next_action_id(&mut self) -> ActionId {
@@ -747,17 +773,20 @@ impl World {
     }
 
     fn allocate_rolling_sequence_id(next_id: &mut u64, era: &mut u64) -> u64 {
-        if *next_id == 0 {
-            *next_id = 1;
-        }
-        let allocated = *next_id;
-        if allocated == u64::MAX {
-            *next_id = 1;
-            *era = era.saturating_add(1);
-        } else {
-            *next_id = allocated + 1;
-        }
+        let (allocated, next_id_after, era_after) =
+            Self::preview_rolling_sequence_id(*next_id, *era);
+        *next_id = next_id_after;
+        *era = era_after;
         allocated
+    }
+
+    fn preview_rolling_sequence_id(next_id: u64, era: u64) -> (u64, u64, u64) {
+        let allocated = next_id.max(1);
+        if allocated == u64::MAX {
+            (allocated, 1, era.saturating_add(1))
+        } else {
+            (allocated, allocated + 1, era)
+        }
     }
 
     pub(super) fn enforce_pending_action_limit(&mut self) {

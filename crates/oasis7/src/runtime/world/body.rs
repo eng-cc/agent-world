@@ -1,6 +1,6 @@
 use super::super::{
-    ActionId, CausedBy, DomainEvent, RejectReason, WorldError, WorldEventBody, WorldEventId,
-    WorldTime,
+    ActionId, BodyOverlay, CausedBy, DomainEvent, RejectReason, WorldError, WorldEventBody,
+    WorldEventId, WorldTime,
 };
 use super::World;
 use crate::models::{BodyKernelView, BodySlotType, CargoEntityEntry};
@@ -36,6 +36,24 @@ impl PreparedBodyAttributesUpdate {
         cell.state.body_view = self.body_view;
         cell.last_active = self.last_active;
         Ok(())
+    }
+
+    pub(super) fn install_infallible(self, world: &mut World) {
+        let cell = world
+            .state
+            .agents
+            .get_mut(&self.agent_id)
+            .expect("prepared body target was validated before publication");
+        cell.state.body_view = self.body_view;
+        cell.last_active = self.last_active;
+    }
+
+    pub(super) fn body_overlay(&self) -> BodyOverlay {
+        BodyOverlay::new(
+            self.agent_id.clone(),
+            self.body_view.clone(),
+            self.last_active,
+        )
     }
 
     pub(super) fn matches_event(&self, event: &DomainEvent) -> bool {

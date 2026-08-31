@@ -4,8 +4,9 @@ use super::super::{
     EpochSettlementReport, GovernanceEvent, GovernanceProposalStatus, MainTokenConfig,
     MainTokenFeeKind, MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan,
     MainTokenNodePointsBridgeDistribution, MaterialLedgerId, MaterialStack, NodeRewardMintRecord,
-    NodeSettlement, ProposalId, ProposalStatus, RejectReason, WorldError, WorldEvent,
-    WorldEventBody, WorldEventId, WorldTime, main_token_bucket_unlocked_amount, util::hash_json,
+    NodeSettlement, ProposalId, ProposalStatus, RejectReason, TickConsensusRecord, WorldError,
+    WorldEvent, WorldEventBody, WorldEventId, WorldTime, main_token_bucket_unlocked_amount,
+    util::hash_json,
 };
 use super::World;
 use super::body::{
@@ -49,6 +50,16 @@ const ECONOMIC_CONTRACT_REPUTATION_WINDOW_TICKS: u64 = 20;
 const ECONOMIC_CONTRACT_REPUTATION_WINDOW_CAP: i64 = 24;
 const MAIN_TOKEN_POLICY_UPDATE_DELAY_EPOCHS: u64 = 2;
 const STARTER_OC_CLAIM_AMOUNT: u64 = 100_000_000;
+
+struct PreparedEventPublication {
+    event: WorldEvent,
+    next_event_id: WorldEventId,
+    next_event_id_era: u64,
+    journal_events: Vec<WorldEvent>,
+    journal_events_evicted: u64,
+    consensus_record: TickConsensusRecord,
+    prepared_body: PreparedBodyAttributesUpdate,
+}
 
 mod action_to_event_core;
 pub(super) mod action_to_event_economy;
@@ -754,6 +765,10 @@ impl World {
         caused_by: Option<CausedBy>,
         prepared_body: Option<PreparedBodyAttributesUpdate>,
     ) -> Result<WorldEventId, WorldError> {
+        if let Some(prepared_body) = prepared_body {
+            return self.append_prepared_body_event(body, caused_by, prepared_body);
+        }
+
         // Domain intent payloads carry the journal position as part of their
         // authority identity. Validate against the id before mutating state;
         // this keeps the payload and its envelope inseparable on replay.
@@ -775,6 +790,109 @@ impl World {
         self.enforce_journal_event_limit();
         self.record_tick_consensus_for_tick(self.state.time)?;
         Ok(event_id)
+    }
+
+    fn append_prepared_body_event(
+        &mut self,
+        body: WorldEventBody,
+        caused_by: Option<CausedBy>,
+        prepared_body: PreparedBodyAttributesUpdate,
+    ) -> Result<WorldEventId, WorldError> {
+        let prepared = self.prepare_body_event_publication(body, caused_by, prepared_body)?;
+        if self.take_fail_next_append_after_publication_prepare_for_test() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "injected append_event failure after publication preparation".to_string(),
+            });
+        }
+
+        let PreparedEventPublication {
+            event,
+            next_event_id,
+            next_event_id_era,
+            journal_events,
+            journal_events_evicted,
+            consensus_record,
+            prepared_body,
+        } = prepared;
+        prepared_body.install_infallible(self);
+        self.state.time = event.time;
+        self.next_event_id = next_event_id;
+        self.next_event_id_era = next_event_id_era;
+        self.journal.events = journal_events;
+        self.runtime_backpressure_stats.journal_events_evicted = self
+            .runtime_backpressure_stats
+            .journal_events_evicted
+            .saturating_add(journal_events_evicted);
+        self.install_prepared_tick_consensus_record(consensus_record);
+        if let WorldEventBody::Domain(domain_event) = &event.body {
+            self.state.route_domain_event(domain_event);
+        }
+        Ok(event.id)
+    }
+
+    fn prepare_body_event_publication(
+        &self,
+        body: WorldEventBody,
+        caused_by: Option<CausedBy>,
+        prepared_body: PreparedBodyAttributesUpdate,
+    ) -> Result<PreparedEventPublication, WorldError> {
+        let WorldEventBody::Domain(domain_event) = &body else {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "prepared body delta requires a domain event".to_string(),
+            });
+        };
+        let domain_event = domain_event.clone();
+        if !prepared_body.matches_event(&domain_event) {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "prepared body delta does not match body event".to_string(),
+            });
+        }
+        let (event_id, next_event_id, next_event_id_era) =
+            Self::preview_next_event_id(self.next_event_id, self.next_event_id_era);
+        self.validate_agent_intent_receipt_reference(&domain_event, Some(event_id))?;
+        let event = WorldEvent {
+            id: event_id,
+            time: self.state.time,
+            caused_by,
+            body,
+        };
+
+        let mut journal_events = self.journal.events.clone();
+        journal_events.push(event.clone());
+        let max_len = self.runtime_memory_limits.max_journal_events.max(1);
+        let overflow = journal_events.len().saturating_sub(max_len);
+        if overflow > 0 {
+            journal_events.drain(0..overflow);
+        }
+        let tick_events: Vec<WorldEvent> = journal_events
+            .iter()
+            .filter(|journal_event| journal_event.time == event.time)
+            .cloned()
+            .collect();
+        let body_overlay = prepared_body
+            .body_overlay()
+            .with_routed_domain_event(domain_event);
+        let state_root = self.state_root_hash_with_body_overlay(&body_overlay)?;
+        let consensus_record = self.build_tick_consensus_record_for_prepared_events(
+            event.time,
+            tick_events.as_slice(),
+            state_root.clone(),
+        )?;
+        self.validate_tick_consensus_candidate_for_prepared_publication(
+            &consensus_record,
+            tick_events.as_slice(),
+            state_root.as_str(),
+        )?;
+
+        Ok(PreparedEventPublication {
+            event,
+            next_event_id,
+            next_event_id_era,
+            journal_events,
+            journal_events_evicted: overflow as u64,
+            consensus_record,
+            prepared_body,
+        })
     }
 
     fn apply_event_body_at(

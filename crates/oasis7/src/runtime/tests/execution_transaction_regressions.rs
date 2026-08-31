@@ -290,6 +290,154 @@ fn append_event_failure_after_reducer_does_not_publish_any_observable_delta() {
 }
 
 #[test]
+fn append_event_failure_after_publication_prepare_does_not_publish_any_observable_delta() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "append-publication-regression-agent".to_string(),
+        pos: pos(0, 0),
+    });
+    world
+        .step()
+        .expect("register append-publication regression agent");
+
+    let snapshot_before = world.snapshot();
+    let journal_before = world.journal().clone();
+    let consensus_before = world.tick_consensus_records().to_vec();
+    let rejection_audit_before = world.tick_consensus_rejection_audit_events().to_vec();
+    let view = BodyKernelView {
+        mass_kg: 120,
+        radius_cm: 80,
+        thrust_limit: 200,
+        cross_section_cm2: 4_000,
+    };
+
+    // This test-only hook is deliberately placed after reducer delta,
+    // event envelope/ID+era, journal/limit/backpressure, and consensus
+    // candidate preparation, but before any canonical installation.  The
+    // hook is intentionally absent until the publication seam is migrated.
+    world.fail_next_append_after_publication_prepare_for_test();
+    world
+        .record_body_attributes_update(
+            "append-publication-regression-agent",
+            view,
+            "late-publication-failure-regression",
+            None,
+        )
+        .expect_err("injected publication-preparation failure must abort the transition");
+
+    assert_eq!(
+        world.snapshot(),
+        snapshot_before,
+        "publication-preparation failure changed the full snapshot"
+    );
+    assert_eq!(
+        world.snapshot().last_event_id,
+        snapshot_before.last_event_id,
+        "publication-preparation failure consumed an event id"
+    );
+    assert_eq!(
+        world.snapshot().event_id_era,
+        snapshot_before.event_id_era,
+        "publication-preparation failure changed event id era"
+    );
+    assert_eq!(
+        world.journal(),
+        &journal_before,
+        "publication-preparation failure published a journal event"
+    );
+    assert_eq!(
+        world.tick_consensus_records(),
+        consensus_before.as_slice(),
+        "publication-preparation failure changed consensus records"
+    );
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        rejection_audit_before.as_slice(),
+        "publication-preparation failure changed consensus rejection audit"
+    );
+}
+
+#[test]
+fn prepared_body_publication_commits_consensus_root_after_domain_routing() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "body-root-regression-agent".to_string(),
+        pos: pos(0, 0),
+    });
+    world.step().expect("register body root regression agent");
+
+    let view = BodyKernelView {
+        mass_kg: 120,
+        radius_cm: 80,
+        thrust_limit: 200,
+        cross_section_cm2: 4_000,
+    };
+    world
+        .record_body_attributes_update(
+            "body-root-regression-agent",
+            view,
+            "state-root-regression",
+            None,
+        )
+        .expect("publish body attributes update");
+
+    let record = world
+        .latest_tick_consensus_record()
+        .expect("body update must publish a tick consensus record");
+    assert_eq!(
+        record.block.header.state_root,
+        world
+            .current_state_root_hash()
+            .expect("compute post-publication state root"),
+        "prepared consensus root must include all canonical state changes from domain routing"
+    );
+}
+
+#[test]
+fn prepared_body_publication_replays_to_equivalent_state_and_consensus() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "body-replay-regression-agent".to_string(),
+        pos: pos(0, 0),
+    });
+    world.step().expect("register body replay regression agent");
+    let stable_snapshot = world.snapshot();
+
+    let view = BodyKernelView {
+        mass_kg: 120,
+        radius_cm: 80,
+        thrust_limit: 200,
+        cross_section_cm2: 4_000,
+    };
+    world
+        .record_body_attributes_update(
+            "body-replay-regression-agent",
+            view,
+            "replay-regression",
+            None,
+        )
+        .expect("publish body attributes update");
+
+    let restored = World::from_snapshot(stable_snapshot, world.journal().clone())
+        .expect("replay body attributes update");
+    assert_eq!(restored.state(), world.state());
+    assert_eq!(restored.journal(), world.journal());
+    assert_eq!(
+        restored
+            .current_state_root_hash()
+            .expect("compute replayed state root"),
+        world
+            .current_state_root_hash()
+            .expect("compute live state root")
+    );
+    assert_eq!(
+        restored.latest_tick_consensus_record(),
+        world.latest_tick_consensus_record(),
+        "replay must rebuild the same consensus record as live publication"
+    );
+}
+
+#[test]
 fn successful_staged_step_preserves_snapshot_journal_replay_equivalence() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {

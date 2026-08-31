@@ -115,5 +115,6 @@ mod rules;
 mod state_serialization;
 mod storage_cold_index;
 mod storage_footprint_fixture;
+mod world_state_projection;
 // Pre-submit DeclareWar projection and non-mutation contract.
 mod war_declaration_quote;

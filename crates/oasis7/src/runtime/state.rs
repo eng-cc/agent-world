@@ -6,6 +6,7 @@ use oasis7_wasm_abi::{
     FactoryModuleSpec, FactoryProfileV1, MaterialProfileV1, MaterialStack, ModuleManifest,
     ProductProfileV1, RecipeProfileV1,
 };
+use serde::ser::{SerializeMap, SerializeSeq, SerializeStruct};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -554,7 +555,7 @@ pub struct ModuleReleaseManifestMappingState {
 }
 
 /// The mutable state of the world.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct WorldState {
     pub time: WorldTime,
     pub agents: BTreeMap<String, AgentCell>,
@@ -731,6 +732,496 @@ pub struct WorldState {
     pub governance_main_token_controller_registry: Option<GovernanceMainTokenControllerRegistry>,
     #[serde(default)]
     pub reward_signature_governance_policy: RewardSignatureGovernancePolicy,
+}
+
+/// A typed, borrowed overlay for the state fields needed while preparing a
+/// body transition.  The overlay is intentionally narrow: it cannot mutate
+/// the canonical [`WorldState`] and it cannot alter fields outside the target
+/// agent's body view and activity timestamp.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BodyOverlay {
+    agent_id: String,
+    body_view: crate::models::BodyKernelView,
+    last_active: WorldTime,
+    routed_domain_event: Option<DomainEvent>,
+}
+
+impl BodyOverlay {
+    pub fn new(
+        agent_id: impl Into<String>,
+        body_view: crate::models::BodyKernelView,
+        last_active: WorldTime,
+    ) -> Self {
+        Self {
+            agent_id: agent_id.into(),
+            body_view,
+            last_active,
+            routed_domain_event: None,
+        }
+    }
+
+    pub(crate) fn with_routed_domain_event(mut self, event: DomainEvent) -> Self {
+        self.routed_domain_event = Some(event);
+        self
+    }
+}
+
+/// A serialization projection over borrowed canonical state.
+///
+/// `WorldStateProjection` is the reusable state-root preparation seam for
+/// transition execution.  It owns no world state and applies only typed
+/// overlays at serialization time.  The canonical state serializer below is
+/// shared by both this projection and `WorldState`, so a projection without an
+/// overlay is byte-identical to direct state serialization.
+#[derive(Debug)]
+pub struct WorldStateProjection<'a> {
+    state: &'a WorldState,
+    body_overlay: Option<BodyOverlay>,
+}
+
+impl<'a> WorldStateProjection<'a> {
+    pub fn borrowed(state: &'a WorldState) -> Self {
+        Self {
+            state,
+            body_overlay: None,
+        }
+    }
+
+    pub fn with_body_overlay(mut self, body_overlay: BodyOverlay) -> Self {
+        self.body_overlay = Some(body_overlay);
+        self
+    }
+}
+
+impl Serialize for WorldState {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serialize_world_state(self, None, serializer)
+    }
+}
+
+impl Serialize for WorldStateProjection<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if let Some(overlay) = self.body_overlay.as_ref() {
+            if !self.state.agents.contains_key(&overlay.agent_id) {
+                return Err(serde::ser::Error::custom(format!(
+                    "body overlay target agent not found: {}",
+                    overlay.agent_id
+                )));
+            }
+        }
+        serialize_world_state(self.state, self.body_overlay.as_ref(), serializer)
+    }
+}
+
+struct AgentMapProjection<'a> {
+    agents: &'a BTreeMap<String, AgentCell>,
+    body_overlay: Option<&'a BodyOverlay>,
+}
+
+impl Serialize for AgentMapProjection<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.agents.len()))?;
+        for (agent_id, cell) in self.agents {
+            if let Some(overlay) = self
+                .body_overlay
+                .filter(|overlay| overlay.agent_id == *agent_id)
+            {
+                map.serialize_entry(
+                    agent_id,
+                    &AgentCellProjection {
+                        cell,
+                        body_overlay: overlay,
+                    },
+                )?;
+            } else {
+                map.serialize_entry(agent_id, cell)?;
+            }
+        }
+        map.end()
+    }
+}
+
+struct AgentCellProjection<'a> {
+    cell: &'a AgentCell,
+    body_overlay: &'a BodyOverlay,
+}
+
+impl Serialize for AgentCellProjection<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("AgentCell", 5)?;
+        state.serialize_field(
+            "state",
+            &AgentStateProjection {
+                state: &self.cell.state,
+                body_view: &self.body_overlay.body_view,
+            },
+        )?;
+        state.serialize_field(
+            "mailbox",
+            &MailboxProjection {
+                mailbox: &self.cell.mailbox,
+                appended_event: self.body_overlay.routed_domain_event.as_ref(),
+            },
+        )?;
+        state.serialize_field("last_active", &self.body_overlay.last_active)?;
+        if self.cell.activity.is_some() {
+            state.serialize_field("activity", &self.cell.activity)?;
+        }
+        if self.cell.intent.is_some() {
+            state.serialize_field("intent", &self.cell.intent)?;
+        }
+        state.end()
+    }
+}
+
+struct MailboxProjection<'a> {
+    mailbox: &'a std::collections::VecDeque<DomainEvent>,
+    appended_event: Option<&'a DomainEvent>,
+}
+
+impl Serialize for MailboxProjection<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let appended_len = usize::from(self.appended_event.is_some());
+        let mut sequence = serializer.serialize_seq(Some(self.mailbox.len() + appended_len))?;
+        for event in self.mailbox {
+            sequence.serialize_element(event)?;
+        }
+        if let Some(event) = self.appended_event {
+            sequence.serialize_element(event)?;
+        }
+        sequence.end()
+    }
+}
+
+struct AgentStateProjection<'a> {
+    state: &'a crate::models::AgentState,
+    body_view: &'a crate::models::BodyKernelView,
+}
+
+impl Serialize for AgentStateProjection<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("AgentState", 6)?;
+        state.serialize_field("agent_id", &self.state.agent_id)?;
+        state.serialize_field("pos", &self.state.pos)?;
+        state.serialize_field("body", &self.state.body)?;
+        state.serialize_field("resources", &self.state.resources)?;
+        state.serialize_field("body_view", self.body_view)?;
+        state.serialize_field("body_state", &self.state.body_state)?;
+        state.end()
+    }
+}
+
+fn serialize_world_state<S>(
+    state: &WorldState,
+    body_overlay: Option<&BodyOverlay>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    // Keep this destructuring exhaustive.  Adding a persisted field without
+    // adding its canonical serialization below must fail at compile time.
+    let WorldState {
+        time: _,
+        agents: _,
+        agent_intent_ledger: _,
+        resources: _,
+        materials: _,
+        material_ledgers: _,
+        material_profiles: _,
+        logistics_routes: _,
+        completed_logistics_route_ids: _,
+        completed_logistics_paths: _,
+        settled_logistics_transit_ids: _,
+        logistics_settlement_receipts: _,
+        direct_material_transfer_receipts: _,
+        product_profiles: _,
+        latest_product_validation: _,
+        recipe_profiles: _,
+        factory_profiles: _,
+        factories: _,
+        retired_factory_ids: _,
+        settled_factory_build_ids: _,
+        pending_factory_builds: _,
+        pending_recipe_jobs: _,
+        settled_recipe_job_ids: _,
+        pending_material_transits: _,
+        industry_progress: _,
+        alliances: _,
+        gameplay_policy: _,
+        data_access_permissions: _,
+        economic_contracts: _,
+        agent_claims: _,
+        starter_oc_claims: _,
+        authenticated_collect_data_last_nonces: _,
+        agent_claim_last_processed_epoch: _,
+        contract_pair_last_success_settled_at: _,
+        reputation_reward_window_started_at: _,
+        reputation_reward_window_accumulated: _,
+        reputation_scores: _,
+        wars: _,
+        governance_votes: _,
+        governance_proposals: _,
+        governance_identity_profiles: _,
+        crises: _,
+        meta_progress: _,
+        module_states: _,
+        module_artifact_owners: _,
+        module_artifact_listings: _,
+        module_artifact_bids: _,
+        module_instances: _,
+        module_release_requests: _,
+        module_release_manifest_mappings: _,
+        next_module_release_request_id: _,
+        module_release_role_bindings: _,
+        installed_module_targets: _,
+        next_module_instance_id: _,
+        next_module_market_order_id: _,
+        next_module_market_sale_id: _,
+        main_token_config: _,
+        main_token_supply: _,
+        main_token_balances: _,
+        restricted_starter_claim_grants: _,
+        main_token_genesis_buckets: _,
+        main_token_epoch_issuance_records: _,
+        main_token_treasury_balances: _,
+        main_token_claim_nonces: _,
+        main_token_transfer_nonces: _,
+        main_token_scheduled_policy_updates: _,
+        main_token_node_points_bridge_records: _,
+        main_token_treasury_distribution_records: _,
+        restricted_starter_claim_liveops_pool_top_up_records: _,
+        reward_asset_config: _,
+        node_asset_balances: _,
+        protocol_power_reserve: _,
+        reward_mint_records: _,
+        node_redeem_nonces: _,
+        system_order_pool_budgets: _,
+        node_identity_bindings: _,
+        node_main_token_account_bindings: _,
+        governance_finality_signer_registry: _,
+        governance_validator_admissions: _,
+        governance_main_token_controller_registry: _,
+        reward_signature_governance_policy: _,
+    } = state;
+
+    let mut output = serializer.serialize_struct("WorldState", 81)?;
+    output.serialize_field("time", &state.time)?;
+    output.serialize_field(
+        "agents",
+        &AgentMapProjection {
+            agents: &state.agents,
+            body_overlay,
+        },
+    )?;
+    if !state.agent_intent_ledger.is_empty() {
+        output.serialize_field("agent_intent_ledger", &state.agent_intent_ledger)?;
+    }
+    output.serialize_field("resources", &state.resources)?;
+    output.serialize_field("materials", &state.materials)?;
+    output.serialize_field("material_ledgers", &state.material_ledgers)?;
+    output.serialize_field("material_profiles", &state.material_profiles)?;
+    output.serialize_field("logistics_routes", &state.logistics_routes)?;
+    output.serialize_field(
+        "completed_logistics_route_ids",
+        &state.completed_logistics_route_ids,
+    )?;
+    output.serialize_field(
+        "completed_logistics_paths",
+        &state.completed_logistics_paths,
+    )?;
+    output.serialize_field(
+        "settled_logistics_transit_ids",
+        &state.settled_logistics_transit_ids,
+    )?;
+    output.serialize_field(
+        "logistics_settlement_receipts",
+        &state.logistics_settlement_receipts,
+    )?;
+    output.serialize_field(
+        "direct_material_transfer_receipts",
+        &state.direct_material_transfer_receipts,
+    )?;
+    output.serialize_field("product_profiles", &state.product_profiles)?;
+    if state.latest_product_validation.is_some() {
+        output.serialize_field(
+            "latest_product_validation",
+            &state.latest_product_validation,
+        )?;
+    }
+    output.serialize_field("recipe_profiles", &state.recipe_profiles)?;
+    output.serialize_field("factory_profiles", &state.factory_profiles)?;
+    output.serialize_field("factories", &state.factories)?;
+    output.serialize_field("retired_factory_ids", &state.retired_factory_ids)?;
+    output.serialize_field(
+        "settled_factory_build_ids",
+        &state.settled_factory_build_ids,
+    )?;
+    output.serialize_field("pending_factory_builds", &state.pending_factory_builds)?;
+    output.serialize_field("pending_recipe_jobs", &state.pending_recipe_jobs)?;
+    output.serialize_field("settled_recipe_job_ids", &state.settled_recipe_job_ids)?;
+    output.serialize_field(
+        "pending_material_transits",
+        &state.pending_material_transits,
+    )?;
+    output.serialize_field("industry_progress", &state.industry_progress)?;
+    output.serialize_field("alliances", &state.alliances)?;
+    output.serialize_field("gameplay_policy", &state.gameplay_policy)?;
+    output.serialize_field("data_access_permissions", &state.data_access_permissions)?;
+    output.serialize_field("economic_contracts", &state.economic_contracts)?;
+    output.serialize_field("agent_claims", &state.agent_claims)?;
+    if !state.starter_oc_claims.is_empty() {
+        output.serialize_field("starter_oc_claims", &state.starter_oc_claims)?;
+    }
+    if !state.authenticated_collect_data_last_nonces.is_empty() {
+        output.serialize_field(
+            "authenticated_collect_data_last_nonces",
+            &state.authenticated_collect_data_last_nonces,
+        )?;
+    }
+    output.serialize_field(
+        "agent_claim_last_processed_epoch",
+        &state.agent_claim_last_processed_epoch,
+    )?;
+    output.serialize_field(
+        "contract_pair_last_success_settled_at",
+        &state.contract_pair_last_success_settled_at,
+    )?;
+    output.serialize_field(
+        "reputation_reward_window_started_at",
+        &state.reputation_reward_window_started_at,
+    )?;
+    output.serialize_field(
+        "reputation_reward_window_accumulated",
+        &state.reputation_reward_window_accumulated,
+    )?;
+    output.serialize_field("reputation_scores", &state.reputation_scores)?;
+    output.serialize_field("wars", &state.wars)?;
+    output.serialize_field("governance_votes", &state.governance_votes)?;
+    output.serialize_field("governance_proposals", &state.governance_proposals)?;
+    output.serialize_field(
+        "governance_identity_profiles",
+        &state.governance_identity_profiles,
+    )?;
+    output.serialize_field("crises", &state.crises)?;
+    output.serialize_field("meta_progress", &state.meta_progress)?;
+    output.serialize_field("module_states", &state.module_states)?;
+    output.serialize_field("module_artifact_owners", &state.module_artifact_owners)?;
+    output.serialize_field("module_artifact_listings", &state.module_artifact_listings)?;
+    output.serialize_field("module_artifact_bids", &state.module_artifact_bids)?;
+    output.serialize_field("module_instances", &state.module_instances)?;
+    output.serialize_field("module_release_requests", &state.module_release_requests)?;
+    output.serialize_field(
+        "module_release_manifest_mappings",
+        &state.module_release_manifest_mappings,
+    )?;
+    output.serialize_field(
+        "next_module_release_request_id",
+        &state.next_module_release_request_id,
+    )?;
+    output.serialize_field(
+        "module_release_role_bindings",
+        &state.module_release_role_bindings,
+    )?;
+    output.serialize_field("installed_module_targets", &state.installed_module_targets)?;
+    output.serialize_field("next_module_instance_id", &state.next_module_instance_id)?;
+    output.serialize_field(
+        "next_module_market_order_id",
+        &state.next_module_market_order_id,
+    )?;
+    output.serialize_field(
+        "next_module_market_sale_id",
+        &state.next_module_market_sale_id,
+    )?;
+    output.serialize_field("main_token_config", &state.main_token_config)?;
+    output.serialize_field("main_token_supply", &state.main_token_supply)?;
+    output.serialize_field("main_token_balances", &state.main_token_balances)?;
+    output.serialize_field(
+        "restricted_starter_claim_grants",
+        &state.restricted_starter_claim_grants,
+    )?;
+    output.serialize_field(
+        "main_token_genesis_buckets",
+        &state.main_token_genesis_buckets,
+    )?;
+    output.serialize_field(
+        "main_token_epoch_issuance_records",
+        &state.main_token_epoch_issuance_records,
+    )?;
+    output.serialize_field(
+        "main_token_treasury_balances",
+        &state.main_token_treasury_balances,
+    )?;
+    output.serialize_field("main_token_claim_nonces", &state.main_token_claim_nonces)?;
+    output.serialize_field(
+        "main_token_transfer_nonces",
+        &state.main_token_transfer_nonces,
+    )?;
+    output.serialize_field(
+        "main_token_scheduled_policy_updates",
+        &state.main_token_scheduled_policy_updates,
+    )?;
+    output.serialize_field(
+        "main_token_node_points_bridge_records",
+        &state.main_token_node_points_bridge_records,
+    )?;
+    output.serialize_field(
+        "main_token_treasury_distribution_records",
+        &state.main_token_treasury_distribution_records,
+    )?;
+    output.serialize_field(
+        "restricted_starter_claim_liveops_pool_top_up_records",
+        &state.restricted_starter_claim_liveops_pool_top_up_records,
+    )?;
+    output.serialize_field("reward_asset_config", &state.reward_asset_config)?;
+    output.serialize_field("node_asset_balances", &state.node_asset_balances)?;
+    output.serialize_field("protocol_power_reserve", &state.protocol_power_reserve)?;
+    output.serialize_field("reward_mint_records", &state.reward_mint_records)?;
+    output.serialize_field("node_redeem_nonces", &state.node_redeem_nonces)?;
+    output.serialize_field(
+        "system_order_pool_budgets",
+        &state.system_order_pool_budgets,
+    )?;
+    output.serialize_field("node_identity_bindings", &state.node_identity_bindings)?;
+    output.serialize_field(
+        "node_main_token_account_bindings",
+        &state.node_main_token_account_bindings,
+    )?;
+    output.serialize_field(
+        "governance_finality_signer_registry",
+        &state.governance_finality_signer_registry,
+    )?;
+    output.serialize_field(
+        "governance_validator_admissions",
+        &state.governance_validator_admissions,
+    )?;
+    output.serialize_field(
+        "governance_main_token_controller_registry",
+        &state.governance_main_token_controller_registry,
+    )?;
+    output.serialize_field(
+        "reward_signature_governance_policy",
+        &state.reward_signature_governance_policy,
+    )?;
+    output.end()
 }
 
 impl WorldState {
