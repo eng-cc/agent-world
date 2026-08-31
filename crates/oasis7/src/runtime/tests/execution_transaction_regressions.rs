@@ -438,6 +438,61 @@ fn prepared_body_publication_replays_to_equivalent_state_and_consensus() {
 }
 
 #[test]
+fn rejected_body_publication_failure_after_prepare_is_unpublished() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "body-rejected-publication-regression-agent".to_string(),
+        pos: pos(0, 0),
+    });
+    world
+        .step()
+        .expect("register body rejection regression agent");
+
+    let snapshot_before = world.snapshot();
+    let journal_before = world.journal().clone();
+    let consensus_before = world.tick_consensus_records().to_vec();
+    let rejection_audit_before = world.tick_consensus_rejection_audit_events().to_vec();
+    let mailbox_before = world
+        .state()
+        .agents
+        .get("body-rejected-publication-regression-agent")
+        .expect("body rejection regression agent")
+        .mailbox
+        .clone();
+
+    // This failpoint is after event id/era, journal/backpressure and
+    // consensus candidate preparation, before canonical installation. The
+    // rejection path must use the same atomic append seam as body updates.
+    world.fail_next_append_after_publication_prepare_for_test();
+    world
+        .record_body_attributes_reject(
+            "body-rejected-publication-regression-agent",
+            "invalid body attributes",
+            None,
+        )
+        .expect_err("injected rejection publication failure must abort the transition");
+
+    assert_eq!(world.snapshot(), snapshot_before);
+    assert_eq!(world.snapshot().last_event_id, snapshot_before.last_event_id);
+    assert_eq!(world.snapshot().event_id_era, snapshot_before.event_id_era);
+    assert_eq!(world.journal(), &journal_before);
+    assert_eq!(world.tick_consensus_records(), consensus_before.as_slice());
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        rejection_audit_before.as_slice()
+    );
+    assert_eq!(
+        world
+            .state()
+            .agents
+            .get("body-rejected-publication-regression-agent")
+            .expect("body rejection regression agent")
+            .mailbox,
+        mailbox_before
+    );
+}
+
+#[test]
 fn successful_staged_step_preserves_snapshot_journal_replay_equivalence() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {

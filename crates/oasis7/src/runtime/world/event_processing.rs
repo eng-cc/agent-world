@@ -51,6 +51,42 @@ const ECONOMIC_CONTRACT_REPUTATION_WINDOW_CAP: i64 = 24;
 const MAIN_TOKEN_POLICY_UPDATE_DELAY_EPOCHS: u64 = 2;
 const STARTER_OC_CLAIM_AMOUNT: u64 = 100_000_000;
 
+enum PreparedEventStateDelta {
+    Body(PreparedBodyAttributesUpdate),
+    RouteOnly { agent_id: String },
+}
+
+impl PreparedEventStateDelta {
+    fn matches_event(&self, event: &DomainEvent) -> bool {
+        match self {
+            Self::Body(prepared) => prepared.matches_event(event),
+            Self::RouteOnly { agent_id } => matches!(
+                event,
+                DomainEvent::BodyAttributesRejected {
+                    agent_id: event_agent_id,
+                    ..
+                } if event_agent_id == agent_id
+            ),
+        }
+    }
+
+    fn state_overlay(&self, event: DomainEvent) -> super::super::BodyOverlay {
+        match self {
+            Self::Body(prepared) => prepared
+                .body_overlay()
+                .with_routed_domain_event(event),
+            Self::RouteOnly { agent_id } => super::super::BodyOverlay::route_only(agent_id.clone())
+                .with_routed_domain_event(event),
+        }
+    }
+
+    fn install_infallible(self, world: &mut World) {
+        if let Self::Body(prepared) = self {
+            prepared.install_infallible(world);
+        }
+    }
+}
+
 struct PreparedEventPublication {
     event: WorldEvent,
     next_event_id: WorldEventId,
@@ -58,7 +94,7 @@ struct PreparedEventPublication {
     journal_events: Vec<WorldEvent>,
     journal_events_evicted: u64,
     consensus_record: TickConsensusRecord,
-    prepared_body: PreparedBodyAttributesUpdate,
+    state_delta: PreparedEventStateDelta,
 }
 
 mod action_to_event_core;
@@ -756,17 +792,34 @@ impl World {
         caused_by: Option<CausedBy>,
         prepared: PreparedBodyAttributesUpdate,
     ) -> Result<WorldEventId, WorldError> {
-        self.append_event_internal(body, caused_by, Some(prepared))
+        self.append_event_internal(
+            body,
+            caused_by,
+            Some(PreparedEventStateDelta::Body(prepared)),
+        )
+    }
+
+    pub(super) fn append_event_with_route_only_domain_event(
+        &mut self,
+        body: WorldEventBody,
+        caused_by: Option<CausedBy>,
+        agent_id: String,
+    ) -> Result<WorldEventId, WorldError> {
+        self.append_event_internal(
+            body,
+            caused_by,
+            Some(PreparedEventStateDelta::RouteOnly { agent_id }),
+        )
     }
 
     fn append_event_internal(
         &mut self,
         body: WorldEventBody,
         caused_by: Option<CausedBy>,
-        prepared_body: Option<PreparedBodyAttributesUpdate>,
+        state_delta: Option<PreparedEventStateDelta>,
     ) -> Result<WorldEventId, WorldError> {
-        if let Some(prepared_body) = prepared_body {
-            return self.append_prepared_body_event(body, caused_by, prepared_body);
+        if let Some(state_delta) = state_delta {
+            return self.append_prepared_event(body, caused_by, state_delta);
         }
 
         // Domain intent payloads carry the journal position as part of their
@@ -777,7 +830,7 @@ impl World {
             &body,
             self.state.time,
             Some(expected_event_id),
-            prepared_body.as_ref(),
+            None,
         )?;
         let event_id = self.allocate_next_event_id();
         debug_assert_eq!(event_id, expected_event_id);
@@ -792,13 +845,13 @@ impl World {
         Ok(event_id)
     }
 
-    fn append_prepared_body_event(
+    fn append_prepared_event(
         &mut self,
         body: WorldEventBody,
         caused_by: Option<CausedBy>,
-        prepared_body: PreparedBodyAttributesUpdate,
+        state_delta: PreparedEventStateDelta,
     ) -> Result<WorldEventId, WorldError> {
-        let prepared = self.prepare_body_event_publication(body, caused_by, prepared_body)?;
+        let prepared = self.prepare_event_publication(body, caused_by, state_delta)?;
         if self.take_fail_next_append_after_publication_prepare_for_test() {
             return Err(WorldError::ResourceBalanceInvalid {
                 reason: "injected append_event failure after publication preparation".to_string(),
@@ -812,9 +865,9 @@ impl World {
             journal_events,
             journal_events_evicted,
             consensus_record,
-            prepared_body,
+            state_delta,
         } = prepared;
-        prepared_body.install_infallible(self);
+        state_delta.install_infallible(self);
         self.state.time = event.time;
         self.next_event_id = next_event_id;
         self.next_event_id_era = next_event_id_era;
@@ -830,11 +883,11 @@ impl World {
         Ok(event.id)
     }
 
-    fn prepare_body_event_publication(
+    fn prepare_event_publication(
         &self,
         body: WorldEventBody,
         caused_by: Option<CausedBy>,
-        prepared_body: PreparedBodyAttributesUpdate,
+        state_delta: PreparedEventStateDelta,
     ) -> Result<PreparedEventPublication, WorldError> {
         let WorldEventBody::Domain(domain_event) = &body else {
             return Err(WorldError::ResourceBalanceInvalid {
@@ -842,7 +895,7 @@ impl World {
             });
         };
         let domain_event = domain_event.clone();
-        if !prepared_body.matches_event(&domain_event) {
+        if !state_delta.matches_event(&domain_event) {
             return Err(WorldError::ResourceBalanceInvalid {
                 reason: "prepared body delta does not match body event".to_string(),
             });
@@ -869,9 +922,7 @@ impl World {
             .filter(|journal_event| journal_event.time == event.time)
             .cloned()
             .collect();
-        let body_overlay = prepared_body
-            .body_overlay()
-            .with_routed_domain_event(domain_event);
+        let body_overlay = state_delta.state_overlay(domain_event);
         let state_root = self.state_root_hash_with_body_overlay(&body_overlay)?;
         let consensus_record = self.build_tick_consensus_record_for_prepared_events(
             event.time,
@@ -891,7 +942,7 @@ impl World {
             journal_events,
             journal_events_evicted: overflow as u64,
             consensus_record,
-            prepared_body,
+            state_delta,
         })
     }
 

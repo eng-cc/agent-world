@@ -734,15 +734,23 @@ pub struct WorldState {
     pub reward_signature_governance_policy: RewardSignatureGovernancePolicy,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+enum BodyOverlayMutation {
+    Body {
+        body_view: crate::models::BodyKernelView,
+        last_active: WorldTime,
+    },
+    RouteOnly,
+}
+
 /// A typed, borrowed overlay for the state fields needed while preparing a
-/// body transition.  The overlay is intentionally narrow: it cannot mutate
-/// the canonical [`WorldState`] and it cannot alter fields outside the target
-/// agent's body view and activity timestamp.
+/// domain transition. The overlay is intentionally narrow: it cannot mutate
+/// the canonical [`WorldState`] and it can either update the target agent's
+/// body fields or represent a route-only event with no body mutation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BodyOverlay {
     agent_id: String,
-    body_view: crate::models::BodyKernelView,
-    last_active: WorldTime,
+    mutation: BodyOverlayMutation,
     routed_domain_event: Option<DomainEvent>,
 }
 
@@ -754,8 +762,18 @@ impl BodyOverlay {
     ) -> Self {
         Self {
             agent_id: agent_id.into(),
-            body_view,
-            last_active,
+            mutation: BodyOverlayMutation::Body {
+                body_view,
+                last_active,
+            },
+            routed_domain_event: None,
+        }
+    }
+
+    pub(crate) fn route_only(agent_id: impl Into<String>) -> Self {
+        Self {
+            agent_id: agent_id.into(),
+            mutation: BodyOverlayMutation::RouteOnly,
             routed_domain_event: None,
         }
     }
@@ -763,6 +781,10 @@ impl BodyOverlay {
     pub(crate) fn with_routed_domain_event(mut self, event: DomainEvent) -> Self {
         self.routed_domain_event = Some(event);
         self
+    }
+
+    fn requires_body_target(&self) -> bool {
+        matches!(self.mutation, BodyOverlayMutation::Body { .. })
     }
 }
 
@@ -808,7 +830,7 @@ impl Serialize for WorldStateProjection<'_> {
         S: serde::Serializer,
     {
         if let Some(overlay) = self.body_overlay.as_ref() {
-            if !self.state.agents.contains_key(&overlay.agent_id) {
+            if overlay.requires_body_target() && !self.state.agents.contains_key(&overlay.agent_id) {
                 return Err(serde::ser::Error::custom(format!(
                     "body overlay target agent not found: {}",
                     overlay.agent_id
@@ -861,11 +883,19 @@ impl Serialize for AgentCellProjection<'_> {
         S: serde::Serializer,
     {
         let mut state = serializer.serialize_struct("AgentCell", 5)?;
+        let body_view = match &self.body_overlay.mutation {
+            BodyOverlayMutation::Body { body_view, .. } => body_view,
+            BodyOverlayMutation::RouteOnly => &self.cell.state.body_view,
+        };
+        let last_active = match &self.body_overlay.mutation {
+            BodyOverlayMutation::Body { last_active, .. } => last_active,
+            BodyOverlayMutation::RouteOnly => &self.cell.last_active,
+        };
         state.serialize_field(
             "state",
             &AgentStateProjection {
                 state: &self.cell.state,
-                body_view: &self.body_overlay.body_view,
+                body_view,
             },
         )?;
         state.serialize_field(
@@ -875,7 +905,7 @@ impl Serialize for AgentCellProjection<'_> {
                 appended_event: self.body_overlay.routed_domain_event.as_ref(),
             },
         )?;
-        state.serialize_field("last_active", &self.body_overlay.last_active)?;
+        state.serialize_field("last_active", last_active)?;
         if self.cell.activity.is_some() {
             state.serialize_field("activity", &self.cell.activity)?;
         }

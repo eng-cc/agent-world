@@ -131,9 +131,13 @@ impl World {
     ) -> Result<WorldEventId, WorldError> {
         let agent_id = agent_id.into();
         let reason = reason.into();
-        self.append_event(
-            WorldEventBody::Domain(DomainEvent::BodyAttributesRejected { agent_id, reason }),
+        self.append_event_with_route_only_domain_event(
+            WorldEventBody::Domain(DomainEvent::BodyAttributesRejected {
+                agent_id: agent_id.clone(),
+                reason,
+            }),
             caused_by,
+            agent_id,
         )
     }
 
