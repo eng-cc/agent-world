@@ -8,7 +8,9 @@ use super::super::{
     WorldEventBody, WorldEventId, WorldTime, main_token_bucket_unlocked_amount, util::hash_json,
 };
 use super::World;
-use super::body::{evaluate_expand_body_interface, validate_body_kernel_view};
+use super::body::{
+    PreparedBodyAttributesUpdate, evaluate_expand_body_interface, validate_body_kernel_view,
+};
 use super::logistics::{
     MATERIAL_TRANSFER_MAX_DISTANCE_KM, MATERIAL_TRANSFER_MAX_INFLIGHT,
     material_transit_loss_bps_for_kind, material_transit_priority_for_kind, material_transit_ticks,
@@ -734,11 +736,34 @@ impl World {
         body: WorldEventBody,
         caused_by: Option<CausedBy>,
     ) -> Result<WorldEventId, WorldError> {
+        self.append_event_internal(body, caused_by, None)
+    }
+
+    pub(super) fn append_event_with_prepared_body(
+        &mut self,
+        body: WorldEventBody,
+        caused_by: Option<CausedBy>,
+        prepared: PreparedBodyAttributesUpdate,
+    ) -> Result<WorldEventId, WorldError> {
+        self.append_event_internal(body, caused_by, Some(prepared))
+    }
+
+    fn append_event_internal(
+        &mut self,
+        body: WorldEventBody,
+        caused_by: Option<CausedBy>,
+        prepared_body: Option<PreparedBodyAttributesUpdate>,
+    ) -> Result<WorldEventId, WorldError> {
         // Domain intent payloads carry the journal position as part of their
         // authority identity. Validate against the id before mutating state;
         // this keeps the payload and its envelope inseparable on replay.
         let expected_event_id = self.next_event_id.max(1);
-        self.apply_event_body_at(&body, self.state.time, Some(expected_event_id))?;
+        self.apply_event_body_at_with_prepared_body(
+            &body,
+            self.state.time,
+            Some(expected_event_id),
+            prepared_body.as_ref(),
+        )?;
         let event_id = self.allocate_next_event_id();
         debug_assert_eq!(event_id, expected_event_id);
         self.journal.append(WorldEvent {
@@ -758,16 +783,35 @@ impl World {
         time: WorldTime,
         envelope_event_seq: Option<WorldEventId>,
     ) -> Result<(), WorldError> {
+        self.apply_event_body_at_with_prepared_body(body, time, envelope_event_seq, None)
+    }
+
+    fn apply_event_body_at_with_prepared_body(
+        &mut self,
+        body: &WorldEventBody,
+        time: WorldTime,
+        envelope_event_seq: Option<WorldEventId>,
+        prepared_body: Option<&PreparedBodyAttributesUpdate>,
+    ) -> Result<(), WorldError> {
         match body {
             WorldEventBody::Domain(event) => {
                 let committed_receipt_event_id =
                     self.validate_agent_intent_receipt_reference(event, envelope_event_seq)?;
-                self.state.apply_domain_event_at(
-                    event,
-                    time,
-                    envelope_event_seq,
-                    committed_receipt_event_id,
-                )?;
+                if let Some(prepared) = prepared_body {
+                    if !prepared.matches_event(event) {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: "prepared body delta does not match body event".to_string(),
+                        });
+                    }
+                    prepared.clone().install(self)?;
+                } else {
+                    self.state.apply_domain_event_at(
+                        event,
+                        time,
+                        envelope_event_seq,
+                        committed_receipt_event_id,
+                    )?;
+                }
                 self.state.route_domain_event(event);
                 if let super::super::DomainEvent::ModuleInstalled {
                     instance_id,

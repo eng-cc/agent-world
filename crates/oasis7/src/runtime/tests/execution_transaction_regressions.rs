@@ -1,5 +1,6 @@
 use super::super::*;
 use super::pos;
+use crate::models::BodyKernelView;
 use crate::simulator::ResourceKind;
 use oasis7_wasm_abi::{
     ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleOutput, ModuleSandbox,
@@ -226,6 +227,66 @@ fn failed_committed_context_step_does_not_publish_partial_world_mutations() {
     assert!(matches!(error, WorldError::ResourceBalanceInvalid { .. }));
 
     assert_failed_transition_is_unpublished(&world, &snapshot_before, &journal_before);
+}
+
+#[test]
+fn append_event_failure_after_reducer_does_not_publish_any_observable_delta() {
+    let mut world = World::new();
+    world.submit_action(Action::RegisterAgent {
+        agent_id: "append-event-regression-agent".to_string(),
+        pos: pos(0, 0),
+    });
+    world
+        .step()
+        .expect("register append-event regression agent");
+
+    let snapshot_before = world.snapshot();
+    let journal_before = world.journal().clone();
+    let consensus_before = world.tick_consensus_records().to_vec();
+    let view = BodyKernelView {
+        mass_kg: 120,
+        radius_cm: 80,
+        thrust_limit: 200,
+        cross_section_cm2: 4_000,
+    };
+
+    // This test-only hook must fire after apply_event_body_at has mutated the
+    // body reducer, but before append_event can publish its id/journal/
+    // consensus delta.  The hook is intentionally absent until the runtime
+    // transaction migration implements this RED contract.
+    world.fail_next_append_after_reducer_for_test();
+    world
+        .record_body_attributes_update(
+            "append-event-regression-agent",
+            view,
+            "late-failure-regression",
+            None,
+        )
+        .expect_err("injected append_event late failure must abort the transition");
+
+    let snapshot_after = world.snapshot();
+    assert_eq!(
+        snapshot_after, snapshot_before,
+        "late append_event failure published reducer or sequence state"
+    );
+    assert_eq!(
+        snapshot_after.last_event_id, snapshot_before.last_event_id,
+        "late append_event failure consumed an event id"
+    );
+    assert_eq!(
+        snapshot_after.event_id_era, snapshot_before.event_id_era,
+        "late append_event failure changed event id era"
+    );
+    assert_eq!(
+        world.journal(),
+        &journal_before,
+        "late append_event failure published a journal event"
+    );
+    assert_eq!(
+        world.tick_consensus_records(),
+        consensus_before.as_slice(),
+        "late append_event failure changed consensus records"
+    );
 }
 
 #[test]

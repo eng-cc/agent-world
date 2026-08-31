@@ -377,6 +377,8 @@ pub struct World {
     #[serde(default)]
     consumed_rollback_nonces: BTreeSet<String>,
     rollback_nonce_outcomes: BTreeMap<String, super::RollbackNonceOutcome>,
+    #[cfg(test)]
+    fail_next_append_after_reducer: bool,
 }
 
 impl World {
@@ -496,6 +498,8 @@ impl World {
             rollback_authority_registry: super::RollbackAuthorityRegistry::default(),
             consumed_rollback_nonces: BTreeSet::new(),
             rollback_nonce_outcomes: BTreeMap::new(),
+            #[cfg(test)]
+            fail_next_append_after_reducer: false,
         };
         world
             .refresh_capability_authorization_root()
@@ -700,6 +704,21 @@ impl World {
 
     pub fn enable_production_release_policy(&mut self) {
         self.release_security_policy = ReleaseSecurityPolicy::production_hardened();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn fail_next_append_after_reducer_for_test(&mut self) {
+        self.fail_next_append_after_reducer = true;
+    }
+
+    #[cfg(test)]
+    fn take_fail_next_append_after_reducer_for_test(&mut self) -> bool {
+        std::mem::take(&mut self.fail_next_append_after_reducer)
+    }
+
+    #[cfg(not(test))]
+    fn take_fail_next_append_after_reducer_for_test(&mut self) -> bool {
+        false
     }
 
     pub fn with_runtime_memory_limits(mut self, limits: WorldRuntimeMemoryLimits) -> Self {
