@@ -179,6 +179,20 @@ canonical projection remains byte/semantically unchanged. An audit record for
 a rejection or fault, when required, is part of that same root commit and is
 never appended by a second best-effort transaction.
 
+The first stateful Phase 1 queue slice fixes the public effect-emission
+disposition more narrowly. Capability missing, expiry, or kind mismatch is a
+preflight rejection with no intent/event allocation or audit. A deterministic
+policy deny advances the intent allocator and atomically publishes exactly one
+`PolicyDecisionRecorded(Deny)` disposition, without `EffectQueued`. After an
+allow decision, queue admission, both journal events, rolling event/intent
+sequences and eras, eviction metrics, and tick consensus are one prepared
+batch: hard queue-full or a post-prepare infrastructure failure installs none
+of them. A full queue may still deterministically evict an existing unlinked
+intent, preserving the established bounded-queue rule; authorization-linked
+intents are not evictable. This slice does not make legacy nested
+`EffectQueued`, receipt ingestion, durable outbox, or replay allocation part of
+the unified root buffer yet.
+
 Each retryable public root operation binds a stable operation id to world,
 parent identity, canonical input hash, manifest/activation binding, and target.
 The same identity and binding returns the original disposition without new

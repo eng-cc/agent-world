@@ -3,7 +3,8 @@ use super::pos;
 use crate::models::BodyKernelView;
 use crate::simulator::ResourceKind;
 use oasis7_wasm_abi::{
-    ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleOutput, ModuleSandbox,
+    ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleEffectIntent, ModuleOutput,
+    ModuleSandbox,
 };
 
 #[derive(Default)]
@@ -396,6 +397,460 @@ fn rule_decision_publication_failure_after_prepare_is_unpublished() {
     assert_eq!(
         world.tick_consensus_rejection_audit_events(),
         rejection_audit_before.as_slice()
+    );
+}
+
+#[test]
+fn effect_publication_failure_after_prepare_is_fully_unpublished_and_retry_reuses_ids() {
+    let mut world = World::new();
+    let mut initial_snapshot = world.snapshot();
+    initial_snapshot.next_intent_id = u64::MAX;
+    initial_snapshot.intent_id_era = 7;
+    world = World::from_snapshot(initial_snapshot, world.journal().clone())
+        .expect("restore effect sequence boundary");
+    world = world.with_runtime_memory_limits(WorldRuntimeMemoryLimits {
+        max_pending_effects: 1,
+        ..WorldRuntimeMemoryLimits::default()
+    });
+    world.add_capability(CapabilityGrant::allow_all("cap_all"));
+    world.set_policy(PolicySet::allow_all());
+
+    let seed_intent_id = world
+        .emit_effect(
+            "http.request",
+            serde_json::json!({"url": "https://example.com/seed"}),
+            "cap_all",
+            EffectOrigin::System,
+        )
+        .expect("seed effect");
+    assert_eq!(seed_intent_id, "intent-18446744073709551615");
+    let snapshot_before = world.snapshot();
+    let journal_before = world.journal().clone();
+    let consensus_before = world.tick_consensus_records().to_vec();
+    let rejection_audit_before = world.tick_consensus_rejection_audit_events().to_vec();
+    let backpressure_before = world.runtime_backpressure_stats().clone();
+
+    // This is deliberately a public effect call.  The legacy path allocates
+    // the intent sequence and appends the policy/EffectQueued events directly;
+    // it therefore bypasses the existing post-publication-prepare failpoint
+    // and/or leaves a sequence gap.  The migrated path must stage the complete
+    // public operation, including its policy audit and queue admission.
+    world.fail_next_append_after_publication_prepare_for_test();
+    let error = world
+        .emit_effect(
+            "http.request",
+            serde_json::json!({"url": "https://example.com/retry"}),
+            "cap_all",
+            EffectOrigin::System,
+        )
+        .expect_err("publication-preparation failure must abort effect publication");
+    assert!(matches!(
+        error,
+        WorldError::ResourceBalanceInvalid { ref reason }
+            if reason.contains("publication preparation")
+    ));
+
+    assert_eq!(world.snapshot(), snapshot_before);
+    assert_eq!(
+        world.snapshot().next_intent_id,
+        snapshot_before.next_intent_id
+    );
+    assert_eq!(
+        world.snapshot().intent_id_era,
+        snapshot_before.intent_id_era
+    );
+    assert_eq!(
+        world.snapshot().last_event_id,
+        snapshot_before.last_event_id
+    );
+    assert_eq!(world.snapshot().event_id_era, snapshot_before.event_id_era);
+    assert_eq!(
+        world.snapshot().pending_effects,
+        snapshot_before.pending_effects
+    );
+    assert_eq!(world.journal(), &journal_before);
+    assert_eq!(world.tick_consensus_records(), consensus_before.as_slice());
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        rejection_audit_before.as_slice()
+    );
+    assert_eq!(world.runtime_backpressure_stats(), &backpressure_before);
+
+    // A failed attempt must not consume the intent sequence or event id.  A
+    // control world makes the expected successful IDs independent of how many
+    // audit events the public API emits internally.
+    let mut expected_world = World::from_snapshot(snapshot_before.clone(), journal_before.clone())
+        .expect("restore effect retry control");
+    let expected_intent_id = expected_world
+        .emit_effect(
+            "http.request",
+            serde_json::json!({"url": "https://example.com/retry"}),
+            "cap_all",
+            EffectOrigin::System,
+        )
+        .expect("control effect");
+
+    let retry_intent_id = world
+        .emit_effect(
+            "http.request",
+            serde_json::json!({"url": "https://example.com/retry"}),
+            "cap_all",
+            EffectOrigin::System,
+        )
+        .expect("retry effect after one-shot failpoint");
+    assert_eq!(retry_intent_id, expected_intent_id);
+    assert_eq!(world.snapshot(), expected_world.snapshot());
+    assert_eq!(world.journal(), expected_world.journal());
+    assert_eq!(
+        world.tick_consensus_records(),
+        expected_world.tick_consensus_records()
+    );
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        expected_world.tick_consensus_rejection_audit_events()
+    );
+    assert_eq!(
+        world.runtime_backpressure_stats(),
+        expected_world.runtime_backpressure_stats()
+    );
+
+    let effect_event = world
+        .journal()
+        .events
+        .iter()
+        .rev()
+        .find(|event| matches!(event.body, WorldEventBody::EffectQueued(_)))
+        .expect("retry must publish EffectQueued");
+    let expected_effect_event = expected_world
+        .journal()
+        .events
+        .iter()
+        .rev()
+        .find(|event| matches!(event.body, WorldEventBody::EffectQueued(_)))
+        .expect("control must publish EffectQueued");
+    assert_eq!(effect_event.id, expected_effect_event.id);
+    assert_eq!(effect_event.id, world.snapshot().last_event_id);
+    match &effect_event.body {
+        WorldEventBody::EffectQueued(intent) => assert_eq!(intent.intent_id, retry_intent_id),
+        other => panic!("unexpected retry event: {other:?}"),
+    }
+    assert_eq!(world.pending_effects_len(), 1);
+
+    let replayed = World::from_snapshot(snapshot_before, world.journal().clone())
+        .expect("replay successful effect publication");
+    assert_eq!(replayed.state(), world.state());
+    assert_eq!(replayed.journal(), world.journal());
+    assert_eq!(
+        replayed.tick_consensus_records(),
+        world.tick_consensus_records(),
+        "effect replay must rebuild the same consensus records"
+    );
+    assert_eq!(
+        replayed.runtime_backpressure_stats(),
+        world.runtime_backpressure_stats(),
+        "effect replay must rebuild deterministic queue pressure"
+    );
+}
+
+#[test]
+fn effect_capability_preflight_failures_are_unpublished_and_precede_policy_or_queue() {
+    for (case, cap_ref) in [
+        ("missing", "cap.missing"),
+        ("expired", "cap.expired"),
+        ("not_allowed", "cap.narrow"),
+    ] {
+        let mut world = World::new().with_runtime_memory_limits(WorldRuntimeMemoryLimits {
+            max_pending_effects: 1,
+            ..WorldRuntimeMemoryLimits::default()
+        });
+        world.add_capability(CapabilityGrant::allow_all("cap.seed"));
+        world.set_policy(PolicySet::allow_all());
+        world
+            .emit_effect(
+                "http.request",
+                serde_json::json!({"url": "https://example.com/seed"}),
+                "cap.seed",
+                EffectOrigin::System,
+            )
+            .expect("seed effect fills the bounded queue");
+
+        match case {
+            "expired" => {
+                world.add_capability(CapabilityGrant {
+                    name: cap_ref.to_string(),
+                    effect_kinds: vec!["*".to_string()],
+                    expiry: Some(0),
+                });
+                world
+                    .step()
+                    .expect("advance logical time for expired-capability fixture");
+            }
+            "not_allowed" => world.add_capability(CapabilityGrant::new(
+                cap_ref,
+                vec!["other.effect".to_string()],
+            )),
+            "missing" => {}
+            _ => unreachable!("unknown capability preflight case"),
+        }
+
+        // A policy deny and a full queue must not mask capability admission
+        // errors.  Neither policy evaluation nor queue preparation may run
+        // before this preflight completes.
+        world.set_policy(PolicySet {
+            rules: vec![PolicyRule {
+                when: PolicyWhen {
+                    effect_kind: None,
+                    origin_kind: None,
+                    cap_name: None,
+                },
+                decision: PolicyDecision::Deny {
+                    reason: "policy-must-not-win".to_string(),
+                },
+            }],
+        });
+        let snapshot_before = world.snapshot();
+        let journal_before = world.journal().clone();
+        let consensus_before = world.tick_consensus_records().to_vec();
+        let rejection_audit_before = world.tick_consensus_rejection_audit_events().to_vec();
+        let backpressure_before = world.runtime_backpressure_stats().clone();
+
+        let error = world
+            .emit_effect(
+                "http.request",
+                serde_json::json!({"url": "https://example.com/rejected"}),
+                cap_ref,
+                EffectOrigin::System,
+            )
+            .expect_err("capability preflight must reject the effect");
+        match case {
+            "missing" => assert!(matches!(
+                error,
+                WorldError::CapabilityMissing { cap_ref: ref actual }
+                    if actual == cap_ref
+            )),
+            "expired" => assert!(matches!(
+                error,
+                WorldError::CapabilityExpired { cap_ref: ref actual }
+                    if actual == cap_ref
+            )),
+            "not_allowed" => assert!(matches!(
+                error,
+                WorldError::CapabilityNotAllowed {
+                    cap_ref: ref actual_cap,
+                    ref kind,
+                } if actual_cap == cap_ref && kind == "http.request"
+            )),
+            _ => unreachable!("unknown capability preflight case"),
+        }
+        assert_eq!(world.snapshot(), snapshot_before);
+        assert_eq!(
+            world.snapshot().next_intent_id,
+            snapshot_before.next_intent_id
+        );
+        assert_eq!(
+            world.snapshot().intent_id_era,
+            snapshot_before.intent_id_era
+        );
+        assert_eq!(
+            world.snapshot().last_event_id,
+            snapshot_before.last_event_id
+        );
+        assert_eq!(world.snapshot().event_id_era, snapshot_before.event_id_era);
+        assert_eq!(world.journal(), &journal_before);
+        assert_eq!(world.tick_consensus_records(), consensus_before.as_slice());
+        assert_eq!(
+            world.tick_consensus_rejection_audit_events(),
+            rejection_audit_before.as_slice()
+        );
+        assert_eq!(world.runtime_backpressure_stats(), &backpressure_before);
+    }
+}
+
+#[test]
+fn deterministic_effect_policy_deny_commits_one_audit_event_and_replays_sequences() {
+    let mut world = World::new();
+    world.add_capability(CapabilityGrant::allow_all("cap_all"));
+    world.set_policy(PolicySet {
+        rules: vec![PolicyRule {
+            when: PolicyWhen {
+                effect_kind: None,
+                origin_kind: None,
+                cap_name: None,
+            },
+            decision: PolicyDecision::Deny {
+                reason: "deterministic-effect-deny".to_string(),
+            },
+        }],
+    });
+    let snapshot_before = world.snapshot();
+    let journal_before = world.journal().clone();
+
+    let error = world
+        .emit_effect(
+            "http.request",
+            serde_json::json!({"url": "https://example.com/denied"}),
+            "cap_all",
+            EffectOrigin::System,
+        )
+        .expect_err("policy deny is a deterministic rejection");
+    assert!(matches!(
+        error,
+        WorldError::PolicyDenied { ref intent_id, ref reason }
+            if intent_id == "intent-1" && reason == "deterministic-effect-deny"
+    ));
+
+    let tail = &world.journal().events[journal_before.events.len()..];
+    assert_eq!(tail.len(), 1, "policy deny has exactly one committed event");
+    match &tail[0].body {
+        WorldEventBody::PolicyDecisionRecorded(record) => {
+            assert_eq!(record.intent_id, "intent-1");
+            assert_eq!(record.effect_kind, "http.request");
+            assert_eq!(record.cap_ref, "cap_all");
+            assert!(matches!(
+                record.decision,
+                PolicyDecision::Deny { ref reason }
+                    if reason == "deterministic-effect-deny"
+            ));
+        }
+        other => panic!("unexpected policy-deny event: {other:?}"),
+    }
+    assert!(
+        !tail
+            .iter()
+            .any(|event| matches!(event.body, WorldEventBody::EffectQueued(_)))
+    );
+    assert_eq!(world.pending_effects_len(), 0);
+    assert_eq!(world.snapshot().next_intent_id, 2);
+    assert_eq!(
+        world.snapshot().intent_id_era,
+        snapshot_before.intent_id_era
+    );
+    assert_eq!(world.snapshot().last_event_id, 1);
+    assert_eq!(world.snapshot().event_id_era, snapshot_before.event_id_era);
+
+    let replayed = World::from_snapshot(snapshot_before, world.journal().clone())
+        .expect("replay deterministic policy disposition");
+    assert_eq!(replayed.state(), world.state());
+    assert_eq!(replayed.journal(), world.journal());
+    assert_eq!(
+        replayed.snapshot().next_intent_id,
+        world.snapshot().next_intent_id,
+        "replay must preserve the post-deny intent allocator"
+    );
+    assert_eq!(
+        replayed.snapshot().intent_id_era,
+        world.snapshot().intent_id_era
+    );
+    assert_eq!(
+        replayed.snapshot().last_event_id,
+        world.snapshot().last_event_id
+    );
+    assert_eq!(
+        replayed.tick_consensus_records(),
+        world.tick_consensus_records(),
+        "replay must rebuild the policy audit consensus record"
+    );
+}
+
+#[test]
+fn authorization_linked_effect_queue_full_rolls_back_allowed_public_effect() {
+    let effect_grant = super::capability_grant_v2::signed_effect_grant();
+    let mut world =
+        super::capability_grant_v2::fixture_world_with_revocations_and_budget_and_effect_grant(
+            std::collections::BTreeSet::new(),
+            128,
+            effect_grant.clone(),
+        );
+    world = world.with_runtime_memory_limits(WorldRuntimeMemoryLimits {
+        max_pending_effects: 1,
+        ..WorldRuntimeMemoryLimits::default()
+    });
+    let command_grant = super::capability_grant_v2::signed_grant(
+        super::capability_grant_v2::grant_json(serde_json::json!({})),
+    );
+    let (catalog, response) = super::capability_grant_v2::prepared_invocation(
+        &world,
+        &command_grant,
+        super::capability_grant_v2::catalog_json(serde_json::json!({})),
+        super::capability_grant_v2::response_json(serde_json::json!({})),
+    );
+    super::capability_grant_v2::install_invocation_context(
+        &mut world,
+        &command_grant,
+        &catalog,
+        &response,
+    );
+    let mut sandbox = super::capability_grant_v2::ConfiguredSandbox {
+        calls: 0,
+        output: ModuleOutput {
+            new_state: None,
+            effects: vec![ModuleEffectIntent {
+                kind: "weather.publish".to_string(),
+                params: serde_json::json!({"station": "station-linked"}),
+                cap_ref: effect_grant.grant_id,
+                cap_slot: None,
+            }],
+            emits: Vec::new(),
+            tick_lifecycle: None,
+            output_bytes: 16,
+        },
+    };
+    super::capability_grant_v2::execute_without_invocation_context(
+        &mut world,
+        command_grant,
+        catalog,
+        response,
+        &mut sandbox,
+    )
+    .expect("trusted command creates an authorization-linked pending effect");
+    assert_eq!(world.pending_effects_len(), 1);
+    let linked_intent = world
+        .snapshot()
+        .pending_effects
+        .first()
+        .expect("linked pending effect")
+        .intent_id
+        .clone();
+    assert!(
+        world
+            .capability_effect_receipt_links()
+            .contains_key(&linked_intent)
+    );
+
+    world.add_capability(CapabilityGrant::allow_all("cap_all"));
+    world.set_policy(PolicySet::allow_all());
+    let snapshot_before = world.snapshot();
+    let journal_before = world.journal().clone();
+    let consensus_before = world.tick_consensus_records().to_vec();
+    let rejection_audit_before = world.tick_consensus_rejection_audit_events().to_vec();
+    let backpressure_before = world.runtime_backpressure_stats().clone();
+
+    let error = world
+        .emit_effect(
+            "http.request",
+            serde_json::json!({"url": "https://example.com/blocked-by-linked-queue"}),
+            "cap_all",
+            EffectOrigin::System,
+        )
+        .expect_err("authorization-linked queue must reject a new allowed effect");
+    assert!(matches!(
+        error,
+        WorldError::CapabilityAuthorizationDenied { ref reason }
+            if reason.contains("authorization-linked")
+    ));
+    assert_eq!(world.snapshot(), snapshot_before);
+    assert_eq!(world.journal(), &journal_before);
+    assert_eq!(world.tick_consensus_records(), consensus_before.as_slice());
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        rejection_audit_before.as_slice()
+    );
+    assert_eq!(world.runtime_backpressure_stats(), &backpressure_before);
+    assert_eq!(world.pending_effects_len(), 1);
+    assert!(
+        world
+            .capability_effect_receipt_links()
+            .contains_key(&linked_intent)
     );
 }
 

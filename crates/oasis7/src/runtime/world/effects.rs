@@ -30,10 +30,64 @@ impl World {
         cap_ref: impl Into<String>,
         origin: EffectOrigin,
     ) -> Result<String, WorldError> {
-        let intent = self.build_effect_intent(kind, params, cap_ref, origin)?;
+        // Public effect emission is one transition.  Capability admission is
+        // deliberately performed before previewing the rolling intent
+        // sequence, and the policy audit plus queue event are installed by a
+        // single prepared batch below.  This keeps a rejected preflight from
+        // consuming an id and prevents a late publication failure from
+        // leaving an audit event or sequence gap behind.
+        let (intent, record) = self.prepare_effect_intent(kind, params, cap_ref, origin)?;
+        if !record.decision.is_allowed() {
+            let intent_id = intent.intent_id.clone();
+            let reason = record
+                .decision
+                .reason()
+                .unwrap_or_else(|| "policy_deny".to_string());
+            self.append_effect_policy_decision_atomically(record)?;
+            return Err(WorldError::PolicyDenied { intent_id, reason });
+        }
         let intent_id = intent.intent_id.clone();
-        self.append_event(WorldEventBody::EffectQueued(intent), None)?;
+        self.append_effect_publication_atomically(record, intent)?;
         Ok(intent_id)
+    }
+
+    fn prepare_effect_intent(
+        &self,
+        kind: impl Into<String>,
+        params: JsonValue,
+        cap_ref: impl Into<String>,
+        origin: EffectOrigin,
+    ) -> Result<(EffectIntent, PolicyDecisionRecord), WorldError> {
+        let kind = kind.into();
+        let cap_ref = cap_ref.into();
+        let grant =
+            self.capabilities
+                .get(&cap_ref)
+                .ok_or_else(|| WorldError::CapabilityMissing {
+                    cap_ref: cap_ref.clone(),
+                })?;
+
+        if grant.is_expired(self.state.time) {
+            return Err(WorldError::CapabilityExpired { cap_ref });
+        }
+
+        if !grant.allows(&kind) {
+            return Err(WorldError::CapabilityNotAllowed { cap_ref, kind });
+        }
+
+        let (allocated_intent_seq, _, _) =
+            Self::preview_next_intent_seq(self.next_intent_id, self.next_intent_id_era);
+        let intent_id = format!("intent-{allocated_intent_seq}");
+        let intent = EffectIntent {
+            intent_id,
+            kind,
+            params,
+            cap_ref,
+            origin,
+        };
+        let decision = self.policies.decide(&intent);
+        let record = PolicyDecisionRecord::from_intent(&intent, decision);
+        Ok((intent, record))
     }
 
     pub(super) fn build_effect_intent(

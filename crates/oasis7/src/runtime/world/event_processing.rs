@@ -249,6 +249,7 @@ impl World {
             .collect();
         let mut capability_command_activity: BTreeSet<(String, String)> = BTreeSet::new();
         let mut capability_command_commits: BTreeSet<(String, String)> = BTreeSet::new();
+        let mut replayed_intent_sequences: BTreeSet<u64> = BTreeSet::new();
         for event in events {
             if event.time < previous_event_time {
                 return Err(WorldError::ResourceBalanceInvalid {
@@ -264,6 +265,12 @@ impl World {
                 }
             }
             match &event.body {
+                WorldEventBody::PolicyDecisionRecorded(record) => {
+                    self.reconcile_replayed_intent_allocator(
+                        record.intent_id.as_str(),
+                        &mut replayed_intent_sequences,
+                    );
+                }
                 WorldEventBody::ModuleStateUpdated(update) => {
                     // ModuleStateUpdated is also emitted by ordinary module
                     // ticks and commands.  Only a state update carrying the
@@ -300,6 +307,10 @@ impl World {
                     }
                 }
                 WorldEventBody::EffectQueued(intent) => {
+                    self.reconcile_replayed_intent_allocator(
+                        intent.intent_id.as_str(),
+                        &mut replayed_intent_sequences,
+                    );
                     // EffectIntent does not carry the command nonce, so use
                     // the durable v2 effect grant and its audience/subject
                     // binding to distinguish a trusted command effect from a

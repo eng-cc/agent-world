@@ -17,6 +17,7 @@ mod capability_authorization_events;
 mod capability_authorization_state;
 mod capability_authorization_validation;
 mod economy;
+mod effect_publication;
 mod effects;
 mod event_processing;
 mod gameplay_layer;
@@ -763,6 +764,13 @@ impl World {
 
     pub(super) fn allocate_next_intent_seq(&mut self) -> IntentSeq {
         Self::allocate_rolling_sequence_id(&mut self.next_intent_id, &mut self.next_intent_id_era)
+    }
+
+    pub(super) fn preview_next_intent_seq(
+        next_id: IntentSeq,
+        era: u64,
+    ) -> (IntentSeq, IntentSeq, u64) {
+        Self::preview_rolling_sequence_id(next_id, era)
     }
 
     pub(super) fn allocate_next_proposal_id(&mut self) -> ProposalId {
