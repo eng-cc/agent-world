@@ -882,7 +882,10 @@ impl Serialize for AgentCellProjection<'_> {
     where
         S: serde::Serializer,
     {
-        let mut state = serializer.serialize_struct("AgentCell", 5)?;
+        let field_count = 3
+            + usize::from(self.cell.activity.is_some())
+            + usize::from(self.cell.intent.is_some());
+        let mut state = serializer.serialize_struct("AgentCell", field_count)?;
         let body_view = match &self.body_overlay.mutation {
             BodyOverlayMutation::Body { body_view, .. } => body_view,
             BodyOverlayMutation::RouteOnly => &self.cell.state.body_view,
@@ -1053,7 +1056,12 @@ where
         reward_signature_governance_policy: _,
     } = state;
 
-    let mut output = serializer.serialize_struct("WorldState", 81)?;
+    let field_count = 81
+        - usize::from(state.agent_intent_ledger.is_empty())
+        - usize::from(state.latest_product_validation.is_none())
+        - usize::from(state.starter_oc_claims.is_empty())
+        - usize::from(state.authenticated_collect_data_last_nonces.is_empty());
+    let mut output = serializer.serialize_struct("WorldState", field_count)?;
     output.serialize_field("time", &state.time)?;
     output.serialize_field(
         "agents",

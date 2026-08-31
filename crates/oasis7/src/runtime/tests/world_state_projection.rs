@@ -5,7 +5,9 @@
 //! may change only the selected agent's body view and activity timestamp in
 //! the projection; the borrowed canonical state must remain untouched.
 
-use super::super::{Action, BodyOverlay, World, WorldStateProjection};
+use super::super::{
+    Action, AgentIntentV2, BodyOverlay, DomainEvent, World, WorldState, WorldStateProjection,
+};
 use super::pos;
 use crate::models::BodyKernelView;
 use crate::runtime::util::hash_json;
@@ -110,4 +112,131 @@ fn typed_body_overlay_matches_golden_state_without_mutating_original() {
         .expect("fixture agent remains present");
     assert_eq!(original_agent.state.body_view, original_body_view);
     assert_eq!(original_agent.last_active, original_last_active);
+}
+
+#[test]
+fn default_world_state_round_trips_through_cbor_with_omitted_optional_fields() {
+    let state = WorldState::default();
+    let bytes = serde_cbor::to_vec(&state).expect("serialize default WorldState as CBOR");
+    let decoded: WorldState = serde_cbor::from_slice(&bytes)
+        .expect("default WorldState with omitted optional fields must decode from CBOR");
+
+    assert_eq!(decoded, state);
+}
+
+#[test]
+fn registered_world_state_round_trips_through_cbor_with_omitted_agent_optionals() {
+    let world = registered_agent_world();
+    let mut state = world.state().clone();
+    let agent = state
+        .agents
+        .get_mut("projection-fixture-agent")
+        .expect("fixture agent exists");
+    // The real registration path records activity. Normalize only this test
+    // fixture so the nested AgentCell serializer exercises omitted optionals.
+    agent.activity = None;
+    agent.intent = None;
+    assert!(agent.activity.is_none());
+    assert!(agent.intent.is_none());
+
+    let bytes = serde_cbor::to_vec(&state)
+        .expect("serialize registered WorldState with omitted optionals as CBOR");
+    let decoded: WorldState = serde_cbor::from_slice(&bytes)
+        .expect("registered WorldState with omitted optionals must decode from CBOR");
+
+    assert_eq!(decoded, state);
+}
+
+#[test]
+fn no_overlay_projection_round_trips_through_cbor_as_world_state() {
+    let world = registered_agent_world();
+    let projection = WorldStateProjection::borrowed(world.state());
+    let bytes = serde_cbor::to_vec(&projection)
+        .expect("serialize no-overlay WorldStateProjection as CBOR");
+    let decoded: WorldState = serde_cbor::from_slice(&bytes)
+        .expect("no-overlay WorldStateProjection must decode from CBOR");
+
+    assert_eq!(&decoded, world.state());
+}
+
+#[test]
+fn body_overlay_with_routed_mailbox_event_round_trips_through_cbor() {
+    let world = registered_agent_world();
+    let agent_id = "projection-fixture-agent";
+    let body_view = BodyKernelView {
+        mass_kg: 321,
+        radius_cm: 144,
+        thrust_limit: 987,
+        cross_section_cm2: 12_345,
+    };
+    let last_active = world.state().time.saturating_add(37);
+    let routed_event = DomainEvent::AgentMoved {
+        agent_id: agent_id.to_string(),
+        from: pos(7, -11),
+        to: pos(8, -11),
+    };
+
+    let projection = WorldStateProjection::borrowed(world.state()).with_body_overlay(
+        BodyOverlay::new(agent_id, body_view.clone(), last_active)
+            .with_routed_domain_event(routed_event.clone()),
+    );
+    let bytes = serde_cbor::to_vec(&projection)
+        .expect("serialize body overlay and routed mailbox projection as CBOR");
+    let decoded: WorldState = serde_cbor::from_slice(&bytes)
+        .expect("body overlay with routed mailbox event must decode from CBOR");
+    let decoded_agent = decoded
+        .agents
+        .get(agent_id)
+        .expect("decoded fixture agent exists");
+
+    assert_eq!(decoded_agent.state.body_view, body_view);
+    assert_eq!(decoded_agent.last_active, last_active);
+    assert_eq!(decoded_agent.mailbox.back(), Some(&routed_event));
+
+    let original_agent = world
+        .state()
+        .agents
+        .get(agent_id)
+        .expect("original fixture agent exists");
+    assert_ne!(original_agent.state.body_view, body_view);
+    assert_ne!(original_agent.last_active, last_active);
+}
+
+#[test]
+fn populated_optional_world_state_fields_round_trip_through_cbor() {
+    let mut state = WorldState::default();
+    state.agent_intent_ledger.insert(
+        "projection-fixture-agent".to_string(),
+        AgentIntentV2 {
+            schema_version: 2,
+            agent_id: "projection-fixture-agent".to_string(),
+            intent_id: "projection-intent".to_string(),
+            kind: "test".to_string(),
+            summary: "CBOR projection fixture".to_string(),
+            target_id: None,
+            effect_intent_id: None,
+            intent_tick: None,
+            world_id: None,
+            reorg_epoch: None,
+            authority_scope: None,
+            status: "accepted".to_string(),
+            source: "test".to_string(),
+            logical_time: state.time,
+            event_seq: 1,
+            updated_at: state.time,
+            receipt_ref: None,
+            reason_code: None,
+            reason_summary: None,
+            replaced_by: None,
+            actor_id: String::new(),
+            request_digest: String::new(),
+        },
+    );
+
+    let bytes = serde_cbor::to_vec(&state)
+        .expect("serialize WorldState with populated optional fields as CBOR");
+    let decoded: WorldState = serde_cbor::from_slice(&bytes)
+        .expect("WorldState with populated optional fields must decode from CBOR");
+
+    assert_eq!(decoded, state);
 }
