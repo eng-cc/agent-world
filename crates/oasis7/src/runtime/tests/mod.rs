@@ -87,6 +87,7 @@ mod economy_module_call_uses_outer_transaction;
 mod economy_module_requests;
 mod economy_priority_logistics;
 mod effects;
+mod execution_transaction_kernel;
 mod execution_transaction_regressions;
 mod gameplay;
 mod gameplay_bootstrap;

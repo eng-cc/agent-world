@@ -278,11 +278,14 @@ pub use world::{
     AgentIntentProviderFailureDisposition, AgentIntentRecordOutcome,
     AuthoritativeRecoveryCommitError, AuthoritativeRecoveryCommitStatus,
     BuiltinReleaseManifestEntry, BuiltinReleaseManifestState,
-    CommittedAuthoritativeRecoveryGeneration, LogisticsTransferQuote, M1ScenarioBootstrapConfig,
-    MarketQuoteDecisionPreview, MarketQuoteSupplyDelta, ModuleTickRoutingDeterministicSnapshot,
-    ModuleTickRoutingDurationBuckets, ModuleTickRoutingMetricsSnapshot, ProductValidationQuote,
-    ReleaseSecurityPolicy, WarDeclarationQuote, World, WorldRuntimeBackpressureStats,
-    WorldRuntimeMemoryLimits,
+    CommittedAuthoritativeRecoveryGeneration, ExecutionTransaction, LogisticsTransferQuote,
+    M1ScenarioBootstrapConfig, MarketQuoteDecisionPreview, MarketQuoteSupplyDelta,
+    ModuleTickRoutingDeterministicSnapshot, ModuleTickRoutingDurationBuckets,
+    ModuleTickRoutingMetricsSnapshot, PreparedCommit, ProductValidationQuote,
+    ReleaseSecurityPolicy, TransitionBaseHead, TransitionBuffer, TransitionCommitError,
+    TransitionKernelEntriesView, TransitionKernelState, TransitionKernelView,
+    TransitionPrepareError, TransitionRollbackError, TransitionSavepoint, WarDeclarationQuote,
+    World, WorldRuntimeBackpressureStats, WorldRuntimeMemoryLimits,
 };
 pub use world::{rollback_affected_census_digest, rollback_journal_commitment};
 

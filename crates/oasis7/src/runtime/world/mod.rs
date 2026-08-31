@@ -56,6 +56,13 @@ mod scheduling;
 mod snapshot;
 mod step;
 mod tick_consensus;
+mod transition;
+
+pub use transition::{
+    ExecutionTransaction, PreparedCommit, TransitionBaseHead, TransitionBuffer,
+    TransitionCommitError, TransitionKernelEntriesView, TransitionKernelState,
+    TransitionKernelView, TransitionPrepareError, TransitionRollbackError, TransitionSavepoint,
+};
 
 #[cfg(all(test, feature = "wasmtime", feature = "test_tier_full"))]
 pub(crate) use bootstrap_economy::m4_bootstrap_module_ids;
