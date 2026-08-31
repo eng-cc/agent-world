@@ -358,6 +358,88 @@ fn append_event_failure_after_publication_prepare_does_not_publish_any_observabl
 }
 
 #[test]
+fn rule_decision_publication_failure_after_prepare_is_unpublished() {
+    let mut world = World::new();
+    let snapshot_before = world.snapshot();
+    let journal_before = world.journal().clone();
+    let consensus_before = world.tick_consensus_records().to_vec();
+    let rejection_audit_before = world.tick_consensus_rejection_audit_events().to_vec();
+
+    // RuleDecisionRecorded is a no-state audit event that still publishes an
+    // event id, journal entry, and tick-consensus record. The public recorder
+    // must use the explicit no-state prepared path so the publication-prepare
+    // failpoint aborts before any of those observable deltas install.
+    world.fail_next_append_after_publication_prepare_for_test();
+    let error = world
+        .record_rule_decision(
+            RuleDecisionRecord {
+                action_id: 7,
+                module_id: "rule.transaction-regression".to_string(),
+                stage: ModuleSubscriptionStage::PreAction,
+                verdict: RuleVerdict::Allow,
+                override_action: None,
+                cost: ResourceDelta::default(),
+                notes: vec!["publication-failure-regression".to_string()],
+            },
+            None,
+        )
+        .expect_err("publication-preparation failure must abort rule decision publication");
+    assert!(matches!(
+        error,
+        WorldError::ResourceBalanceInvalid { ref reason }
+            if reason.contains("publication preparation")
+    ));
+
+    assert_eq!(world.snapshot(), snapshot_before);
+    assert_eq!(world.journal(), &journal_before);
+    assert_eq!(world.tick_consensus_records(), consensus_before.as_slice());
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        rejection_audit_before.as_slice()
+    );
+}
+
+#[test]
+fn successful_rule_decision_publication_replays_consensus_equivalently() {
+    let mut world = World::new();
+    let stable_snapshot = world.snapshot();
+
+    world
+        .record_rule_decision(
+            RuleDecisionRecord {
+                action_id: 7,
+                module_id: "rule.transaction-regression".to_string(),
+                stage: ModuleSubscriptionStage::PreAction,
+                verdict: RuleVerdict::Allow,
+                override_action: None,
+                cost: ResourceDelta::default(),
+                notes: vec!["publication-failure-regression".to_string()],
+            },
+            None,
+        )
+        .expect("successful rule decision publication");
+
+    let record = world
+        .latest_tick_consensus_record()
+        .expect("rule decision must publish a tick consensus record");
+    assert_eq!(
+        record.block.header.state_root,
+        world
+            .current_state_root_hash()
+            .expect("compute post-publication state root")
+    );
+
+    let restored = World::from_snapshot(stable_snapshot, world.journal().clone())
+        .expect("replay rule decision publication");
+    assert_eq!(restored.state(), world.state());
+    assert_eq!(restored.journal(), world.journal());
+    assert_eq!(
+        restored.latest_tick_consensus_record(),
+        world.latest_tick_consensus_record()
+    );
+}
+
+#[test]
 fn prepared_body_publication_commits_consensus_root_after_domain_routing() {
     let mut world = World::new();
     world.submit_action(Action::RegisterAgent {
@@ -473,7 +555,10 @@ fn rejected_body_publication_failure_after_prepare_is_unpublished() {
         .expect_err("injected rejection publication failure must abort the transition");
 
     assert_eq!(world.snapshot(), snapshot_before);
-    assert_eq!(world.snapshot().last_event_id, snapshot_before.last_event_id);
+    assert_eq!(
+        world.snapshot().last_event_id,
+        snapshot_before.last_event_id
+    );
     assert_eq!(world.snapshot().event_id_era, snapshot_before.event_id_era);
     assert_eq!(world.journal(), &journal_before);
     assert_eq!(world.tick_consensus_records(), consensus_before.as_slice());

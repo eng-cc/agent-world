@@ -52,29 +52,46 @@ const MAIN_TOKEN_POLICY_UPDATE_DELAY_EPOCHS: u64 = 2;
 const STARTER_OC_CLAIM_AMOUNT: u64 = 100_000_000;
 
 enum PreparedEventStateDelta {
+    NoState,
     Body(PreparedBodyAttributesUpdate),
     RouteOnly { agent_id: String },
 }
 
 impl PreparedEventStateDelta {
-    fn matches_event(&self, event: &DomainEvent) -> bool {
+    fn for_body(body: &WorldEventBody) -> Option<Self> {
+        matches!(
+            body,
+            WorldEventBody::PolicyDecisionRecorded(_)
+                | WorldEventBody::RuleDecisionRecorded(_)
+                | WorldEventBody::ActionOverridden(_)
+                | WorldEventBody::ModuleCallFailed(_)
+                | WorldEventBody::ModuleEmitted(_)
+                | WorldEventBody::SnapshotCreated(_)
+                | WorldEventBody::RollbackApplied(_)
+        )
+        .then_some(Self::NoState)
+    }
+
+    fn matches_body(&self, body: &WorldEventBody) -> bool {
         match self {
-            Self::Body(prepared) => prepared.matches_event(event),
+            Self::NoState => Self::for_body(body).is_some(),
+            Self::Body(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::RouteOnly { agent_id } => matches!(
-                event,
-                DomainEvent::BodyAttributesRejected {
+                body,
+                WorldEventBody::Domain(DomainEvent::BodyAttributesRejected {
                     agent_id: event_agent_id,
                     ..
-                } if event_agent_id == agent_id
+                }) if event_agent_id == agent_id
             ),
         }
     }
 
     fn state_overlay(&self, event: DomainEvent) -> super::super::BodyOverlay {
         match self {
-            Self::Body(prepared) => prepared
-                .body_overlay()
-                .with_routed_domain_event(event),
+            Self::NoState => unreachable!("NoState does not have a state overlay"),
+            Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => super::super::BodyOverlay::route_only(agent_id.clone())
                 .with_routed_domain_event(event),
         }
@@ -783,7 +800,8 @@ impl World {
         body: WorldEventBody,
         caused_by: Option<CausedBy>,
     ) -> Result<WorldEventId, WorldError> {
-        self.append_event_internal(body, caused_by, None)
+        let state_delta = PreparedEventStateDelta::for_body(&body);
+        self.append_event_internal(body, caused_by, state_delta)
     }
 
     pub(super) fn append_event_with_prepared_body(
@@ -889,20 +907,20 @@ impl World {
         caused_by: Option<CausedBy>,
         state_delta: PreparedEventStateDelta,
     ) -> Result<PreparedEventPublication, WorldError> {
-        let WorldEventBody::Domain(domain_event) = &body else {
-            return Err(WorldError::ResourceBalanceInvalid {
-                reason: "prepared body delta requires a domain event".to_string(),
-            });
-        };
-        let domain_event = domain_event.clone();
-        if !state_delta.matches_event(&domain_event) {
+        if !state_delta.matches_body(&body) {
             return Err(WorldError::ResourceBalanceInvalid {
                 reason: "prepared body delta does not match body event".to_string(),
             });
         }
+        let domain_event = match &body {
+            WorldEventBody::Domain(domain_event) => Some(domain_event.clone()),
+            _ => None,
+        };
         let (event_id, next_event_id, next_event_id_era) =
             Self::preview_next_event_id(self.next_event_id, self.next_event_id_era);
-        self.validate_agent_intent_receipt_reference(&domain_event, Some(event_id))?;
+        if let Some(domain_event) = domain_event.as_ref() {
+            self.validate_agent_intent_receipt_reference(domain_event, Some(event_id))?;
+        }
         let event = WorldEvent {
             id: event_id,
             time: self.state.time,
@@ -922,8 +940,18 @@ impl World {
             .filter(|journal_event| journal_event.time == event.time)
             .cloned()
             .collect();
-        let body_overlay = state_delta.state_overlay(domain_event);
-        let state_root = self.state_root_hash_with_body_overlay(&body_overlay)?;
+        let state_root = match &state_delta {
+            PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
+            PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {
+                let Some(domain_event) = domain_event.as_ref() else {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "prepared body delta requires a domain event".to_string(),
+                    });
+                };
+                let body_overlay = state_delta.state_overlay(domain_event.clone());
+                self.state_root_hash_with_body_overlay(&body_overlay)?
+            }
+        };
         let consensus_record = self.build_tick_consensus_record_for_prepared_events(
             event.time,
             tick_events.as_slice(),
