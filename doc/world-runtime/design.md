@@ -132,6 +132,111 @@ the legacy readers and deterministic ordering. This design does not promise a
 big-bang ECS conversion, independent shard finality, cross-shard commit, or a
 dynamic World Database.
 
+#### 6.2.1 Explicit transaction and typed-delta model
+
+The target production boundary is an explicit `ExecutionTransaction` holding
+a read-only canonical `World` base, a `TransitionBuffer`, and a `Live` or
+`Replay` mode. `TransitionBuffer` is a typed overlay rather than a cloned
+`World` or reflection/JSON patch. It groups deltas for world state, non-state
+runtime authorities, rolling sequences, journal batches, pending/inflight
+queues, schedules, replay-deterministic metrics, consensus, effects, and the
+persistence plan. Scalar changes use typed value replacement and collection
+changes use typed map/set operations. Wall-clock observability and process-local
+caches never participate in deterministic commitments.
+
+Every public world-effecting entrypoint creates exactly one root transaction.
+Nested module routing, reducers, and `append_event` share that root buffer;
+`append_event` is transaction-internal and never mutates canonical `World`
+directly. A nested operation may create a lightweight savepoint containing
+overlay mutation marks, event-batch length, sequence cursors, queue/schedule
+operation marks, and deterministic-metric marks, but it cannot independently
+commit. A child fault aborts the root. Only an existing domain rule that
+explicitly permits a stable business rejection may restore a savepoint and
+append that rejection inside the same root transaction.
+
+The transaction base head binds at least the state root, manifest and module
+registry roots, journal length and commitment, event id/era, logical time,
+queue roots, tick-consensus head, and capability-authorization root. Prepare
+performs every fallible validation, allocation, capacity check, commitment,
+serialization, and persistence-staging operation against the base plus overlay.
+It yields a `PreparedCommit`; installing that commit is a deterministic,
+non-fallible typed write. A changed base head rejects the commit as stale and
+discards the buffer. Public readers observe only the previous canonical
+generation until publication.
+
+#### 6.2.2 Disposition and idempotency contract
+
+Execution returns an accepted, rejected, or faulted disposition when it can
+durably form a stable outcome. Accepted atomically publishes all business
+state, journal, sequence, queue/schedule, receipt, commitment, deterministic
+metric, idempotency, and outbox records. Rejected represents a deterministic
+input, authority, budget, resource, or freshness refusal and contains no
+accepted business effect. Faulted represents traps, schema/artifact mismatch,
+invariant failure, serialization/persistence failure, or commit uncertainty;
+it cannot be converted into a recoverable domain rejection. If no stable
+disposition can be committed, the API returns an infrastructure error and the
+canonical projection remains byte/semantically unchanged. An audit record for
+a rejection or fault, when required, is part of that same root commit and is
+never appended by a second best-effort transaction.
+
+Each retryable public root operation binds a stable operation id to world,
+parent identity, canonical input hash, manifest/activation binding, and target.
+The same identity and binding returns the original disposition without new
+events, debits, queues, or outbox records. Reuse with any different binding is
+an idempotency conflict and fails closed. Nested operations inherit the root
+identity and use a deterministic child path; provisional event ids are not
+external retry identities. External effects retain
+`(world_id, execution_receipt_id, effect_id)` as their durable idempotency key:
+same key/same descriptor is a retry, while same key/different descriptor is a
+conflict.
+
+#### 6.2.3 Replay, generation persistence, and durable outbox
+
+Replay uses the same typed reducers through a root transaction but may only
+consume existing canonical events. It validates event id/era, logical time,
+parent, commitment, and order; it never creates an event or calls a sandbox,
+LLM, effect adapter, or dispatcher. The complete journal suffix commits once,
+and any suffix failure discards every reconstructed delta. Effect events only
+rebuild ledger/outbox state.
+
+Persistence publishes an immutable generation containing the snapshot,
+journal, module store, sidecars, outbox, manifest, hashes, and completion
+metadata. All files are staged, synced, and cross-validated before an atomic
+latest-generation pointer switch. That pointer switch is the durable commit
+point: before it, the old generation remains authoritative; after it, recovery
+loads the complete new generation even if the process died before in-memory
+installation. Installation after the switch contains no fallible work, and
+generation garbage collection is outside the business commit seam. Missing,
+mixed, or hash-inconsistent generations fail closed rather than being spliced.
+
+External dispatch begins only after the durable generation commit. The outbox
+uses at-least-once delivery with stable idempotency and independently atomic
+lease/ack updates; it does not claim physical exactly-once behavior in an
+external system. Receipt ingestion is a new root transaction that atomically
+validates identity/signature/authorization linkage, updates outbox and
+pending/inflight state, applies deterministic receipt effects, appends the
+canonical receipt event, and advances commitments/sequences. Unknown or
+conflicting receipts cannot consume a queue item before commit.
+
+#### 6.2.4 Incremental delivery and proof levels
+
+Implementation proceeds in five reviewable phases: (0) transaction/delta types,
+savepoints, deterministic projection, failure injection, and a test-only
+clone-backed oracle; (1) `append_event`, reducer, sequence, journal, schedule,
+queue, commitment, consensus, and deterministic-metric staging; (2) step,
+action, direct/trusted command, module lifecycle/routing/tick, observation, and
+capability paths; (3) effects, receipts, durable outbox, and idempotency; (4)
+atomic replay/restore; and (5) generation persistence and crash recovery.
+Production clone-and-publish is removed only for a path whose replacement has
+passed its failure-injection and replay gates.
+
+Capability is `design-ready` after this contract and its test oracle are
+frozen, remains `partial` while any public mutation entrypoint uses a legacy
+boundary, becomes `target-implemented` only after every entrypoint is migrated,
+and becomes `proven` only after execution, rejection, fault, replay, recovery,
+idempotency, outbox, persistence, serde, and WASM compatibility evidence all
+pass. No single staged step test or in-memory swap proves general atomicity.
+
 ### 6.3 Command-path module-instance completeness
 
 Instance identity is an authorization and addressing key, not merely a
