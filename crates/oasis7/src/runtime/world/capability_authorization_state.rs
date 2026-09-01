@@ -81,11 +81,25 @@ impl World {
         Ok(())
     }
 
-    fn compute_capability_authorization_root(&self) -> Result<String, WorldError> {
+    pub(super) fn compute_capability_authorization_root(&self) -> Result<String, WorldError> {
+        self.compute_capability_authorization_root_with_projection(
+            &self.capability_revocation_state,
+            &self.capability_invocation_contexts,
+        )
+    }
+
+    pub(super) fn compute_capability_authorization_root_with_projection(
+        &self,
+        capability_revocation_state: &CapabilityRevocationState,
+        capability_invocation_contexts: &std::collections::BTreeMap<
+            String,
+            CapabilityInvocationContext,
+        >,
+    ) -> Result<String, WorldError> {
         canonical_hash(&CapabilityAuthorizationRootBody {
             grants: &self.capability_grants_v2,
-            revocation: &self.capability_revocation_state,
-            invocation_contexts: &self.capability_invocation_contexts,
+            revocation: capability_revocation_state,
+            invocation_contexts: capability_invocation_contexts,
             budget_accounts: &self.capability_budget_accounts,
             nonce_records: &self.capability_nonce_records,
             receipts: &self.capability_authorization_receipts,

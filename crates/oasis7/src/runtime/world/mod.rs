@@ -14,6 +14,7 @@ mod bootstrap_power;
 mod capability_authorization;
 mod capability_authorization_admin;
 mod capability_authorization_events;
+mod capability_authorization_publication;
 mod capability_authorization_state;
 mod capability_authorization_validation;
 mod economy;

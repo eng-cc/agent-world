@@ -105,22 +105,19 @@ impl World {
                 .get(system_id)
                 != Some(epoch)
         {
-            self.append_event(
-                WorldEventBody::CapabilityAuthorization(
-                    CapabilityAuthorizationEvent::SystemIdentityInstalled {
-                        system_id: system_id.clone(),
-                        epoch: *epoch,
-                    },
-                ),
-                None,
-            )?;
-        }
-        self.append_event(
-            WorldEventBody::CapabilityAuthorization(
+            let system_identity_event = CapabilityAuthorizationEvent::SystemIdentityInstalled {
+                system_id: system_id.clone(),
+                epoch: *epoch,
+            };
+            self.append_capability_authorization_event_batch(vec![
+                system_identity_event,
                 CapabilityAuthorizationEvent::InvocationContextInstalled { key, context },
-            ),
-            None,
-        )?;
+            ])?;
+            return Ok(());
+        }
+        self.append_capability_authorization_event_batch(vec![
+            CapabilityAuthorizationEvent::InvocationContextInstalled { key, context },
+        ])?;
         Ok(())
     }
 
