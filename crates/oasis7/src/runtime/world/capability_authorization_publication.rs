@@ -174,6 +174,35 @@ impl World {
         capability_budget_accounts: &mut BTreeMap<String, CapabilityBudgetAccount>,
     ) -> Result<(), WorldError> {
         match event {
+            CapabilityAuthorizationEvent::AgentIdentityInstalled { agent_id, identity } => {
+                super::capability_authorization::validate_agent_identity(agent_id, identity)?;
+                let Some(agent) = self.state.agents.get(agent_id) else {
+                    return Err(super::capability_authorization::deny(
+                        "capability agent identity requires a live agent",
+                    ));
+                };
+                if agent.state.agent_id != agent_id.as_str() {
+                    return Err(super::capability_authorization::deny(
+                        "live agent state id does not match its registry key",
+                    ));
+                }
+                if let Some(existing) = capability_revocation_state.agent_identities.get(agent_id) {
+                    if identity.generation < existing.generation {
+                        return Err(super::capability_authorization::deny(
+                            "capability agent identity generation regressed",
+                        ));
+                    }
+                    if identity.generation == existing.generation && existing != identity {
+                        return Err(super::capability_authorization::deny(
+                            "capability agent identity changed without a new generation",
+                        ));
+                    }
+                }
+                capability_revocation_state
+                    .agent_identities
+                    .insert(agent_id.clone(), identity.clone());
+                Ok(())
+            }
             CapabilityAuthorizationEvent::GrantRegistered { grant } => {
                 let encoded = serde_json::to_value(grant)?;
                 if let Some(existing) = capability_grants_v2.get(&grant.grant_id)

@@ -3,6 +3,175 @@ use oasis7_wasm_abi::{CapabilityAudience, CapabilityPresenter, CapabilitySubject
 use serde_json::json;
 
 #[test]
+fn capability_agent_identity_publication_failure_is_fully_unpublished() {
+    let mut world = super::capability_grant_v2::fixture_world();
+    let agent_id = super::capability_grant_v2::SUBJECT_ID;
+    let owner_binding = "owner-7";
+    let generation = 2;
+
+    let live_agent = world
+        .state()
+        .agents
+        .get(agent_id)
+        .expect("fixture has a live capability agent");
+    assert_eq!(live_agent.state.agent_id, agent_id);
+    let existing_identity = world
+        .capability_revocation_state()
+        .agent_identities
+        .get(agent_id)
+        .expect("fixture has the agent owner/generation binding");
+    assert_eq!(existing_identity.owner_binding, owner_binding);
+    assert_eq!(existing_identity.generation, 1);
+
+    let snapshot_before = world.snapshot();
+    let journal_before = world.journal().clone();
+    let event_id_before = snapshot_before.last_event_id;
+    let event_id_era_before = snapshot_before.event_id_era;
+    let agent_identities_before = world.capability_revocation_state().agent_identities.clone();
+    let authorization_root_before = world.capability_authorization_root().to_string();
+    let consensus_before = world.tick_consensus_records().to_vec();
+    let rejection_audit_before = world.tick_consensus_rejection_audit_events().to_vec();
+    let backpressure_before = world.runtime_backpressure_stats().clone();
+    let mut expected_world = world.clone();
+
+    // Agent identity publication must join the staged authorization batch. A
+    // post-prepare failure must not expose the new owner/generation binding,
+    // event id, journal entry, root, consensus record, or backpressure update.
+    world.fail_next_append_after_publication_prepare_for_test();
+    let error = world
+        .install_capability_agent_identity(agent_id, owner_binding, generation)
+        .expect_err("post-prepare failure must abort public agent identity installation");
+    assert!(matches!(
+        error,
+        WorldError::ResourceBalanceInvalid { ref reason }
+            if reason.contains("publication preparation")
+    ));
+
+    assert_eq!(world.snapshot(), snapshot_before);
+    assert_eq!(world.journal(), &journal_before);
+    assert_eq!(world.snapshot().last_event_id, event_id_before);
+    assert_eq!(world.snapshot().event_id_era, event_id_era_before);
+    assert_eq!(
+        world.capability_revocation_state().agent_identities,
+        agent_identities_before
+    );
+    assert_eq!(
+        world.capability_authorization_root(),
+        authorization_root_before
+    );
+    assert_eq!(world.tick_consensus_records(), consensus_before.as_slice());
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        rejection_audit_before.as_slice()
+    );
+    assert_eq!(world.runtime_backpressure_stats(), &backpressure_before);
+
+    expected_world
+        .install_capability_agent_identity(agent_id, owner_binding, generation)
+        .expect("control agent identity installation");
+    world
+        .install_capability_agent_identity(agent_id, owner_binding, generation)
+        .expect("retry agent identity installation after one-shot failpoint");
+
+    assert_eq!(world.snapshot(), expected_world.snapshot());
+    assert_eq!(world.journal(), expected_world.journal());
+    assert_eq!(
+        world.capability_revocation_state().agent_identities,
+        expected_world
+            .capability_revocation_state()
+            .agent_identities
+    );
+    assert_eq!(
+        world.capability_authorization_root(),
+        expected_world.capability_authorization_root()
+    );
+    assert_eq!(
+        world.tick_consensus_records(),
+        expected_world.tick_consensus_records()
+    );
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        expected_world.tick_consensus_rejection_audit_events()
+    );
+    assert_eq!(
+        world.runtime_backpressure_stats(),
+        expected_world.runtime_backpressure_stats()
+    );
+
+    let tail = &world.journal().events[journal_before.events.len()..];
+    assert_eq!(
+        tail.len(),
+        1,
+        "agent identity installation must publish one authorization event"
+    );
+    assert!(matches!(
+        &tail[0].body,
+        WorldEventBody::CapabilityAuthorization(
+            CapabilityAuthorizationEvent::AgentIdentityInstalled {
+                agent_id: installed_agent_id,
+                identity,
+            }
+        ) if installed_agent_id == agent_id
+            && identity.owner_binding == owner_binding
+            && identity.generation == generation
+    ));
+
+    let snapshot_after_install = world.snapshot();
+    let journal_after_install = world.journal().clone();
+    world
+        .install_capability_agent_identity(agent_id, owner_binding, generation)
+        .expect("same agent identity is idempotent");
+    assert_eq!(world.snapshot(), snapshot_after_install);
+    assert_eq!(world.journal(), &journal_after_install);
+
+    let snapshot_before_regression = world.snapshot();
+    let journal_before_regression = world.journal().clone();
+    let error = world
+        .install_capability_agent_identity(agent_id, owner_binding, 1)
+        .expect_err("older agent identity generation must be rejected");
+    assert!(matches!(
+        error,
+        WorldError::CapabilityAuthorizationDenied { ref reason }
+            if reason.contains("generation regressed")
+    ));
+    assert_eq!(world.snapshot(), snapshot_before_regression);
+    assert_eq!(world.journal(), &journal_before_regression);
+
+    let replayed = World::from_snapshot(snapshot_before, world.journal().clone())
+        .expect("replay successful agent identity installation");
+    assert_eq!(replayed.state(), world.state());
+    assert_eq!(replayed.journal(), world.journal());
+    assert_eq!(
+        replayed.snapshot().last_event_id,
+        world.snapshot().last_event_id
+    );
+    assert_eq!(
+        replayed.snapshot().event_id_era,
+        world.snapshot().event_id_era
+    );
+    assert_eq!(
+        replayed.capability_revocation_state().agent_identities,
+        world.capability_revocation_state().agent_identities
+    );
+    assert_eq!(
+        replayed.capability_authorization_root(),
+        world.capability_authorization_root()
+    );
+    assert_eq!(
+        replayed.tick_consensus_records(),
+        world.tick_consensus_records()
+    );
+    assert_eq!(
+        replayed.tick_consensus_rejection_audit_events(),
+        world.tick_consensus_rejection_audit_events()
+    );
+    assert_eq!(
+        replayed.runtime_backpressure_stats(),
+        world.runtime_backpressure_stats()
+    );
+}
+
+#[test]
 fn capability_invocation_context_publication_failure_is_fully_unpublished() {
     let mut world = super::capability_grant_v2::fixture_world();
     let context = CapabilityInvocationContext {

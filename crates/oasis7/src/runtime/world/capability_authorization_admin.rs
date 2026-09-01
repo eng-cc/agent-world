@@ -179,12 +179,9 @@ impl World {
         {
             return Ok(());
         }
-        self.append_event(
-            WorldEventBody::CapabilityAuthorization(
-                CapabilityAuthorizationEvent::AgentIdentityInstalled { agent_id, identity },
-            ),
-            None,
-        )?;
+        self.append_capability_authorization_event_batch(vec![
+            CapabilityAuthorizationEvent::AgentIdentityInstalled { agent_id, identity },
+        ])?;
         Ok(())
     }
 }
