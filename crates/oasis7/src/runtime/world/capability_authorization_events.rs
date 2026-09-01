@@ -303,7 +303,7 @@ fn apply_authority_record(
 /// replacement record is not enough on its own: replay must also establish
 /// that the replacement did not erase a prior revocation/supersession or
 /// silently change an issuer's governance context.
-fn validate_authority_record_transition(
+pub(super) fn validate_authority_record_transition(
     previous: &CapabilityAuthorityRecord,
     next: &CapabilityAuthorityRecord,
 ) -> Result<(), WorldError> {

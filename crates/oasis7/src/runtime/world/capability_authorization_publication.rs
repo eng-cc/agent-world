@@ -17,6 +17,7 @@ use super::super::{
     WorldEventId,
 };
 use super::World;
+use super::capability_authorization_events::validate_authority_record_transition;
 
 struct PreparedCapabilityAuthorizationBatch {
     capability_grants_v2: BTreeMap<String, JsonValue>,
@@ -174,6 +175,55 @@ impl World {
         capability_budget_accounts: &mut BTreeMap<String, CapabilityBudgetAccount>,
     ) -> Result<(), WorldError> {
         match event {
+            CapabilityAuthorizationEvent::AuthorityInstalledWithProof { record, proof } => {
+                super::capability_authorization::validate_authority_record(record)?;
+                self.verify_capability_authority_finality_proof(record, proof)?;
+                if self.chain_resource_manifest.world_id != "unbound"
+                    && self.chain_resource_manifest.world_id != record.world_id
+                {
+                    return Err(super::capability_authorization::deny(
+                        "authority record world does not match live world",
+                    ));
+                }
+                if let Some(existing) = capability_revocation_state
+                    .authority_records
+                    .get(&record.issuer_id)
+                    && existing != record
+                {
+                    validate_authority_record_transition(existing, record)?;
+                }
+                if let Some(existing) = capability_revocation_state
+                    .authority_finality_proofs
+                    .get(&record.issuer_id)
+                    && existing != proof
+                    && capability_revocation_state
+                        .authority_records
+                        .get(&record.issuer_id)
+                        == Some(record)
+                {
+                    return Err(super::capability_authorization::deny(
+                        "authority finality proof is immutable",
+                    ));
+                }
+                capability_revocation_state.epoch = capability_revocation_state
+                    .epoch
+                    .max(record.revocation_epoch);
+                capability_revocation_state
+                    .revoked_grant_ids
+                    .extend(record.revoked_grant_ids.iter().cloned());
+                capability_revocation_state
+                    .superseded_by
+                    .extend(record.superseded_by.clone());
+                capability_revocation_state.finalized_receipt_id =
+                    Some(record.finalized_receipt_id.clone());
+                capability_revocation_state
+                    .authority_records
+                    .insert(record.issuer_id.clone(), record.clone());
+                capability_revocation_state
+                    .authority_finality_proofs
+                    .insert(record.issuer_id.clone(), proof.clone());
+                Ok(())
+            }
             CapabilityAuthorizationEvent::AgentIdentityInstalled { agent_id, identity } => {
                 super::capability_authorization::validate_agent_identity(agent_id, identity)?;
                 let Some(agent) = self.state.agents.get(agent_id) else {

@@ -1,6 +1,210 @@
 use super::super::*;
+use ed25519_dalek::Signer;
 use oasis7_wasm_abi::{CapabilityAudience, CapabilityPresenter, CapabilitySubject};
 use serde_json::json;
+use std::collections::BTreeSet;
+
+fn authority_transition_with_revocations(
+    world: &World,
+    revoked_grant_ids: BTreeSet<String>,
+) -> (CapabilityAuthorityRecord, CapabilityAuthorityFinalityProof) {
+    let mut record = world
+        .capability_revocation_state()
+        .authority_records
+        .get(super::capability_grant_v2::ISSUER_ID)
+        .cloned()
+        .expect("fixture authority record");
+    record.revocation_epoch = record.revocation_epoch.saturating_add(1);
+    record.revoked_grant_ids = revoked_grant_ids;
+
+    let mut proof = world
+        .capability_revocation_state()
+        .authority_finality_proofs
+        .get(super::capability_grant_v2::ISSUER_ID)
+        .cloned()
+        .expect("fixture authority proof");
+    proof.binding = CapabilityAuthorityFinalityBinding::from_record(&record)
+        .expect("bind authority transition proof");
+    proof.signatures.clear();
+    for (node_id, signing_key) in [
+        (
+            super::capability_grant_v2::ISSUER_ID,
+            super::capability_grant_v2::capability_issuer_signing_key(),
+        ),
+        (
+            super::capability_grant_v2::FINALITY_SIGNER_2,
+            super::capability_grant_v2::capability_finality_signing_key_2(),
+        ),
+    ] {
+        let payload = proof
+            .signing_payload_v1(node_id)
+            .expect("encode authority transition proof payload");
+        let signature = signing_key.sign(payload.as_slice());
+        proof.signatures.insert(
+            node_id.to_string(),
+            format!(
+                "{}{}",
+                CapabilityAuthorityFinalityProof::SIGNATURE_PREFIX_ED25519_V1,
+                hex::encode(signature.to_bytes())
+            ),
+        );
+    }
+    (record, proof)
+}
+
+#[test]
+fn capability_authority_record_with_finality_proof_publication_failure_is_fully_unpublished() {
+    let mut world = super::capability_grant_v2::fixture_world();
+    let revoked_grant_id = world
+        .capability_grants_v2()
+        .keys()
+        .next()
+        .cloned()
+        .expect("fixture has a grant to revoke");
+    let (record, proof) =
+        authority_transition_with_revocations(&world, BTreeSet::from([revoked_grant_id]));
+
+    let snapshot_before = world.snapshot();
+    let replay_manifest_hash = util::hash_json(&snapshot_before.manifest)
+        .expect("hash capability authority replay manifest");
+    let replay_snapshot_before = world.snapshot_with_chain_resource_context(
+        ChainResourceDerivationContext {
+            world_id: super::capability_grant_v2::WORLD_ID,
+            chain_id: "runtime-chain",
+            genesis_ref: None,
+            created_at_height: snapshot_before.journal_len as u64,
+            manifest_height: snapshot_before.journal_len as u64,
+            commit_block_hash: None,
+            tick: snapshot_before.state.time,
+        },
+        replay_manifest_hash.clone(),
+        replay_manifest_hash,
+    );
+    assert_eq!(
+        replay_snapshot_before.chain_resource_manifest.world_id,
+        super::capability_grant_v2::WORLD_ID,
+        "authority replay must use a snapshot bound to world.test"
+    );
+    let journal_before = world.journal().clone();
+    let event_id_before = snapshot_before.last_event_id;
+    let event_id_era_before = snapshot_before.event_id_era;
+    let revocation_state_before = world.capability_revocation_state().clone();
+    let authorization_root_before = world.capability_authorization_root().to_string();
+    let consensus_before = world.tick_consensus_records().to_vec();
+    let rejection_audit_before = world.tick_consensus_rejection_audit_events().to_vec();
+    let backpressure_before = world.runtime_backpressure_stats().clone();
+    let mut expected_world = world.clone();
+    expected_world
+        .install_capability_authority_record_with_finality_proof(record.clone(), proof.clone())
+        .expect("proof/world checks pass for control authority transition");
+
+    // A proof-bearing authority transition must use the staged authorization
+    // publication seam. A post-prepare failure cannot expose a partial trust
+    // root, revocation state, event id, journal entry, consensus record, or
+    // deterministic backpressure update.
+    world.fail_next_append_after_publication_prepare_for_test();
+    let error = world
+        .install_capability_authority_record_with_finality_proof(record.clone(), proof.clone())
+        .expect_err("post-prepare failure must abort authority installation");
+    assert!(matches!(
+        error,
+        WorldError::ResourceBalanceInvalid { ref reason }
+            if reason.contains("publication preparation")
+    ));
+
+    assert_eq!(world.snapshot(), snapshot_before);
+    assert_eq!(world.journal(), &journal_before);
+    assert_eq!(world.snapshot().last_event_id, event_id_before);
+    assert_eq!(world.snapshot().event_id_era, event_id_era_before);
+    assert_eq!(
+        world.capability_revocation_state(),
+        &revocation_state_before
+    );
+    assert_eq!(
+        world.capability_authorization_root(),
+        authorization_root_before
+    );
+    assert_eq!(world.tick_consensus_records(), consensus_before.as_slice());
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        rejection_audit_before.as_slice()
+    );
+    assert_eq!(world.runtime_backpressure_stats(), &backpressure_before);
+
+    world
+        .install_capability_authority_record_with_finality_proof(record.clone(), proof.clone())
+        .expect("retry authority transition after one-shot failpoint");
+
+    assert_eq!(world.snapshot(), expected_world.snapshot());
+    assert_eq!(world.journal(), expected_world.journal());
+    assert_eq!(
+        world.capability_revocation_state(),
+        expected_world.capability_revocation_state()
+    );
+    assert_eq!(
+        world.capability_authorization_root(),
+        expected_world.capability_authorization_root()
+    );
+    assert_eq!(
+        world.tick_consensus_records(),
+        expected_world.tick_consensus_records()
+    );
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        expected_world.tick_consensus_rejection_audit_events()
+    );
+    assert_eq!(
+        world.runtime_backpressure_stats(),
+        expected_world.runtime_backpressure_stats()
+    );
+
+    let tail = &world.journal().events[journal_before.events.len()..];
+    assert_eq!(
+        tail.len(),
+        1,
+        "authority transition must publish one authorization event"
+    );
+    assert!(matches!(
+        &tail[0].body,
+        WorldEventBody::CapabilityAuthorization(
+            CapabilityAuthorizationEvent::AuthorityInstalledWithProof {
+                record: installed_record,
+                proof: installed_proof,
+            }
+        ) if installed_record == &record && installed_proof == &proof
+    ));
+
+    let replayed = World::from_snapshot(replay_snapshot_before.clone(), world.journal().clone())
+        .expect("replay successful authority transition");
+    assert_eq!(replayed.state(), world.state());
+    let mut expected_replay_snapshot = world.snapshot();
+    expected_replay_snapshot.chain_resource_manifest =
+        replay_snapshot_before.chain_resource_manifest;
+    expected_replay_snapshot.latest_chain_resource_delta =
+        replay_snapshot_before.latest_chain_resource_delta;
+    assert_eq!(replayed.snapshot(), expected_replay_snapshot);
+    assert_eq!(replayed.journal(), world.journal());
+    assert_eq!(
+        replayed.capability_revocation_state(),
+        world.capability_revocation_state()
+    );
+    assert_eq!(
+        replayed.capability_authorization_root(),
+        world.capability_authorization_root()
+    );
+    assert_eq!(
+        replayed.tick_consensus_records(),
+        world.tick_consensus_records()
+    );
+    assert_eq!(
+        replayed.tick_consensus_rejection_audit_events(),
+        world.tick_consensus_rejection_audit_events()
+    );
+    assert_eq!(
+        replayed.runtime_backpressure_stats(),
+        world.runtime_backpressure_stats()
+    );
+}
 
 #[test]
 fn capability_agent_identity_publication_failure_is_fully_unpublished() {

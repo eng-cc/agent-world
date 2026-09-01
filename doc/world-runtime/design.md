@@ -212,21 +212,25 @@ Phase 3 authority/schema migration rather than an inferred `intent_id` rule.
 
 The first bounded CapabilityAuthorization slices cover public grant
 registration, invocation-context installation, budget-account installation,
-and agent-identity installation. For a System subject, the
+agent-identity installation, and proof-bearing authority/revocation
+administration. For a System subject, the
 optional `SystemIdentityInstalled` and required `InvocationContextInstalled`
 events are prepared as one typed batch; `BudgetAccountInstalled` uses the same
 batch with a typed budget-map projection, while `GrantRegistered` stages the
-canonical grant JSON map. Preparation projects only the affected authorization
-maps, previews event ids and eras, retained journal/backpressure accounting,
-the final authorization root, and one tick-consensus candidate;
-installation then publishes them without a fallible step. A post-prepare failure
-therefore publishes no system/agent identity, context, grant, or budget account and consumes no
+canonical grant JSON map. `AuthorityInstalledWithProof` reuses the canonical
+reducer transition validator while staging the authority record, proof,
+revocation, supersession, and finalized receipt projections; revoke,
+supersede, and trust-root rotation delegate to this seam. Preparation projects
+only the affected authorization maps, previews event ids and eras, retained
+journal/backpressure accounting, the final authorization root, and one
+tick-consensus candidate; installation then publishes them without a fallible
+step. A post-prepare failure therefore publishes no system/agent identity,
+context, grant, budget account, or authority transition and consumes no
 allocator, journal, consensus, root, or deterministic metric state. Identical
 installation remains a no-op, and committed events retain the existing replay
-reducers and event order. These slices do not yet migrate proof-bearing
-authority/revocation administration or command/receipt publication paths, so
-CapabilityAuthorization and the overall ExecutionTransaction capability remain
-`partial`.
+reducers and event order. These slices do not yet migrate command/receipt
+publication paths, so CapabilityAuthorization and the overall
+ExecutionTransaction capability remain `partial`.
 
 Each retryable public root operation binds a stable operation id to world,
 parent identity, canonical input hash, manifest/activation binding, and target.
