@@ -210,21 +210,23 @@ outbox acknowledgement. The current DTO lacks the approved
 hash ledger, so same-receipt retry and conflicting-receipt rejection remain a
 Phase 3 authority/schema migration rather than an inferred `intent_id` rule.
 
-The first bounded CapabilityAuthorization slices cover public
-invocation-context and budget-account installation. For a System subject, the
+The first bounded CapabilityAuthorization slices cover public grant
+registration, invocation-context installation, and budget-account installation.
+For a System subject, the
 optional `SystemIdentityInstalled` and required `InvocationContextInstalled`
 events are prepared as one typed batch; `BudgetAccountInstalled` uses the same
-batch with a typed budget-map projection. Preparation projects only the affected
-authorization maps, previews event ids and eras, retained journal/backpressure
-accounting, the final authorization root, and one tick-consensus candidate;
+batch with a typed budget-map projection, while `GrantRegistered` stages the
+canonical grant JSON map. Preparation projects only the affected authorization
+maps, previews event ids and eras, retained journal/backpressure accounting,
+the final authorization root, and one tick-consensus candidate;
 installation then publishes them without a fallible step. A post-prepare failure
 therefore publishes no identity, context, or budget account and consumes no
 allocator, journal, consensus, root, or deterministic metric state. Identical
 installation remains a no-op, and committed events retain the existing replay
 reducers and event order. These slices do not yet migrate agent identity,
-grant-registration, command/receipt, or authorization-admin publication paths,
-so CapabilityAuthorization and the overall ExecutionTransaction capability
-remain `partial`.
+command/receipt, or authorization-admin publication paths, so
+CapabilityAuthorization and the overall ExecutionTransaction capability remain
+`partial`.
 
 Each retryable public root operation binds a stable operation id to world,
 parent identity, canonical input hash, manifest/activation binding, and target.

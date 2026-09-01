@@ -1,11 +1,12 @@
 //! Atomic publication for trusted capability-authorization transitions.
 //!
-//! Capability installation has two coupled durable projections for System
-//! subjects: the system identity and its invocation context.  This module
-//! prepares both event envelopes, the retained journal, the final
-//! authorization projection/root, and one tick-consensus candidate before
-//! installing any of those effects.
+//! Capability installation has coupled durable authorization projections,
+//! including the grant registry, system identity, invocation context, and
+//! budget account. This module prepares their event envelopes, the retained
+//! journal, the final authorization root, and one tick-consensus candidate
+//! before installing any of those effects.
 
+use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 
 use super::super::capability_authorization::{
@@ -18,6 +19,7 @@ use super::super::{
 use super::World;
 
 struct PreparedCapabilityAuthorizationBatch {
+    capability_grants_v2: BTreeMap<String, JsonValue>,
     capability_revocation_state: CapabilityRevocationState,
     capability_invocation_contexts: BTreeMap<String, CapabilityInvocationContext>,
     capability_budget_accounts: BTreeMap<String, CapabilityBudgetAccount>,
@@ -43,6 +45,7 @@ impl World {
         }
 
         let PreparedCapabilityAuthorizationBatch {
+            capability_grants_v2,
             capability_revocation_state,
             capability_invocation_contexts,
             capability_budget_accounts,
@@ -59,6 +62,7 @@ impl World {
             .map(|event| event.id)
             .expect("capability authorization publication contains an event");
 
+        self.capability_grants_v2 = capability_grants_v2;
         self.capability_revocation_state = capability_revocation_state;
         self.capability_invocation_contexts = capability_invocation_contexts;
         self.capability_budget_accounts = capability_budget_accounts;
@@ -84,9 +88,10 @@ impl World {
             });
         }
 
-        // Stage only the two authorization projections touched by this batch.
+        // Stage only the authorization projections touched by this batch.
         // In particular, do not clone World or WorldState: those contain
         // process-local caches and the full simulation state.
+        let mut capability_grants_v2 = self.capability_grants_v2.clone();
         let mut capability_revocation_state = self.capability_revocation_state.clone();
         let mut capability_invocation_contexts = self.capability_invocation_contexts.clone();
         let mut capability_budget_accounts = self.capability_budget_accounts.clone();
@@ -97,6 +102,7 @@ impl World {
         for authorization_event in events {
             self.validate_and_project_capability_authorization_event(
                 &authorization_event,
+                &mut capability_grants_v2,
                 &mut capability_revocation_state,
                 &mut capability_invocation_contexts,
                 &mut capability_budget_accounts,
@@ -138,12 +144,14 @@ impl World {
         )?;
         let capability_authorization_root = self
             .compute_capability_authorization_root_with_projection(
+                &capability_grants_v2,
                 &capability_revocation_state,
                 &capability_invocation_contexts,
                 &capability_budget_accounts,
             )?;
 
         Ok(PreparedCapabilityAuthorizationBatch {
+            capability_grants_v2,
             capability_revocation_state,
             capability_invocation_contexts,
             capability_budget_accounts,
@@ -160,11 +168,24 @@ impl World {
     fn validate_and_project_capability_authorization_event(
         &self,
         event: &CapabilityAuthorizationEvent,
+        capability_grants_v2: &mut BTreeMap<String, JsonValue>,
         capability_revocation_state: &mut CapabilityRevocationState,
         capability_invocation_contexts: &mut BTreeMap<String, CapabilityInvocationContext>,
         capability_budget_accounts: &mut BTreeMap<String, CapabilityBudgetAccount>,
     ) -> Result<(), WorldError> {
         match event {
+            CapabilityAuthorizationEvent::GrantRegistered { grant } => {
+                let encoded = serde_json::to_value(grant)?;
+                if let Some(existing) = capability_grants_v2.get(&grant.grant_id)
+                    && existing != &encoded
+                {
+                    return Err(super::capability_authorization::deny(
+                        "immutable grant body changed",
+                    ));
+                }
+                capability_grants_v2.insert(grant.grant_id.clone(), encoded);
+                Ok(())
+            }
             CapabilityAuthorizationEvent::SystemIdentityInstalled { system_id, epoch } => {
                 if system_id.trim().is_empty() || *epoch > self.state.time {
                     return Err(super::capability_authorization::deny(

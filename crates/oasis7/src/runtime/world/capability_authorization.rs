@@ -202,12 +202,9 @@ impl World {
         {
             return Err(deny("immutable grant body changed"));
         }
-        self.append_event(
-            WorldEventBody::CapabilityAuthorization(
-                CapabilityAuthorizationEvent::GrantRegistered { grant },
-            ),
-            None,
-        )?;
+        self.append_capability_authorization_event_batch(vec![
+            CapabilityAuthorizationEvent::GrantRegistered { grant },
+        ])?;
         Ok(())
     }
 
