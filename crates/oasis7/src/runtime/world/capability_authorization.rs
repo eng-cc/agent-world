@@ -139,12 +139,9 @@ impl World {
         if self.capability_budget_accounts.get(&key) == Some(&account) {
             return Ok(());
         }
-        self.append_event(
-            WorldEventBody::CapabilityAuthorization(
-                CapabilityAuthorizationEvent::BudgetAccountInstalled { key, account },
-            ),
-            None,
-        )?;
+        self.append_capability_authorization_event_batch(vec![
+            CapabilityAuthorizationEvent::BudgetAccountInstalled { key, account },
+        ])?;
         Ok(())
     }
 

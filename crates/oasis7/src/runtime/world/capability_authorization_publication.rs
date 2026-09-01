@@ -9,7 +9,7 @@
 use std::collections::BTreeMap;
 
 use super::super::capability_authorization::{
-    CapabilityInvocationContext, CapabilityRevocationState,
+    CapabilityBudgetAccount, CapabilityInvocationContext, CapabilityRevocationState,
 };
 use super::super::{
     CapabilityAuthorizationEvent, TickConsensusRecord, WorldError, WorldEvent, WorldEventBody,
@@ -20,6 +20,7 @@ use super::World;
 struct PreparedCapabilityAuthorizationBatch {
     capability_revocation_state: CapabilityRevocationState,
     capability_invocation_contexts: BTreeMap<String, CapabilityInvocationContext>,
+    capability_budget_accounts: BTreeMap<String, CapabilityBudgetAccount>,
     capability_authorization_root: String,
     events: Vec<WorldEvent>,
     next_event_id: WorldEventId,
@@ -44,6 +45,7 @@ impl World {
         let PreparedCapabilityAuthorizationBatch {
             capability_revocation_state,
             capability_invocation_contexts,
+            capability_budget_accounts,
             capability_authorization_root,
             events,
             next_event_id,
@@ -59,6 +61,7 @@ impl World {
 
         self.capability_revocation_state = capability_revocation_state;
         self.capability_invocation_contexts = capability_invocation_contexts;
+        self.capability_budget_accounts = capability_budget_accounts;
         self.capability_authorization_root = capability_authorization_root;
         self.next_event_id = next_event_id;
         self.next_event_id_era = next_event_id_era;
@@ -86,6 +89,7 @@ impl World {
         // process-local caches and the full simulation state.
         let mut capability_revocation_state = self.capability_revocation_state.clone();
         let mut capability_invocation_contexts = self.capability_invocation_contexts.clone();
+        let mut capability_budget_accounts = self.capability_budget_accounts.clone();
         let mut prepared_events = Vec::with_capacity(events.len());
         let mut next_event_id = self.next_event_id;
         let mut next_event_id_era = self.next_event_id_era;
@@ -95,6 +99,7 @@ impl World {
                 &authorization_event,
                 &mut capability_revocation_state,
                 &mut capability_invocation_contexts,
+                &mut capability_budget_accounts,
             )?;
             let (event_id, next_id, next_era) =
                 Self::preview_next_event_id(next_event_id, next_event_id_era);
@@ -135,11 +140,13 @@ impl World {
             .compute_capability_authorization_root_with_projection(
                 &capability_revocation_state,
                 &capability_invocation_contexts,
+                &capability_budget_accounts,
             )?;
 
         Ok(PreparedCapabilityAuthorizationBatch {
             capability_revocation_state,
             capability_invocation_contexts,
+            capability_budget_accounts,
             capability_authorization_root,
             events: prepared_events,
             next_event_id,
@@ -155,6 +162,7 @@ impl World {
         event: &CapabilityAuthorizationEvent,
         capability_revocation_state: &mut CapabilityRevocationState,
         capability_invocation_contexts: &mut BTreeMap<String, CapabilityInvocationContext>,
+        capability_budget_accounts: &mut BTreeMap<String, CapabilityBudgetAccount>,
     ) -> Result<(), WorldError> {
         match event {
             CapabilityAuthorizationEvent::SystemIdentityInstalled { system_id, epoch } => {
@@ -196,6 +204,27 @@ impl World {
                     ));
                 }
                 capability_invocation_contexts.insert(key.clone(), context.clone());
+                Ok(())
+            }
+            CapabilityAuthorizationEvent::BudgetAccountInstalled { key, account } => {
+                super::capability_authorization_state::validate_budget_account(account)?;
+                let expected_key = super::capability_authorization_state::capability_budget_key(
+                    &account.subject,
+                    &account.grant_id,
+                )?;
+                if key != &expected_key {
+                    return Err(super::capability_authorization::deny(
+                        "capability budget journal key does not match account",
+                    ));
+                }
+                if let Some(existing) = capability_budget_accounts.get(key)
+                    && existing != account
+                {
+                    return Err(super::capability_authorization::deny(
+                        "capability budget account is immutable",
+                    ));
+                }
+                capability_budget_accounts.insert(key.clone(), account.clone());
                 Ok(())
             }
             _ => Err(super::capability_authorization::deny(

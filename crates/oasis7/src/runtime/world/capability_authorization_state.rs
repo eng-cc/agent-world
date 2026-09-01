@@ -85,6 +85,7 @@ impl World {
         self.compute_capability_authorization_root_with_projection(
             &self.capability_revocation_state,
             &self.capability_invocation_contexts,
+            &self.capability_budget_accounts,
         )
     }
 
@@ -95,12 +96,13 @@ impl World {
             String,
             CapabilityInvocationContext,
         >,
+        capability_budget_accounts: &std::collections::BTreeMap<String, CapabilityBudgetAccount>,
     ) -> Result<String, WorldError> {
         canonical_hash(&CapabilityAuthorizationRootBody {
             grants: &self.capability_grants_v2,
             revocation: capability_revocation_state,
             invocation_contexts: capability_invocation_contexts,
-            budget_accounts: &self.capability_budget_accounts,
+            budget_accounts: capability_budget_accounts,
             nonce_records: &self.capability_nonce_records,
             receipts: &self.capability_authorization_receipts,
             effect_receipt_links: &self.capability_effect_receipt_links,
