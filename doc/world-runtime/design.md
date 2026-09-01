@@ -193,6 +193,23 @@ intents are not evictable. This slice does not make legacy nested
 `EffectQueued`, receipt ingestion, durable outbox, or replay allocation part of
 the unified root buffer yet.
 
+The next Phase 1 stateful slice migrates public receipt ingestion away from a
+cloned `World`. A typed prepared receipt delta validates the known intent,
+previews the optional authorization-closure event, computes the authorization
+audit/link/root overlay, signs or verifies against the virtual closure journal,
+removes the pending or inflight intent, and prepares the final receipt event,
+journal limit, event allocator, deterministic metrics, and one consensus
+candidate. The install step is infallible. A signature, authorization,
+consensus, or post-prepare failure therefore closes no link, consumes no queue
+entry, and publishes no event or sequence. Existing event order, `CausedBy`,
+receipt DTO, and replay-only reducer behavior remain compatible.
+
+This receipt slice does not establish durable duplicate-receipt idempotency or
+outbox acknowledgement. The current DTO lacks the approved
+`(world_id, execution_receipt_id, effect_id)` identity and canonical descriptor
+hash ledger, so same-receipt retry and conflicting-receipt rejection remain a
+Phase 3 authority/schema migration rather than an inferred `intent_id` rule.
+
 Each retryable public root operation binds a stable operation id to world,
 parent identity, canonical input hash, manifest/activation binding, and target.
 The same identity and binding returns the original disposition without new

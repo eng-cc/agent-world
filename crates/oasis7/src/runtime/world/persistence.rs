@@ -701,9 +701,7 @@ impl World {
             manifest_hash.clone(),
             manifest_hash,
         );
-        if self.chain_resource_manifest.is_schema_current()
-            && self.chain_resource_manifest.world_id != "unbound"
-        {
+        if chain_resource_manifest_has_external_context(&self.chain_resource_manifest) {
             snapshot.chain_resource_manifest = self.chain_resource_manifest.clone();
             snapshot.latest_chain_resource_delta = self.latest_chain_resource_delta.clone();
         }
@@ -745,7 +743,12 @@ impl World {
             module_limits_max: self.module_limits_max.clone(),
             state: self.state.clone(),
             journal_len: self.journal.len(),
-            last_event_id: self.next_event_id.saturating_sub(1),
+            last_event_id: self
+                .journal
+                .events
+                .last()
+                .map(|event| event.id)
+                .unwrap_or_else(|| self.next_event_id.saturating_sub(1)),
             journal_commitment: self.journal.commitment().unwrap_or_default(),
             event_id_era: self.next_event_id_era,
             next_action_id: self.next_action_id,
@@ -1042,8 +1045,17 @@ impl World {
         world.snapshot_catalog = snapshot.snapshot_catalog;
         world.chain_resource_manifest = snapshot.chain_resource_manifest;
         world.latest_chain_resource_delta = snapshot.latest_chain_resource_delta;
-        world.next_event_id = snapshot.last_event_id.saturating_add(1).max(1);
-        world.next_event_id_era = snapshot.event_id_era;
+        if snapshot.journal_len > 0 && snapshot.last_event_id == u64::MAX {
+            // A checkpoint whose retained prefix ends at the rolling maximum
+            // resumes in the next event-id era.  Keep the legacy synthetic
+            // empty-journal fixture behavior (first allocation is MAX), but
+            // make a real rollover tail replayable and deterministic.
+            world.next_event_id = 1;
+            world.next_event_id_era = snapshot.event_id_era.saturating_add(1);
+        } else {
+            world.next_event_id = snapshot.last_event_id.saturating_add(1).max(1);
+            world.next_event_id_era = snapshot.event_id_era;
+        }
         world.next_action_id = snapshot.next_action_id.max(1);
         world.next_action_id_era = snapshot.action_id_era;
         world.next_intent_id = snapshot.next_intent_id.max(1);

@@ -93,6 +93,30 @@ impl World {
         })
         .map_err(|error| deny(format!("authorization root: {error}")))
     }
+
+    pub(super) fn compute_capability_authorization_root_with_effect_receipt_commit(
+        &self,
+        authorization_receipt: &CapabilityAuthorizationAuditReceipt,
+        intent_id: &str,
+    ) -> Result<String, WorldError> {
+        let mut receipts = self.capability_authorization_receipts.clone();
+        receipts.insert(
+            authorization_receipt.receipt_id.clone(),
+            authorization_receipt.clone(),
+        );
+        let mut effect_receipt_links = self.capability_effect_receipt_links.clone();
+        effect_receipt_links.remove(intent_id);
+        canonical_hash(&CapabilityAuthorizationRootBody {
+            grants: &self.capability_grants_v2,
+            revocation: &self.capability_revocation_state,
+            invocation_contexts: &self.capability_invocation_contexts,
+            budget_accounts: &self.capability_budget_accounts,
+            nonce_records: &self.capability_nonce_records,
+            receipts: &receipts,
+            effect_receipt_links: &effect_receipt_links,
+        })
+        .map_err(|error| deny(format!("authorization root: {error}")))
+    }
 }
 
 #[derive(Serialize)]

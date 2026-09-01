@@ -1,11 +1,27 @@
 use super::super::util::sha256_hex;
 use serde_json::Value as JsonValue;
+use std::collections::{BTreeMap, VecDeque};
 
+use super::super::capability_authorization::CapabilityAuthorizationAuditReceipt;
 use super::super::{
     CapabilityAuthorizationEvent, CausedBy, EffectIntent, EffectOrigin, EffectReceipt,
-    PolicyDecisionRecord, WorldError, WorldEventBody, WorldEventId,
+    PolicyDecisionRecord, WorldError, WorldEvent, WorldEventBody, WorldEventId,
 };
 use super::World;
+
+struct PreparedReceiptIngestion {
+    authorization_receipt_update: Option<CapabilityAuthorizationAuditReceipt>,
+    authorization_link_removed: Option<String>,
+    capability_authorization_root: Option<String>,
+    pending_effects: VecDeque<EffectIntent>,
+    inflight_effects: BTreeMap<String, EffectIntent>,
+    events: Vec<WorldEvent>,
+    next_event_id: WorldEventId,
+    next_event_id_era: u64,
+    journal_events: Vec<WorldEvent>,
+    journal_events_evicted: u64,
+    consensus_record: super::super::TickConsensusRecord,
+}
 
 impl World {
     // ---------------------------------------------------------------------
@@ -141,19 +157,19 @@ impl World {
     }
 
     pub fn ingest_receipt(&mut self, receipt: EffectReceipt) -> Result<WorldEventId, WorldError> {
-        // Receipt ingestion also closes the durable authorization link for a
-        // trusted command effect.  Stage both the effect acknowledgement and
-        // the audit update so a malformed receipt cannot leave half a commit.
-        let mut staged = self.clone();
-        let event_id = staged.ingest_receipt_staged(receipt)?;
-        *self = staged;
-        Ok(event_id)
+        let prepared = self.prepare_receipt_ingestion(receipt)?;
+        if self.take_fail_next_append_after_publication_prepare_for_test() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "injected append_event failure after publication preparation".to_string(),
+            });
+        }
+        Ok(self.install_prepared_receipt_ingestion(prepared))
     }
 
-    fn ingest_receipt_staged(
-        &mut self,
+    fn prepare_receipt_ingestion(
+        &self,
         mut receipt: EffectReceipt,
-    ) -> Result<WorldEventId, WorldError> {
+    ) -> Result<PreparedReceiptIngestion, WorldError> {
         let known = self.inflight_effects.contains_key(&receipt.intent_id)
             || self
                 .pending_effects
@@ -165,42 +181,152 @@ impl World {
             });
         }
 
-        if let Some(link) = self.capability_effect_receipt_links.get(&receipt.intent_id) {
+        let mut authorization_receipt_update = None;
+        let mut authorization_link_removed = None;
+        let mut capability_authorization_root = None;
+        let closure_body = if let Some(link) =
+            self.capability_effect_receipt_links.get(&receipt.intent_id)
+        {
             let authorization_receipt_id = link.authorization_receipt_id.clone();
-            // Close the authorization link first.  The subsequent receipt
-            // signature is therefore anchored to a journal that already
-            // contains the durable authorization closure; a signed receipt
-            // cannot be replayed as if it predated that closure.
-            self.append_event(
-                WorldEventBody::CapabilityAuthorization(
-                    CapabilityAuthorizationEvent::EffectReceiptCommitted {
-                        intent_id: receipt.intent_id.clone(),
-                        authorization_receipt_id,
-                        effect_receipt_id: receipt.intent_id.clone(),
-                    },
-                ),
-                Some(CausedBy::Effect {
+            if authorization_receipt_id.trim().is_empty() {
+                return Err(WorldError::CapabilityAuthorizationDenied {
+                    reason: "effect receipt authorization link is missing its receipt id"
+                        .to_string(),
+                });
+            }
+            let audit = self
+                .capability_authorization_receipts
+                .get(&authorization_receipt_id)
+                .ok_or_else(|| WorldError::CapabilityAuthorizationDenied {
+                    reason: "effect receipt authorization link has no audit receipt".to_string(),
+                })?;
+            let mut audit_after = audit.clone();
+            if audit_after.committed_effect_receipt_id.is_none() {
+                audit_after.committed_effect_receipt_id = Some(receipt.intent_id.clone());
+            }
+            audit_after
+                .committed_effect_receipt_ids
+                .insert(receipt.intent_id.clone());
+            capability_authorization_root = Some(
+                self.compute_capability_authorization_root_with_effect_receipt_commit(
+                    &audit_after,
+                    receipt.intent_id.as_str(),
+                )?,
+            );
+            authorization_receipt_update = Some(audit_after);
+            authorization_link_removed = Some(receipt.intent_id.clone());
+            Some(WorldEventBody::CapabilityAuthorization(
+                CapabilityAuthorizationEvent::EffectReceiptCommitted {
+                    intent_id: receipt.intent_id.clone(),
+                    authorization_receipt_id,
+                    effect_receipt_id: receipt.intent_id.clone(),
+                },
+            ))
+        } else {
+            None
+        };
+
+        let mut pending_effects = self.pending_effects.clone();
+        let mut inflight_effects = self.inflight_effects.clone();
+        let _ = inflight_effects.remove(&receipt.intent_id);
+        pending_effects.retain(|intent| intent.intent_id != receipt.intent_id);
+
+        let mut events = Vec::with_capacity(2);
+        let mut next_event_id = self.next_event_id;
+        let mut next_event_id_era = self.next_event_id_era;
+        let mut journal_events = self.journal.events.clone();
+        let max_len = self.runtime_memory_limits.max_journal_events.max(1);
+        let mut journal_events_evicted = 0_u64;
+        if let Some(body) = closure_body {
+            let (event_id, next_id, next_era) =
+                Self::preview_next_event_id(next_event_id, next_event_id_era);
+            let event = WorldEvent {
+                id: event_id,
+                time: self.state.time,
+                caused_by: Some(CausedBy::Effect {
                     intent_id: receipt.intent_id.clone(),
                 }),
-            )?;
+                body,
+            };
+            journal_events.push(event.clone());
+            let overflow = journal_events.len().saturating_sub(max_len);
+            if overflow > 0 {
+                journal_events.drain(0..overflow);
+                journal_events_evicted = journal_events_evicted.saturating_add(overflow as u64);
+            }
+            events.push(event);
+            next_event_id = next_id;
+            next_event_id_era = next_era;
         }
 
-        self.finalize_receipt_signature(&mut receipt)?;
-        let event_id = self.append_event(
-            WorldEventBody::ReceiptAppended(receipt.clone()),
-            Some(CausedBy::Effect {
+        // Signature verification/signing deliberately observes the journal
+        // after the authorization closure and before ReceiptAppended.  This
+        // preserves the historical linked-receipt anchor order without
+        // installing either event or the queue removal early.
+        self.finalize_receipt_signature_with_journal(&mut receipt, journal_events.as_slice())?;
+        let (event_id, next_id, next_era) =
+            Self::preview_next_event_id(next_event_id, next_event_id_era);
+        let receipt_event = WorldEvent {
+            id: event_id,
+            time: self.state.time,
+            caused_by: Some(CausedBy::Effect {
                 intent_id: receipt.intent_id.clone(),
             }),
+            body: WorldEventBody::ReceiptAppended(receipt.clone()),
+        };
+        journal_events.push(receipt_event.clone());
+        events.push(receipt_event);
+        next_event_id = next_id;
+        next_event_id_era = next_era;
+
+        let overflow = journal_events.len().saturating_sub(max_len);
+        if overflow > 0 {
+            journal_events.drain(0..overflow);
+            journal_events_evicted = journal_events_evicted.saturating_add(overflow as u64);
+        }
+        let tick_events: Vec<WorldEvent> = journal_events
+            .iter()
+            .filter(|event| event.time == self.state.time)
+            .cloned()
+            .collect();
+        let state_root = self.current_state_root_hash()?;
+        let consensus_record = self.build_tick_consensus_record_for_prepared_events(
+            self.state.time,
+            tick_events.as_slice(),
+            state_root.clone(),
         )?;
-        Ok(event_id)
+        self.validate_tick_consensus_candidate_for_prepared_publication(
+            &consensus_record,
+            tick_events.as_slice(),
+            state_root.as_str(),
+        )?;
+
+        Ok(PreparedReceiptIngestion {
+            authorization_receipt_update,
+            authorization_link_removed,
+            capability_authorization_root,
+            pending_effects,
+            inflight_effects,
+            events,
+            next_event_id,
+            next_event_id_era,
+            journal_events,
+            journal_events_evicted,
+            consensus_record,
+        })
     }
 
-    fn finalize_receipt_signature(&self, receipt: &mut EffectReceipt) -> Result<(), WorldError> {
+    fn finalize_receipt_signature_with_journal(
+        &self,
+        receipt: &mut EffectReceipt,
+        journal_events: &[WorldEvent],
+    ) -> Result<(), WorldError> {
         let Some(signer) = &self.receipt_signer else {
             return Ok(());
         };
-        let consensus_height = self.next_receipt_consensus_height();
-        let receipts_root = self.compute_next_receipts_root(receipt, consensus_height)?;
+        let consensus_height = journal_events.len() as u64 + 1;
+        let receipts_root =
+            self.compute_next_receipts_root_for_events(receipt, consensus_height, journal_events)?;
 
         if let Some(signature) = &receipt.signature {
             signer.verify(
@@ -214,21 +340,17 @@ impl World {
             let signature = signer.sign(receipt, consensus_height, receipts_root.as_str())?;
             receipt.signature = Some(signature);
         }
-
         Ok(())
     }
 
-    fn next_receipt_consensus_height(&self) -> u64 {
-        self.journal.events.len() as u64 + 1
-    }
-
-    fn compute_next_receipts_root(
+    fn compute_next_receipts_root_for_events(
         &self,
         receipt: &EffectReceipt,
         consensus_height: u64,
+        events: &[WorldEvent],
     ) -> Result<String, WorldError> {
         let mut root = "0".repeat(64);
-        for (idx, event) in self.journal.events.iter().enumerate() {
+        for (idx, event) in events.iter().enumerate() {
             let WorldEventBody::ReceiptAppended(existing_receipt) = &event.body else {
                 continue;
             };
@@ -241,6 +363,37 @@ impl World {
             consensus_height,
             next_leaf_hash.as_str(),
         ))
+    }
+
+    fn install_prepared_receipt_ingestion(
+        &mut self,
+        prepared: PreparedReceiptIngestion,
+    ) -> WorldEventId {
+        if let Some(audit) = prepared.authorization_receipt_update {
+            self.capability_authorization_receipts
+                .insert(audit.receipt_id.clone(), audit);
+        }
+        if let Some(intent_id) = prepared.authorization_link_removed {
+            self.capability_effect_receipt_links.remove(&intent_id);
+        }
+        if let Some(root) = prepared.capability_authorization_root {
+            self.capability_authorization_root = root;
+        }
+        self.pending_effects = prepared.pending_effects;
+        self.inflight_effects = prepared.inflight_effects;
+        self.next_event_id = prepared.next_event_id;
+        self.next_event_id_era = prepared.next_event_id_era;
+        self.journal.events = prepared.journal_events;
+        self.runtime_backpressure_stats.journal_events_evicted = self
+            .runtime_backpressure_stats
+            .journal_events_evicted
+            .saturating_add(prepared.journal_events_evicted);
+        self.install_prepared_tick_consensus_record(prepared.consensus_record);
+        prepared
+            .events
+            .last()
+            .map(|event| event.id)
+            .expect("prepared receipt ingestion contains an event")
     }
 }
 

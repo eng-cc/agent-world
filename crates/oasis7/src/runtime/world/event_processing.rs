@@ -389,7 +389,21 @@ impl World {
             }
             self.apply_event_body_at(&event.body, event.time, Some(event.id))?;
             self.state.time = event.time;
-            self.next_event_id = self.next_event_id.max(event.id.saturating_add(1));
+            let (expected_event_id, next_event_id, next_event_id_era) =
+                Self::preview_next_event_id(self.next_event_id, self.next_event_id_era);
+            if expected_event_id == event.id {
+                self.next_event_id = next_event_id;
+                self.next_event_id_era = next_event_id_era;
+            } else {
+                // Legacy snapshots did not persist enough allocator context
+                // to prove the first event in a tail.  Preserve the old
+                // monotonic recovery fallback, while still advancing the era
+                // when a replayed event is the rolling maximum.
+                self.next_event_id = event.id.saturating_add(1).max(1);
+                if event.id == u64::MAX {
+                    self.next_event_id_era = self.next_event_id_era.saturating_add(1);
+                }
+            }
             replaying_tick = Some(event.time);
             previous_event_time = event.time;
         }

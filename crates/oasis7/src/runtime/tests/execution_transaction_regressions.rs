@@ -553,6 +553,134 @@ fn effect_publication_failure_after_prepare_is_fully_unpublished_and_retry_reuse
 }
 
 #[test]
+fn public_ingest_receipt_post_prepare_failure_is_fully_unpublished_and_retry_reuses_ids() {
+    let mut world = World::new().with_runtime_memory_limits(WorldRuntimeMemoryLimits {
+        max_pending_effects: 1,
+        max_inflight_effects: 1,
+        max_journal_events: 4,
+        ..WorldRuntimeMemoryLimits::default()
+    });
+    world.add_capability(CapabilityGrant::allow_all("cap_all"));
+    world.set_policy(PolicySet::allow_all());
+
+    let intent_id = world
+        .emit_effect(
+            "http.request",
+            serde_json::json!({"url": "https://example.com/receipt"}),
+            "cap_all",
+            EffectOrigin::System,
+        )
+        .expect("seed effect");
+    let intent = world
+        .take_next_effect()
+        .expect("dispatch effect to inflight");
+    assert_eq!(intent.intent_id, intent_id);
+
+    let snapshot_before = world.snapshot();
+    let journal_before = world.journal().clone();
+    let consensus_before = world.tick_consensus_records().to_vec();
+    let rejection_audit_before = world.tick_consensus_rejection_audit_events().to_vec();
+    let root_before = world.capability_authorization_root().to_string();
+    let backpressure_before = world.runtime_backpressure_stats().clone();
+    let receipt = EffectReceipt {
+        intent_id: intent_id.clone(),
+        status: "ok".to_string(),
+        payload: serde_json::json!({"status": 200}),
+        cost_cents: Some(5),
+        signature: None,
+    };
+    // A test-only clone is the exact live control. Restoring the bounded
+    // journal through `from_snapshot` also performs recovery normalization,
+    // which is outside this receipt retry assertion.
+    let mut expected_world = world.clone();
+
+    // The public receipt path must stage both the authorization closure (when
+    // present) and ReceiptAppended, then fail before installing any delta.
+    // This currently exposes the unmigrated legacy append path: the failpoint
+    // is ignored and ingest_receipt succeeds instead of returning the injected
+    // publication-preparation error.
+    world.fail_next_append_after_publication_prepare_for_test();
+    let error = world
+        .ingest_receipt(receipt.clone())
+        .expect_err("post-prepare failure must abort public receipt ingestion");
+    assert!(matches!(
+        error,
+        WorldError::ResourceBalanceInvalid { ref reason }
+            if reason.contains("publication preparation")
+    ));
+
+    assert_eq!(world.snapshot(), snapshot_before);
+    assert_eq!(
+        world.snapshot().last_event_id,
+        snapshot_before.last_event_id
+    );
+    assert_eq!(world.snapshot().event_id_era, snapshot_before.event_id_era);
+    assert_eq!(
+        world.snapshot().pending_effects,
+        snapshot_before.pending_effects
+    );
+    assert_eq!(
+        world.snapshot().inflight_effects,
+        snapshot_before.inflight_effects
+    );
+    assert_eq!(world.journal(), &journal_before);
+    assert_eq!(world.capability_authorization_root(), root_before);
+    assert_eq!(world.tick_consensus_records(), consensus_before.as_slice());
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        rejection_audit_before.as_slice()
+    );
+    assert_eq!(world.runtime_backpressure_stats(), &backpressure_before);
+
+    expected_world
+        .ingest_receipt(receipt.clone())
+        .expect("control receipt ingestion");
+    world
+        .ingest_receipt(receipt)
+        .expect("retry receipt after one-shot failpoint");
+    assert_eq!(world.snapshot(), expected_world.snapshot());
+    assert_eq!(world.journal(), expected_world.journal());
+    assert_eq!(
+        world.tick_consensus_records(),
+        expected_world.tick_consensus_records()
+    );
+    assert_eq!(
+        world.tick_consensus_rejection_audit_events(),
+        expected_world.tick_consensus_rejection_audit_events()
+    );
+    assert_eq!(
+        world.runtime_backpressure_stats(),
+        expected_world.runtime_backpressure_stats()
+    );
+
+    let replayed = World::from_snapshot(snapshot_before, world.journal().clone())
+        .expect("replay receipt ingestion");
+    assert_eq!(replayed.state(), world.state());
+    assert_eq!(replayed.pending_effects_len(), world.pending_effects_len());
+    assert_eq!(
+        replayed.snapshot().inflight_effects,
+        world.snapshot().inflight_effects
+    );
+    assert_eq!(
+        replayed.capability_authorization_root(),
+        world.capability_authorization_root()
+    );
+    assert_eq!(
+        replayed.snapshot().last_event_id,
+        world.snapshot().last_event_id
+    );
+    assert_eq!(
+        replayed.snapshot().event_id_era,
+        world.snapshot().event_id_era
+    );
+    assert_eq!(replayed.journal(), world.journal());
+    assert_eq!(
+        replayed.tick_consensus_records(),
+        world.tick_consensus_records()
+    );
+}
+
+#[test]
 fn effect_capability_preflight_failures_are_unpublished_and_precede_policy_or_queue() {
     for (case, cap_ref) in [
         ("missing", "cap.missing"),
