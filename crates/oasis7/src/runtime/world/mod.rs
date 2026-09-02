@@ -27,6 +27,7 @@ mod gameplay_layer;
 mod gameplay_loop;
 mod governance;
 mod governance_identity_penalty;
+mod governance_publication;
 mod governance_quote;
 mod war_declaration_quote;
 pub use war_declaration_quote::WarDeclarationQuote;

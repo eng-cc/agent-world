@@ -5,9 +5,8 @@ use super::super::{
     GovernanceIdentityPenaltyRecord, GovernanceIdentityPenaltyStatus,
     GovernanceIdentityProfileState, GovernanceIdentityStatus,
     GovernanceMainTokenControllerRegistry, GovernanceThresholdSignerPolicy,
-    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL, Manifest, ManifestPatch, ManifestUpdate, Proposal,
-    ProposalDecision, ProposalId, ProposalStatus, WorldError, WorldEventBody, WorldTime,
-    apply_manifest_patch,
+    MAIN_TOKEN_TREASURY_BUCKET_ECOSYSTEM_POOL, Manifest, ManifestPatch, Proposal, ProposalDecision,
+    ProposalId, ProposalStatus, WorldError, WorldEventBody, WorldTime, apply_manifest_patch,
 };
 use super::World;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
@@ -640,108 +639,13 @@ impl World {
         proposal_id: ProposalId,
         finality_certificate: &GovernanceFinalityCertificate,
     ) -> Result<String, WorldError> {
-        let mut staged = self.clone();
-        let applied_hash =
-            staged.apply_proposal_with_finality_inner(proposal_id, finality_certificate)?;
-        *self = staged;
-        Ok(applied_hash)
-    }
-
-    fn apply_proposal_with_finality_inner(
-        &mut self,
-        proposal_id: ProposalId,
-        finality_certificate: &GovernanceFinalityCertificate,
-    ) -> Result<String, WorldError> {
-        let proposal = self
-            .proposals
-            .get(&proposal_id)
-            .ok_or(WorldError::ProposalNotFound { proposal_id })?;
-        let (manifest, actor, approved_manifest_hash) = match &proposal.status {
-            ProposalStatus::Approved { manifest_hash, .. } => (
-                proposal.manifest.clone(),
-                proposal.author.clone(),
-                manifest_hash.clone(),
-            ),
-            other => {
-                return Err(WorldError::ProposalInvalidState {
-                    proposal_id,
-                    expected: "approved".to_string(),
-                    found: other.label(),
-                });
-            }
-        };
-        if self.is_governance_emergency_brake_active() {
-            return Err(WorldError::GovernancePolicyInvalid {
-                reason: format!(
-                    "governance apply blocked by emergency brake until_tick={}",
-                    self.governance_emergency_brake_until_tick
-                        .unwrap_or(self.state.time)
-                ),
+        let prepared = self.prepare_proposal_with_finality(proposal_id, finality_certificate)?;
+        if self.take_fail_next_append_after_publication_prepare_for_test() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "injected append_event failure after publication preparation".to_string(),
             });
         }
-        if let Some(not_before_tick) = proposal.not_before_tick {
-            if self.state.time < not_before_tick {
-                return Err(WorldError::GovernancePolicyInvalid {
-                    reason: format!(
-                        "proposal_id={} timelock pending current_tick={} not_before_tick={}",
-                        proposal_id, self.state.time, not_before_tick
-                    ),
-                });
-            }
-        }
-        if let Some(activate_epoch) = proposal.activate_epoch {
-            let current_epoch = self.current_governance_epoch();
-            if current_epoch < activate_epoch {
-                return Err(WorldError::GovernancePolicyInvalid {
-                    reason: format!(
-                        "proposal_id={} activation epoch pending current_epoch={} activate_epoch={}",
-                        proposal_id, current_epoch, activate_epoch
-                    ),
-                });
-            }
-        }
-
-        let module_changes = manifest.module_changes()?;
-        if let Some(changes) = &module_changes {
-            self.validate_module_changes(changes)?;
-        }
-        let applied_manifest = if module_changes.is_some() {
-            manifest.without_module_changes()?
-        } else {
-            manifest.clone()
-        };
-        let proposal_manifest_hash = hash_json(&manifest)?;
-        if proposal_manifest_hash != approved_manifest_hash {
-            return Err(WorldError::GovernanceFinalityInvalid {
-                reason: "approved manifest hash drift".to_string(),
-            });
-        }
-        let applied_hash = hash_json(&applied_manifest)?;
-        let finality_epoch_id = self.current_governance_epoch();
-        self.validate_governance_finality_certificate(
-            proposal_id,
-            approved_manifest_hash.as_str(),
-            finality_epoch_id,
-            finality_certificate,
-        )?;
-
-        if let Some(changes) = module_changes {
-            self.apply_module_changes(proposal_id, &changes, &actor)?;
-        }
-        let update = ManifestUpdate {
-            manifest: applied_manifest,
-            manifest_hash: applied_hash.clone(),
-        };
-        self.append_event(WorldEventBody::ManifestUpdated(update), None)?;
-        let event = GovernanceEvent::Applied {
-            proposal_id,
-            manifest_hash: Some(applied_hash.clone()),
-            consensus_height: Some(finality_certificate.consensus_height),
-            threshold: Some(finality_certificate.effective_min_unique_signers()),
-            signer_node_ids: finality_certificate.signatures.keys().cloned().collect(),
-        };
-        self.append_event(WorldEventBody::Governance(event), None)?;
-        Ok(applied_hash)
+        Ok(prepared.install(self))
     }
 
     pub(super) fn allocate_next_governance_identity_penalty_id(&mut self) -> u64 {
