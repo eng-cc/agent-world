@@ -190,6 +190,32 @@ pub struct LogisticsSlaMetrics {
 }
 
 impl LogisticsSlaMetrics {
+    fn record_completion(
+        &mut self,
+        expected_ready_at: WorldTime,
+        completed_at: WorldTime,
+        priority: MaterialTransitPriority,
+    ) {
+        self.completed_transits = self.completed_transits.saturating_add(1);
+        if priority == MaterialTransitPriority::Urgent {
+            self.urgent_completed_transits = self.urgent_completed_transits.saturating_add(1);
+        }
+        if completed_at > expected_ready_at {
+            let delay = completed_at.saturating_sub(expected_ready_at);
+            self.breached_transits = self.breached_transits.saturating_add(1);
+            self.total_delay_ticks = self.total_delay_ticks.saturating_add(delay);
+            if priority == MaterialTransitPriority::Urgent {
+                self.urgent_breached_transits = self.urgent_breached_transits.saturating_add(1);
+                self.urgent_total_delay_ticks = self.urgent_total_delay_ticks.saturating_add(delay);
+            }
+        } else {
+            self.fulfilled_transits = self.fulfilled_transits.saturating_add(1);
+            if priority == MaterialTransitPriority::Urgent {
+                self.urgent_fulfilled_transits = self.urgent_fulfilled_transits.saturating_add(1);
+            }
+        }
+    }
+
     pub fn breach_rate(&self) -> f64 {
         if self.completed_transits == 0 {
             return 0.0;
@@ -835,56 +861,6 @@ impl World {
         self.pending_effects.push_back(intent);
         self.enforce_pending_effect_limit();
         Ok(())
-    }
-
-    pub(super) fn record_logistics_sla_completion(
-        &mut self,
-        expected_ready_at: WorldTime,
-        completed_at: WorldTime,
-        priority: MaterialTransitPriority,
-    ) {
-        self.logistics_sla_metrics.completed_transits = self
-            .logistics_sla_metrics
-            .completed_transits
-            .saturating_add(1);
-        if priority == MaterialTransitPriority::Urgent {
-            self.logistics_sla_metrics.urgent_completed_transits = self
-                .logistics_sla_metrics
-                .urgent_completed_transits
-                .saturating_add(1);
-        }
-        if completed_at > expected_ready_at {
-            let delay = completed_at.saturating_sub(expected_ready_at);
-            self.logistics_sla_metrics.breached_transits = self
-                .logistics_sla_metrics
-                .breached_transits
-                .saturating_add(1);
-            self.logistics_sla_metrics.total_delay_ticks = self
-                .logistics_sla_metrics
-                .total_delay_ticks
-                .saturating_add(delay);
-            if priority == MaterialTransitPriority::Urgent {
-                self.logistics_sla_metrics.urgent_breached_transits = self
-                    .logistics_sla_metrics
-                    .urgent_breached_transits
-                    .saturating_add(1);
-                self.logistics_sla_metrics.urgent_total_delay_ticks = self
-                    .logistics_sla_metrics
-                    .urgent_total_delay_ticks
-                    .saturating_add(delay);
-            }
-        } else {
-            self.logistics_sla_metrics.fulfilled_transits = self
-                .logistics_sla_metrics
-                .fulfilled_transits
-                .saturating_add(1);
-            if priority == MaterialTransitPriority::Urgent {
-                self.logistics_sla_metrics.urgent_fulfilled_transits = self
-                    .logistics_sla_metrics
-                    .urgent_fulfilled_transits
-                    .saturating_add(1);
-            }
-        }
     }
 
     pub(super) fn refresh_threat_heatmap(&mut self) {
