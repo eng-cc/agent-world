@@ -565,9 +565,9 @@ impl World {
         Ok(emitted)
     }
 
-    pub(super) fn process_factory_depreciation(&mut self) -> Result<Vec<WorldEvent>, WorldError> {
+    fn prepare_factory_depreciation_event_bodies(&self) -> Vec<WorldEventBody> {
         let now = self.state.time;
-        let mut emitted = Vec::new();
+        let mut prepared = Vec::new();
         let mut factories: Vec<_> = self.state.factories.values().cloned().collect();
         factories.sort_by(|lhs, rhs| lhs.factory_id.cmp(&rhs.factory_id));
         let mut active_jobs_by_factory = BTreeMap::<String, i64>::new();
@@ -623,15 +623,28 @@ impl World {
                 continue;
             }
 
-            self.append_event(
-                WorldEventBody::Domain(DomainEvent::FactoryDurabilityChanged {
+            prepared.push(WorldEventBody::Domain(
+                DomainEvent::FactoryDurabilityChanged {
                     factory_id: factory.factory_id.clone(),
                     previous_durability_ppm: current,
                     durability_ppm,
                     reason: FACTORY_DEPRECIATION_REASON.to_string(),
-                }),
-                None,
-            )?;
+                },
+            ));
+        }
+        prepared
+    }
+
+    #[cfg(test)]
+    pub(crate) fn prepare_factory_depreciation_event_bodies_for_test(&self) -> Vec<WorldEventBody> {
+        self.prepare_factory_depreciation_event_bodies()
+    }
+
+    pub(super) fn process_factory_depreciation(&mut self) -> Result<Vec<WorldEvent>, WorldError> {
+        let prepared = self.prepare_factory_depreciation_event_bodies();
+        let mut emitted = Vec::with_capacity(prepared.len());
+        for body in prepared {
+            self.append_event(body, None)?;
             if let Some(event) = self.journal.events.last() {
                 emitted.push(event.clone());
             }
