@@ -68,6 +68,8 @@ restricted starter-grant expiry 也已采用相同 nested precursor：基于 imm
 
 到期 material transit completion 也先在 immutable world view 上按 `(ready_at, priority, job_id)` 固定完成事件、loss/received 结果与 SLA metrics 投影；只有全部事件经 canonical `append_event` 成功后才安装 metrics 投影。该 seam 保留 urgent/standard 排序与 saturating counter 语义，但仍依赖外层 step rollback 来覆盖多事件 publication failure，不代表独立 root batch commit。
 
+native due-economy completion 先在 immutable world view 上固定全部 `FactoryBuilt` 与 `RecipeCompleted` event bodies：build phase 始终先于 recipe phase，两个 phase 内继续使用既有 production-priority、ready-time、job-id 排序和完整 payload。prepared bodies 仍逐条进入 canonical publication，因此跨事件失败原子性继续由外层 cloned-step rollback 提供，而不是由该 nested seam 独立提供。
+
 目标实现必须以一个显式的 staged transition boundary（可称 `ExecutionTransaction` / `TransitionBuffer`，具体类型由 runtime 实现决定）承载 parent state、logical time、资源 reservation、module state、pending effect、tick schedule、journal/event 与 sequence counters 的暂存值。module call、Kernel preflight 和 output/schema/capability 校验只能读写这个暂存视图；不得在 commit 前直接修改 canonical `WorldState`、canonical journal 或外部 effect 队列。所有成功 event/effect/state 变更与 execution commitment 在一个 commit 点原子发布；任一 invariant、预算、artifact、receipt 或持久化失败都丢弃暂存值，并只留下一个稳定的 rejected/fault disposition（若需要审计记录，也必须与该 disposition 同一原子提交，不能留下半个业务效果）。
 
 这样可以让 module 成为一等执行负载，同时保留现有 `WorldState`、legacy event 和 snapshot 的兼容读取；本节不要求立即把当前 struct 改造成传统 ECS。原子边界落地前，Alliance/EconomicContract 试点只能作为 target migration work，不得把现有逐事件实现包装为已完成的原子 receipt 合同。

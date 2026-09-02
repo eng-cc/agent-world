@@ -14,7 +14,7 @@ use super::super::{
     M4_PRODUCT_CONTROL_CHIP_MODULE_ID, M4_PRODUCT_FACTORY_CORE_MODULE_ID,
     M4_PRODUCT_IRON_INGOT_MODULE_ID, M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
     M4_PRODUCT_MODULE_RACK_MODULE_ID, M4_PRODUCT_MOTOR_MODULE_ID, M4_PRODUCT_SENSOR_PACK_MODULE_ID,
-    MaterialLedgerId, RejectReason, WorldError, WorldEvent, WorldEventBody,
+    MaterialLedgerId, RejectReason, WorldError, WorldEvent, WorldEventBody, WorldTime,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -346,10 +346,7 @@ impl World {
         }
     }
 
-    pub(super) fn process_due_economy_jobs(&mut self) -> Result<Vec<WorldEvent>, WorldError> {
-        let now = self.state.time;
-        let mut emitted = Vec::new();
-
+    fn prepare_due_economy_event_bodies_at(&self, now: WorldTime) -> Vec<WorldEventBody> {
         let mut due_builds: Vec<_> = self
             .state
             .pending_factory_builds
@@ -365,19 +362,14 @@ impl World {
             )
         });
 
+        let mut bodies = Vec::with_capacity(due_builds.len());
         for job in due_builds {
-            self.append_event(
-                WorldEventBody::Domain(DomainEvent::FactoryBuilt {
-                    job_id: job.job_id,
-                    builder_agent_id: job.builder_agent_id,
-                    site_id: job.site_id,
-                    spec: job.spec,
-                }),
-                None,
-            )?;
-            if let Some(event) = self.journal.events.last() {
-                emitted.push(event.clone());
-            }
+            bodies.push(WorldEventBody::Domain(DomainEvent::FactoryBuilt {
+                job_id: job.job_id,
+                builder_agent_id: job.builder_agent_id,
+                site_id: job.site_id,
+                spec: job.spec,
+            }));
         }
 
         let mut due_recipes: Vec<_> = self
@@ -395,23 +387,38 @@ impl World {
             )
         });
 
+        bodies.reserve(due_recipes.len());
         for job in due_recipes {
-            self.append_event(
-                WorldEventBody::Domain(DomainEvent::RecipeCompleted {
-                    job_id: job.job_id,
-                    requester_agent_id: job.requester_agent_id,
-                    factory_id: job.factory_id,
-                    recipe_id: job.recipe_id,
-                    accepted_batches: job.accepted_batches,
-                    produce: job.produce,
-                    byproducts: job.byproducts,
-                    output_ledger: job.output_ledger,
-                    bottleneck_tags: job.bottleneck_tags,
-                    logistics_route_ids: job.logistics_route_ids,
-                    logistics_path_ids: job.logistics_path_ids,
-                }),
-                None,
-            )?;
+            bodies.push(WorldEventBody::Domain(DomainEvent::RecipeCompleted {
+                job_id: job.job_id,
+                requester_agent_id: job.requester_agent_id,
+                factory_id: job.factory_id,
+                recipe_id: job.recipe_id,
+                accepted_batches: job.accepted_batches,
+                produce: job.produce,
+                byproducts: job.byproducts,
+                output_ledger: job.output_ledger,
+                bottleneck_tags: job.bottleneck_tags,
+                logistics_route_ids: job.logistics_route_ids,
+                logistics_path_ids: job.logistics_path_ids,
+            }));
+        }
+        bodies
+    }
+
+    #[cfg(test)]
+    pub(crate) fn prepared_due_economy_event_bodies_for_test(
+        &self,
+        now: WorldTime,
+    ) -> Vec<WorldEventBody> {
+        self.prepare_due_economy_event_bodies_at(now)
+    }
+
+    pub(super) fn process_due_economy_jobs(&mut self) -> Result<Vec<WorldEvent>, WorldError> {
+        let bodies = self.prepare_due_economy_event_bodies_at(self.state.time);
+        let mut emitted = Vec::with_capacity(bodies.len());
+        for body in bodies {
+            self.append_event(body, None)?;
             if let Some(event) = self.journal.events.last() {
                 emitted.push(event.clone());
             }

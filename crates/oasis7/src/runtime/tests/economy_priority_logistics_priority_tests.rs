@@ -67,6 +67,26 @@ fn due_recipe_jobs_prioritize_survival_over_expansion() {
     world.step().expect("start recipes");
     assert_eq!(world.pending_recipe_jobs_len(), 2);
 
+    let snapshot_before_prepare = world.snapshot();
+    let journal_before_prepare = world.journal().clone();
+    let prepared =
+        world.prepared_due_economy_event_bodies_for_test(world.state().time.saturating_add(1));
+    assert_eq!(world.snapshot(), snapshot_before_prepare);
+    assert_eq!(world.journal(), &journal_before_prepare);
+    let prepared_recipe_ids = prepared
+        .iter()
+        .filter_map(|body| match body {
+            WorldEventBody::Domain(DomainEvent::RecipeCompleted { recipe_id, .. }) => {
+                Some(recipe_id.as_str())
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        prepared_recipe_ids,
+        ["recipe.survival.oxygen", "recipe.expand.outpost"]
+    );
+
     let before = world.journal().events.len();
     world.step().expect("complete recipes");
 
