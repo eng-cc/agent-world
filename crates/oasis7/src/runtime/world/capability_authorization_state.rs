@@ -100,14 +100,47 @@ impl World {
         >,
         capability_budget_accounts: &std::collections::BTreeMap<String, CapabilityBudgetAccount>,
     ) -> Result<String, WorldError> {
+        self.compute_capability_authorization_root_with_full_projection(
+            capability_grants_v2,
+            capability_revocation_state,
+            capability_invocation_contexts,
+            capability_budget_accounts,
+            &self.capability_nonce_records,
+            &self.capability_authorization_receipts,
+            &self.capability_effect_receipt_links,
+        )
+    }
+
+    pub(super) fn compute_capability_authorization_root_with_full_projection(
+        &self,
+        capability_grants_v2: &std::collections::BTreeMap<String, serde_json::Value>,
+        capability_revocation_state: &CapabilityRevocationState,
+        capability_invocation_contexts: &std::collections::BTreeMap<
+            String,
+            CapabilityInvocationContext,
+        >,
+        capability_budget_accounts: &std::collections::BTreeMap<String, CapabilityBudgetAccount>,
+        capability_nonce_records: &std::collections::BTreeMap<
+            String,
+            CapabilityAuthorizationNonceRecord,
+        >,
+        capability_authorization_receipts: &std::collections::BTreeMap<
+            String,
+            CapabilityAuthorizationAuditReceipt,
+        >,
+        capability_effect_receipt_links: &std::collections::BTreeMap<
+            String,
+            CapabilityEffectReceiptLink,
+        >,
+    ) -> Result<String, WorldError> {
         canonical_hash(&CapabilityAuthorizationRootBody {
             grants: capability_grants_v2,
             revocation: capability_revocation_state,
             invocation_contexts: capability_invocation_contexts,
             budget_accounts: capability_budget_accounts,
-            nonce_records: &self.capability_nonce_records,
-            receipts: &self.capability_authorization_receipts,
-            effect_receipt_links: &self.capability_effect_receipt_links,
+            nonce_records: capability_nonce_records,
+            receipts: capability_authorization_receipts,
+            effect_receipt_links: capability_effect_receipt_links,
         })
         .map_err(|error| deny(format!("authorization root: {error}")))
     }

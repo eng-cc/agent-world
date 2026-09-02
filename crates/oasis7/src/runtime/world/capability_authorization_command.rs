@@ -2,8 +2,8 @@
 //!
 //! Provider values are candidates only. Every value is validated against the
 //! live module registry and the governed issuer/revocation view before a
-//! cloned world is allowed to call the sandbox. The clone is published only
-//! after the call and its output have passed all checks.
+//! borrowed-base stage is allowed to call the sandbox. The typed stage is
+//! installed only after the call and its output have passed all checks.
 
 use oasis7_wasm_abi::{
     AgentCommandResponse, CapabilityCatalogSnapshot, CapabilityGrantV2, ModuleCallInput,
@@ -14,7 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::super::capability_authorization::{
     CapabilityAuthorizationAuditReceipt, CapabilityAuthorizationNonceRecord,
-    CapabilityEffectReceiptLink,
+    CapabilityBudgetAccount, CapabilityEffectReceiptLink,
 };
 use super::super::{
     CapabilityAuthorizationEvent, EffectIntent, EffectOrigin, PolicyDecisionRecord, WorldError,
@@ -22,8 +22,10 @@ use super::super::{
 };
 use super::World;
 use super::capability_authorization::deny;
+use super::capability_authorization_command_stage::TrustedCommandStage;
 use super::capability_authorization_state::{
     budget_reservation_units, capability_actual_units, capability_budget_key,
+    validate_budget_account,
 };
 
 impl World {
@@ -235,40 +237,38 @@ impl World {
         if budget_before < reservation_units {
             return Err(deny("capability budget is insufficient before sandbox"));
         }
-        let mut staged = self.clone();
-        staged.reserve_capability_budget(&budget_key, reservation_units)?;
-        staged.refresh_capability_authorization_root()?;
-        let output =
-            staged.execute_trusted_module_sandbox(&manifest, &response, &grant.subject, sandbox)?;
-        let effect_intent_ids: Vec<String> = staged
-            .journal
-            .events
-            .iter()
-            .filter(|event| event.id > world_head_before)
-            .filter_map(|event| match &event.body {
-                WorldEventBody::EffectQueued(intent) => Some(intent.intent_id.clone()),
-                _ => None,
-            })
-            .collect();
+        let mut budget_account = self
+            .capability_budget_accounts
+            .get(&budget_key)
+            .cloned()
+            .ok_or_else(|| deny("capability budget account is not available"))?;
+        let mut staged = TrustedCommandStage::new(self);
+        staged.reserve_capability_budget(&mut budget_account, reservation_units)?;
+        let output = self.execute_trusted_module_sandbox(
+            &mut staged,
+            &manifest,
+            &response,
+            &grant.subject,
+            sandbox,
+        )?;
+        let effect_intent_ids = staged.effect_intent_ids(world_head_before);
         let budget_after = staged.settle_capability_budget(
-            &budget_key,
+            &mut budget_account,
             reservation_units,
             capability_actual_units(response.envelope.payload.len(), &output)?,
         )?;
-        staged.refresh_capability_authorization_root()?;
-        staged.verify_live_authorization_before_commit(
+        self.verify_live_authorization_before_commit(
             &grant,
             &catalog,
             &response,
             &manifest,
             world_head_before,
         )?;
-        let state_hash_after = canonical_hash(&staged.state)
-            .map_err(|error| deny(format!("staged state hash: {error}")))?;
+        let state_hash_after = staged.state_hash()?;
         let result_hash =
             canonical_hash(&output).map_err(|error| deny(format!("result hash: {error}")))?;
         let receipt_id = format!("capability-authz-{request_hash}");
-        let finality_block_hash = staged
+        let finality_block_hash = self
             .capability_revocation_state
             .authority_records
             .get(&grant.issuer.issuer_id)
@@ -300,13 +300,13 @@ impl World {
             // allocated id before append_event applies and journals it so the
             // audit receipt's after-head includes the authorization commit,
             // not merely the sandbox/output events that precede it.
-            world_head_after: Some(staged.next_event_id),
+            world_head_after: Some(staged.next_event_id()),
             branch_id: grant.audience.branch_id.clone(),
             finality_epoch: grant.audience.finality_epoch,
             finality_block_hash,
             finality_status: "verified".to_string(),
             state_hash_before,
-            state_hash_after: Some(state_hash_after),
+            state_hash_after: Some(state_hash_after.clone()),
             committed_effect_receipt_id: None,
             committed_effect_receipt_ids: BTreeSet::new(),
             canonical_request_hash: request_hash.clone(),
@@ -318,11 +318,6 @@ impl World {
             committed_receipt_id: Some(receipt_id.clone()),
             state: "committed".to_string(),
         };
-        let budget_account = staged
-            .capability_budget_accounts
-            .get(&budget_key)
-            .cloned()
-            .ok_or_else(|| deny("capability budget account disappeared before commit"))?;
         let mut effect_receipt_links = BTreeMap::new();
         for intent_id in effect_intent_ids {
             effect_receipt_links.insert(
@@ -332,29 +327,275 @@ impl World {
                 },
             );
         }
-        staged.append_event(
-            WorldEventBody::CapabilityAuthorization(
-                CapabilityAuthorizationEvent::CommandCommitted {
-                    budget_key,
-                    budget_before_remaining_units: budget_before,
-                    budget_before_spent_units: budget_before_spent,
-                    state_hash_before: receipt.state_hash_before.clone(),
-                    receipt_hash:
-                        super::capability_authorization_events::authorization_receipt_hash(
-                            &receipt,
-                        )?,
-                    budget_account,
-                    grant,
-                    nonce_key: nonce_key_hash,
-                    nonce_record,
-                    receipt: receipt.clone(),
-                    effect_receipt_links,
-                },
-            ),
-            None,
+        let mut projected_grants_v2 = self.capability_grants_v2.clone();
+        projected_grants_v2.insert(grant.grant_id.clone(), serde_json::to_value(&grant)?);
+        let mut projected_nonce_records = self.capability_nonce_records.clone();
+        projected_nonce_records.insert(nonce_key_hash.clone(), nonce_record.clone());
+        let mut projected_receipts = self.capability_authorization_receipts.clone();
+        projected_receipts.insert(receipt.receipt_id.clone(), receipt.clone());
+        let mut projected_budget_accounts = self.capability_budget_accounts.clone();
+        projected_budget_accounts.insert(budget_key.clone(), budget_account.clone());
+        let mut projected_effect_receipt_links = self.capability_effect_receipt_links.clone();
+        projected_effect_receipt_links.extend(effect_receipt_links.clone());
+        self.validate_projected_command_commit(
+            &budget_key,
+            budget_before,
+            budget_before_spent,
+            &receipt,
+            &budget_account,
+            &grant,
+            &nonce_key_hash,
+            &nonce_record,
+            &effect_receipt_links,
+            &staged,
         )?;
-        *self = staged;
+        let capability_authorization_root = self
+            .compute_capability_authorization_root_with_full_projection(
+                &projected_grants_v2,
+                &self.capability_revocation_state,
+                &self.capability_invocation_contexts,
+                &projected_budget_accounts,
+                &projected_nonce_records,
+                &projected_receipts,
+                &projected_effect_receipt_links,
+            )?;
+        staged.append_event(WorldEventBody::CapabilityAuthorization(
+            CapabilityAuthorizationEvent::CommandCommitted {
+                budget_key,
+                budget_before_remaining_units: budget_before,
+                budget_before_spent_units: budget_before_spent,
+                state_hash_before: receipt.state_hash_before.clone(),
+                receipt_hash: super::capability_authorization_events::authorization_receipt_hash(
+                    &receipt,
+                )?,
+                budget_account,
+                grant,
+                nonce_key: nonce_key_hash,
+                nonce_record,
+                receipt: receipt.clone(),
+                effect_receipt_links,
+            },
+        ))?;
+        let consensus_state_root = staged.consensus_state_root_hash()?;
+        let prepared = staged.prepare(consensus_state_root)?;
+        if self.take_fail_next_append_after_publication_prepare_for_test() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "injected append_event failure after publication preparation".to_string(),
+            });
+        }
+        prepared.install(self);
+        self.capability_grants_v2 = projected_grants_v2;
+        self.capability_nonce_records = projected_nonce_records;
+        self.capability_authorization_receipts = projected_receipts;
+        self.capability_budget_accounts = projected_budget_accounts;
+        self.capability_effect_receipt_links = projected_effect_receipt_links;
+        self.capability_authorization_root = capability_authorization_root;
         Ok(receipt)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn validate_projected_command_commit(
+        &self,
+        budget_key: &str,
+        budget_before: i64,
+        budget_before_spent: i64,
+        receipt: &CapabilityAuthorizationAuditReceipt,
+        budget_account: &CapabilityBudgetAccount,
+        grant: &CapabilityGrantV2,
+        nonce_key: &str,
+        nonce_record: &CapabilityAuthorizationNonceRecord,
+        effect_receipt_links: &BTreeMap<String, CapabilityEffectReceiptLink>,
+        staged: &TrustedCommandStage<'_>,
+    ) -> Result<(), WorldError> {
+        validate_budget_account(budget_account)?;
+        if budget_account.reserved_units != 0
+            || capability_budget_key(&budget_account.subject, &budget_account.grant_id)?
+                != budget_key
+            || budget_account.subject != grant.subject
+            || budget_account.grant_id != grant.grant_id
+            || budget_before < 0
+            || budget_before_spent < 0
+        {
+            return Err(deny("capability command budget binding is invalid"));
+        }
+        if receipt.budget_before != budget_before
+            || receipt.budget_after != Some(budget_account.remaining_units)
+            || budget_account.spent_units < budget_before_spent
+            || budget_account.remaining_units
+                != budget_before.saturating_sub(budget_account.spent_units - budget_before_spent)
+        {
+            return Err(deny("capability command budget transition is invalid"));
+        }
+        if let Some(existing) = self.capability_budget_accounts.get(budget_key)
+            && existing != budget_account
+            && (existing.remaining_units != budget_before
+                || existing.reserved_units != 0
+                || existing.spent_units != budget_before_spent)
+        {
+            return Err(deny("capability command budget predecessor is invalid"));
+        }
+        if nonce_record.state != "committed"
+            || nonce_record.request_hash.trim().is_empty()
+            || nonce_record.outcome_hash.trim().is_empty()
+            || nonce_record.committed_receipt_id.as_deref() != Some(receipt.receipt_id.as_str())
+            || nonce_record.request_hash != receipt.canonical_request_hash
+            || nonce_record.outcome_hash != receipt.canonical_result_hash
+        {
+            return Err(deny("capability command nonce journal record is invalid"));
+        }
+        let response_nonce = receipt
+            .response_nonce
+            .as_deref()
+            .ok_or_else(|| deny("capability command receipt nonce is required"))?;
+        if super::capability_authorization_events::authorization_nonce_key(grant, response_nonce)?
+            != nonce_key
+        {
+            return Err(deny("capability command nonce key is not canonical"));
+        }
+        let context_key =
+            super::capability_authorization_events::capability_invocation_context_key_for_values(
+                grant.grant_id.as_str(),
+                response_nonce,
+            )?;
+        let context = self
+            .capability_invocation_contexts
+            .get(&context_key)
+            .or_else(|| self.capability_invocation_contexts.get(&grant.grant_id))
+            .ok_or_else(|| deny("capability command invocation context is missing"))?;
+        if context.grant_id != grant.grant_id
+            || context.subject != grant.subject
+            || context.audience != grant.audience
+            || context.module_id != grant.scope.module_id
+            || context.module_version != grant.scope.module_version
+            || context.response_nonce != response_nonce
+            || serde_json::to_value(&context.presenter)?
+                != receipt.presenter.clone().unwrap_or_default()
+            || context.catalog_snapshot_id
+                != receipt.catalog_snapshot_id.clone().unwrap_or_default()
+        {
+            return Err(deny(
+                "capability command receipt invocation context binding is invalid",
+            ));
+        }
+        let is_hash =
+            |value: &str| value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit());
+        if receipt.grant_id.as_deref() != Some(grant.grant_id.as_str())
+            || receipt.authorization_nonce_key_hash.as_deref() != Some(nonce_key)
+            || receipt.decision != "accepted"
+            || receipt.receipt_id.trim().is_empty()
+            || receipt.canonical_request_hash.trim().is_empty()
+            || receipt.canonical_result_hash.trim().is_empty()
+            || receipt.subject != serde_json::to_value(&grant.subject)?
+            || receipt.audience != serde_json::to_value(&grant.audience)?
+            || receipt.presenter.is_none()
+            || receipt.scope_hash
+                != capability_scope_hash(&grant.scope)
+                    .map_err(|error| deny(format!("scope hash: {error}")))?
+            || receipt.module_id.as_deref() != Some(grant.scope.module_id.as_str())
+            || receipt.module_version.as_deref() != Some(grant.scope.module_version.as_str())
+            || receipt
+                .catalog_snapshot_id
+                .as_deref()
+                .is_none_or(str::is_empty)
+            || receipt.state_hash_before.trim().is_empty()
+            || receipt
+                .state_hash_after
+                .as_deref()
+                .is_none_or(str::is_empty)
+            || !is_hash(receipt.state_hash_before.as_str())
+            || !is_hash(receipt.state_hash_after.as_deref().unwrap_or_default())
+            || !is_hash(receipt.canonical_request_hash.as_str())
+            || !is_hash(receipt.canonical_result_hash.as_str())
+        {
+            return Err(deny(
+                "capability command receipt journal binding is invalid",
+            ));
+        }
+        let authority = self
+            .capability_revocation_state
+            .authority_records
+            .get(&grant.issuer.issuer_id)
+            .ok_or_else(|| deny("capability command receipt issuer authority is missing"))?;
+        if receipt.branch_id != authority.branch_id
+            || receipt.finality_epoch != authority.finality_epoch
+            || receipt.finality_status != "verified"
+            || receipt.finality_block_hash.as_deref()
+                != Some(authority.finality_block_hash.as_str())
+        {
+            return Err(deny(
+                "capability command receipt finality binding is invalid",
+            ));
+        }
+        let active_manifest = self
+            .active_module_manifest(grant.scope.module_id.as_str())
+            .map_err(|error| {
+                deny(format!(
+                    "capability command receipt module is missing: {error:?}"
+                ))
+            })?;
+        let manifest_hash = canonical_hash(&active_manifest)
+            .map_err(|error| deny(format!("capability command receipt manifest hash: {error}")))?;
+        let state_hash_after = staged.state_hash()?;
+        if receipt.manifest_hash.as_deref() != Some(manifest_hash.as_str())
+            || receipt.state_hash_after.as_deref() != Some(state_hash_after.as_str())
+        {
+            return Err(deny(
+                "capability command receipt state or manifest hash is invalid",
+            ));
+        }
+        if receipt.world_head_before > staged.current_head()
+            || receipt.world_head_after != Some(staged.next_event_id())
+            || receipt.world_head_before >= staged.next_event_id()
+        {
+            return Err(deny(
+                "capability command receipt journal head binding is invalid",
+            ));
+        }
+        let encoded_grant = serde_json::to_value(grant)?;
+        if let Some(existing) = self.capability_grants_v2.get(&grant.grant_id)
+            && existing != &encoded_grant
+        {
+            return Err(deny("immutable grant body changed"));
+        }
+        if let Some(existing) = self.capability_nonce_records.get(nonce_key)
+            && existing != nonce_record
+        {
+            return Err(deny("capability nonce journal record changed"));
+        }
+        if let Some(existing) = self
+            .capability_authorization_receipts
+            .get(&receipt.receipt_id)
+            && existing != receipt
+        {
+            return Err(deny("capability authorization receipt changed"));
+        }
+        if let Some(existing) = self.capability_budget_accounts.get(budget_key)
+            && (existing.remaining_units < budget_account.remaining_units
+                || existing.spent_units > budget_account.spent_units)
+        {
+            return Err(deny("capability budget journal transition regressed"));
+        }
+        for (intent_id, link) in effect_receipt_links {
+            if intent_id.trim().is_empty() || link.authorization_receipt_id != receipt.receipt_id {
+                return Err(deny("capability effect receipt journal binding is invalid"));
+            }
+            let effect_is_durable = staged
+                .pending_effects()
+                .iter()
+                .any(|intent| intent.intent_id == *intent_id)
+                || self.inflight_effects.contains_key(intent_id);
+            if !effect_is_durable {
+                return Err(deny(
+                    "capability authorization-linked effect is missing from durable queues",
+                ));
+            }
+            if let Some(existing) = self.capability_effect_receipt_links.get(intent_id)
+                && existing != link
+            {
+                return Err(deny("capability effect receipt link changed"));
+            }
+        }
+        Ok(())
     }
 
     fn verify_invocation_context(
@@ -498,7 +739,8 @@ impl World {
     }
 
     fn execute_trusted_module_sandbox(
-        &mut self,
+        &self,
+        staged: &mut TrustedCommandStage<'_>,
         manifest: &oasis7_wasm_abi::ModuleManifest,
         response: &AgentCommandResponse,
         subject: &oasis7_wasm_abi::CapabilitySubject,
@@ -513,13 +755,8 @@ impl World {
             .envelope
             .encode_canonical()
             .map_err(|error| deny(format!("command encoding: {error}")))?;
-        let state = (manifest.kind == ModuleKind::Reducer).then(|| {
-            self.state
-                .module_states
-                .get(&manifest.module_id)
-                .cloned()
-                .unwrap_or_default()
-        });
+        let state = (manifest.kind == ModuleKind::Reducer)
+            .then(|| staged.module_state(manifest.module_id.as_str()));
         let call_input = ModuleCallInput {
             ctx: oasis7_wasm_abi::ModuleContext {
                 v: "wasm-1".to_string(),
@@ -552,7 +789,7 @@ impl World {
             input_bytes.len() as u64,
         )
         .map_err(|failure| deny(format!("runtime upper-bound charge: {}", failure.detail)))?;
-        let output = self
+        let output = staged
             .call_module_raw(
                 &manifest.module_id,
                 &trace_id,
@@ -581,7 +818,7 @@ impl World {
             let cap_ref = self.resolve_trusted_effect_cap_ref(manifest, effect)?;
             self.verify_trusted_effect_grant(&cap_ref, manifest, response, effect)?;
             let intent = EffectIntent {
-                intent_id: format!("intent-{}", self.allocate_next_intent_seq()),
+                intent_id: format!("intent-{}", staged.allocate_next_intent_seq()),
                 kind: effect.kind.clone(),
                 params: effect.params.clone(),
                 cap_ref,
@@ -590,13 +827,9 @@ impl World {
                 },
             };
             let decision = self.policies.decide(&intent);
-            self.append_event(
-                WorldEventBody::PolicyDecisionRecorded(PolicyDecisionRecord::from_intent(
-                    &intent,
-                    decision.clone(),
-                )),
-                None,
-            )?;
+            staged.append_event(WorldEventBody::PolicyDecisionRecorded(
+                PolicyDecisionRecord::from_intent(&intent, decision.clone()),
+            ))?;
             if !decision.is_allowed() {
                 return Err(deny(format!(
                     "trusted effect policy denied {}",
@@ -607,37 +840,36 @@ impl World {
             }
             intents.push(intent);
         }
-        self.try_charge_module_runtime(
-            &manifest.module_id,
-            &trace_id,
-            manifest,
-            input_bytes.len() as u64,
-            &output,
-        )
-        .map_err(|failure| deny(format!("runtime charge: {}", failure.detail)))?;
+        staged
+            .try_charge_module_runtime(
+                &manifest.module_id,
+                &trace_id,
+                manifest,
+                input_bytes.len() as u64,
+                &output,
+            )
+            .map_err(|failure| deny(format!("runtime charge: {}", failure.detail)))?;
         if let Some(state) = &output.new_state {
-            self.append_event(
-                WorldEventBody::ModuleStateUpdated(oasis7_wasm_abi::ModuleStateUpdate {
+            staged.append_event(WorldEventBody::ModuleStateUpdated(
+                oasis7_wasm_abi::ModuleStateUpdate {
                     module_id: manifest.module_id.clone(),
                     trace_id: trace_id.clone(),
                     state: state.clone(),
-                }),
-                None,
-            )?;
+                },
+            ))?;
         }
         for intent in intents {
-            self.append_event(WorldEventBody::EffectQueued(intent), None)?;
+            staged.append_event(WorldEventBody::EffectQueued(intent))?;
         }
         for emit in &output.emits {
-            self.append_event(
-                WorldEventBody::ModuleEmitted(oasis7_wasm_abi::ModuleEmitEvent {
+            staged.append_event(WorldEventBody::ModuleEmitted(
+                oasis7_wasm_abi::ModuleEmitEvent {
                     module_id: manifest.module_id.clone(),
                     trace_id: trace_id.clone(),
                     kind: emit.kind.clone(),
                     payload: emit.payload.clone(),
-                }),
-                None,
-            )?;
+                },
+            ))?;
         }
         Ok(output)
     }

@@ -1,3 +1,4 @@
+use super::super::state::CommandStateOverlay;
 use super::super::util::{hash_json, sha256_hex};
 use super::super::{
     BodyOverlay, CausedBy, RuntimeCommittedTickContext, TICK_BLOCK_HEADER_SCHEMA_V1,
@@ -827,6 +828,22 @@ impl World {
         let policy_hash = hash_json(&self.policies)?;
         let state_projection =
             WorldStateProjection::borrowed(&self.state).with_body_overlay(body_overlay.clone());
+        let projection = StateRootProjection {
+            state: &state_projection,
+            manifest_hash: manifest_hash.as_str(),
+            policy_hash: policy_hash.as_str(),
+        };
+        hash_json(&projection)
+    }
+
+    pub(super) fn state_root_hash_with_command_overlay(
+        &self,
+        command_overlay: CommandStateOverlay<'_>,
+    ) -> Result<String, WorldError> {
+        let manifest_hash = self.current_manifest_hash()?;
+        let policy_hash = hash_json(&self.policies)?;
+        let state_projection =
+            WorldStateProjection::borrowed(&self.state).with_command_overlay(command_overlay);
         let projection = StateRootProjection {
             state: &state_projection,
             manifest_hash: manifest_hash.as_str(),

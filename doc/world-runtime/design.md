@@ -228,8 +228,21 @@ step. A post-prepare failure therefore publishes no system/agent identity,
 context, grant, budget account, or authority transition and consumes no
 allocator, journal, consensus, root, or deterministic metric state. Identical
 installation remains a no-op, and committed events retain the existing replay
-reducers and event order. These slices do not yet migrate command/receipt
-publication paths, so CapabilityAuthorization and the overall
+reducers and event order.
+
+The trusted capability-command executor now uses the same architectural seam
+without cloning canonical `World`: a borrowed-base typed stage owns only the
+module-state, agent/resource, queue, allocator, journal/backpressure, and
+process-local cache projections touched by the command. Authorization budget,
+grant, nonce, receipt, and effect-link candidates are validated alongside that
+stage; state and authorization roots plus the single tick-consensus candidate
+are computed before publication. A post-prepare failpoint precedes one
+infallible install sequence, so sandbox/output, budget, receipt, effect, event
+ids, journal, and consensus cannot become observably half-published. This is a
+bounded Phase 2 migration, not yet the shared root `ExecutionTransaction` for
+all nested command/event paths. Durable receipt/outbox/idempotency, persistence
+generation commit, remaining public mutation surfaces, and full replay/restore
+closure are still outstanding, so CapabilityAuthorization and the overall
 ExecutionTransaction capability remain `partial`.
 
 Each retryable public root operation binds a stable operation id to world,

@@ -50,12 +50,17 @@ mod apply_domain_event_industry;
 mod apply_domain_event_industry_helpers;
 mod apply_domain_event_intent;
 mod apply_domain_event_main_token;
+mod command_projection;
 mod logistics_path_authority;
 #[path = "state_defaults.rs"]
 mod state_defaults;
 mod support;
 
 use self::support::*;
+pub(crate) use command_projection::{
+    CommandAgentMapProjection, CommandModuleStateMapProjection, CommandResourceMapProjection,
+    CommandStateOverlay,
+};
 pub(super) use logistics_path_authority::LogisticsPathAuthorityV1;
 
 fn default_world_material_ledger() -> MaterialLedgerId {
@@ -799,6 +804,7 @@ impl BodyOverlay {
 pub struct WorldStateProjection<'a> {
     state: &'a WorldState,
     body_overlay: Option<BodyOverlay>,
+    command_overlay: Option<CommandStateOverlay<'a>>,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -806,11 +812,17 @@ impl<'a> WorldStateProjection<'a> {
         Self {
             state,
             body_overlay: None,
+            command_overlay: None,
         }
     }
 
     pub fn with_body_overlay(mut self, body_overlay: BodyOverlay) -> Self {
         self.body_overlay = Some(body_overlay);
+        self
+    }
+
+    pub(crate) fn with_command_overlay(mut self, command_overlay: CommandStateOverlay<'a>) -> Self {
+        self.command_overlay = Some(command_overlay);
         self
     }
 }
@@ -820,7 +832,7 @@ impl Serialize for WorldState {
     where
         S: serde::Serializer,
     {
-        serialize_world_state(self, None, serializer)
+        serialize_world_state(self, None, None, serializer)
     }
 }
 
@@ -830,14 +842,20 @@ impl Serialize for WorldStateProjection<'_> {
         S: serde::Serializer,
     {
         if let Some(overlay) = self.body_overlay.as_ref() {
-            if overlay.requires_body_target() && !self.state.agents.contains_key(&overlay.agent_id) {
+            if overlay.requires_body_target() && !self.state.agents.contains_key(&overlay.agent_id)
+            {
                 return Err(serde::ser::Error::custom(format!(
                     "body overlay target agent not found: {}",
                     overlay.agent_id
                 )));
             }
         }
-        serialize_world_state(self.state, self.body_overlay.as_ref(), serializer)
+        serialize_world_state(
+            self.state,
+            self.body_overlay.as_ref(),
+            self.command_overlay.as_ref(),
+            serializer,
+        )
     }
 }
 
@@ -882,9 +900,8 @@ impl Serialize for AgentCellProjection<'_> {
     where
         S: serde::Serializer,
     {
-        let field_count = 3
-            + usize::from(self.cell.activity.is_some())
-            + usize::from(self.cell.intent.is_some());
+        let field_count =
+            3 + usize::from(self.cell.activity.is_some()) + usize::from(self.cell.intent.is_some());
         let mut state = serializer.serialize_struct("AgentCell", field_count)?;
         let body_view = match &self.body_overlay.mutation {
             BodyOverlayMutation::Body { body_view, .. } => body_view,
@@ -965,6 +982,7 @@ impl Serialize for AgentStateProjection<'_> {
 fn serialize_world_state<S>(
     state: &WorldState,
     body_overlay: Option<&BodyOverlay>,
+    command_overlay: Option<&CommandStateOverlay<'_>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -1063,17 +1081,37 @@ where
         - usize::from(state.authenticated_collect_data_last_nonces.is_empty());
     let mut output = serializer.serialize_struct("WorldState", field_count)?;
     output.serialize_field("time", &state.time)?;
-    output.serialize_field(
-        "agents",
-        &AgentMapProjection {
-            agents: &state.agents,
-            body_overlay,
-        },
-    )?;
+    if let Some(command_overlay) = command_overlay {
+        output.serialize_field(
+            "agents",
+            &CommandAgentMapProjection {
+                agents: &state.agents,
+                updates: command_overlay.agents,
+            },
+        )?;
+    } else {
+        output.serialize_field(
+            "agents",
+            &AgentMapProjection {
+                agents: &state.agents,
+                body_overlay,
+            },
+        )?;
+    }
     if !state.agent_intent_ledger.is_empty() {
         output.serialize_field("agent_intent_ledger", &state.agent_intent_ledger)?;
     }
-    output.serialize_field("resources", &state.resources)?;
+    if let Some(command_overlay) = command_overlay {
+        output.serialize_field(
+            "resources",
+            &CommandResourceMapProjection {
+                resources: &state.resources,
+                updates: command_overlay.resources,
+            },
+        )?;
+    } else {
+        output.serialize_field("resources", &state.resources)?;
+    }
     output.serialize_field("materials", &state.materials)?;
     output.serialize_field("material_ledgers", &state.material_ledgers)?;
     output.serialize_field("material_profiles", &state.material_profiles)?;
@@ -1161,7 +1199,17 @@ where
     )?;
     output.serialize_field("crises", &state.crises)?;
     output.serialize_field("meta_progress", &state.meta_progress)?;
-    output.serialize_field("module_states", &state.module_states)?;
+    if let Some(command_overlay) = command_overlay {
+        output.serialize_field(
+            "module_states",
+            &CommandModuleStateMapProjection {
+                module_states: &state.module_states,
+                updates: command_overlay.module_states,
+            },
+        )?;
+    } else {
+        output.serialize_field("module_states", &state.module_states)?;
+    }
     output.serialize_field("module_artifact_owners", &state.module_artifact_owners)?;
     output.serialize_field("module_artifact_listings", &state.module_artifact_listings)?;
     output.serialize_field("module_artifact_bids", &state.module_artifact_bids)?;
