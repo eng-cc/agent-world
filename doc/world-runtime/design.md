@@ -34,7 +34,7 @@
 
 ## 5. Current implementation boundary and target gap
 
-Current code/doc contracts already bind ordered actions, roots, committed execution records, artifact hashes, ordered registry/module-lifecycle events, checkpoints, and canonical replay. Governed registry/module-lifecycle proposal apply and public direct module call/command now have coarse staged-publication boundaries: each applies on a cloned `World` and publishes only after full success. Authority-drift failure injection covers register/upgrade/activate/deactivate rollback plus direct module state/output rollback; existing-format `ModuleCallFailed` audit events are recorded separately only after staged business mutations are discarded. The overall execution capability remains `partial`, because other direct/trusted entrypoints, persisted instance-state alignment, recovery/replay, durable external effects, and receipt/outbox publication are not one proven transaction boundary. The current contracts also do **not** yet prove the broader target end state: signed per-validator re-execution results; a persisted/verifiable >2/3-stake BFT commit certificate; prevote/precommit rounds, locks, timeout/view-change; protocol-versioned in-process/IPC conformance; governed runtime-manifest activation readiness/rollback; light-companion proof verification; or the complete checkpoint/disaster-recovery trust chain. These are implementation and verification gaps, not claims of present network readiness.
+Current code/doc contracts already bind ordered actions, roots, committed execution records, artifact hashes, ordered registry/module-lifecycle events, checkpoints, and canonical replay. Public direct module call/command and trusted capability command now use a borrowed-base typed stage and publish only after state/journal/queue/allocator/consensus preparation succeeds; governed registry/module-lifecycle proposal apply still uses a coarse cloned-`World` boundary. Authority-drift and post-prepare failure injection cover direct module state/output rollback; existing-format `ModuleCallFailed` audit events are recorded separately only after staged business mutations are discarded. The overall execution capability remains `partial`, because step/tick and remaining lifecycle/recovery entrypoints, persisted instance-state alignment, recovery/replay, durable external effects, and receipt/outbox publication are not one proven transaction boundary. The current contracts also do **not** yet prove the broader target end state: signed per-validator re-execution results; a persisted/verifiable >2/3-stake BFT commit certificate; prevote/precommit rounds, locks, timeout/view-change; protocol-versioned in-process/IPC conformance; governed runtime-manifest activation readiness/rollback; light-companion proof verification; or the complete checkpoint/disaster-recovery trust chain. These are implementation and verification gaps, not claims of present network readiness.
 
 ## 6. Architecture status, migration proof, and execution boundary
 
@@ -230,16 +230,19 @@ allocator, journal, consensus, root, or deterministic metric state. Identical
 installation remains a no-op, and committed events retain the existing replay
 reducers and event order.
 
-The trusted capability-command executor now uses the same architectural seam
-without cloning canonical `World`: a borrowed-base typed stage owns only the
+The trusted capability-command executor and public direct module call/command
+now use the same architectural seam without cloning canonical `World`: a
+borrowed-base typed stage owns only the
 module-state, agent/resource, queue, allocator, journal/backpressure, and
 process-local cache projections touched by the command. Authorization budget,
 grant, nonce, receipt, and effect-link candidates are validated alongside that
 stage; state and authorization roots plus the single tick-consensus candidate
 are computed before publication. A post-prepare failpoint precedes one
 infallible install sequence, so sandbox/output, budget, receipt, effect, event
-ids, journal, and consensus cannot become observably half-published. This is a
-bounded Phase 2 migration, not yet the shared root `ExecutionTransaction` for
+ids, journal, and consensus cannot become observably half-published. Direct
+module failures discard the business stage before the existing standalone
+`ModuleCallFailed` audit is atomically appended. This is a bounded Phase 2
+migration, not yet the shared root `ExecutionTransaction` for
 all nested command/event paths. Durable receipt/outbox/idempotency, persistence
 generation commit, remaining public mutation surfaces, and full replay/restore
 closure are still outstanding, so CapabilityAuthorization and the overall

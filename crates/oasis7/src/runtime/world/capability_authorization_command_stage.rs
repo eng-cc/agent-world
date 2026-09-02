@@ -13,13 +13,78 @@ use std::sync::Arc;
 
 use super::super::state::{CommandStateOverlay, WorldStateProjection};
 use super::super::{
-    CapabilityAuthorizationEvent, EffectIntent, ModuleManifest, ModuleRuntimeChargeEvent,
-    WorldError, WorldEvent, WorldEventBody,
+    CapabilityAuthorizationEvent, EffectIntent, EffectOrigin, ModuleManifest,
+    ModuleRuntimeChargeEvent, PolicyDecisionRecord, WorldError, WorldEvent, WorldEventBody,
+    WorldTime,
 };
 use super::World;
 use crate::simulator::ResourceKind;
 
 const MODULE_RUNTIME_FEE_BYTES_PER_UNIT: u64 = 1_024;
+
+pub(super) trait ModuleCallTarget {
+    fn active_manifest_for_call(&self, module_id: &str) -> Result<ModuleManifest, WorldError>;
+    fn current_manifest_hash_for_call(&self) -> Result<String, WorldError>;
+    fn state_time_for_call(&self) -> WorldTime;
+    fn journal_height_for_call(&self) -> u64;
+    fn call_module_raw_for_call(
+        &mut self,
+        module_id: &str,
+        trace_id: &str,
+        input: Vec<u8>,
+        manifest: &ModuleManifest,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<ModuleOutput, ModuleCallFailure>;
+    fn module_call_failed_for_call(&mut self, failure: ModuleCallFailure)
+    -> Result<(), WorldError>;
+    fn append_module_event_for_call(&mut self, body: WorldEventBody) -> Result<u64, WorldError>;
+    fn try_charge_module_runtime_for_call(
+        &mut self,
+        module_id: &str,
+        trace_id: &str,
+        manifest: &ModuleManifest,
+        input_bytes: u64,
+        output: &ModuleOutput,
+    ) -> Result<(), ModuleCallFailure>;
+    fn build_effect_intent_for_call(
+        &mut self,
+        kind: String,
+        params: serde_json::Value,
+        cap_ref: String,
+        origin: EffectOrigin,
+    ) -> Result<EffectIntent, WorldError>;
+}
+
+pub(super) fn execute_module_call_for_target<T: ModuleCallTarget + ?Sized>(
+    target: &mut T,
+    module_id: &str,
+    state_key: &str,
+    manifest: &ModuleManifest,
+    trace_id: String,
+    input: Vec<u8>,
+    sandbox: &mut dyn ModuleSandbox,
+) -> Result<ModuleOutput, WorldError> {
+    let input_bytes = input.len() as u64;
+    let output =
+        match target.call_module_raw_for_call(module_id, &trace_id, input, manifest, sandbox) {
+            Ok(output) => output,
+            Err(failure) => {
+                target.module_call_failed_for_call(failure)?;
+                unreachable!("module_call_failed_for_call always returns Err")
+            }
+        };
+    super::module_runtime::process_module_output_for_target(
+        target,
+        module_id,
+        state_key,
+        &trace_id,
+        manifest,
+        input_bytes,
+        &output,
+        sandbox,
+    )?;
+    Ok(output)
+}
 
 fn metering_units(bytes: u64) -> i64 {
     if bytes == 0 {
@@ -174,6 +239,64 @@ impl<'a> TrustedCommandStage<'a> {
             .cloned()
             .or_else(|| self.base.state.module_states.get(module_id).cloned())
             .unwrap_or_default()
+    }
+
+    pub(super) fn execute_module_call_with_manifest_and_state_key(
+        &mut self,
+        module_id: &str,
+        state_key: &str,
+        manifest: &ModuleManifest,
+        trace_id: String,
+        input: Vec<u8>,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<ModuleOutput, WorldError> {
+        execute_module_call_for_target(
+            self, module_id, state_key, manifest, trace_id, input, sandbox,
+        )
+    }
+
+    fn build_effect_intent(
+        &mut self,
+        kind: String,
+        params: serde_json::Value,
+        cap_ref: String,
+        origin: EffectOrigin,
+    ) -> Result<EffectIntent, WorldError> {
+        let intent_id = format!("intent-{}", self.allocate_next_intent_seq());
+        let intent = EffectIntent {
+            intent_id: intent_id.clone(),
+            kind: kind.clone(),
+            params,
+            cap_ref: cap_ref.clone(),
+            origin,
+        };
+        let grant =
+            self.base
+                .capabilities
+                .get(&cap_ref)
+                .ok_or_else(|| WorldError::CapabilityMissing {
+                    cap_ref: cap_ref.clone(),
+                })?;
+        if grant.is_expired(self.base.state.time) {
+            return Err(WorldError::CapabilityExpired { cap_ref });
+        }
+        if !grant.allows(&kind) {
+            return Err(WorldError::CapabilityNotAllowed { cap_ref, kind });
+        }
+
+        let decision = self.base.policies.decide(&intent);
+        self.append_event(WorldEventBody::PolicyDecisionRecorded(
+            PolicyDecisionRecord::from_intent(&intent, decision.clone()),
+        ))?;
+        if !decision.is_allowed() {
+            return Err(WorldError::PolicyDenied {
+                intent_id,
+                reason: decision
+                    .reason()
+                    .unwrap_or_else(|| "policy_deny".to_string()),
+            });
+        }
+        Ok(intent)
     }
 
     pub(super) fn state_hash(&self) -> Result<String, WorldError> {
@@ -519,6 +642,72 @@ impl<'a> TrustedCommandStage<'a> {
             journal_events_evicted: overflow as u64,
             consensus_record,
         })
+    }
+}
+
+impl ModuleCallTarget for TrustedCommandStage<'_> {
+    fn active_manifest_for_call(&self, module_id: &str) -> Result<ModuleManifest, WorldError> {
+        self.base.active_module_manifest(module_id).cloned()
+    }
+
+    fn current_manifest_hash_for_call(&self) -> Result<String, WorldError> {
+        self.base.current_manifest_hash()
+    }
+
+    fn state_time_for_call(&self) -> WorldTime {
+        self.base.state.time
+    }
+
+    fn journal_height_for_call(&self) -> u64 {
+        self.base.journal.events.len() as u64 + self.events.len() as u64
+    }
+
+    fn call_module_raw_for_call(
+        &mut self,
+        module_id: &str,
+        trace_id: &str,
+        input: Vec<u8>,
+        manifest: &ModuleManifest,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<ModuleOutput, ModuleCallFailure> {
+        self.call_module_raw(module_id, trace_id, input, manifest, sandbox)
+    }
+
+    fn module_call_failed_for_call(
+        &mut self,
+        failure: ModuleCallFailure,
+    ) -> Result<(), WorldError> {
+        Err(WorldError::ModuleCallFailed {
+            module_id: failure.module_id,
+            trace_id: failure.trace_id,
+            code: failure.code,
+            detail: failure.detail,
+        })
+    }
+
+    fn append_module_event_for_call(&mut self, body: WorldEventBody) -> Result<u64, WorldError> {
+        self.append_event(body)
+    }
+
+    fn try_charge_module_runtime_for_call(
+        &mut self,
+        module_id: &str,
+        trace_id: &str,
+        manifest: &ModuleManifest,
+        input_bytes: u64,
+        output: &ModuleOutput,
+    ) -> Result<(), ModuleCallFailure> {
+        self.try_charge_module_runtime(module_id, trace_id, manifest, input_bytes, output)
+    }
+
+    fn build_effect_intent_for_call(
+        &mut self,
+        kind: String,
+        params: serde_json::Value,
+        cap_ref: String,
+        origin: EffectOrigin,
+    ) -> Result<EffectIntent, WorldError> {
+        self.build_effect_intent(kind, params, cap_ref, origin)
     }
 }
 
