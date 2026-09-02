@@ -914,6 +914,13 @@ fn expired_restricted_grants_follow_btreemap_account_order() {
         world.step().expect("issue restricted grant");
     }
 
+    let snapshot_before_prepare = world.snapshot();
+    let journal_before_prepare = world.journal().clone();
+    let prepared = world.prepared_restricted_starter_claim_grant_expiry_accounts_for_test(12);
+    assert_eq!(world.snapshot(), snapshot_before_prepare);
+    assert_eq!(world.journal(), &journal_before_prepare);
+    assert_eq!(prepared, ["alice", "mike", "zara"]);
+
     let journal_len_before_expiry = world.journal().events.len();
     for _ in 0..12 {
         world.step().expect("advance to restricted grant expiry");
