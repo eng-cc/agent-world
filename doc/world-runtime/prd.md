@@ -70,6 +70,8 @@ restricted starter-grant expiry 也已采用相同 nested precursor：基于 imm
 
 native due-economy completion 先在 immutable world view 上固定全部 `FactoryBuilt` 与 `RecipeCompleted` event bodies：build phase 始终先于 recipe phase，两个 phase 内继续使用既有 production-priority、ready-time、job-id 排序和完整 payload。prepared bodies 仍逐条进入 canonical publication，因此跨事件失败原子性继续由外层 cloned-step rollback 提供，而不是由该 nested seam 独立提供。
 
+agent-claim epoch 不能从同一个 base snapshot 整轮预生成，因为同一 owner 的前一个 upkeep debit、claim removal、grace/release/reclaim 与 refund provenance 会改变后一个 claim 的合法分支。当前 nested seam 因此每次只准备一个 event body，发布后重读最新 claim 与余额，再决定 follow-up；BTreeMap target-agent 顺序与 `agent_claim_last_processed_epoch` 仅在整轮成功后推进的语义保持不变。整轮 publication failure 仍依赖外层 cloned-step rollback。
+
 目标实现必须以一个显式的 staged transition boundary（可称 `ExecutionTransaction` / `TransitionBuffer`，具体类型由 runtime 实现决定）承载 parent state、logical time、资源 reservation、module state、pending effect、tick schedule、journal/event 与 sequence counters 的暂存值。module call、Kernel preflight 和 output/schema/capability 校验只能读写这个暂存视图；不得在 commit 前直接修改 canonical `WorldState`、canonical journal 或外部 effect 队列。所有成功 event/effect/state 变更与 execution commitment 在一个 commit 点原子发布；任一 invariant、预算、artifact、receipt 或持久化失败都丢弃暂存值，并只留下一个稳定的 rejected/fault disposition（若需要审计记录，也必须与该 disposition 同一原子提交，不能留下半个业务效果）。
 
 这样可以让 module 成为一等执行负载，同时保留现有 `WorldState`、legacy event 和 snapshot 的兼容读取；本节不要求立即把当前 struct 改造成传统 ECS。原子边界落地前，Alliance/EconomicContract 试点只能作为 target migration work，不得把现有逐事件实现包装为已完成的原子 receipt 合同。

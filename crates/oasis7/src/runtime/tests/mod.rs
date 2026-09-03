@@ -62,6 +62,7 @@ pub(super) fn test_wasm_executor_config() -> oasis7_wasm_executor::WasmExecutorC
 }
 
 mod agent_activity;
+mod agent_claim_epoch_preparation;
 mod agent_claims;
 mod agent_claims_auto_funding;
 #[cfg(feature = "test_tier_full")]
