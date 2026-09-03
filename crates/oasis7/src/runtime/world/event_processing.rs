@@ -69,6 +69,16 @@ enum PreparedEventStateDelta {
         proposal_id: ProposalId,
         next: super::super::Proposal,
     },
+    GovernanceProposal {
+        proposal_id: ProposalId,
+        next: super::super::Proposal,
+        next_proposal_id: ProposalId,
+        next_proposal_id_era: u64,
+    },
+    GovernanceProposalShadow {
+        proposal_id: ProposalId,
+        next: super::super::Proposal,
+    },
     GovernanceIdentityPenaltyAppeal {
         penalty_id: u64,
         next: GovernanceIdentityPenaltyRecord,
@@ -155,6 +165,20 @@ impl PreparedEventStateDelta {
                     ..
                 }) if proposal_id == event_proposal_id
             ),
+            Self::GovernanceProposal { proposal_id, .. } => matches!(
+                body,
+                WorldEventBody::Governance(GovernanceEvent::Proposed {
+                    proposal_id: event_proposal_id,
+                    ..
+                }) if proposal_id == event_proposal_id
+            ),
+            Self::GovernanceProposalShadow { proposal_id, .. } => matches!(
+                body,
+                WorldEventBody::Governance(GovernanceEvent::ShadowReport {
+                    proposal_id: event_proposal_id,
+                    ..
+                }) if proposal_id == event_proposal_id
+            ),
             Self::GovernanceIdentityPenaltyAppeal { penalty_id, .. } => matches!(
                 body,
                 WorldEventBody::Governance(GovernanceEvent::IdentityPenaltyAppealed {
@@ -194,6 +218,12 @@ impl PreparedEventStateDelta {
             Self::GovernanceEmergencyVeto { .. } => {
                 unreachable!("governance emergency veto does not have a state overlay")
             }
+            Self::GovernanceProposal { .. } => {
+                unreachable!("governance proposal does not have a state overlay")
+            }
+            Self::GovernanceProposalShadow { .. } => {
+                unreachable!("governance proposal shadow does not have a state overlay")
+            }
             Self::GovernanceIdentityPenaltyAppeal { .. } => {
                 unreachable!("identity penalty appeal does not have a state overlay")
             }
@@ -228,6 +258,19 @@ impl PreparedEventStateDelta {
                 }
             },
             Self::GovernanceEmergencyVeto { proposal_id, next } => {
+                world.proposals.insert(proposal_id, next);
+            }
+            Self::GovernanceProposal {
+                proposal_id,
+                next,
+                next_proposal_id,
+                next_proposal_id_era,
+            } => {
+                world.proposals.insert(proposal_id, next);
+                world.next_proposal_id = next_proposal_id;
+                world.next_proposal_id_era = next_proposal_id_era;
+            }
+            Self::GovernanceProposalShadow { proposal_id, next } => {
                 world.proposals.insert(proposal_id, next);
             }
             Self::GovernanceIdentityPenaltyAppeal { penalty_id, next } => {
@@ -1150,6 +1193,12 @@ impl World {
                 self.current_state_root_hash()?
             }
             PreparedEventStateDelta::GovernanceEmergencyVeto { .. } => {
+                // Governance proposals are persisted World sidecar data and
+                // intentionally remain outside the canonical WorldState root schema.
+                self.current_state_root_hash()?
+            }
+            PreparedEventStateDelta::GovernanceProposal { .. }
+            | PreparedEventStateDelta::GovernanceProposalShadow { .. } => {
                 // Governance proposals are persisted World sidecar data and
                 // intentionally remain outside the canonical WorldState root schema.
                 self.current_state_root_hash()?

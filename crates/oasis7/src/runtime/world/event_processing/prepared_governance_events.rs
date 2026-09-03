@@ -11,6 +11,37 @@ pub(super) fn prepare(
     body: &WorldEventBody,
 ) -> Result<Option<PreparedEventStateDelta>, WorldError> {
     match body {
+        WorldEventBody::Governance(GovernanceEvent::Proposed {
+            proposal_id,
+            author,
+            base_manifest_hash,
+            manifest,
+            patch,
+        }) => {
+            let (next, next_proposal_id, next_proposal_id_era) = world.prepare_governance_proposal(
+                *proposal_id,
+                author,
+                base_manifest_hash,
+                manifest,
+                patch,
+            );
+            Ok(Some(PreparedEventStateDelta::GovernanceProposal {
+                proposal_id: *proposal_id,
+                next,
+                next_proposal_id,
+                next_proposal_id_era,
+            }))
+        }
+        WorldEventBody::Governance(GovernanceEvent::ShadowReport {
+            proposal_id,
+            manifest_hash,
+        }) => {
+            let next = world.prepare_governance_proposal_shadow(*proposal_id, manifest_hash)?;
+            Ok(Some(PreparedEventStateDelta::GovernanceProposalShadow {
+                proposal_id: *proposal_id,
+                next,
+            }))
+        }
         WorldEventBody::Governance(GovernanceEvent::IdentityPenaltyApplied {
             penalty_id,
             target_agent_id,
@@ -128,6 +159,55 @@ pub(super) fn prepare(
 }
 
 impl World {
+    pub(super) fn prepare_governance_proposal(
+        &self,
+        proposal_id: ProposalId,
+        author: &str,
+        base_manifest_hash: &str,
+        manifest: &super::super::super::Manifest,
+        patch: &Option<super::super::super::ManifestPatch>,
+    ) -> (Proposal, ProposalId, u64) {
+        let proposal = Proposal {
+            id: proposal_id,
+            author: author.to_string(),
+            base_manifest_hash: base_manifest_hash.to_string(),
+            manifest: manifest.clone(),
+            patch: patch.clone(),
+            queued_at_tick: None,
+            not_before_tick: None,
+            activate_epoch: None,
+            timelock_ticks: 0,
+            status: ProposalStatus::Proposed,
+        };
+        let (allocated, next_proposal_id, next_proposal_id_era) =
+            Self::preview_next_proposal_id(self.next_proposal_id, self.next_proposal_id_era);
+        let (next_proposal_id, next_proposal_id_era) = if allocated == proposal_id {
+            (next_proposal_id, next_proposal_id_era)
+        } else {
+            (
+                self.next_proposal_id.max(proposal_id.saturating_add(1)),
+                self.next_proposal_id_era,
+            )
+        };
+        (proposal, next_proposal_id, next_proposal_id_era)
+    }
+
+    pub(super) fn prepare_governance_proposal_shadow(
+        &self,
+        proposal_id: ProposalId,
+        manifest_hash: &str,
+    ) -> Result<Proposal, WorldError> {
+        let mut proposal = self
+            .proposals
+            .get(&proposal_id)
+            .cloned()
+            .ok_or(WorldError::ProposalNotFound { proposal_id })?;
+        proposal.status = ProposalStatus::Shadowed {
+            manifest_hash: manifest_hash.to_string(),
+        };
+        Ok(proposal)
+    }
+
     pub(crate) fn prepare_governance_identity_penalty_application(
         &self,
         penalty_id: u64,

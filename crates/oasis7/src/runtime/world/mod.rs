@@ -803,11 +803,11 @@ impl World {
         Self::preview_rolling_sequence_id(next_id, era)
     }
 
-    pub(super) fn allocate_next_proposal_id(&mut self) -> ProposalId {
-        Self::allocate_rolling_sequence_id(
-            &mut self.next_proposal_id,
-            &mut self.next_proposal_id_era,
-        )
+    pub(super) fn preview_next_proposal_id(
+        next_id: ProposalId,
+        era: u64,
+    ) -> (ProposalId, ProposalId, u64) {
+        Self::preview_rolling_sequence_id(next_id, era)
     }
 
     fn allocate_rolling_sequence_id(next_id: &mut u64, era: &mut u64) -> u64 {

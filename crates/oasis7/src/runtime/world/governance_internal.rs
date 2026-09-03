@@ -606,7 +606,18 @@ impl World {
                     status: ProposalStatus::Proposed,
                 };
                 self.proposals.insert(*proposal_id, proposal);
-                self.next_proposal_id = self.next_proposal_id.max(proposal_id.saturating_add(1));
+                let (allocated, next_proposal_id, next_proposal_id_era) =
+                    World::preview_next_proposal_id(
+                        self.next_proposal_id,
+                        self.next_proposal_id_era,
+                    );
+                if allocated == *proposal_id {
+                    self.next_proposal_id = next_proposal_id;
+                    self.next_proposal_id_era = next_proposal_id_era;
+                } else {
+                    self.next_proposal_id =
+                        self.next_proposal_id.max(proposal_id.saturating_add(1));
+                }
             }
             GovernanceEvent::ShadowReport {
                 proposal_id,

@@ -101,6 +101,7 @@ mod governance_finality_snapshot_transaction_regressions;
 mod governance_identity_penalty_application_transaction_regressions;
 mod governance_identity_penalty_resolution_transaction_regressions;
 mod governance_identity_penalty_transaction_regressions;
+mod governance_proposal_transaction_regressions;
 mod governance_validator_admission;
 mod governance_vote_quote;
 mod logistics_transfer_quote;
