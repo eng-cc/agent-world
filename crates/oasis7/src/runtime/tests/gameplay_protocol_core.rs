@@ -896,6 +896,29 @@ fn war_auto_concludes_after_duration() {
     });
     world.step().expect("declare war");
 
+    let active_war = world.state().wars.get("war.auto").expect("active war");
+    let due_at = active_war
+        .declared_at
+        .saturating_add(active_war.max_duration_ticks.max(1));
+    let snapshot_before_prepare = world.snapshot();
+    let journal_before_prepare = world.journal().clone();
+    let prepared = world.prepared_next_due_war_event_for_test(due_at);
+    assert_eq!(world.snapshot(), snapshot_before_prepare);
+    assert_eq!(world.journal(), &journal_before_prepare);
+    assert!(matches!(
+        prepared,
+        Some(DomainEvent::WarConcluded {
+            war_id,
+            winner_alliance_id,
+            loser_alliance_id,
+            participant_outcomes,
+            ..
+        }) if war_id == "war.auto"
+            && winner_alliance_id == "alliance.red"
+            && loser_alliance_id == "alliance.blue"
+            && !participant_outcomes.is_empty()
+    ));
+
     for _ in 0..12 {
         world.step().expect("advance war lifecycle");
     }

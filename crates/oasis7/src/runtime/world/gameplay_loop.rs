@@ -517,8 +517,14 @@ impl World {
     }
 
     fn process_war_lifecycle(&mut self, emitted: &mut Vec<WorldEvent>) -> Result<(), WorldError> {
-        let now = self.state.time;
-        let mut due_wars = self
+        while let Some(event) = self.prepare_next_due_war_event_at(self.state.time) {
+            self.append_gameplay_domain_event(event, emitted)?;
+        }
+        Ok(())
+    }
+
+    fn prepare_next_due_war_event_at(&self, now: u64) -> Option<DomainEvent> {
+        let war = self
             .state
             .wars
             .values()
@@ -529,72 +535,67 @@ impl World {
                             .declared_at
                             .saturating_add(war.max_duration_ticks.max(1))
             })
-            .cloned()
-            .collect::<Vec<_>>();
-        due_wars.sort_by(|left, right| left.war_id.cmp(&right.war_id));
+            .min_by(|left, right| left.war_id.cmp(&right.war_id))
+            .cloned()?;
+        let aggressor_members = self
+            .state
+            .alliances
+            .get(&war.aggressor_alliance_id)
+            .map(|alliance| alliance.members.len() as i64)
+            .unwrap_or(0);
+        let defender_members = self
+            .state
+            .alliances
+            .get(&war.defender_alliance_id)
+            .map(|alliance| alliance.members.len() as i64)
+            .unwrap_or(0);
+        let aggressor_reputation =
+            self.alliance_reputation_total(war.aggressor_alliance_id.as_str());
+        let defender_reputation = self.alliance_reputation_total(war.defender_alliance_id.as_str());
+        let aggressor_score = aggressor_members
+            .saturating_mul(WAR_SCORE_PER_MEMBER)
+            .saturating_add(i64::from(war.intensity))
+            .saturating_add(aggressor_reputation.saturating_div(WAR_SCORE_REPUTATION_DIVISOR));
+        let defender_score = defender_members
+            .saturating_mul(WAR_SCORE_PER_MEMBER)
+            .saturating_add(defender_reputation.saturating_div(WAR_SCORE_REPUTATION_DIVISOR));
+        let (winner_alliance_id, loser_alliance_id) = match aggressor_score.cmp(&defender_score) {
+            Ordering::Greater | Ordering::Equal => (
+                war.aggressor_alliance_id.clone(),
+                war.defender_alliance_id.clone(),
+            ),
+            Ordering::Less => (
+                war.defender_alliance_id.clone(),
+                war.aggressor_alliance_id.clone(),
+            ),
+        };
+        let participant_outcomes = self.build_war_participant_outcomes(
+            winner_alliance_id.as_str(),
+            loser_alliance_id.as_str(),
+            war.intensity,
+        );
+        let summary = format!(
+            "auto settlement: aggressor_score={} defender_score={} aggressor_reputation={} defender_reputation={} outcome_count={}",
+            aggressor_score,
+            defender_score,
+            aggressor_reputation,
+            defender_reputation,
+            participant_outcomes.len()
+        );
+        Some(DomainEvent::WarConcluded {
+            war_id: war.war_id,
+            winner_alliance_id,
+            loser_alliance_id,
+            aggressor_score,
+            defender_score,
+            summary,
+            participant_outcomes,
+        })
+    }
 
-        for war in due_wars {
-            let aggressor_members = self
-                .state
-                .alliances
-                .get(&war.aggressor_alliance_id)
-                .map(|alliance| alliance.members.len() as i64)
-                .unwrap_or(0);
-            let defender_members = self
-                .state
-                .alliances
-                .get(&war.defender_alliance_id)
-                .map(|alliance| alliance.members.len() as i64)
-                .unwrap_or(0);
-            let aggressor_reputation =
-                self.alliance_reputation_total(war.aggressor_alliance_id.as_str());
-            let defender_reputation =
-                self.alliance_reputation_total(war.defender_alliance_id.as_str());
-            let aggressor_score = aggressor_members
-                .saturating_mul(WAR_SCORE_PER_MEMBER)
-                .saturating_add(i64::from(war.intensity))
-                .saturating_add(aggressor_reputation.saturating_div(WAR_SCORE_REPUTATION_DIVISOR));
-            let defender_score = defender_members
-                .saturating_mul(WAR_SCORE_PER_MEMBER)
-                .saturating_add(defender_reputation.saturating_div(WAR_SCORE_REPUTATION_DIVISOR));
-            let (winner_alliance_id, loser_alliance_id) = match aggressor_score.cmp(&defender_score)
-            {
-                Ordering::Greater | Ordering::Equal => (
-                    war.aggressor_alliance_id.clone(),
-                    war.defender_alliance_id.clone(),
-                ),
-                Ordering::Less => (
-                    war.defender_alliance_id.clone(),
-                    war.aggressor_alliance_id.clone(),
-                ),
-            };
-            let participant_outcomes = self.build_war_participant_outcomes(
-                winner_alliance_id.as_str(),
-                loser_alliance_id.as_str(),
-                war.intensity,
-            );
-            let summary = format!(
-                "auto settlement: aggressor_score={} defender_score={} aggressor_reputation={} defender_reputation={} outcome_count={}",
-                aggressor_score,
-                defender_score,
-                aggressor_reputation,
-                defender_reputation,
-                participant_outcomes.len()
-            );
-            self.append_gameplay_domain_event(
-                DomainEvent::WarConcluded {
-                    war_id: war.war_id,
-                    winner_alliance_id,
-                    loser_alliance_id,
-                    aggressor_score,
-                    defender_score,
-                    summary,
-                    participant_outcomes,
-                },
-                emitted,
-            )?;
-        }
-        Ok(())
+    #[cfg(test)]
+    pub(crate) fn prepared_next_due_war_event_for_test(&self, now: u64) -> Option<DomainEvent> {
+        self.prepare_next_due_war_event_at(now)
     }
 
     pub(super) fn alliance_reputation_total(&self, alliance_id: &str) -> i64 {
