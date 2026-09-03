@@ -863,7 +863,7 @@ impl World {
         Ok(())
     }
 
-    pub(super) fn refresh_threat_heatmap(&mut self) {
+    pub(super) fn prepare_threat_heatmap(&self) -> BTreeMap<String, i64> {
         let mut next = BTreeMap::new();
         for war in self.state.wars.values() {
             if !war.active {
@@ -886,7 +886,11 @@ impl World {
             *next.entry(format!("crisis:{}", crisis.kind)).or_insert(0) += crisis_risk;
             *next.entry("global:crisis".to_string()).or_insert(0) += crisis_risk;
         }
-        self.threat_heatmap = next;
+        next
+    }
+
+    pub(super) fn refresh_threat_heatmap(&mut self) {
+        self.threat_heatmap = self.prepare_threat_heatmap();
     }
 
     pub(super) fn enforce_pending_effect_limit(&mut self) {

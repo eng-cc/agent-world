@@ -419,6 +419,7 @@ fn gameplay_protocol_actions_drive_persisted_state() {
 #[test]
 fn threat_heatmap_tracks_active_war_and_crisis_risk() {
     let mut world = World::new();
+    assert!(world.prepare_threat_heatmap().is_empty());
     register_agents(&mut world, &["a", "b", "c", "d"]);
 
     world.submit_action(Action::FormAlliance {
@@ -447,6 +448,15 @@ fn threat_heatmap_tracks_active_war_and_crisis_risk() {
     });
     world.step().expect("declare war");
 
+    let snapshot_before_prepare = world.snapshot();
+    let journal_before_prepare = world.journal().clone();
+    let heatmap_before_prepare = world.threat_heatmap().clone();
+    let prepared_heatmap = world.prepare_threat_heatmap();
+    assert_eq!(prepared_heatmap, heatmap_before_prepare);
+    assert_eq!(world.snapshot(), snapshot_before_prepare);
+    assert_eq!(world.journal(), &journal_before_prepare);
+    assert_eq!(world.threat_heatmap(), &heatmap_before_prepare);
+
     let heatmap = world.threat_heatmap();
     assert!(heatmap.get("alliance:alliance.red").copied().unwrap_or(0) > 0);
     assert!(heatmap.get("alliance:alliance.blue").copied().unwrap_or(0) > 0);
@@ -461,6 +471,7 @@ fn threat_heatmap_tracks_active_war_and_crisis_risk() {
         .kind
         .clone();
     let heatmap_after_crisis = world.threat_heatmap();
+    assert_eq!(&world.prepare_threat_heatmap(), heatmap_after_crisis);
     assert!(
         heatmap_after_crisis
             .get(format!("crisis:{crisis_kind}").as_str())
@@ -484,6 +495,7 @@ fn threat_heatmap_tracks_active_war_and_crisis_risk() {
     });
     world.step().expect("resolve crisis");
     let heatmap_after_resolution = world.threat_heatmap();
+    assert_eq!(&world.prepare_threat_heatmap(), heatmap_after_resolution);
     assert!(
         heatmap_after_resolution
             .get("global:crisis")
