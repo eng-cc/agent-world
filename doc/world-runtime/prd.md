@@ -46,6 +46,8 @@ Identity-penalty application previews the next penalty id and prepares the penal
 
 Governance proposal creation and shadowing now preview proposal allocation and prepare the replacement proposal sidecar before canonical publication. Existing public manifest/patch, module-change, proposal-status, and shadow-hash validation remains unchanged; post-prepare failure leaves proposal state, proposal id/era, event id/era, journal, backpressure, and tick consensus unchanged, and retry/replay preserve the original event payloads and rollover semantics. The proposal sidecar remains outside the canonical `WorldState` root schema; this is a bounded direct-mutator guarantee, not whole-World root atomicity.
 
+Approval and queueing now prepare the ordered `Approved`/`Queued` pair before one canonical install, while rejection keeps its single `Approved` event semantics. Post-prepare failure leaves the proposal, event allocator, bounded-journal retention/backpressure, and tick-consensus record unchanged; retry and replay preserve both event payloads and the final consensus counters. The proposal sidecar remains outside the canonical `WorldState` root schema, so this is a bounded guarantee rather than whole-World root atomicity.
+
 ### Kernel、governed physics 与 institution module 边界
 
 本节把 issue #3370 的架构建议落为 world-runtime 的执行约束。它不定义产品规则、WASM wire ABI、Agent tool schema 或 p2p finality 算法；产品规则仍由产品/gameplay authority 拥有，ABI 细节由 [`wasm-interface.md`](wasm/wasm-interface.md) 拥有，finality 由 [`doc/p2p/`](../p2p/) 拥有。

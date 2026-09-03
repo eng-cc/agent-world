@@ -536,26 +536,23 @@ impl World {
             approver: approver.into(),
             decision,
         };
-        self.append_event(WorldEventBody::Governance(event), None)?;
-        if let Some(manifest_hash) = queued_manifest_hash {
+        let queued_event = queued_manifest_hash.map(|manifest_hash| {
             let queued_at_tick = self.state.time;
             let timelock_ticks = self.governance_execution_policy.timelock_ticks;
             let not_before_tick = queued_at_tick.saturating_add(timelock_ticks);
             let activate_epoch = self
                 .current_governance_epoch()
                 .saturating_add(self.governance_execution_policy.activation_delay_epochs);
-            self.append_event(
-                WorldEventBody::Governance(GovernanceEvent::Queued {
-                    proposal_id,
-                    manifest_hash,
-                    queued_at_tick,
-                    not_before_tick,
-                    activate_epoch,
-                    timelock_ticks,
-                }),
-                None,
-            )?;
-        }
+            GovernanceEvent::Queued {
+                proposal_id,
+                manifest_hash,
+                queued_at_tick,
+                not_before_tick,
+                activate_epoch,
+                timelock_ticks,
+            }
+        });
+        self.append_prepared_governance_approval(event, queued_event)?;
         Ok(())
     }
 

@@ -1,10 +1,48 @@
 use super::super::super::{
     GovernanceEvent, GovernanceFinalityEpochSnapshot, GovernanceIdentityPenaltyRecord,
-    GovernanceIdentityProfileState, Proposal, ProposalId, ProposalStatus, WorldError,
-    WorldEventBody,
+    GovernanceIdentityProfileState, Proposal, ProposalDecision, ProposalId, ProposalStatus,
+    TickConsensusRecord, WorldError, WorldEvent, WorldEventBody, WorldEventId,
 };
 use super::super::World;
 use super::PreparedEventStateDelta;
+
+pub(crate) struct PreparedGovernanceApprovalPublication {
+    proposal_id: ProposalId,
+    proposal: Proposal,
+    events: Vec<WorldEvent>,
+    next_event_id: WorldEventId,
+    next_event_id_era: u64,
+    journal_events: Vec<WorldEvent>,
+    journal_events_evicted: u64,
+    consensus_record: TickConsensusRecord,
+}
+
+impl PreparedGovernanceApprovalPublication {
+    fn install(self, world: &mut World) {
+        let PreparedGovernanceApprovalPublication {
+            proposal_id,
+            proposal,
+            events,
+            next_event_id,
+            next_event_id_era,
+            journal_events,
+            journal_events_evicted,
+            consensus_record,
+        } = self;
+        world.proposals.insert(proposal_id, proposal);
+        if let Some(event) = events.last() {
+            world.state.time = event.time;
+        }
+        world.next_event_id = next_event_id;
+        world.next_event_id_era = next_event_id_era;
+        world.journal.events = journal_events;
+        world.runtime_backpressure_stats.journal_events_evicted = world
+            .runtime_backpressure_stats
+            .journal_events_evicted
+            .saturating_add(journal_events_evicted);
+        world.install_prepared_tick_consensus_record(consensus_record);
+    }
+}
 
 pub(super) fn prepare(
     world: &World,
@@ -158,6 +196,84 @@ pub(super) fn prepare(
     }
 }
 
+pub(crate) fn prepare_approved_proposal(
+    proposal: &Proposal,
+    proposal_id: ProposalId,
+    approver: &str,
+    decision: &ProposalDecision,
+) -> Result<Proposal, WorldError> {
+    let mut next = proposal.clone();
+    match decision {
+        ProposalDecision::Approve => {
+            let ProposalStatus::Shadowed { manifest_hash } = &proposal.status else {
+                return Err(WorldError::ProposalInvalidState {
+                    proposal_id,
+                    expected: "shadowed".to_string(),
+                    found: proposal.status.label(),
+                });
+            };
+            next.status = ProposalStatus::Approved {
+                manifest_hash: manifest_hash.clone(),
+                approver: approver.to_string(),
+            };
+        }
+        ProposalDecision::Reject { reason } => {
+            next.queued_at_tick = None;
+            next.not_before_tick = None;
+            next.activate_epoch = None;
+            next.timelock_ticks = 0;
+            next.status = ProposalStatus::Rejected {
+                reason: reason.clone(),
+            };
+        }
+    }
+    Ok(next)
+}
+
+pub(crate) fn prepare_queued_proposal(
+    proposal: &Proposal,
+    proposal_id: ProposalId,
+    manifest_hash: &str,
+    queued_at_tick: u64,
+    not_before_tick: u64,
+    activate_epoch: u64,
+    timelock_ticks: u64,
+) -> Result<Proposal, WorldError> {
+    let ProposalStatus::Approved {
+        manifest_hash: approved_hash,
+        ..
+    } = &proposal.status
+    else {
+        return Err(WorldError::ProposalInvalidState {
+            proposal_id,
+            expected: "approved".to_string(),
+            found: proposal.status.label(),
+        });
+    };
+    if approved_hash != manifest_hash {
+        return Err(WorldError::GovernancePolicyInvalid {
+            reason: format!(
+                "queued manifest hash drift: proposal_id={} approved={} queued={}",
+                proposal_id, approved_hash, manifest_hash
+            ),
+        });
+    }
+    if not_before_tick < queued_at_tick {
+        return Err(WorldError::GovernancePolicyInvalid {
+            reason: format!(
+                "invalid queued timeline: proposal_id={} queued_at={} not_before={}",
+                proposal_id, queued_at_tick, not_before_tick
+            ),
+        });
+    }
+    let mut next = proposal.clone();
+    next.queued_at_tick = Some(queued_at_tick);
+    next.not_before_tick = Some(not_before_tick);
+    next.activate_epoch = Some(activate_epoch);
+    next.timelock_ticks = timelock_ticks;
+    Ok(next)
+}
+
 impl World {
     pub(super) fn prepare_governance_proposal(
         &self,
@@ -206,6 +322,126 @@ impl World {
             manifest_hash: manifest_hash.to_string(),
         };
         Ok(proposal)
+    }
+
+    pub(crate) fn append_prepared_governance_approval(
+        &mut self,
+        approved_event: GovernanceEvent,
+        queued_event: Option<GovernanceEvent>,
+    ) -> Result<(), WorldError> {
+        let prepared = self.prepare_governance_approval(approved_event, queued_event)?;
+        if self.take_fail_next_append_after_publication_prepare_for_test() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "injected append_event failure after publication preparation".to_string(),
+            });
+        }
+        prepared.install(self);
+        Ok(())
+    }
+
+    fn prepare_governance_approval(
+        &self,
+        approved_event: GovernanceEvent,
+        queued_event: Option<GovernanceEvent>,
+    ) -> Result<PreparedGovernanceApprovalPublication, WorldError> {
+        let (proposal_id, approver, decision) = match &approved_event {
+            GovernanceEvent::Approved {
+                proposal_id,
+                approver,
+                decision,
+            } => (*proposal_id, approver.as_str(), decision),
+            _ => {
+                return Err(WorldError::ResourceBalanceInvalid {
+                    reason: "prepared governance approval requires Approved event".to_string(),
+                });
+            }
+        };
+        let proposal = self
+            .proposals
+            .get(&proposal_id)
+            .ok_or(WorldError::ProposalNotFound { proposal_id })?;
+        let approved = prepare_approved_proposal(proposal, proposal_id, approver, decision)?;
+        let final_proposal = match queued_event.as_ref() {
+            Some(GovernanceEvent::Queued {
+                proposal_id: queued_proposal_id,
+                manifest_hash,
+                queued_at_tick,
+                not_before_tick,
+                activate_epoch,
+                timelock_ticks,
+            }) if *queued_proposal_id == proposal_id => prepare_queued_proposal(
+                &approved,
+                proposal_id,
+                manifest_hash,
+                *queued_at_tick,
+                *not_before_tick,
+                *activate_epoch,
+                *timelock_ticks,
+            )?,
+            Some(_) => {
+                return Err(WorldError::ResourceBalanceInvalid {
+                    reason: "prepared governance queue does not match Approved event".to_string(),
+                });
+            }
+            None => approved,
+        };
+
+        let (approved_event_id, next_event_id, next_event_id_era) =
+            Self::preview_next_event_id(self.next_event_id, self.next_event_id_era);
+        let mut events = vec![WorldEvent {
+            id: approved_event_id,
+            time: self.state.time,
+            caused_by: None,
+            body: WorldEventBody::Governance(approved_event),
+        }];
+        let (next_event_id, next_event_id_era) = if let Some(queued_event) = queued_event {
+            let (queued_event_id, next_event_id, next_event_id_era) =
+                Self::preview_next_event_id(next_event_id, next_event_id_era);
+            events.push(WorldEvent {
+                id: queued_event_id,
+                time: self.state.time,
+                caused_by: None,
+                body: WorldEventBody::Governance(queued_event),
+            });
+            (next_event_id, next_event_id_era)
+        } else {
+            (next_event_id, next_event_id_era)
+        };
+
+        let mut journal_events = self.journal.events.clone();
+        journal_events.extend(events.iter().cloned());
+        let max_len = self.runtime_memory_limits.max_journal_events.max(1);
+        let overflow = journal_events.len().saturating_sub(max_len);
+        if overflow > 0 {
+            journal_events.drain(0..overflow);
+        }
+        let tick_events: Vec<WorldEvent> = journal_events
+            .iter()
+            .filter(|journal_event| journal_event.time == self.state.time)
+            .cloned()
+            .collect();
+        let state_root = self.current_state_root_hash()?;
+        let consensus_record = self.build_tick_consensus_record_for_prepared_events(
+            self.state.time,
+            tick_events.as_slice(),
+            state_root.clone(),
+        )?;
+        self.validate_tick_consensus_candidate_for_prepared_publication(
+            &consensus_record,
+            tick_events.as_slice(),
+            state_root.as_str(),
+        )?;
+
+        Ok(PreparedGovernanceApprovalPublication {
+            proposal_id,
+            proposal: final_proposal,
+            events,
+            next_event_id,
+            next_event_id_era,
+            journal_events,
+            journal_events_evicted: overflow as u64,
+            consensus_record,
+        })
     }
 
     pub(crate) fn prepare_governance_identity_penalty_application(
