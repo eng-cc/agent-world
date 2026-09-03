@@ -621,6 +621,24 @@ fn governance_proposal_finalizes_and_rejects_late_votes() {
     });
     world.step().expect("vote from a");
 
+    let snapshot_before_prepare = world.snapshot();
+    let journal_before_prepare = world.journal().clone();
+    let prepared = world
+        .prepared_governance_finalization_events_for_test(world.state().time.saturating_add(1));
+    assert_eq!(world.snapshot(), snapshot_before_prepare);
+    assert_eq!(world.journal(), &journal_before_prepare);
+    assert!(matches!(
+        prepared.as_slice(),
+        [DomainEvent::GovernanceProposalFinalized {
+            proposal_key,
+            winning_option,
+            winning_weight: 2,
+            total_weight: 2,
+            passed: false,
+        }] if proposal_key == "proposal.finalize"
+            && winning_option.as_deref() == Some("approve")
+    ));
+
     world.submit_action(Action::CastGovernanceVote {
         voter_agent_id: "b".to_string(),
         proposal_key: "proposal.finalize".to_string(),

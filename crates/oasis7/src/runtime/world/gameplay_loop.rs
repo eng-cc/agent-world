@@ -372,7 +372,13 @@ impl World {
         &mut self,
         emitted: &mut Vec<WorldEvent>,
     ) -> Result<(), WorldError> {
-        let now = self.state.time;
+        for event in self.prepare_governance_finalization_events_at(self.state.time) {
+            self.append_gameplay_domain_event(event, emitted)?;
+        }
+        Ok(())
+    }
+
+    fn prepare_governance_finalization_events_at(&self, now: u64) -> Vec<DomainEvent> {
         let mut due_keys: Vec<_> = self
             .state
             .governance_proposals
@@ -384,45 +390,53 @@ impl World {
             .collect();
         due_keys.sort();
 
-        for proposal_key in due_keys {
-            let Some(proposal) = self.state.governance_proposals.get(&proposal_key).cloned() else {
-                continue;
-            };
-            let vote_state = self.state.governance_votes.get(&proposal_key);
-            let total_weight = vote_state.map(|value| value.total_weight).unwrap_or(0);
-            let (winning_option, winning_weight) = vote_state
-                .and_then(|value| {
-                    value
-                        .tallies
-                        .iter()
-                        .max_by(|(left_option, left_weight), (right_option, right_weight)| {
-                            left_weight
-                                .cmp(right_weight)
-                                .then_with(|| right_option.cmp(left_option))
-                        })
-                        .map(|(option, weight)| (Some(option.clone()), *weight))
-                })
-                .unwrap_or((None, 0));
-            let reached_quorum = total_weight >= proposal.quorum_weight;
-            let reached_threshold = if total_weight == 0 {
-                false
-            } else {
-                (u128::from(winning_weight) * 10_000_u128)
-                    >= (u128::from(total_weight) * u128::from(proposal.pass_threshold_bps))
-            };
-            let passed = reached_quorum && reached_threshold && winning_option.is_some();
-            self.append_gameplay_domain_event(
-                DomainEvent::GovernanceProposalFinalized {
+        due_keys
+            .into_iter()
+            .filter_map(|proposal_key| {
+                let Some(proposal) = self.state.governance_proposals.get(&proposal_key).cloned()
+                else {
+                    return None;
+                };
+                let vote_state = self.state.governance_votes.get(&proposal_key);
+                let total_weight = vote_state.map(|value| value.total_weight).unwrap_or(0);
+                let (winning_option, winning_weight) = vote_state
+                    .and_then(|value| {
+                        value
+                            .tallies
+                            .iter()
+                            .max_by(|(left_option, left_weight), (right_option, right_weight)| {
+                                left_weight
+                                    .cmp(right_weight)
+                                    .then_with(|| right_option.cmp(left_option))
+                            })
+                            .map(|(option, weight)| (Some(option.clone()), *weight))
+                    })
+                    .unwrap_or((None, 0));
+                let reached_quorum = total_weight >= proposal.quorum_weight;
+                let reached_threshold = if total_weight == 0 {
+                    false
+                } else {
+                    (u128::from(winning_weight) * 10_000_u128)
+                        >= (u128::from(total_weight) * u128::from(proposal.pass_threshold_bps))
+                };
+                let passed = reached_quorum && reached_threshold && winning_option.is_some();
+                Some(DomainEvent::GovernanceProposalFinalized {
                     proposal_key: proposal_key.clone(),
                     winning_option,
                     winning_weight,
                     total_weight,
                     passed,
-                },
-                emitted,
-            )?;
-        }
-        Ok(())
+                })
+            })
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn prepared_governance_finalization_events_for_test(
+        &self,
+        now: u64,
+    ) -> Vec<DomainEvent> {
+        self.prepare_governance_finalization_events_at(now)
     }
 
     fn process_crisis_lifecycle(
