@@ -54,8 +54,16 @@ const STARTER_OC_CLAIM_AMOUNT: u64 = 100_000_000;
 enum PreparedEventStateDelta {
     NoState,
     Body(PreparedBodyAttributesUpdate),
-    RouteOnly { agent_id: String },
-    GovernanceEmergencyBrake { next_until_tick: Option<WorldTime> },
+    RouteOnly {
+        agent_id: String,
+    },
+    GovernanceEmergencyBrake {
+        next_until_tick: Option<WorldTime>,
+    },
+    GovernanceFinalityEpochSnapshot {
+        epoch_id: u64,
+        next: Option<super::super::GovernanceFinalityEpochSnapshot>,
+    },
 }
 
 impl PreparedEventStateDelta {
@@ -106,6 +114,17 @@ impl PreparedEventStateDelta {
                 }
                 _ => false,
             },
+            Self::GovernanceFinalityEpochSnapshot { epoch_id, next } => match body {
+                WorldEventBody::Governance(GovernanceEvent::FinalityEpochSnapshotSet {
+                    snapshot,
+                    ..
+                }) => *epoch_id == snapshot.epoch_id && next.as_ref() == Some(snapshot),
+                WorldEventBody::Governance(GovernanceEvent::FinalityEpochSnapshotRemoved {
+                    epoch_id: event_epoch_id,
+                    ..
+                }) => *epoch_id == *event_epoch_id && next.is_none(),
+                _ => false,
+            },
         }
     }
 
@@ -117,6 +136,9 @@ impl PreparedEventStateDelta {
                 .with_routed_domain_event(event),
             Self::GovernanceEmergencyBrake { .. } => {
                 unreachable!("governance emergency brake does not have a state overlay")
+            }
+            Self::GovernanceFinalityEpochSnapshot { .. } => {
+                unreachable!("governance finality snapshot does not have a state overlay")
             }
         }
     }
@@ -132,6 +154,16 @@ impl PreparedEventStateDelta {
                 });
                 world.governance_emergency_brake_until_tick = next_until_tick;
             }
+            Self::GovernanceFinalityEpochSnapshot { epoch_id, next } => match next {
+                Some(snapshot) => {
+                    world
+                        .governance_finality_epoch_snapshots
+                        .insert(epoch_id, snapshot);
+                }
+                None => {
+                    world.governance_finality_epoch_snapshots.remove(&epoch_id);
+                }
+            },
             Self::NoState | Self::RouteOnly { .. } => {}
         }
     }
@@ -154,6 +186,7 @@ mod action_to_event_gameplay_meta;
 mod action_to_event_policy_contract;
 mod action_to_event_policy_contract_rejection;
 mod main_token;
+mod prepared_governance_events;
 
 impl World {
     // ---------------------------------------------------------------------
@@ -858,7 +891,8 @@ impl World {
         body: WorldEventBody,
         caused_by: Option<CausedBy>,
     ) -> Result<WorldEventId, WorldError> {
-        let state_delta = PreparedEventStateDelta::for_body(&body);
+        let state_delta = prepared_governance_events::prepare(self, &body)?
+            .or_else(|| PreparedEventStateDelta::for_body(&body));
         self.append_event_internal(body, caused_by, state_delta)
     }
 
@@ -1012,6 +1046,11 @@ impl World {
             PreparedEventStateDelta::GovernanceEmergencyBrake { .. } => {
                 // The emergency-brake gate is a World sidecar and is intentionally
                 // outside the canonical WorldState root schema.
+                self.current_state_root_hash()?
+            }
+            PreparedEventStateDelta::GovernanceFinalityEpochSnapshot { .. } => {
+                // Finality epoch snapshots are persisted World sidecar data and
+                // intentionally remain outside the canonical WorldState root schema.
                 self.current_state_root_hash()?
             }
         };

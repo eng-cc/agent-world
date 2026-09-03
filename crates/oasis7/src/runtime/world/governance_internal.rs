@@ -734,41 +734,12 @@ impl World {
                 };
             }
             GovernanceEvent::FinalityEpochSnapshotSet { snapshot, previous } => {
-                let current = self
-                    .governance_finality_epoch_snapshots
-                    .get(&snapshot.epoch_id)
-                    .cloned();
-                if current != *previous {
-                    return Err(WorldError::GovernancePolicyInvalid {
-                        reason: format!(
-                            "governance finality snapshot predecessor drift: epoch_id={}",
-                            snapshot.epoch_id
-                        ),
-                    });
-                }
-                let mut normalized = snapshot.clone();
-                self.normalize_governance_finality_epoch_snapshot(&mut normalized)?;
-                if normalized != *snapshot {
-                    return Err(WorldError::GovernancePolicyInvalid {
-                        reason: format!(
-                            "governance finality snapshot normalization drift: epoch_id={}",
-                            snapshot.epoch_id
-                        ),
-                    });
-                }
+                self.validate_governance_finality_epoch_snapshot_set(snapshot, previous)?;
                 self.governance_finality_epoch_snapshots
                     .insert(snapshot.epoch_id, snapshot.clone());
             }
             GovernanceEvent::FinalityEpochSnapshotRemoved { epoch_id, snapshot } => {
-                if snapshot.epoch_id != *epoch_id
-                    || self.governance_finality_epoch_snapshots.get(epoch_id) != Some(snapshot)
-                {
-                    return Err(WorldError::GovernancePolicyInvalid {
-                        reason: format!(
-                            "governance finality snapshot removal drift: epoch_id={epoch_id}"
-                        ),
-                    });
-                }
+                self.validate_governance_finality_epoch_snapshot_removal(*epoch_id, snapshot)?;
                 self.governance_finality_epoch_snapshots.remove(epoch_id);
             }
             GovernanceEvent::EmergencyBrakeActivated {
