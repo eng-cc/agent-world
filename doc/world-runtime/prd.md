@@ -38,6 +38,8 @@ Finality epoch snapshot set/remove use the prepared governance sidecar seam: pre
 
 Emergency-veto proposal publication prepares the rejected proposal sidecar before one canonical install; guardian authorization, Approved-plus-queued eligibility, exact rejection reason, cleared queue fields, and replay semantics remain unchanged. Post-prepare failure publishes no proposal mutation or event/allocator/journal/backpressure/consensus change. This bounded guarantee does not claim whole-World root atomicity.
 
+Identity-penalty appeals prepare an immutable replacement record before one canonical install, with replay reusing the same helper. Appellant/reason validation, Applied-status and deadline checks, legacy detection-field backfill, exact appeal evidence hash, and evidence-chain extension remain unchanged. Post-prepare failure publishes no penalty-map mutation or event/allocator/journal/backpressure/consensus change; the sidecar remains outside the canonical `WorldState` root schema, so this is a bounded guarantee rather than whole-World root atomicity.
+
 ### Kernel、governed physics 与 institution module 边界
 
 本节把 issue #3370 的架构建议落为 world-runtime 的执行约束。它不定义产品规则、WASM wire ABI、Agent tool schema 或 p2p finality 算法；产品规则仍由产品/gameplay authority 拥有，ABI 细节由 [`wasm-interface.md`](wasm/wasm-interface.md) 拥有，finality 由 [`doc/p2p/`](../p2p/) 拥有。

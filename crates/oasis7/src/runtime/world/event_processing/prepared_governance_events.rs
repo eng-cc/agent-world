@@ -1,6 +1,6 @@
 use super::super::super::{
-    GovernanceEvent, GovernanceFinalityEpochSnapshot, Proposal, ProposalId, ProposalStatus,
-    WorldError, WorldEventBody,
+    GovernanceEvent, GovernanceFinalityEpochSnapshot, GovernanceIdentityPenaltyRecord, Proposal,
+    ProposalId, ProposalStatus, WorldError, WorldEventBody,
 };
 use super::super::World;
 use super::PreparedEventStateDelta;
@@ -52,11 +52,88 @@ pub(super) fn prepare(
                 next,
             }))
         }
+        WorldEventBody::Governance(GovernanceEvent::IdentityPenaltyAppealed {
+            penalty_id,
+            appellant,
+            reason,
+        }) => {
+            let next =
+                world.prepare_governance_identity_penalty_appeal(*penalty_id, appellant, reason)?;
+            Ok(Some(
+                PreparedEventStateDelta::GovernanceIdentityPenaltyAppeal {
+                    penalty_id: *penalty_id,
+                    next,
+                },
+            ))
+        }
         _ => Ok(None),
     }
 }
 
 impl World {
+    pub(crate) fn prepare_governance_identity_penalty_appeal(
+        &self,
+        penalty_id: u64,
+        appellant: &str,
+        reason: &str,
+    ) -> Result<GovernanceIdentityPenaltyRecord, WorldError> {
+        Self::validate_governance_identity_field("identity penalty appeal appellant", appellant)?;
+        Self::validate_governance_identity_field("identity penalty appeal reason", reason)?;
+        let appeal_evidence_hash =
+            Self::build_identity_penalty_stage_evidence_hash("appeal", appellant, reason);
+        let mut penalty = self
+            .governance_identity_penalties
+            .get(&penalty_id)
+            .cloned()
+            .ok_or(WorldError::GovernancePolicyInvalid {
+                reason: format!("identity penalty not found: penalty_id={penalty_id}"),
+            })?;
+        if penalty.status != super::super::super::GovernanceIdentityPenaltyStatus::Applied {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "identity penalty is not appealable: penalty_id={} status={:?}",
+                    penalty_id, penalty.status
+                ),
+            });
+        }
+        if self.state.time > penalty.appeal_deadline_tick {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "identity penalty appeal window closed: penalty_id={} deadline_tick={}",
+                    penalty_id, penalty.appeal_deadline_tick
+                ),
+            });
+        }
+        if penalty.detection_source.trim().is_empty() {
+            penalty.detection_source = "world.threat_heatmap.v1".to_string();
+        }
+        if penalty.detection_incident_id.trim().is_empty() {
+            penalty.detection_incident_id = Self::build_identity_penalty_incident_id(
+                penalty.target_agent_id.as_str(),
+                penalty.evidence_hash.as_str(),
+            );
+        }
+        if penalty.evidence_chain_hash.trim().is_empty() {
+            penalty.evidence_chain_hash = Self::build_identity_penalty_chain_hash(
+                penalty.penalty_id,
+                penalty.target_agent_id.as_str(),
+                penalty.evidence_hash.as_str(),
+                penalty.reason.as_str(),
+                penalty.detection_incident_id.as_str(),
+            );
+        }
+        penalty.status = super::super::super::GovernanceIdentityPenaltyStatus::Appealed;
+        penalty.appellant = Some(appellant.to_string());
+        penalty.appeal_reason = Some(reason.to_string());
+        penalty.appeal_evidence_hash = Some(appeal_evidence_hash.clone());
+        penalty.evidence_chain_hash = Self::extend_identity_penalty_chain_hash(
+            penalty.evidence_chain_hash.as_str(),
+            "appeal",
+            appeal_evidence_hash.as_str(),
+        );
+        Ok(penalty)
+    }
+
     pub(crate) fn prepare_governance_emergency_veto(
         &self,
         proposal_id: ProposalId,

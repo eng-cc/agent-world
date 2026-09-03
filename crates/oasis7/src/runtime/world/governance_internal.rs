@@ -893,65 +893,12 @@ impl World {
                 appellant,
                 reason,
             } => {
-                Self::validate_governance_identity_field(
-                    "identity penalty appeal appellant",
-                    appellant.as_str(),
+                let next = self.prepare_governance_identity_penalty_appeal(
+                    *penalty_id,
+                    appellant,
+                    reason,
                 )?;
-                Self::validate_governance_identity_field(
-                    "identity penalty appeal reason",
-                    reason.as_str(),
-                )?;
-                let appeal_evidence_hash =
-                    Self::build_identity_penalty_stage_evidence_hash("appeal", appellant, reason);
-                let penalty = self
-                    .governance_identity_penalties
-                    .get_mut(penalty_id)
-                    .ok_or(WorldError::GovernancePolicyInvalid {
-                        reason: format!("identity penalty not found: penalty_id={penalty_id}"),
-                    })?;
-                if penalty.status != GovernanceIdentityPenaltyStatus::Applied {
-                    return Err(WorldError::GovernancePolicyInvalid {
-                        reason: format!(
-                            "identity penalty is not appealable: penalty_id={} status={:?}",
-                            penalty_id, penalty.status
-                        ),
-                    });
-                }
-                if self.state.time > penalty.appeal_deadline_tick {
-                    return Err(WorldError::GovernancePolicyInvalid {
-                        reason: format!(
-                            "identity penalty appeal window closed: penalty_id={} deadline_tick={}",
-                            penalty_id, penalty.appeal_deadline_tick
-                        ),
-                    });
-                }
-                if penalty.detection_source.trim().is_empty() {
-                    penalty.detection_source = IDENTITY_PENALTY_DETECTION_SOURCE.to_string();
-                }
-                if penalty.detection_incident_id.trim().is_empty() {
-                    penalty.detection_incident_id = Self::build_identity_penalty_incident_id(
-                        penalty.target_agent_id.as_str(),
-                        penalty.evidence_hash.as_str(),
-                    );
-                }
-                if penalty.evidence_chain_hash.trim().is_empty() {
-                    penalty.evidence_chain_hash = Self::build_identity_penalty_chain_hash(
-                        penalty.penalty_id,
-                        penalty.target_agent_id.as_str(),
-                        penalty.evidence_hash.as_str(),
-                        penalty.reason.as_str(),
-                        penalty.detection_incident_id.as_str(),
-                    );
-                }
-                penalty.status = GovernanceIdentityPenaltyStatus::Appealed;
-                penalty.appellant = Some(appellant.clone());
-                penalty.appeal_reason = Some(reason.clone());
-                penalty.appeal_evidence_hash = Some(appeal_evidence_hash.clone());
-                penalty.evidence_chain_hash = Self::extend_identity_penalty_chain_hash(
-                    penalty.evidence_chain_hash.as_str(),
-                    "appeal",
-                    appeal_evidence_hash.as_str(),
-                );
+                self.governance_identity_penalties.insert(*penalty_id, next);
             }
             GovernanceEvent::IdentityPenaltyResolved {
                 penalty_id,

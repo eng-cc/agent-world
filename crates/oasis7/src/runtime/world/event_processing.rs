@@ -1,8 +1,9 @@
 use super::super::capability_authorization::CapabilityInvocationContext;
 use super::super::{
     Action, ActionEnvelope, ActionId, CausedBy, CrisisStatus, DomainEvent, EconomicContractStatus,
-    EpochSettlementReport, GovernanceEvent, GovernanceProposalStatus, MainTokenConfig,
-    MainTokenFeeKind, MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan,
+    EpochSettlementReport, GovernanceEvent, GovernanceIdentityPenaltyRecord,
+    GovernanceProposalStatus, MainTokenConfig, MainTokenFeeKind,
+    MainTokenGenesisAllocationBucketState, MainTokenGenesisAllocationPlan,
     MainTokenNodePointsBridgeDistribution, MaterialLedgerId, MaterialStack, NodeRewardMintRecord,
     NodeSettlement, ProposalId, ProposalStatus, RejectReason, TickConsensusRecord, WorldError,
     WorldEvent, WorldEventBody, WorldEventId, WorldTime, main_token_bucket_unlocked_amount,
@@ -67,6 +68,10 @@ enum PreparedEventStateDelta {
     GovernanceEmergencyVeto {
         proposal_id: ProposalId,
         next: super::super::Proposal,
+    },
+    GovernanceIdentityPenaltyAppeal {
+        penalty_id: u64,
+        next: GovernanceIdentityPenaltyRecord,
     },
 }
 
@@ -136,6 +141,13 @@ impl PreparedEventStateDelta {
                     ..
                 }) if proposal_id == event_proposal_id
             ),
+            Self::GovernanceIdentityPenaltyAppeal { penalty_id, .. } => matches!(
+                body,
+                WorldEventBody::Governance(GovernanceEvent::IdentityPenaltyAppealed {
+                    penalty_id: event_penalty_id,
+                    ..
+                }) if penalty_id == event_penalty_id
+            ),
         }
     }
 
@@ -153,6 +165,9 @@ impl PreparedEventStateDelta {
             }
             Self::GovernanceEmergencyVeto { .. } => {
                 unreachable!("governance emergency veto does not have a state overlay")
+            }
+            Self::GovernanceIdentityPenaltyAppeal { .. } => {
+                unreachable!("identity penalty appeal does not have a state overlay")
             }
         }
     }
@@ -180,6 +195,9 @@ impl PreparedEventStateDelta {
             },
             Self::GovernanceEmergencyVeto { proposal_id, next } => {
                 world.proposals.insert(proposal_id, next);
+            }
+            Self::GovernanceIdentityPenaltyAppeal { penalty_id, next } => {
+                world.governance_identity_penalties.insert(penalty_id, next);
             }
             Self::NoState | Self::RouteOnly { .. } => {}
         }
@@ -1072,6 +1090,11 @@ impl World {
             }
             PreparedEventStateDelta::GovernanceEmergencyVeto { .. } => {
                 // Governance proposals are persisted World sidecar data and
+                // intentionally remain outside the canonical WorldState root schema.
+                self.current_state_root_hash()?
+            }
+            PreparedEventStateDelta::GovernanceIdentityPenaltyAppeal { .. } => {
+                // Identity penalty records are persisted World sidecar data and
                 // intentionally remain outside the canonical WorldState root schema.
                 self.current_state_root_hash()?
             }
