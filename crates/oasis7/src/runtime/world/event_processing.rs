@@ -64,6 +64,10 @@ enum PreparedEventStateDelta {
         epoch_id: u64,
         next: Option<super::super::GovernanceFinalityEpochSnapshot>,
     },
+    GovernanceEmergencyVeto {
+        proposal_id: ProposalId,
+        next: super::super::Proposal,
+    },
 }
 
 impl PreparedEventStateDelta {
@@ -125,6 +129,13 @@ impl PreparedEventStateDelta {
                 }) => *epoch_id == *event_epoch_id && next.is_none(),
                 _ => false,
             },
+            Self::GovernanceEmergencyVeto { proposal_id, .. } => matches!(
+                body,
+                WorldEventBody::Governance(GovernanceEvent::EmergencyVetoed {
+                    proposal_id: event_proposal_id,
+                    ..
+                }) if proposal_id == event_proposal_id
+            ),
         }
     }
 
@@ -139,6 +150,9 @@ impl PreparedEventStateDelta {
             }
             Self::GovernanceFinalityEpochSnapshot { .. } => {
                 unreachable!("governance finality snapshot does not have a state overlay")
+            }
+            Self::GovernanceEmergencyVeto { .. } => {
+                unreachable!("governance emergency veto does not have a state overlay")
             }
         }
     }
@@ -164,6 +178,9 @@ impl PreparedEventStateDelta {
                     world.governance_finality_epoch_snapshots.remove(&epoch_id);
                 }
             },
+            Self::GovernanceEmergencyVeto { proposal_id, next } => {
+                world.proposals.insert(proposal_id, next);
+            }
             Self::NoState | Self::RouteOnly { .. } => {}
         }
     }
@@ -1050,6 +1067,11 @@ impl World {
             }
             PreparedEventStateDelta::GovernanceFinalityEpochSnapshot { .. } => {
                 // Finality epoch snapshots are persisted World sidecar data and
+                // intentionally remain outside the canonical WorldState root schema.
+                self.current_state_root_hash()?
+            }
+            PreparedEventStateDelta::GovernanceEmergencyVeto { .. } => {
+                // Governance proposals are persisted World sidecar data and
                 // intentionally remain outside the canonical WorldState root schema.
                 self.current_state_root_hash()?
             }

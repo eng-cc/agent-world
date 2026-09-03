@@ -771,32 +771,13 @@ impl World {
                 signer_node_ids,
                 ..
             } => {
-                self.validate_guardian_signers(signer_node_ids, *threshold)?;
-                let proposal =
-                    self.proposals
-                        .get_mut(proposal_id)
-                        .ok_or(WorldError::ProposalNotFound {
-                            proposal_id: *proposal_id,
-                        })?;
-                if !matches!(proposal.status, ProposalStatus::Approved { .. }) {
-                    return Err(WorldError::ProposalInvalidState {
-                        proposal_id: *proposal_id,
-                        expected: "approved".to_string(),
-                        found: proposal.status.label(),
-                    });
-                }
-                if proposal.not_before_tick.is_none() || proposal.activate_epoch.is_none() {
-                    return Err(WorldError::GovernancePolicyInvalid {
-                        reason: format!("proposal_id={} is not queued for activation", proposal_id),
-                    });
-                }
-                proposal.queued_at_tick = None;
-                proposal.not_before_tick = None;
-                proposal.activate_epoch = None;
-                proposal.timelock_ticks = 0;
-                proposal.status = ProposalStatus::Rejected {
-                    reason: format!("emergency_veto: {reason}"),
-                };
+                let proposal = self.prepare_governance_emergency_veto(
+                    *proposal_id,
+                    reason,
+                    *threshold,
+                    signer_node_ids,
+                )?;
+                self.proposals.insert(*proposal_id, proposal);
             }
             GovernanceEvent::IdentityPenaltyApplied {
                 penalty_id,

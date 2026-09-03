@@ -36,6 +36,8 @@ Emergency-brake activation/release use the canonical prepared publication seam f
 
 Finality epoch snapshot set/remove use the prepared governance sidecar seam: predecessor, normalization, and removal-drift validation remains identical for live publication and replay, while a post-prepare failure publishes neither the persisted map entry nor event id/era, journal, backpressure, or tick consensus. The map remains outside the canonical `WorldState` root hash schema; this is a bounded direct-mutator guarantee, not whole-World atomicity.
 
+Emergency-veto proposal publication prepares the rejected proposal sidecar before one canonical install; guardian authorization, Approved-plus-queued eligibility, exact rejection reason, cleared queue fields, and replay semantics remain unchanged. Post-prepare failure publishes no proposal mutation or event/allocator/journal/backpressure/consensus change. This bounded guarantee does not claim whole-World root atomicity.
+
 ### Kernel、governed physics 与 institution module 边界
 
 本节把 issue #3370 的架构建议落为 world-runtime 的执行约束。它不定义产品规则、WASM wire ABI、Agent tool schema 或 p2p finality 算法；产品规则仍由产品/gameplay authority 拥有，ABI 细节由 [`wasm-interface.md`](wasm/wasm-interface.md) 拥有，finality 由 [`doc/p2p/`](../p2p/) 拥有。
