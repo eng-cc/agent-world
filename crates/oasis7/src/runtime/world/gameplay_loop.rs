@@ -166,6 +166,16 @@ impl World {
         directive: GameplayLifecycleDirective,
         emitted: &mut Vec<WorldEvent>,
     ) -> Result<(), WorldError> {
+        if let Some(event) = self.prepare_gameplay_directive_event(directive) {
+            self.append_gameplay_domain_event(event, emitted)?;
+        }
+        Ok(())
+    }
+
+    fn prepare_gameplay_directive_event(
+        &self,
+        directive: GameplayLifecycleDirective,
+    ) -> Option<DomainEvent> {
         match directive {
             GameplayLifecycleDirective::GovernanceFinalize {
                 proposal_key,
@@ -173,40 +183,31 @@ impl World {
                 winning_weight,
                 total_weight,
                 passed,
-            } => self.append_gameplay_domain_event(
-                DomainEvent::GovernanceProposalFinalized {
-                    proposal_key,
-                    winning_option,
-                    winning_weight,
-                    total_weight,
-                    passed,
-                },
-                emitted,
-            ),
+            } => Some(DomainEvent::GovernanceProposalFinalized {
+                proposal_key,
+                winning_option,
+                winning_weight,
+                total_weight,
+                passed,
+            }),
             GameplayLifecycleDirective::CrisisSpawn {
                 crisis_id,
                 kind,
                 severity,
                 expires_at,
-            } => self.append_gameplay_domain_event(
-                DomainEvent::CrisisSpawned {
-                    crisis_id,
-                    kind,
-                    severity,
-                    expires_at,
-                },
-                emitted,
-            ),
+            } => Some(DomainEvent::CrisisSpawned {
+                crisis_id,
+                kind,
+                severity,
+                expires_at,
+            }),
             GameplayLifecycleDirective::CrisisTimeout {
                 crisis_id,
                 penalty_impact,
-            } => self.append_gameplay_domain_event(
-                DomainEvent::CrisisTimedOut {
-                    crisis_id,
-                    penalty_impact,
-                },
-                emitted,
-            ),
+            } => Some(DomainEvent::CrisisTimedOut {
+                crisis_id,
+                penalty_impact,
+            }),
             GameplayLifecycleDirective::WarConclude {
                 war_id,
                 winner_alliance_id,
@@ -215,30 +216,27 @@ impl World {
                 defender_score,
                 summary,
                 participant_outcomes,
-            } => self.append_gameplay_domain_event(
-                DomainEvent::WarConcluded {
-                    loser_alliance_id: loser_alliance_id.unwrap_or_else(|| {
-                        self.state
-                            .wars
-                            .get(war_id.as_str())
-                            .map(|war| {
-                                if war.aggressor_alliance_id == winner_alliance_id {
-                                    war.defender_alliance_id.clone()
-                                } else {
-                                    war.aggressor_alliance_id.clone()
-                                }
-                            })
-                            .unwrap_or_default()
-                    }),
-                    war_id,
-                    winner_alliance_id,
-                    aggressor_score,
-                    defender_score,
-                    summary,
-                    participant_outcomes,
-                },
-                emitted,
-            ),
+            } => Some(DomainEvent::WarConcluded {
+                loser_alliance_id: loser_alliance_id.unwrap_or_else(|| {
+                    self.state
+                        .wars
+                        .get(war_id.as_str())
+                        .map(|war| {
+                            if war.aggressor_alliance_id == winner_alliance_id {
+                                war.defender_alliance_id.clone()
+                            } else {
+                                war.aggressor_alliance_id.clone()
+                            }
+                        })
+                        .unwrap_or_default()
+                }),
+                war_id,
+                winner_alliance_id,
+                aggressor_score,
+                defender_score,
+                summary,
+                participant_outcomes,
+            }),
             GameplayLifecycleDirective::MetaGrant {
                 operator_agent_id,
                 target_agent_id,
@@ -247,18 +245,15 @@ impl World {
                 achievement_id,
             } => {
                 if points == 0 {
-                    Ok(())
+                    None
                 } else {
-                    self.append_gameplay_domain_event(
-                        DomainEvent::MetaProgressGranted {
-                            operator_agent_id,
-                            target_agent_id,
-                            track,
-                            points,
-                            achievement_id,
-                        },
-                        emitted,
-                    )
+                    Some(DomainEvent::MetaProgressGranted {
+                        operator_agent_id,
+                        target_agent_id,
+                        track,
+                        points,
+                        achievement_id,
+                    })
                 }
             }
         }
@@ -875,5 +870,46 @@ mod tests {
         assert_eq!(emits[0].module_id, "m.gameplay");
         assert_eq!(emits[0].trace_id, "tick-1");
         assert_eq!(emits[0].kind, GAMEPLAY_LIFECYCLE_EMIT_KIND);
+    }
+
+    #[test]
+    fn gameplay_directive_preparation_is_non_mutating_and_preserves_zero_meta_grant() {
+        let world = World::new();
+        let snapshot_before_prepare = world.snapshot();
+        let journal_before_prepare = world.journal().clone();
+
+        let prepared =
+            world.prepare_gameplay_directive_event(GameplayLifecycleDirective::MetaGrant {
+                operator_agent_id: "operator".to_string(),
+                target_agent_id: "target".to_string(),
+                track: "campaign".to_string(),
+                points: 7,
+                achievement_id: Some("achievement.first".to_string()),
+            });
+        let prepared_zero =
+            world.prepare_gameplay_directive_event(GameplayLifecycleDirective::MetaGrant {
+                operator_agent_id: "operator".to_string(),
+                target_agent_id: "target".to_string(),
+                track: "campaign".to_string(),
+                points: 0,
+                achievement_id: None,
+            });
+
+        assert_eq!(world.snapshot(), snapshot_before_prepare);
+        assert_eq!(world.journal(), &journal_before_prepare);
+        assert!(matches!(
+            prepared,
+            Some(DomainEvent::MetaProgressGranted {
+                operator_agent_id,
+                target_agent_id,
+                track,
+                points: 7,
+                achievement_id,
+            }) if operator_agent_id == "operator"
+                && target_agent_id == "target"
+                && track == "campaign"
+                && achievement_id.as_deref() == Some("achievement.first")
+        ));
+        assert!(prepared_zero.is_none());
     }
 }
