@@ -809,6 +809,21 @@ fn governance_identity_penalty_and_appeal_drive_vote_rights() {
 #[test]
 fn crisis_cycle_spawns_and_times_out_if_unresolved() {
     let mut world = World::new();
+    let snapshot_before_spawn_prepare = world.snapshot();
+    let journal_before_spawn_prepare = world.journal().clone();
+    let prepared_spawn = world.prepared_crisis_auto_spawn_event_for_test(8);
+    assert_eq!(world.snapshot(), snapshot_before_spawn_prepare);
+    assert_eq!(world.journal(), &journal_before_spawn_prepare);
+    assert!(matches!(
+        prepared_spawn,
+        Some(DomainEvent::CrisisSpawned {
+            crisis_id,
+            kind,
+            severity: 2,
+            expires_at: 16,
+        }) if crisis_id == "crisis.auto.8" && kind == "solar_storm"
+    ));
+
     register_agents(&mut world, &["a"]);
     let crisis_id = advance_until_auto_crisis(&mut world);
 
@@ -818,6 +833,19 @@ fn crisis_cycle_spawns_and_times_out_if_unresolved() {
         .get(&crisis_id)
         .expect("active crisis")
         .expires_at;
+    let snapshot_before_timeout_prepare = world.snapshot();
+    let journal_before_timeout_prepare = world.journal().clone();
+    let prepared_timeouts = world.prepared_crisis_timeout_events_for_test(expires_at);
+    assert_eq!(world.snapshot(), snapshot_before_timeout_prepare);
+    assert_eq!(world.journal(), &journal_before_timeout_prepare);
+    assert!(matches!(
+        prepared_timeouts.as_slice(),
+        [DomainEvent::CrisisTimedOut {
+            crisis_id: prepared_crisis_id,
+            penalty_impact,
+        }] if prepared_crisis_id.as_str() == crisis_id.as_str() && *penalty_impact < 0
+    ));
+
     while world.state().time <= expires_at {
         world.step().expect("advance to crisis timeout");
     }

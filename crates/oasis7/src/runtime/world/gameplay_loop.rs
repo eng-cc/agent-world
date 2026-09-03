@@ -443,7 +443,16 @@ impl World {
         &mut self,
         emitted: &mut Vec<WorldEvent>,
     ) -> Result<(), WorldError> {
-        let now = self.state.time;
+        if let Some(event) = self.prepare_crisis_auto_spawn_event_at(self.state.time) {
+            self.append_gameplay_domain_event(event, emitted)?;
+        }
+        for event in self.prepare_crisis_timeout_events_at(self.state.time) {
+            self.append_gameplay_domain_event(event, emitted)?;
+        }
+        Ok(())
+    }
+
+    fn prepare_crisis_auto_spawn_event_at(&self, now: u64) -> Option<DomainEvent> {
         let has_active_crisis = self
             .state
             .crises
@@ -462,17 +471,17 @@ impl World {
             let expires_at = now
                 .saturating_add(CRISIS_DEFAULT_DURATION_TICKS)
                 .saturating_add(u64::from(severity));
-            self.append_gameplay_domain_event(
-                DomainEvent::CrisisSpawned {
-                    crisis_id,
-                    kind,
-                    severity,
-                    expires_at,
-                },
-                emitted,
-            )?;
+            return Some(DomainEvent::CrisisSpawned {
+                crisis_id,
+                kind,
+                severity,
+                expires_at,
+            });
         }
+        None
+    }
 
+    fn prepare_crisis_timeout_events_at(&self, now: u64) -> Vec<DomainEvent> {
         let mut due_timeouts: Vec<_> = self
             .state
             .crises
@@ -481,18 +490,30 @@ impl World {
             .map(|(crisis_id, crisis)| (crisis_id.clone(), crisis.severity.max(1)))
             .collect();
         due_timeouts.sort_by(|left, right| left.0.cmp(&right.0));
-        for (crisis_id, severity) in due_timeouts {
-            let penalty_impact =
-                -i64::from(severity).saturating_mul(CRISIS_TIMEOUT_PENALTY_PER_SEVERITY);
-            self.append_gameplay_domain_event(
+        due_timeouts
+            .into_iter()
+            .map(|(crisis_id, severity)| {
+                let penalty_impact =
+                    -i64::from(severity).saturating_mul(CRISIS_TIMEOUT_PENALTY_PER_SEVERITY);
                 DomainEvent::CrisisTimedOut {
                     crisis_id,
                     penalty_impact,
-                },
-                emitted,
-            )?;
-        }
-        Ok(())
+                }
+            })
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn prepared_crisis_auto_spawn_event_for_test(
+        &self,
+        now: u64,
+    ) -> Option<DomainEvent> {
+        self.prepare_crisis_auto_spawn_event_at(now)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn prepared_crisis_timeout_events_for_test(&self, now: u64) -> Vec<DomainEvent> {
+        self.prepare_crisis_timeout_events_at(now)
     }
 
     fn process_war_lifecycle(&mut self, emitted: &mut Vec<WorldEvent>) -> Result<(), WorldError> {
