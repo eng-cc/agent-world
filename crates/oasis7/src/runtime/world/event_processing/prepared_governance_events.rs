@@ -11,6 +11,40 @@ pub(super) fn prepare(
     body: &WorldEventBody,
 ) -> Result<Option<PreparedEventStateDelta>, WorldError> {
     match body {
+        WorldEventBody::Governance(GovernanceEvent::IdentityPenaltyApplied {
+            penalty_id,
+            target_agent_id,
+            evidence_hash,
+            initiator,
+            reason,
+            slash_stake,
+            appeal_deadline_tick,
+            threshold,
+            signer_node_ids,
+        }) => {
+            let (target_agent_id, next, next_profile, profile_was_present, next_penalty_id) = world
+                .prepare_governance_identity_penalty_application(
+                    *penalty_id,
+                    target_agent_id,
+                    evidence_hash,
+                    initiator,
+                    reason,
+                    *slash_stake,
+                    *appeal_deadline_tick,
+                    *threshold,
+                    signer_node_ids,
+                )?;
+            Ok(Some(
+                PreparedEventStateDelta::GovernanceIdentityPenaltyApplication {
+                    penalty_id: *penalty_id,
+                    target_agent_id,
+                    next,
+                    next_profile,
+                    profile_was_present,
+                    next_penalty_id,
+                },
+            ))
+        }
         WorldEventBody::Governance(GovernanceEvent::FinalityEpochSnapshotSet {
             snapshot,
             previous,
@@ -94,6 +128,125 @@ pub(super) fn prepare(
 }
 
 impl World {
+    pub(crate) fn prepare_governance_identity_penalty_application(
+        &self,
+        penalty_id: u64,
+        target_agent_id: &str,
+        evidence_hash: &str,
+        initiator: &str,
+        reason: &str,
+        slash_stake: u64,
+        appeal_deadline_tick: u64,
+        threshold: u16,
+        signer_node_ids: &[String],
+    ) -> Result<
+        (
+            String,
+            GovernanceIdentityPenaltyRecord,
+            GovernanceIdentityProfileState,
+            bool,
+            u64,
+        ),
+        WorldError,
+    > {
+        self.validate_guardian_signers(signer_node_ids, threshold)?;
+        if !self.state.agents.contains_key(target_agent_id) {
+            return Err(WorldError::AgentNotFound {
+                agent_id: target_agent_id.to_string(),
+            });
+        }
+        Self::validate_governance_identity_evidence_hash(evidence_hash)?;
+        Self::validate_governance_identity_field("identity penalty reason", reason)?;
+        Self::validate_governance_identity_field("identity penalty initiator", initiator)?;
+        if self.governance_identity_penalties.contains_key(&penalty_id) {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!("duplicate identity penalty id: penalty_id={penalty_id}"),
+            });
+        }
+        let detection_incident_id =
+            Self::build_identity_penalty_incident_id(target_agent_id, evidence_hash);
+        if self
+            .governance_identity_penalties
+            .values()
+            .any(|record| record.detection_incident_id == detection_incident_id)
+        {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "duplicate identity penalty incident: incident_id={detection_incident_id}"
+                ),
+            });
+        }
+        let detection_risk_score = self
+            .threat_heatmap
+            .get(target_agent_id)
+            .copied()
+            .unwrap_or_default();
+        let evidence_chain_hash = Self::build_identity_penalty_chain_hash(
+            penalty_id,
+            target_agent_id,
+            evidence_hash,
+            reason,
+            detection_incident_id.as_str(),
+        );
+        let profile_was_present = self
+            .state
+            .governance_identity_profiles
+            .contains_key(target_agent_id);
+        let mut profile = self
+            .state
+            .governance_identity_profiles
+            .get(target_agent_id)
+            .cloned()
+            .unwrap_or_else(|| GovernanceIdentityProfileState {
+                agent_id: target_agent_id.to_string(),
+                ..GovernanceIdentityProfileState::default()
+            });
+        if slash_stake > profile.stake_locked {
+            return Err(WorldError::GovernancePolicyInvalid {
+                reason: format!(
+                    "identity penalty slash exceeds locked stake: penalty_id={} slash={} stake_locked={}",
+                    penalty_id, slash_stake, profile.stake_locked
+                ),
+            });
+        }
+        let identity_status_before = profile.status;
+        profile.stake_locked = profile.stake_locked.saturating_sub(slash_stake);
+        profile.status = super::super::super::GovernanceIdentityStatus::Frozen;
+        profile.slash_count = profile.slash_count.saturating_add(1);
+        profile.updated_at = self.state.time;
+        let next = GovernanceIdentityPenaltyRecord {
+            penalty_id,
+            target_agent_id: target_agent_id.to_string(),
+            evidence_hash: evidence_hash.to_string(),
+            reason: reason.to_string(),
+            slash_stake,
+            appeal_deadline_tick,
+            status: super::super::super::GovernanceIdentityPenaltyStatus::Applied,
+            identity_status_before,
+            detection_source: "world.threat_heatmap.v1".to_string(),
+            detection_risk_score,
+            detection_incident_id,
+            evidence_chain_hash,
+            appeal_evidence_hash: None,
+            resolution_evidence_hash: None,
+            appellant: None,
+            appeal_reason: None,
+            resolved_by: None,
+            resolution_reason: None,
+            resolved_at_tick: None,
+        };
+        let next_penalty_id = self
+            .next_governance_identity_penalty_id
+            .max(penalty_id.saturating_add(1));
+        Ok((
+            target_agent_id.to_string(),
+            next,
+            profile,
+            profile_was_present,
+            next_penalty_id,
+        ))
+    }
+
     pub(crate) fn prepare_governance_identity_penalty_appeal(
         &self,
         penalty_id: u64,

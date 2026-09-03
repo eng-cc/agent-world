@@ -790,103 +790,23 @@ impl World {
                 threshold,
                 signer_node_ids,
             } => {
-                self.validate_guardian_signers(signer_node_ids, *threshold)?;
-                if !self.state.agents.contains_key(target_agent_id.as_str()) {
-                    return Err(WorldError::AgentNotFound {
-                        agent_id: target_agent_id.clone(),
-                    });
-                }
-                Self::validate_governance_identity_evidence_hash(evidence_hash.as_str())?;
-                Self::validate_governance_identity_field(
-                    "identity penalty reason",
-                    reason.as_str(),
-                )?;
-                Self::validate_governance_identity_field(
-                    "identity penalty initiator",
-                    initiator.as_str(),
-                )?;
-                if self.governance_identity_penalties.contains_key(penalty_id) {
-                    return Err(WorldError::GovernancePolicyInvalid {
-                        reason: format!("duplicate identity penalty id: penalty_id={penalty_id}"),
-                    });
-                }
-                let detection_incident_id =
-                    Self::build_identity_penalty_incident_id(target_agent_id, evidence_hash);
-                if self
-                    .governance_identity_penalties
-                    .values()
-                    .any(|record| record.detection_incident_id == detection_incident_id)
-                {
-                    return Err(WorldError::GovernancePolicyInvalid {
-                        reason: format!(
-                            "duplicate identity penalty incident: incident_id={detection_incident_id}"
-                        ),
-                    });
-                }
-                let detection_risk_score = self
-                    .threat_heatmap
-                    .get(target_agent_id.as_str())
-                    .copied()
-                    .unwrap_or_default();
-                let evidence_chain_hash = Self::build_identity_penalty_chain_hash(
-                    *penalty_id,
-                    target_agent_id,
-                    evidence_hash,
-                    reason,
-                    detection_incident_id.as_str(),
-                );
-                let mut profile = self
-                    .state
-                    .governance_identity_profiles
-                    .get(target_agent_id)
-                    .cloned()
-                    .unwrap_or_else(|| GovernanceIdentityProfileState {
-                        agent_id: target_agent_id.clone(),
-                        ..GovernanceIdentityProfileState::default()
-                    });
-                if *slash_stake > profile.stake_locked {
-                    return Err(WorldError::GovernancePolicyInvalid {
-                        reason: format!(
-                            "identity penalty slash exceeds locked stake: penalty_id={} slash={} stake_locked={}",
-                            penalty_id, slash_stake, profile.stake_locked
-                        ),
-                    });
-                }
-                let identity_status_before = profile.status;
-                profile.stake_locked = profile.stake_locked.saturating_sub(*slash_stake);
-                profile.status = GovernanceIdentityStatus::Frozen;
-                profile.slash_count = profile.slash_count.saturating_add(1);
-                profile.updated_at = self.state.time;
+                let (target_agent_id, next, next_profile, _, next_penalty_id) = self
+                    .prepare_governance_identity_penalty_application(
+                        *penalty_id,
+                        target_agent_id,
+                        evidence_hash,
+                        initiator,
+                        reason,
+                        *slash_stake,
+                        *appeal_deadline_tick,
+                        *threshold,
+                        signer_node_ids,
+                    )?;
+                self.governance_identity_penalties.insert(*penalty_id, next);
                 self.state
                     .governance_identity_profiles
-                    .insert(target_agent_id.clone(), profile);
-                self.governance_identity_penalties.insert(
-                    *penalty_id,
-                    GovernanceIdentityPenaltyRecord {
-                        penalty_id: *penalty_id,
-                        target_agent_id: target_agent_id.clone(),
-                        evidence_hash: evidence_hash.clone(),
-                        reason: reason.clone(),
-                        slash_stake: *slash_stake,
-                        appeal_deadline_tick: *appeal_deadline_tick,
-                        status: GovernanceIdentityPenaltyStatus::Applied,
-                        identity_status_before,
-                        detection_source: IDENTITY_PENALTY_DETECTION_SOURCE.to_string(),
-                        detection_risk_score,
-                        detection_incident_id,
-                        evidence_chain_hash,
-                        appeal_evidence_hash: None,
-                        resolution_evidence_hash: None,
-                        appellant: None,
-                        appeal_reason: None,
-                        resolved_by: None,
-                        resolution_reason: None,
-                        resolved_at_tick: None,
-                    },
-                );
-                self.next_governance_identity_penalty_id = self
-                    .next_governance_identity_penalty_id
-                    .max(penalty_id.saturating_add(1));
+                    .insert(target_agent_id, next_profile);
+                self.next_governance_identity_penalty_id = next_penalty_id;
             }
             GovernanceEvent::IdentityPenaltyAppealed {
                 penalty_id,

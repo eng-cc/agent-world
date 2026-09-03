@@ -73,6 +73,14 @@ enum PreparedEventStateDelta {
         penalty_id: u64,
         next: GovernanceIdentityPenaltyRecord,
     },
+    GovernanceIdentityPenaltyApplication {
+        penalty_id: u64,
+        target_agent_id: String,
+        next: GovernanceIdentityPenaltyRecord,
+        next_profile: GovernanceIdentityProfileState,
+        profile_was_present: bool,
+        next_penalty_id: u64,
+    },
     GovernanceIdentityPenaltyResolution {
         penalty_id: u64,
         target_agent_id: String,
@@ -154,6 +162,13 @@ impl PreparedEventStateDelta {
                     ..
                 }) if penalty_id == event_penalty_id
             ),
+            Self::GovernanceIdentityPenaltyApplication { penalty_id, .. } => matches!(
+                body,
+                WorldEventBody::Governance(GovernanceEvent::IdentityPenaltyApplied {
+                    penalty_id: event_penalty_id,
+                    ..
+                }) if penalty_id == event_penalty_id
+            ),
             Self::GovernanceIdentityPenaltyResolution { penalty_id, .. } => matches!(
                 body,
                 WorldEventBody::Governance(GovernanceEvent::IdentityPenaltyResolved {
@@ -181,6 +196,9 @@ impl PreparedEventStateDelta {
             }
             Self::GovernanceIdentityPenaltyAppeal { .. } => {
                 unreachable!("identity penalty appeal does not have a state overlay")
+            }
+            Self::GovernanceIdentityPenaltyApplication { .. } => {
+                unreachable!("identity penalty application does not have a state overlay")
             }
             Self::GovernanceIdentityPenaltyResolution { .. } => {
                 unreachable!("identity penalty resolution does not have a state overlay")
@@ -214,6 +232,21 @@ impl PreparedEventStateDelta {
             }
             Self::GovernanceIdentityPenaltyAppeal { penalty_id, next } => {
                 world.governance_identity_penalties.insert(penalty_id, next);
+            }
+            Self::GovernanceIdentityPenaltyApplication {
+                penalty_id,
+                target_agent_id,
+                next,
+                next_profile,
+                next_penalty_id,
+                ..
+            } => {
+                world.governance_identity_penalties.insert(penalty_id, next);
+                world
+                    .state
+                    .governance_identity_profiles
+                    .insert(target_agent_id, next_profile);
+                world.next_governance_identity_penalty_id = next_penalty_id;
             }
             Self::GovernanceIdentityPenaltyResolution {
                 penalty_id,
@@ -1126,6 +1159,16 @@ impl World {
                 // intentionally remain outside the canonical WorldState root schema.
                 self.current_state_root_hash()?
             }
+            PreparedEventStateDelta::GovernanceIdentityPenaltyApplication {
+                target_agent_id,
+                next_profile,
+                profile_was_present,
+                ..
+            } => self.state_root_hash_with_governance_identity_profile_overlay(
+                target_agent_id.as_str(),
+                next_profile,
+                !profile_was_present,
+            )?,
             PreparedEventStateDelta::GovernanceIdentityPenaltyResolution {
                 target_agent_id,
                 next_profile,
@@ -1133,6 +1176,7 @@ impl World {
             } => self.state_root_hash_with_governance_identity_profile_overlay(
                 target_agent_id.as_str(),
                 next_profile,
+                false,
             )?,
         };
         let consensus_record = self.build_tick_consensus_record_for_prepared_events(

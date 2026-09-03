@@ -42,6 +42,8 @@ Identity-penalty appeals prepare an immutable replacement record before one cano
 
 Identity-penalty appeal resolution prepares the penalty replacement and target identity profile together, using the borrowed canonical profile-map projection for the next state root. Accepted refund/status restoration, rejected timestamp updates, legacy backfill, exact `resolve_accept`/`resolve_reject` evidence hashes, and replay semantics remain unchanged. Missing-profile and post-prepare failures publish no partial penalty/profile or event/allocator/journal/backpressure/consensus change; this is a bounded guarantee, not whole-World root atomicity.
 
+Identity-penalty application previews the next penalty id and prepares the penalty record, profile mutation, and allocator successor before publication. Its borrowed profile-map projection inserts a missing default profile in sorted order, and the prepared consensus header/digest commits the resulting root; invalid stake, duplicate, signer, and post-prepare failures consume no allocator or publication state. This is a bounded direct-mutator guarantee, not whole-World root atomicity.
+
 ### Kernel、governed physics 与 institution module 边界
 
 本节把 issue #3370 的架构建议落为 world-runtime 的执行约束。它不定义产品规则、WASM wire ABI、Agent tool schema 或 p2p finality 算法；产品规则仍由产品/gameplay authority 拥有，ABI 细节由 [`wasm-interface.md`](wasm/wasm-interface.md) 拥有，finality 由 [`doc/p2p/`](../p2p/) 拥有。

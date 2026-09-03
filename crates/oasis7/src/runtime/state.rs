@@ -763,6 +763,7 @@ pub struct BodyOverlay {
 pub(crate) struct GovernanceIdentityProfileOverlay {
     target_agent_id: String,
     next_profile: GovernanceIdentityProfileState,
+    allow_insert: bool,
 }
 
 impl BodyOverlay {
@@ -842,6 +843,20 @@ impl<'a> WorldStateProjection<'a> {
         self.governance_identity_profile_overlay = Some(GovernanceIdentityProfileOverlay {
             target_agent_id: target_agent_id.into(),
             next_profile,
+            allow_insert: false,
+        });
+        self
+    }
+
+    pub(crate) fn with_governance_identity_profile_insert_overlay(
+        mut self,
+        target_agent_id: impl Into<String>,
+        next_profile: GovernanceIdentityProfileState,
+    ) -> Self {
+        self.governance_identity_profile_overlay = Some(GovernanceIdentityProfileOverlay {
+            target_agent_id: target_agent_id.into(),
+            next_profile,
+            allow_insert: true,
         });
         self
     }
@@ -890,13 +905,37 @@ impl Serialize for GovernanceIdentityProfileMapProjection<'_> {
     where
         S: serde::Serializer,
     {
-        let mut map = serializer.serialize_map(Some(self.profiles.len()))?;
+        let target_exists = self
+            .profiles
+            .contains_key(self.overlay.target_agent_id.as_str());
+        let map_len =
+            self.profiles.len() + usize::from(!target_exists && self.overlay.allow_insert);
+        let mut map = serializer.serialize_map(Some(map_len))?;
+        let mut inserted = false;
         for (agent_id, profile) in self.profiles {
             if agent_id == &self.overlay.target_agent_id {
                 map.serialize_entry(agent_id, &self.overlay.next_profile)?;
+                inserted = true;
+            } else if self.overlay.allow_insert
+                && !target_exists
+                && !inserted
+                && self.overlay.target_agent_id.as_str() < agent_id.as_str()
+            {
+                map.serialize_entry(
+                    self.overlay.target_agent_id.as_str(),
+                    &self.overlay.next_profile,
+                )?;
+                map.serialize_entry(agent_id, profile)?;
+                inserted = true;
             } else {
                 map.serialize_entry(agent_id, profile)?;
             }
+        }
+        if self.overlay.allow_insert && !inserted {
+            map.serialize_entry(
+                self.overlay.target_agent_id.as_str(),
+                &self.overlay.next_profile,
+            )?;
         }
         map.end()
     }
@@ -1238,9 +1277,10 @@ where
     output.serialize_field("governance_votes", &state.governance_votes)?;
     output.serialize_field("governance_proposals", &state.governance_proposals)?;
     if let Some(overlay) = governance_identity_profile_overlay {
-        if !state
-            .governance_identity_profiles
-            .contains_key(overlay.target_agent_id.as_str())
+        if !overlay.allow_insert
+            && !state
+                .governance_identity_profiles
+                .contains_key(overlay.target_agent_id.as_str())
         {
             return Err(serde::ser::Error::custom(format!(
                 "governance identity profile overlay target not found: {}",

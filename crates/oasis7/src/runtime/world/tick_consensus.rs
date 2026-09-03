@@ -817,11 +817,20 @@ impl World {
         &self,
         target_agent_id: &str,
         next_profile: &GovernanceIdentityProfileState,
+        allow_insert: bool,
     ) -> Result<String, WorldError> {
         let manifest_hash = self.current_manifest_hash()?;
         let policy_hash = hash_json(&self.policies)?;
-        let state_projection = WorldStateProjection::borrowed(&self.state)
-            .with_governance_identity_profile_overlay(target_agent_id, next_profile.clone());
+        let state_projection = WorldStateProjection::borrowed(&self.state);
+        let state_projection = if allow_insert {
+            state_projection.with_governance_identity_profile_insert_overlay(
+                target_agent_id,
+                next_profile.clone(),
+            )
+        } else {
+            state_projection
+                .with_governance_identity_profile_overlay(target_agent_id, next_profile.clone())
+        };
         let projection = StateRootProjection {
             state: &state_projection,
             manifest_hash: manifest_hash.as_str(),

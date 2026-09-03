@@ -648,13 +648,6 @@ impl World {
         Ok(prepared.install(self))
     }
 
-    pub(super) fn allocate_next_governance_identity_penalty_id(&mut self) -> u64 {
-        let id = self.next_governance_identity_penalty_id;
-        self.next_governance_identity_penalty_id =
-            self.next_governance_identity_penalty_id.saturating_add(1);
-        id
-    }
-
     pub(super) fn validate_governance_execution_policy(
         policy: &GovernanceExecutionPolicy,
     ) -> Result<(), WorldError> {
