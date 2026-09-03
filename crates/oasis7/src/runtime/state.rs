@@ -759,6 +759,12 @@ pub struct BodyOverlay {
     routed_domain_event: Option<DomainEvent>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct GovernanceIdentityProfileOverlay {
+    target_agent_id: String,
+    next_profile: GovernanceIdentityProfileState,
+}
+
 impl BodyOverlay {
     pub fn new(
         agent_id: impl Into<String>,
@@ -805,6 +811,7 @@ pub struct WorldStateProjection<'a> {
     state: &'a WorldState,
     body_overlay: Option<BodyOverlay>,
     command_overlay: Option<CommandStateOverlay<'a>>,
+    governance_identity_profile_overlay: Option<GovernanceIdentityProfileOverlay>,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -813,6 +820,7 @@ impl<'a> WorldStateProjection<'a> {
             state,
             body_overlay: None,
             command_overlay: None,
+            governance_identity_profile_overlay: None,
         }
     }
 
@@ -825,6 +833,18 @@ impl<'a> WorldStateProjection<'a> {
         self.command_overlay = Some(command_overlay);
         self
     }
+
+    pub(crate) fn with_governance_identity_profile_overlay(
+        mut self,
+        target_agent_id: impl Into<String>,
+        next_profile: GovernanceIdentityProfileState,
+    ) -> Self {
+        self.governance_identity_profile_overlay = Some(GovernanceIdentityProfileOverlay {
+            target_agent_id: target_agent_id.into(),
+            next_profile,
+        });
+        self
+    }
 }
 
 impl Serialize for WorldState {
@@ -832,7 +852,7 @@ impl Serialize for WorldState {
     where
         S: serde::Serializer,
     {
-        serialize_world_state(self, None, None, serializer)
+        serialize_world_state(self, None, None, None, serializer)
     }
 }
 
@@ -854,8 +874,31 @@ impl Serialize for WorldStateProjection<'_> {
             self.state,
             self.body_overlay.as_ref(),
             self.command_overlay.as_ref(),
+            self.governance_identity_profile_overlay.as_ref(),
             serializer,
         )
+    }
+}
+
+struct GovernanceIdentityProfileMapProjection<'a> {
+    profiles: &'a BTreeMap<String, GovernanceIdentityProfileState>,
+    overlay: &'a GovernanceIdentityProfileOverlay,
+}
+
+impl Serialize for GovernanceIdentityProfileMapProjection<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.profiles.len()))?;
+        for (agent_id, profile) in self.profiles {
+            if agent_id == &self.overlay.target_agent_id {
+                map.serialize_entry(agent_id, &self.overlay.next_profile)?;
+            } else {
+                map.serialize_entry(agent_id, profile)?;
+            }
+        }
+        map.end()
     }
 }
 
@@ -983,6 +1026,7 @@ fn serialize_world_state<S>(
     state: &WorldState,
     body_overlay: Option<&BodyOverlay>,
     command_overlay: Option<&CommandStateOverlay<'_>>,
+    governance_identity_profile_overlay: Option<&GovernanceIdentityProfileOverlay>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -1193,10 +1237,29 @@ where
     output.serialize_field("wars", &state.wars)?;
     output.serialize_field("governance_votes", &state.governance_votes)?;
     output.serialize_field("governance_proposals", &state.governance_proposals)?;
-    output.serialize_field(
-        "governance_identity_profiles",
-        &state.governance_identity_profiles,
-    )?;
+    if let Some(overlay) = governance_identity_profile_overlay {
+        if !state
+            .governance_identity_profiles
+            .contains_key(overlay.target_agent_id.as_str())
+        {
+            return Err(serde::ser::Error::custom(format!(
+                "governance identity profile overlay target not found: {}",
+                overlay.target_agent_id
+            )));
+        }
+        output.serialize_field(
+            "governance_identity_profiles",
+            &GovernanceIdentityProfileMapProjection {
+                profiles: &state.governance_identity_profiles,
+                overlay,
+            },
+        )?;
+    } else {
+        output.serialize_field(
+            "governance_identity_profiles",
+            &state.governance_identity_profiles,
+        )?;
+    }
     output.serialize_field("crises", &state.crises)?;
     output.serialize_field("meta_progress", &state.meta_progress)?;
     if let Some(command_overlay) = command_overlay {

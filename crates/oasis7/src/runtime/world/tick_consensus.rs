@@ -1,11 +1,11 @@
 use super::super::state::CommandStateOverlay;
 use super::super::util::{hash_json, sha256_hex};
 use super::super::{
-    BodyOverlay, CausedBy, RuntimeCommittedTickContext, TICK_BLOCK_HEADER_SCHEMA_V1,
-    TICK_BLOCK_HEADER_SCHEMA_V2, TickBlock, TickBlockHeader, TickCertificate,
-    TickConsensusDriftReport, TickConsensusRecord, TickConsensusRejectionAuditEvent,
-    TickConsensusSubmissionRole, TickExecutionDigest, WorldError, WorldEvent, WorldEventBody,
-    WorldEventId, WorldStateProjection, WorldTime,
+    BodyOverlay, CausedBy, GovernanceIdentityProfileState, RuntimeCommittedTickContext,
+    TICK_BLOCK_HEADER_SCHEMA_V1, TICK_BLOCK_HEADER_SCHEMA_V2, TickBlock, TickBlockHeader,
+    TickCertificate, TickConsensusDriftReport, TickConsensusRecord,
+    TickConsensusRejectionAuditEvent, TickConsensusSubmissionRole, TickExecutionDigest, WorldError,
+    WorldEvent, WorldEventBody, WorldEventId, WorldState, WorldStateProjection, WorldTime,
 };
 use super::World;
 use serde::Serialize;
@@ -810,10 +810,31 @@ impl World {
     }
 
     pub(crate) fn current_state_root_hash(&self) -> Result<String, WorldError> {
+        self.state_root_hash_for_state(&self.state)
+    }
+
+    pub(super) fn state_root_hash_with_governance_identity_profile_overlay(
+        &self,
+        target_agent_id: &str,
+        next_profile: &GovernanceIdentityProfileState,
+    ) -> Result<String, WorldError> {
+        let manifest_hash = self.current_manifest_hash()?;
+        let policy_hash = hash_json(&self.policies)?;
+        let state_projection = WorldStateProjection::borrowed(&self.state)
+            .with_governance_identity_profile_overlay(target_agent_id, next_profile.clone());
+        let projection = StateRootProjection {
+            state: &state_projection,
+            manifest_hash: manifest_hash.as_str(),
+            policy_hash: policy_hash.as_str(),
+        };
+        hash_json(&projection)
+    }
+
+    fn state_root_hash_for_state(&self, state: &WorldState) -> Result<String, WorldError> {
         let manifest_hash = self.current_manifest_hash()?;
         let policy_hash = hash_json(&self.policies)?;
         let projection = StateRootProjection {
-            state: &self.state,
+            state,
             manifest_hash: manifest_hash.as_str(),
             policy_hash: policy_hash.as_str(),
         };

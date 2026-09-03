@@ -906,88 +906,17 @@ impl World {
                 accepted,
                 reason,
             } => {
-                Self::validate_governance_identity_field(
-                    "identity penalty appeal resolver",
-                    resolver.as_str(),
-                )?;
-                Self::validate_governance_identity_field(
-                    "identity penalty appeal resolution",
-                    reason.as_str(),
-                )?;
-                let resolution_evidence_hash = Self::build_identity_penalty_stage_evidence_hash(
-                    if *accepted {
-                        "resolve_accept"
-                    } else {
-                        "resolve_reject"
-                    },
-                    resolver,
-                    reason,
-                );
-                let (target_agent_id, slash_stake, identity_status_before) = {
-                    let penalty = self
-                        .governance_identity_penalties
-                        .get_mut(penalty_id)
-                        .ok_or(WorldError::GovernancePolicyInvalid {
-                            reason: format!("identity penalty not found: penalty_id={penalty_id}"),
-                        })?;
-                    if penalty.status != GovernanceIdentityPenaltyStatus::Appealed {
-                        return Err(WorldError::GovernancePolicyInvalid {
-                            reason: format!(
-                                "identity penalty appeal is not pending: penalty_id={} status={:?}",
-                                penalty_id, penalty.status
-                            ),
-                        });
-                    }
-                    if penalty.detection_source.trim().is_empty() {
-                        penalty.detection_source = IDENTITY_PENALTY_DETECTION_SOURCE.to_string();
-                    }
-                    if penalty.detection_incident_id.trim().is_empty() {
-                        penalty.detection_incident_id = Self::build_identity_penalty_incident_id(
-                            penalty.target_agent_id.as_str(),
-                            penalty.evidence_hash.as_str(),
-                        );
-                    }
-                    if penalty.evidence_chain_hash.trim().is_empty() {
-                        penalty.evidence_chain_hash = Self::build_identity_penalty_chain_hash(
-                            penalty.penalty_id,
-                            penalty.target_agent_id.as_str(),
-                            penalty.evidence_hash.as_str(),
-                            penalty.reason.as_str(),
-                            penalty.detection_incident_id.as_str(),
-                        );
-                    }
-                    penalty.status = if *accepted {
-                        GovernanceIdentityPenaltyStatus::AppealAccepted
-                    } else {
-                        GovernanceIdentityPenaltyStatus::AppealRejected
-                    };
-                    penalty.resolved_by = Some(resolver.clone());
-                    penalty.resolution_reason = Some(reason.clone());
-                    penalty.resolved_at_tick = Some(self.state.time);
-                    penalty.resolution_evidence_hash = Some(resolution_evidence_hash.clone());
-                    penalty.evidence_chain_hash = Self::extend_identity_penalty_chain_hash(
-                        penalty.evidence_chain_hash.as_str(),
-                        "resolve",
-                        resolution_evidence_hash.as_str(),
-                    );
-                    (
-                        penalty.target_agent_id.clone(),
-                        penalty.slash_stake,
-                        penalty.identity_status_before,
-                    )
-                };
-                let profile = self
-                    .state
+                let (target_agent_id, next, next_profile) = self
+                    .prepare_governance_identity_penalty_resolution(
+                        *penalty_id,
+                        resolver,
+                        *accepted,
+                        reason,
+                    )?;
+                self.governance_identity_penalties.insert(*penalty_id, next);
+                self.state
                     .governance_identity_profiles
-                    .get_mut(target_agent_id.as_str())
-                    .ok_or(WorldError::AgentNotFound {
-                        agent_id: target_agent_id.clone(),
-                    })?;
-                if *accepted {
-                    profile.stake_locked = profile.stake_locked.saturating_add(slash_stake);
-                    profile.status = identity_status_before;
-                }
-                profile.updated_at = self.state.time;
+                    .insert(target_agent_id, next_profile);
             }
             GovernanceEvent::ValidatorAdmissionSubmitted {
                 controller_account_id,
