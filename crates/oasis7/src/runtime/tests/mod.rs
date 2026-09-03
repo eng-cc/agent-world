@@ -95,6 +95,7 @@ mod gameplay;
 mod gameplay_bootstrap;
 mod gameplay_protocol;
 mod governance;
+mod governance_emergency_brake_transaction_regressions;
 mod governance_validator_admission;
 mod governance_vote_quote;
 mod logistics_transfer_quote;

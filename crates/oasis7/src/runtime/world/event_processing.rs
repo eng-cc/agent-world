@@ -55,26 +55,37 @@ enum PreparedEventStateDelta {
     NoState,
     Body(PreparedBodyAttributesUpdate),
     RouteOnly { agent_id: String },
+    GovernanceEmergencyBrake { next_until_tick: Option<WorldTime> },
 }
 
 impl PreparedEventStateDelta {
     fn for_body(body: &WorldEventBody) -> Option<Self> {
-        matches!(
-            body,
+        match body {
             WorldEventBody::PolicyDecisionRecorded(_)
-                | WorldEventBody::RuleDecisionRecorded(_)
-                | WorldEventBody::ActionOverridden(_)
-                | WorldEventBody::ModuleCallFailed(_)
-                | WorldEventBody::ModuleEmitted(_)
-                | WorldEventBody::SnapshotCreated(_)
-                | WorldEventBody::RollbackApplied(_)
-        )
-        .then_some(Self::NoState)
+            | WorldEventBody::RuleDecisionRecorded(_)
+            | WorldEventBody::ActionOverridden(_)
+            | WorldEventBody::ModuleCallFailed(_)
+            | WorldEventBody::ModuleEmitted(_)
+            | WorldEventBody::SnapshotCreated(_)
+            | WorldEventBody::RollbackApplied(_) => Some(Self::NoState),
+            WorldEventBody::Governance(GovernanceEvent::EmergencyBrakeActivated {
+                active_until_tick,
+                ..
+            }) => Some(Self::GovernanceEmergencyBrake {
+                next_until_tick: Some(*active_until_tick),
+            }),
+            WorldEventBody::Governance(GovernanceEvent::EmergencyBrakeReleased { .. }) => {
+                Some(Self::GovernanceEmergencyBrake {
+                    next_until_tick: None,
+                })
+            }
+            _ => None,
+        }
     }
 
     fn matches_body(&self, body: &WorldEventBody) -> bool {
         match self {
-            Self::NoState => Self::for_body(body).is_some(),
+            Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
@@ -85,6 +96,16 @@ impl PreparedEventStateDelta {
                     ..
                 }) if event_agent_id == agent_id
             ),
+            Self::GovernanceEmergencyBrake { next_until_tick } => match body {
+                WorldEventBody::Governance(GovernanceEvent::EmergencyBrakeActivated {
+                    active_until_tick,
+                    ..
+                }) => next_until_tick == &Some(*active_until_tick),
+                WorldEventBody::Governance(GovernanceEvent::EmergencyBrakeReleased { .. }) => {
+                    next_until_tick.is_none()
+                }
+                _ => false,
+            },
         }
     }
 
@@ -94,12 +115,24 @@ impl PreparedEventStateDelta {
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => super::super::BodyOverlay::route_only(agent_id.clone())
                 .with_routed_domain_event(event),
+            Self::GovernanceEmergencyBrake { .. } => {
+                unreachable!("governance emergency brake does not have a state overlay")
+            }
         }
     }
 
     fn install_infallible(self, world: &mut World) {
-        if let Self::Body(prepared) = self {
-            prepared.install_infallible(world);
+        match self {
+            Self::Body(prepared) => prepared.install_infallible(world),
+            Self::GovernanceEmergencyBrake { next_until_tick } => {
+                let next_until_tick = next_until_tick.map(|next| {
+                    world
+                        .governance_emergency_brake_until_tick
+                        .map_or(next, |current| current.max(next))
+                });
+                world.governance_emergency_brake_until_tick = next_until_tick;
+            }
+            Self::NoState | Self::RouteOnly { .. } => {}
         }
     }
 }
@@ -975,6 +1008,11 @@ impl World {
                 };
                 let body_overlay = state_delta.state_overlay(domain_event.clone());
                 self.state_root_hash_with_body_overlay(&body_overlay)?
+            }
+            PreparedEventStateDelta::GovernanceEmergencyBrake { .. } => {
+                // The emergency-brake gate is a World sidecar and is intentionally
+                // outside the canonical WorldState root schema.
+                self.current_state_root_hash()?
             }
         };
         let consensus_record = self.build_tick_consensus_record_for_prepared_events(

@@ -32,6 +32,8 @@
 
 Threat heatmap preparation is a pure runtime projection: `prepare_threat_heatmap(&self)` reads the immutable world view into a fresh `BTreeMap`, and `refresh_threat_heatmap()` installs it once. Its nonmutation/reuse behavior is a composability seam only; it does not claim root transaction atomicity or change product rule semantics.
 
+Emergency-brake activation/release use the canonical prepared publication seam for their World sidecar: existing guardian checks and activation-max/release-`None` behavior remain unchanged, and post-prepare failure publishes neither brake state nor event id/era, journal, backpressure, or tick consensus. The sidecar remains outside the canonical `WorldState` root hash schema; this is a bounded event-publication guarantee, not a new whole-World atomicity claim.
+
 ### Kernel、governed physics 与 institution module 边界
 
 本节把 issue #3370 的架构建议落为 world-runtime 的执行约束。它不定义产品规则、WASM wire ABI、Agent tool schema 或 p2p finality 算法；产品规则仍由产品/gameplay authority 拥有，ABI 细节由 [`wasm-interface.md`](wasm/wasm-interface.md) 拥有，finality 由 [`doc/p2p/`](../p2p/) 拥有。
