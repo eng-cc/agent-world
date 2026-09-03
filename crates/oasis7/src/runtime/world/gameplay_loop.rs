@@ -298,7 +298,13 @@ impl World {
         &mut self,
         emitted: &mut Vec<WorldEvent>,
     ) -> Result<(), WorldError> {
-        let now = self.state.time;
+        for event in self.prepare_economic_contract_expiry_events_at(self.state.time) {
+            self.append_gameplay_domain_event(event, emitted)?;
+        }
+        Ok(())
+    }
+
+    fn prepare_economic_contract_expiry_events_at(&self, now: u64) -> Vec<DomainEvent> {
         let mut due_contracts = self
             .state
             .economic_contracts
@@ -322,31 +328,44 @@ impl World {
             .collect::<Vec<_>>();
         due_contracts.sort_by(|left, right| left.0.cmp(&right.0));
 
-        for (contract_id, creator_agent_id, counterparty_agent_id, status, reputation_stake) in
-            due_contracts
-        {
-            let (creator_reputation_delta, counterparty_reputation_delta) = match status {
-                EconomicContractStatus::Open => (-reputation_stake, 0),
-                EconomicContractStatus::Accepted => (
-                    -reputation_stake,
-                    -reputation_stake
-                        .saturating_div(CONTRACT_EXPIRY_COUNTERPARTY_PENALTY_DIVISOR)
-                        .max(1),
-                ),
-                EconomicContractStatus::Settled | EconomicContractStatus::Expired => (0, 0),
-            };
-            self.append_gameplay_domain_event(
-                DomainEvent::EconomicContractExpired {
+        due_contracts
+            .into_iter()
+            .map(
+                |(
                     contract_id,
                     creator_agent_id,
                     counterparty_agent_id,
-                    creator_reputation_delta,
-                    counterparty_reputation_delta,
+                    status,
+                    reputation_stake,
+                )| {
+                    let (creator_reputation_delta, counterparty_reputation_delta) = match status {
+                        EconomicContractStatus::Open => (-reputation_stake, 0),
+                        EconomicContractStatus::Accepted => (
+                            -reputation_stake,
+                            -reputation_stake
+                                .saturating_div(CONTRACT_EXPIRY_COUNTERPARTY_PENALTY_DIVISOR)
+                                .max(1),
+                        ),
+                        EconomicContractStatus::Settled | EconomicContractStatus::Expired => (0, 0),
+                    };
+                    DomainEvent::EconomicContractExpired {
+                        contract_id,
+                        creator_agent_id,
+                        counterparty_agent_id,
+                        creator_reputation_delta,
+                        counterparty_reputation_delta,
+                    }
                 },
-                emitted,
-            )?;
-        }
-        Ok(())
+            )
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn prepared_economic_contract_expiry_events_for_test(
+        &self,
+        now: u64,
+    ) -> Vec<DomainEvent> {
+        self.prepare_economic_contract_expiry_events_at(now)
     }
 
     fn finalize_due_governance_proposals(

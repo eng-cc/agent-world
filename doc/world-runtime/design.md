@@ -38,6 +38,8 @@ Current code/doc contracts already bind ordered actions, roots, committed execut
 
 Restricted starter-grant expiry now follows the same immutable preparation pattern: eligibility, balance-derived expiry amounts, metadata, and BTreeMap account order are frozen before sequential canonical publication. This remains a nested precursor under the existing root rollback boundary.
 
+Gameplay-cycle migration is stage-scoped: economic-contract expiry now freezes the due atomic-contract set, contract-id order, status-derived reputation deltas, and event bodies from an immutable view before publication. Later gameplay stages are prepared only after preceding stage events apply; in particular, war outcomes must continue to observe reputation changes from contract expiry.
+
 ## 6. Architecture status, migration proof, and execution boundary
 
 The runtime uses four explicit status labels so that a protocol surface is not
