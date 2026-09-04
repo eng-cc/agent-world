@@ -859,6 +859,43 @@ impl World {
         result_event: Option<&WorldEvent>,
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<usize, WorldError> {
+        let mut staged = TrustedCommandStage::new(self);
+        let routed =
+            self.route_action_to_staged(&mut staged, envelope, stage, result_event, sandbox);
+        match routed {
+            Ok(invoked) if invoked == 0 => Ok(0),
+            Ok(invoked) => {
+                let state_root = staged.consensus_state_root_hash()?;
+                let prepared = staged.prepare(state_root)?;
+                if self.take_fail_next_append_after_publication_prepare_for_test() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: "injected append_event failure after publication preparation"
+                            .to_string(),
+                    });
+                }
+                prepared.install(self);
+                Ok(invoked)
+            }
+            Err(error @ WorldError::ModuleCallFailed { .. }) => {
+                drop(staged);
+                self.publish_route_failure_audit(&error)?;
+                Err(error)
+            }
+            Err(error) => {
+                drop(staged);
+                Err(error)
+            }
+        }
+    }
+
+    fn route_action_to_staged(
+        &self,
+        staged: &mut TrustedCommandStage<'_>,
+        envelope: &ActionEnvelope,
+        stage: ModuleSubscriptionStage,
+        result_event: Option<&WorldEvent>,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<usize, WorldError> {
         let action_kind = action_kind_label(&envelope.action);
         let action_value = serde_json::to_value(envelope)?;
         let invocations = self.collect_active_module_invocations()?;
@@ -871,7 +908,8 @@ impl World {
             let manifest = invocation.manifest;
             let module_id = invocation.module_id;
             let instance_id = invocation.instance_id;
-            let prepared = self.prepared_subscriptions_for_manifest(&manifest)?;
+            let prepared = prepare_subscriptions(&manifest.subscriptions, &manifest.module_id)
+                .map_err(|reason| WorldError::ModuleChangeInvalid { reason })?;
             let subscribed = prepared_module_subscribes_to_action(
                 prepared.as_ref(),
                 stage,
@@ -901,7 +939,7 @@ impl World {
                 v: "wasm-1".to_string(),
                 module_id: module_id.clone(),
                 trace_id: trace_id.clone(),
-                time: self.state.time,
+                time: staged.state_time_for_route(),
                 origin: ModuleCallOrigin {
                     kind: "action".to_string(),
                     id: envelope.id.to_string(),
@@ -911,19 +949,13 @@ impl World {
                 stage: Some(subscription_stage_label(stage).to_string()),
                 world_config_hash: world_config_hash.clone(),
                 manifest_hash: Some(module_manifest_hash),
-                journal_height: Some(self.journal.events.len() as u64),
+                journal_height: Some(staged.journal_height_for_route()),
                 module_version: Some(manifest.version.clone()),
                 module_kind: Some(module_kind_label(&manifest.kind).to_string()),
                 module_role: Some(module_role_label(&manifest.role).to_string()),
             };
             let state = match manifest.kind {
-                ModuleKind::Reducer => Some(
-                    self.state
-                        .module_states
-                        .get(&instance_id)
-                        .cloned()
-                        .unwrap_or_default(),
-                ),
+                ModuleKind::Reducer => Some(staged.module_state(&instance_id)),
                 ModuleKind::Pure => None,
             };
             let input = ModuleCallInput {
@@ -933,7 +965,8 @@ impl World {
                 state,
             };
             let input_bytes = to_canonical_cbor(&input)?;
-            self.execute_module_call_with_manifest_and_state_key(
+            execute_module_call_for_target(
+                staged,
                 module_id.as_str(),
                 instance_id.as_str(),
                 &manifest,
@@ -945,6 +978,28 @@ impl World {
         }
 
         Ok(invoked)
+    }
+
+    fn publish_route_failure_audit(&mut self, error: &WorldError) -> Result<(), WorldError> {
+        let WorldError::ModuleCallFailed {
+            module_id,
+            trace_id,
+            code,
+            detail,
+        } = &error
+        else {
+            unreachable!("route failure pattern checked above")
+        };
+        self.append_event(
+            WorldEventBody::ModuleCallFailed(ModuleCallFailure {
+                module_id: module_id.clone(),
+                trace_id: trace_id.clone(),
+                code: code.clone(),
+                detail: detail.clone(),
+            }),
+            None,
+        )?;
+        Ok(())
     }
 
     fn module_call_failed(&mut self, failure: ModuleCallFailure) -> Result<(), WorldError> {

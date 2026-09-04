@@ -241,6 +241,14 @@ impl<'a> TrustedCommandStage<'a> {
             .unwrap_or_default()
     }
 
+    pub(super) fn state_time_for_route(&self) -> WorldTime {
+        self.base.state.time
+    }
+
+    pub(super) fn journal_height_for_route(&self) -> u64 {
+        self.journal_height_for_call()
+    }
+
     pub(super) fn execute_module_call_with_manifest_and_state_key(
         &mut self,
         module_id: &str,

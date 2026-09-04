@@ -56,6 +56,16 @@ Governance proposal creation and shadowing now use the same prepared publication
 
 Approval and queueing now prepare the `Approved` and `Queued` event pair against an immutable proposal view and install the final proposal replacement, retained journal suffix, event allocator, backpressure count, and tick-consensus candidate together. The pair remains ordered and retains the existing bounded-journal eviction semantics; reject decisions retain their single `Approved` event shape. This is a bounded direct-mutator publication seam, not a whole-World transaction.
 
+Standalone public action-module routing now uses the same borrowed
+`TrustedCommandStage` for the complete sorted invocation set. Module state,
+effects, emits, runtime charges, cache, allocators, journal, and the single
+tick-consensus candidate are prepared against the staged context and installed
+once. A module fault discards staged business output before one existing
+`ModuleCallFailed` audit; an infrastructure failure after preparation installs
+nothing and emits no audit. This closes only the direct action-route seam and
+does not claim a root `ExecutionTransaction` for `step()` or other nested
+event/tick paths.
+
 Gameplay-cycle migration is stage-scoped: economic-contract expiry now freezes the due atomic-contract set, contract-id order, status-derived reputation deltas, and event bodies from an immutable view before publication. Governance proposal finalization is prepared only after those economic events apply; it freezes the sorted due proposal keys and the vote-derived winner, quorum, threshold, and final event payloads from that immutable post-economic state before publication. Crisis lifecycle then prepares at most one deterministic auto-spawn event from the post-governance state and publishes it before freezing the crisis-id-sorted timeout vector from the resulting state. War conclusion deliberately uses a narrower one-event decision: it prepares the lexicographically first due active war from the current post-crisis state, publishes that outcome, then re-reads resources and reputation before preparing the next due war. This preserves both contract-expiry effects and earlier war participant outcomes in later scoring and settlement. Active gameplay-module lifecycle directives follow the same one-directive boundary after their envelope is decoded: each directive is translated against the current immutable state into zero or one domain event, published canonically, and only then may the next directive resolve state-derived fields such as the war loser fallback; zero-point meta grants remain no-ops and malformed envelopes retain their existing module-failure path. These stage-local prepared decisions and vectors remain composable precursors under the outer cloned-`World` rollback boundary, not a whole-cycle or root transaction commit.
 
 ## 6. Architecture status, migration proof, and execution boundary

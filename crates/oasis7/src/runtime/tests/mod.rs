@@ -112,6 +112,7 @@ mod market_quote_decision_preview;
 mod module_action_loop;
 mod module_command_provenance;
 mod module_lifecycle_transaction_regressions;
+mod module_routing_transaction_regressions;
 mod module_runtime_metering;
 mod modules;
 mod operability_release_gate;
