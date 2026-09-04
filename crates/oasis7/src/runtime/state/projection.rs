@@ -78,6 +78,8 @@ pub struct WorldStateProjection<'a> {
     command_overlay: Option<CommandStateOverlay<'a>>,
     module_instance_overlay: Option<&'a module_instance_transition::PreparedModuleInstance>,
     module_release_overlay: Option<&'a module_release_transition::PreparedModuleRelease>,
+    module_marketplace_overlay:
+        Option<&'a module_marketplace_transition::PreparedModuleMarketplace>,
     governance_identity_profile_overlay: Option<GovernanceIdentityProfileOverlay>,
 }
 
@@ -89,6 +91,7 @@ impl<'a> WorldStateProjection<'a> {
             command_overlay: None,
             module_instance_overlay: None,
             module_release_overlay: None,
+            module_marketplace_overlay: None,
             governance_identity_profile_overlay: None,
         }
     }
@@ -111,6 +114,14 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a module_release_transition::PreparedModuleRelease,
     ) -> Self {
         self.module_release_overlay = Some(overlay);
+        self
+    }
+
+    pub(crate) fn with_module_marketplace_overlay(
+        mut self,
+        overlay: &'a module_marketplace_transition::PreparedModuleMarketplace,
+    ) -> Self {
+        self.module_marketplace_overlay = Some(overlay);
         self
     }
 
@@ -151,7 +162,7 @@ impl Serialize for WorldState {
     where
         S: serde::Serializer,
     {
-        serialize_world_state(self, None, None, None, None, None, serializer)
+        serialize_world_state(self, None, None, None, None, None, None, serializer)
     }
 }
 
@@ -175,6 +186,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.command_overlay.as_ref(),
             self.module_instance_overlay,
             self.module_release_overlay,
+            self.module_marketplace_overlay,
             self.governance_identity_profile_overlay.as_ref(),
             serializer,
         )
@@ -353,6 +365,7 @@ fn serialize_world_state<S>(
     command_overlay: Option<&CommandStateOverlay<'_>>,
     module_instance_overlay: Option<&module_instance_transition::PreparedModuleInstance>,
     module_release_overlay: Option<&module_release_transition::PreparedModuleRelease>,
+    module_marketplace_overlay: Option<&module_marketplace_transition::PreparedModuleMarketplace>,
     governance_identity_profile_overlay: Option<&GovernanceIdentityProfileOverlay>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
@@ -486,6 +499,8 @@ where
     if let Some(overlay) = module_instance_overlay {
         overlay.serialize_material_fields(state, &mut output)?;
     } else if let Some(overlay) = module_release_overlay {
+        overlay.serialize_material_fields(state, &mut output)?;
+    } else if let Some(overlay) = module_marketplace_overlay {
         overlay.serialize_material_fields(state, &mut output)?;
     } else {
         output.serialize_field("materials", &state.materials)?;
@@ -634,9 +649,13 @@ where
     } else {
         output.serialize_field("module_states", &state.module_states)?;
     }
-    output.serialize_field("module_artifact_owners", &state.module_artifact_owners)?;
-    output.serialize_field("module_artifact_listings", &state.module_artifact_listings)?;
-    output.serialize_field("module_artifact_bids", &state.module_artifact_bids)?;
+    if let Some(overlay) = module_marketplace_overlay {
+        overlay.serialize_market_fields(state, &mut output)?;
+    } else {
+        output.serialize_field("module_artifact_owners", &state.module_artifact_owners)?;
+        output.serialize_field("module_artifact_listings", &state.module_artifact_listings)?;
+        output.serialize_field("module_artifact_bids", &state.module_artifact_bids)?;
+    }
     if let Some(overlay) = module_instance_overlay {
         overlay.serialize_fields(state, &mut output)?;
     } else {
@@ -678,14 +697,18 @@ where
         output.serialize_field("installed_module_targets", &state.installed_module_targets)?;
         output.serialize_field("next_module_instance_id", &state.next_module_instance_id)?;
     }
-    output.serialize_field(
-        "next_module_market_order_id",
-        &state.next_module_market_order_id,
-    )?;
-    output.serialize_field(
-        "next_module_market_sale_id",
-        &state.next_module_market_sale_id,
-    )?;
+    if let Some(overlay) = module_marketplace_overlay {
+        overlay.serialize_counter_fields(&mut output)?;
+    } else {
+        output.serialize_field(
+            "next_module_market_order_id",
+            &state.next_module_market_order_id,
+        )?;
+        output.serialize_field(
+            "next_module_market_sale_id",
+            &state.next_module_market_sale_id,
+        )?;
+    }
     output.serialize_field("main_token_config", &state.main_token_config)?;
     output.serialize_field("main_token_supply", &state.main_token_supply)?;
     output.serialize_field("main_token_balances", &state.main_token_balances)?;

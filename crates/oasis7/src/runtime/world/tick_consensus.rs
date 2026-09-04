@@ -941,6 +941,28 @@ impl World {
         })
     }
 
+    pub(super) fn state_root_hash_with_module_marketplace_overlay(
+        &self,
+        market: &super::super::state::module_marketplace_transition::PreparedModuleMarketplace,
+    ) -> Result<String, WorldError> {
+        let policy_hash = hash_json(&self.policies)?;
+        let manifest_hash = self.current_manifest_hash()?;
+        let agents = market.routed_agents();
+        let module_states = std::collections::BTreeMap::new();
+        let projection = WorldStateProjection::borrowed(&self.state)
+            .with_command_overlay(CommandStateOverlay {
+                module_states: &module_states,
+                resources: &market.resources,
+                agents: &agents,
+            })
+            .with_module_marketplace_overlay(market);
+        hash_json(&StateRootProjection {
+            state: &projection,
+            manifest_hash: &manifest_hash,
+            policy_hash: &policy_hash,
+        })
+    }
+
     fn consensus_height_for_tick(&self, tick: WorldTime) -> u64 {
         match self
             .tick_consensus_records

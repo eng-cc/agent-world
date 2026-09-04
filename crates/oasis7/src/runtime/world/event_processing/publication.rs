@@ -3,6 +3,9 @@ use std::collections::BTreeMap;
 
 pub(super) enum PreparedEventStateDelta {
     NoState,
+    ModuleMarketplace(
+        super::super::super::state::module_marketplace_transition::PreparedModuleMarketplace,
+    ),
     ModuleRelease(super::super::super::state::module_release_transition::PreparedModuleRelease),
     ModuleInstance {
         prepared: super::super::super::state::module_instance_transition::PreparedModuleInstance,
@@ -84,6 +87,9 @@ impl PreparedEventStateDelta {
 
     fn matches_body(&self, body: &WorldEventBody) -> bool {
         match self {
+            Self::ModuleMarketplace(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::ModuleRelease(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
@@ -175,6 +181,7 @@ impl PreparedEventStateDelta {
 
     fn state_overlay(&self, event: DomainEvent) -> super::super::super::BodyOverlay {
         match self {
+            Self::ModuleMarketplace(_) => unreachable!("marketplace uses a sparse overlay"),
             Self::ModuleRelease(_) => unreachable!("release uses a sparse release overlay"),
             Self::ModuleInstance { .. }
             | Self::ModuleStateUpdated { .. }
@@ -216,6 +223,7 @@ impl PreparedEventStateDelta {
 
     fn install_infallible(self, world: &mut World) {
         match self {
+            Self::ModuleMarketplace(prepared) => prepared.install_infallible(&mut world.state),
             Self::ModuleRelease(prepared) => prepared.install_infallible(&mut world.state),
             Self::ModuleInstance { prepared, schedule } => {
                 prepared.install_infallible(&mut world.state);
@@ -312,6 +320,14 @@ impl World {
         caused_by: Option<CausedBy>,
     ) -> Result<WorldEventId, WorldError> {
         let state_delta = match &body {
+            WorldEventBody::Domain(
+                event @ (DomainEvent::ModuleArtifactListed { .. }
+                | DomainEvent::ModuleArtifactBidPlaced { .. }
+                | DomainEvent::ModuleArtifactSaleCompleted { .. }),
+            ) => Some(PreparedEventStateDelta::ModuleMarketplace(
+                self.state
+                    .prepare_module_marketplace_event(event, self.state.time)?,
+            )),
             WorldEventBody::Domain(
                 event @ (DomainEvent::ProductProfileGoverned { .. }
                 | DomainEvent::RecipeProfileGoverned { .. }
@@ -552,6 +568,9 @@ impl World {
             .cloned()
             .collect();
         let state_root = match &state_delta {
+            PreparedEventStateDelta::ModuleMarketplace(prepared) => {
+                self.state_root_hash_with_module_marketplace_overlay(prepared)?
+            }
             PreparedEventStateDelta::ModuleRelease(prepared) => self
                 .state_root_hash_with_module_release_overlay(
                     None,

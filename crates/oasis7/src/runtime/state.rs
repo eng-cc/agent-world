@@ -52,6 +52,7 @@ mod apply_domain_event_main_token;
 mod command_projection;
 mod logistics_path_authority;
 pub(crate) mod module_instance_transition;
+pub(crate) mod module_marketplace_transition;
 pub(crate) mod module_release_transition;
 mod projection;
 #[path = "state_defaults.rs"]
@@ -1002,6 +1003,16 @@ impl WorldState {
         envelope_event_seq: Option<WorldEventId>,
         committed_receipt_event_id: Option<WorldEventId>,
     ) -> Result<(), WorldError> {
+        if matches!(
+            event,
+            DomainEvent::ModuleArtifactListed { .. }
+                | DomainEvent::ModuleArtifactBidPlaced { .. }
+                | DomainEvent::ModuleArtifactSaleCompleted { .. }
+        ) {
+            self.prepare_module_marketplace_event(event, now)?
+                .install_infallible(self);
+            return Ok(());
+        }
         if matches!(
             event,
             DomainEvent::ProductProfileGoverned { .. }

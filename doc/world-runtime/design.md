@@ -250,6 +250,23 @@ proposal-id-zero rejection for nonempty profiles, and empty-profile success are
 unchanged. This adds release business completion, not prelude deduplication or
 global action/root atomicity.
 
+Marketplace listing and bid actions prepare their order and optional immediate
+sale as one publication batch. The event-bound delta owns only affected agents,
+one artifact's owner/listing/bid entries, fee-resource replacements, market
+allocators and legacy world-material normalization. An absent staged listing or
+bid entry means deletion; the borrowed serializer excludes it while preserving
+unaffected entries and canonical key order. Raw listed/bid/sale reducers use the
+same pure preparation before legacy normalization, so failed buyer lookup,
+debit, seller credit or bid-reference validation cannot remove agents or change
+ownership. Matching reads the staged fee-debited cells and updated order book;
+listing price, highest-bid/lower-order-id selection and exact-tie vector order
+remain unchanged. Every logical event stages its routed mailbox, journal
+retention/allocator and consensus root and failpoint before one infallible
+install. Artifact ownership does not transfer module instances or schedules.
+This is a marketplace business boundary, not whole-World cloning or general
+action idempotency; delist, cancellation, destruction and deployment are not
+newly composed into it.
+
 The target production boundary is an explicit `ExecutionTransaction` holding
 a read-only canonical `World` base, a `TransitionBuffer`, and a `Live` or
 `Replay` mode. `TransitionBuffer` is a typed overlay rather than a cloned

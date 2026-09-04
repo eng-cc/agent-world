@@ -86,6 +86,15 @@ overlap preserves both the fee debit and exactly-once mailbox routing. A matchin
 module with proposal id zero still rejects nonempty governed profiles; empty
 profile completion remains permitted.
 
+Marketplace listed, bid-placed and sale-completed events now prepare affected
+state before publication, including replay. A listing/bid and its immediate
+matching sale commit together or leave fees, agents, owner, order book, market
+allocators, mailboxes, journal and consensus unchanged. Existing raw-event
+validation order and action policy remain distinct; sale price and bid ordering
+are unchanged. Sparse deletion-aware projections preserve published/replay root
+equality without cloning the world. This does not migrate other marketplace
+actions or alter module-instance ownership.
+
 Standalone public action routing now stages the complete deterministically
 sorted module invocation set against a borrowed `World` base and installs one
 prepared result containing module state, effects, emits, runtime charges,
