@@ -887,6 +887,14 @@ impl World {
         prepared: &super::super::state::module_instance_transition::PreparedModuleInstance,
     ) -> Result<String, WorldError> {
         let manifest_hash = self.current_manifest_hash()?;
+        self.state_root_hash_with_module_instance_and_manifest_hash(prepared, &manifest_hash)
+    }
+
+    pub(super) fn state_root_hash_with_module_instance_and_manifest_hash(
+        &self,
+        prepared: &super::super::state::module_instance_transition::PreparedModuleInstance,
+        manifest_hash: &str,
+    ) -> Result<String, WorldError> {
         let policy_hash = hash_json(&self.policies)?;
         let agents = prepared.routed_agents();
         let module_states = std::collections::BTreeMap::new();
@@ -899,7 +907,7 @@ impl World {
             .with_module_instance_overlay(prepared);
         hash_json(&StateRootProjection {
             state: &state_projection,
-            manifest_hash: manifest_hash.as_str(),
+            manifest_hash,
             policy_hash: policy_hash.as_str(),
         })
     }

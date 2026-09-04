@@ -5,8 +5,7 @@ pub(super) enum PreparedEventStateDelta {
     NoState,
     ModuleInstance {
         prepared: super::super::super::state::module_instance_transition::PreparedModuleInstance,
-        schedule_key: String,
-        next_tick: Option<WorldTime>,
+        schedule: Option<(String, Option<WorldTime>)>,
     },
     ModuleStateUpdated {
         module_states: BTreeMap<String, Vec<u8>>,
@@ -212,20 +211,9 @@ impl PreparedEventStateDelta {
 
     fn install_infallible(self, world: &mut World) {
         match self {
-            Self::ModuleInstance {
-                prepared,
-                schedule_key,
-                next_tick,
-            } => {
+            Self::ModuleInstance { prepared, schedule } => {
                 prepared.install_infallible(&mut world.state);
-                match next_tick {
-                    Some(tick) => {
-                        world.module_tick_schedule.insert(schedule_key, tick);
-                    }
-                    None => {
-                        world.module_tick_schedule.remove(&schedule_key);
-                    }
-                }
+                world.install_prepared_module_instance_schedule(schedule);
             }
             Self::ModuleStateUpdated { module_states } => {
                 world.state.module_states.extend(module_states)
@@ -319,18 +307,15 @@ impl World {
     ) -> Result<WorldEventId, WorldError> {
         let state_delta = match &body {
             WorldEventBody::Domain(
-                event @ (DomainEvent::ModuleInstalled { .. } | DomainEvent::ModuleUpgraded { .. }),
+                event @ (DomainEvent::ModuleInstalled { .. }
+                | DomainEvent::ModuleUpgraded { .. }
+                | DomainEvent::ModuleRollbackApplied { .. }),
             ) => {
                 let prepared = self
                     .state
                     .prepare_module_instance_event(event, self.state.time)?;
-                let (schedule_key, next_tick) =
-                    self.prepare_module_instance_schedule(event, self.state.time)?;
-                Some(PreparedEventStateDelta::ModuleInstance {
-                    prepared,
-                    schedule_key,
-                    next_tick,
-                })
+                let schedule = self.prepare_module_instance_schedule(event, self.state.time)?;
+                Some(PreparedEventStateDelta::ModuleInstance { prepared, schedule })
             }
             WorldEventBody::ModuleStateUpdated(update) => {
                 Some(PreparedEventStateDelta::ModuleStateUpdated {

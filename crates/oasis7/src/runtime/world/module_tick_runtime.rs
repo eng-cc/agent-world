@@ -63,11 +63,35 @@ pub(super) struct ModuleTickRoutingMetrics {
 }
 
 impl World {
+    pub(super) fn install_prepared_module_instance_schedule(
+        &mut self,
+        schedule: Option<(String, Option<u64>)>,
+    ) {
+        if let Some((key, next)) = schedule {
+            match next {
+                Some(tick) => {
+                    self.module_tick_schedule.insert(key, tick);
+                }
+                None => {
+                    self.module_tick_schedule.remove(&key);
+                }
+            }
+        }
+    }
+
     pub(super) fn prepare_module_instance_schedule(
         &self,
         event: &super::super::DomainEvent,
         time: u64,
-    ) -> Result<(String, Option<u64>), WorldError> {
+    ) -> Result<Option<(String, Option<u64>)>, WorldError> {
+        Self::prepare_module_instance_schedule_with_registry(&self.module_registry, event, time)
+    }
+
+    pub(super) fn prepare_module_instance_schedule_with_registry(
+        registry: &ModuleRegistry,
+        event: &super::super::DomainEvent,
+        time: u64,
+    ) -> Result<Option<(String, Option<u64>)>, WorldError> {
         use super::super::DomainEvent;
         let (key, module_id, version, active) = match event {
             DomainEvent::ModuleInstalled {
@@ -93,22 +117,23 @@ impl World {
                 active,
                 ..
             } => (instance_id, module_id, to_module_version, active),
-            _ => unreachable!("instance schedule requires install or upgrade"),
+            // Rollback historically adjusts only the module-id schedule via
+            // its governance events, never the instance-key schedule.
+            DomainEvent::ModuleRollbackApplied { .. } => return Ok(None),
+            _ => unreachable!("instance schedule requires a lifecycle event"),
         };
         let next = if *active {
             let record_key = ModuleRegistry::record_key(module_id, version);
-            let record = self
-                .module_registry
-                .records
-                .get(&record_key)
-                .ok_or_else(|| WorldError::ModuleChangeInvalid {
+            let record = registry.records.get(&record_key).ok_or_else(|| {
+                WorldError::ModuleChangeInvalid {
                     reason: format!("module record missing {record_key}"),
-                })?;
+                }
+            })?;
             module_has_tick_subscription(&record.manifest).then_some(time)
         } else {
             None
         };
-        Ok((key.clone(), next))
+        Ok(Some((key.clone(), next)))
     }
 
     pub(super) fn sync_tick_schedule_for_activation(

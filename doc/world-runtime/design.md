@@ -215,7 +215,23 @@ active events require a record even when it has no tick subscription. A borrowed
 projection merges the touched instance, target, material ledger/cache and fee
 entries, including exactly one routed mailbox event, into the consensus root.
 Publication installs only after consensus checks and the existing failpoint.
-This boundary does not make the surrounding governance/action workflow atomic.
+Rollback uses the same prepared state reducer and exact rollback validation
+messages, preserving the historical absence of instance-key schedule updates.
+
+Governed install/upgrade/rollback extend `PreparedGovernanceProposalApply` with
+the final lifecycle event before installation. The tail checks its proposal id
+and applied-manifest hash, prepares the owned instance delta against unchanged
+state, and resolves scheduling against the prepared registry. Its borrowed state
+projection uses the prepared manifest hash; event id/era, retained journal,
+eviction accounting, and final consensus are extended locally. Both logical
+post-prepare failpoints (governance and final lifecycle) precede any installation.
+Only then are governance sidecars, cache invalidations, instance state and its
+single mailbox event installed. Governance errors retain the caller's existing
+`ActionRejected` conversion; lifecycle-tail errors propagate without installing
+the governance batch. Local certificate policy/build ordering and explicit
+certificate validation are unchanged. Proposal/shadow/approval prelude and release
+profile/final-release events remain outside this bounded commit; it is not full
+action/root atomicity.
 
 The target production boundary is an explicit `ExecutionTransaction` holding
 a read-only canonical `World` base, a `TransitionBuffer`, and a `Live` or

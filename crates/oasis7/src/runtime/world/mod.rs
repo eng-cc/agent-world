@@ -36,6 +36,8 @@ mod prepared_base_head_transaction_regressions;
 mod module_output_publication_transaction_regressions;
 #[cfg(test)]
 mod module_instance_publication_transaction_regressions;
+#[cfg(test)]
+mod governed_module_lifecycle_transaction_regressions;
 mod war_declaration_quote;
 pub use war_declaration_quote::WarDeclarationQuote;
 mod logistics;
@@ -421,6 +423,8 @@ pub struct World {
     fail_next_append_after_reducer: bool,
     #[cfg(test)]
     fail_next_append_after_publication_prepare: bool,
+    #[cfg(test)]
+    fail_append_after_publication_prepare_countdown: Option<usize>,
 }
 
 impl World {
@@ -544,6 +548,8 @@ impl World {
             fail_next_append_after_reducer: false,
             #[cfg(test)]
             fail_next_append_after_publication_prepare: false,
+            #[cfg(test)]
+            fail_append_after_publication_prepare_countdown: None,
         };
         world
             .refresh_capability_authorization_root()
@@ -771,8 +777,27 @@ impl World {
     }
 
     #[cfg(test)]
+    pub(crate) fn fail_append_after_publication_prepare_on_nth_for_test(&mut self, nth: usize) {
+        assert!(nth > 0);
+        self.fail_append_after_publication_prepare_countdown = Some(nth);
+    }
+
+    #[cfg(test)]
     fn take_fail_next_append_after_publication_prepare_for_test(&mut self) -> bool {
-        std::mem::take(&mut self.fail_next_append_after_publication_prepare)
+        if std::mem::take(&mut self.fail_next_append_after_publication_prepare) {
+            return true;
+        }
+        match self.fail_append_after_publication_prepare_countdown {
+            Some(1) => {
+                self.fail_append_after_publication_prepare_countdown = None;
+                true
+            }
+            Some(remaining) => {
+                self.fail_append_after_publication_prepare_countdown = Some(remaining - 1);
+                false
+            }
+            None => false,
+        }
     }
 
     #[cfg(not(test))]

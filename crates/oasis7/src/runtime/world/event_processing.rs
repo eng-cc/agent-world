@@ -784,19 +784,14 @@ impl World {
                     self.validate_agent_intent_receipt_reference(event, envelope_event_seq)?;
                 if matches!(
                     event,
-                    DomainEvent::ModuleInstalled { .. } | DomainEvent::ModuleUpgraded { .. }
+                    DomainEvent::ModuleInstalled { .. }
+                        | DomainEvent::ModuleUpgraded { .. }
+                        | DomainEvent::ModuleRollbackApplied { .. }
                 ) {
                     let prepared = self.state.prepare_module_instance_event(event, time)?;
-                    let (key, next) = self.prepare_module_instance_schedule(event, time)?;
+                    let schedule = self.prepare_module_instance_schedule(event, time)?;
                     prepared.install_infallible(&mut self.state);
-                    match next {
-                        Some(tick) => {
-                            self.module_tick_schedule.insert(key, tick);
-                        }
-                        None => {
-                            self.module_tick_schedule.remove(&key);
-                        }
-                    }
+                    self.install_prepared_module_instance_schedule(schedule);
                     self.state.route_domain_event(event);
                     self.state.time = time;
                     return Ok(());

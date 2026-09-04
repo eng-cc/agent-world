@@ -1,4 +1,4 @@
-//! Sparse, owned install/upgrade state prepared before any canonical write.
+//! Sparse, owned instance lifecycle state prepared before any canonical write.
 use super::*;
 use serde::ser::SerializeMap;
 
@@ -199,7 +199,13 @@ impl WorldState {
                 fee_amount,
                 ..
             } => (upgrader_agent_id, *fee_kind, *fee_amount),
-            _ => unreachable!("module instance preparation requires install or upgrade"),
+            DomainEvent::ModuleRollbackApplied {
+                operator_agent_id,
+                fee_kind,
+                fee_amount,
+                ..
+            } => (operator_agent_id, *fee_kind, *fee_amount),
+            _ => unreachable!("module instance preparation requires a lifecycle event"),
         };
         let (cell, resources) =
             self.prepare_module_action_fee(agent_id, fee_kind, fee_amount, now)?;
@@ -242,18 +248,34 @@ impl WorldState {
                 install_target,
                 active,
                 ..
+            }
+            | DomainEvent::ModuleRollbackApplied {
+                instance_id,
+                module_id,
+                from_module_version,
+                to_module_version,
+                wasm_hash,
+                install_target,
+                active,
+                ..
             } => {
+                let (operation, actor_label) =
+                    if matches!(event, DomainEvent::ModuleRollbackApplied { .. }) {
+                        ("rollback", "operator")
+                    } else {
+                        ("upgrade", "upgrader")
+                    };
                 let mut instance = self
                     .module_instances
                     .get(instance_id)
                     .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                        reason: format!("module instance missing for upgrade {instance_id}"),
+                        reason: format!("module instance missing for {operation} {instance_id}"),
                     })?
                     .clone();
                 if instance.owner_agent_id != *agent_id {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: format!(
-                            "module instance owner mismatch for upgrade: instance={} owner={} upgrader={}",
+                            "module instance owner mismatch for {operation}: instance={} owner={} {actor_label}={}",
                             instance_id, instance.owner_agent_id, agent_id
                         ),
                     });
@@ -261,7 +283,7 @@ impl WorldState {
                 if instance.module_id != *module_id {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: format!(
-                            "module instance module_id mismatch for upgrade: instance={} state_module_id={} event_module_id={}",
+                            "module instance module_id mismatch for {operation}: instance={} state_module_id={} event_module_id={}",
                             instance_id, instance.module_id, module_id
                         ),
                     });
@@ -269,7 +291,7 @@ impl WorldState {
                 if instance.module_version != *from_module_version {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: format!(
-                            "module instance from_version mismatch for upgrade: instance={} state_version={} event_from={}",
+                            "module instance from_version mismatch for {operation}: instance={} state_version={} event_from={}",
                             instance_id, instance.module_version, from_module_version
                         ),
                     });
@@ -293,7 +315,8 @@ impl WorldState {
             .unwrap_or(&self.materials)
             .clone();
         let instance_key = match event {
-            DomainEvent::ModuleUpgraded { instance_id, .. } => instance_id.clone(),
+            DomainEvent::ModuleUpgraded { instance_id, .. }
+            | DomainEvent::ModuleRollbackApplied { instance_id, .. } => instance_id.clone(),
             _ => instance.instance_id.clone(),
         };
         Ok(PreparedModuleInstance {

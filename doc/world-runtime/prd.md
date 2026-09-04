@@ -62,8 +62,17 @@ normalization before mutation. Active schedule lookup must succeed before state
 or publication changes. Invalid upgrades and post-prepare failures leave state,
 mailboxes, schedules, event allocators, journal/backpressure, and consensus intact.
 Successful retry/replay preserves the existing identity, fee/error ordering, and
-schedule semantics. This event-level boundary does not group the preceding
-governance proposal application with the final install/upgrade event.
+schedule semantics. Rollback uses the same prepared instance-state boundary,
+without introducing instance-key schedule synchronization.
+
+Governed install, upgrade, and rollback now compose proposal application with
+the final instance event before one canonical install. After the proposal is
+approved/queued, a lifecycle-tail failure publishes neither applied governance
+state nor the instance change, fees, cache invalidations, business journal batch,
+or consensus candidate. Proposal creation/shadow/approval audit remains outside
+this boundary. Governance-preparation errors keep their action-rejection handling;
+tail errors propagate. Release profile changes and final release status remain
+separate, as does the enclosing action/root transaction.
 
 Standalone public action routing now stages the complete deterministically
 sorted module invocation set against a borrowed `World` base and installs one

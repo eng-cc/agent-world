@@ -1003,7 +1003,9 @@ impl WorldState {
     ) -> Result<(), WorldError> {
         if matches!(
             event,
-            DomainEvent::ModuleInstalled { .. } | DomainEvent::ModuleUpgraded { .. }
+            DomainEvent::ModuleInstalled { .. }
+                | DomainEvent::ModuleUpgraded { .. }
+                | DomainEvent::ModuleRollbackApplied { .. }
         ) {
             self.prepare_module_instance_event(event, now)?
                 .install_infallible(self);

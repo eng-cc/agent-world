@@ -10,10 +10,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::super::util::hash_json;
 use super::super::{
-    GovernanceEvent, GovernanceFinalityCertificate, Manifest, ManifestUpdate, ModuleChangeSet,
-    ModuleEvent, ModuleEventKind, ModuleRecord, ModuleRegistry, ModuleSubscriptionStage, Proposal,
-    ProposalId, ProposalStatus, TickConsensusRecord, WorldError, WorldEvent, WorldEventBody,
-    WorldEventId,
+    CausedBy, DomainEvent, GovernanceEvent, GovernanceFinalityCertificate, Manifest,
+    ManifestUpdate, ModuleChangeSet, ModuleEvent, ModuleEventKind, ModuleRecord, ModuleRegistry,
+    ModuleSubscriptionStage, Proposal, ProposalId, ProposalStatus, TickConsensusRecord, WorldError,
+    WorldEvent, WorldEventBody, WorldEventId,
 };
 use super::World;
 
@@ -221,6 +221,117 @@ impl World {
 }
 
 impl PreparedGovernanceProposalApply {
+    pub(super) fn applied_hash(&self) -> &str {
+        &self.applied_hash
+    }
+
+    /// Extend the already validated governance projection with its instance
+    /// tail. All tail errors propagate to the action caller; no governance
+    /// sidecar, cache invalidation, or publication is installed on error.
+    pub(super) fn publish_lifecycle_tail(
+        mut self,
+        world: &mut World,
+        event: DomainEvent,
+        caused_by: Option<CausedBy>,
+    ) -> Result<(), WorldError> {
+        let (proposal_id, manifest_hash) = match &event {
+            DomainEvent::ModuleInstalled {
+                proposal_id,
+                manifest_hash,
+                ..
+            }
+            | DomainEvent::ModuleUpgraded {
+                proposal_id,
+                manifest_hash,
+                ..
+            }
+            | DomainEvent::ModuleRollbackApplied {
+                proposal_id,
+                manifest_hash,
+                ..
+            } => (*proposal_id, manifest_hash),
+            _ => {
+                return Err(WorldError::ResourceBalanceInvalid {
+                    reason: "governance tail requires a module lifecycle event".to_string(),
+                });
+            }
+        };
+        if proposal_id != self.proposal_id || manifest_hash != &self.applied_hash {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "module lifecycle tail does not match prepared governance proposal"
+                    .to_string(),
+            });
+        }
+        let instance = world
+            .state
+            .prepare_module_instance_event(&event, world.state.time)?;
+        let schedule = World::prepare_module_instance_schedule_with_registry(
+            &self.module_registry,
+            &event,
+            world.state.time,
+        )?;
+        if let Some((key, next)) = schedule {
+            match next {
+                Some(tick) => {
+                    self.module_tick_schedule.insert(key, tick);
+                }
+                None => {
+                    self.module_tick_schedule.remove(&key);
+                }
+            }
+        }
+
+        let (id, next_id, next_era) =
+            World::preview_next_event_id(self.next_event_id, self.next_event_id_era);
+        self.next_event_id = next_id;
+        self.next_event_id_era = next_era;
+        self.journal_events.push(WorldEvent {
+            id,
+            time: world.state.time,
+            caused_by,
+            body: WorldEventBody::Domain(event.clone()),
+        });
+        let overflow = self
+            .journal_events
+            .len()
+            .saturating_sub(world.runtime_memory_limits.max_journal_events.max(1));
+        if overflow > 0 {
+            self.journal_events.drain(0..overflow);
+        }
+        self.journal_events_evicted = self.journal_events_evicted.saturating_add(overflow as u64);
+        let tick_events: Vec<_> = self
+            .journal_events
+            .iter()
+            .filter(|event| event.time == world.state.time)
+            .cloned()
+            .collect();
+        let state_root = world.state_root_hash_with_module_instance_and_manifest_hash(
+            &instance,
+            &self.applied_hash,
+        )?;
+        let consensus_record = world.build_tick_consensus_record_for_prepared_events(
+            world.state.time,
+            &tick_events,
+            state_root.clone(),
+        )?;
+        world.validate_tick_consensus_candidate_for_prepared_publication(
+            &consensus_record,
+            &tick_events,
+            &state_root,
+        )?;
+        self.consensus_record = consensus_record;
+        if world.take_fail_next_append_after_publication_prepare_for_test() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "injected append_event failure after publication preparation".to_string(),
+            });
+        }
+
+        self.install(world);
+        instance.install_infallible(&mut world.state);
+        world.state.route_domain_event(&event);
+        Ok(())
+    }
+
     pub(super) fn install(self, world: &mut World) -> String {
         let Self {
             applied_hash,
