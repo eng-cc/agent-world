@@ -3,6 +3,11 @@ use std::collections::BTreeMap;
 
 pub(super) enum PreparedEventStateDelta {
     NoState,
+    ModuleInstance {
+        prepared: super::super::super::state::module_instance_transition::PreparedModuleInstance,
+        schedule_key: String,
+        next_tick: Option<WorldTime>,
+    },
     ModuleStateUpdated {
         module_states: BTreeMap<String, Vec<u8>>,
     },
@@ -79,6 +84,9 @@ impl PreparedEventStateDelta {
 
     fn matches_body(&self, body: &WorldEventBody) -> bool {
         match self {
+            Self::ModuleInstance { prepared, .. } => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::ModuleStateUpdated { module_states } => matches!(body,
                 WorldEventBody::ModuleStateUpdated(update)
                 if module_states.len() == 1 && module_states.get(&update.module_id) == Some(&update.state)),
@@ -164,7 +172,9 @@ impl PreparedEventStateDelta {
 
     fn state_overlay(&self, event: DomainEvent) -> super::super::super::BodyOverlay {
         match self {
-            Self::ModuleStateUpdated { .. } | Self::ModuleRuntimeCharged(_) => {
+            Self::ModuleInstance { .. }
+            | Self::ModuleStateUpdated { .. }
+            | Self::ModuleRuntimeCharged(_) => {
                 unreachable!("module output uses a command overlay")
             }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
@@ -202,6 +212,21 @@ impl PreparedEventStateDelta {
 
     fn install_infallible(self, world: &mut World) {
         match self {
+            Self::ModuleInstance {
+                prepared,
+                schedule_key,
+                next_tick,
+            } => {
+                prepared.install_infallible(&mut world.state);
+                match next_tick {
+                    Some(tick) => {
+                        world.module_tick_schedule.insert(schedule_key, tick);
+                    }
+                    None => {
+                        world.module_tick_schedule.remove(&schedule_key);
+                    }
+                }
+            }
             Self::ModuleStateUpdated { module_states } => {
                 world.state.module_states.extend(module_states)
             }
@@ -293,6 +318,20 @@ impl World {
         caused_by: Option<CausedBy>,
     ) -> Result<WorldEventId, WorldError> {
         let state_delta = match &body {
+            WorldEventBody::Domain(
+                event @ (DomainEvent::ModuleInstalled { .. } | DomainEvent::ModuleUpgraded { .. }),
+            ) => {
+                let prepared = self
+                    .state
+                    .prepare_module_instance_event(event, self.state.time)?;
+                let (schedule_key, next_tick) =
+                    self.prepare_module_instance_schedule(event, self.state.time)?;
+                Some(PreparedEventStateDelta::ModuleInstance {
+                    prepared,
+                    schedule_key,
+                    next_tick,
+                })
+            }
             WorldEventBody::ModuleStateUpdated(update) => {
                 Some(PreparedEventStateDelta::ModuleStateUpdated {
                     module_states: BTreeMap::from([(
@@ -449,6 +488,9 @@ impl World {
             .cloned()
             .collect();
         let state_root = match &state_delta {
+            PreparedEventStateDelta::ModuleInstance { prepared, .. } => {
+                self.state_root_hash_with_module_instance_overlay(prepared)?
+            }
             PreparedEventStateDelta::ModuleStateUpdated { module_states } => self
                 .state_root_hash_with_command_overlay(
                     super::super::super::state::CommandStateOverlay {

@@ -63,6 +63,54 @@ pub(super) struct ModuleTickRoutingMetrics {
 }
 
 impl World {
+    pub(super) fn prepare_module_instance_schedule(
+        &self,
+        event: &super::super::DomainEvent,
+        time: u64,
+    ) -> Result<(String, Option<u64>), WorldError> {
+        use super::super::DomainEvent;
+        let (key, module_id, version, active) = match event {
+            DomainEvent::ModuleInstalled {
+                instance_id,
+                module_id,
+                module_version,
+                active,
+                ..
+            } => (
+                if instance_id.trim().is_empty() {
+                    module_id
+                } else {
+                    instance_id
+                },
+                module_id,
+                module_version,
+                active,
+            ),
+            DomainEvent::ModuleUpgraded {
+                instance_id,
+                module_id,
+                to_module_version,
+                active,
+                ..
+            } => (instance_id, module_id, to_module_version, active),
+            _ => unreachable!("instance schedule requires install or upgrade"),
+        };
+        let next = if *active {
+            let record_key = ModuleRegistry::record_key(module_id, version);
+            let record = self
+                .module_registry
+                .records
+                .get(&record_key)
+                .ok_or_else(|| WorldError::ModuleChangeInvalid {
+                    reason: format!("module record missing {record_key}"),
+                })?;
+            module_has_tick_subscription(&record.manifest).then_some(time)
+        } else {
+            None
+        };
+        Ok((key.clone(), next))
+    }
+
     pub(super) fn sync_tick_schedule_for_activation(
         &mut self,
         module_id: &str,

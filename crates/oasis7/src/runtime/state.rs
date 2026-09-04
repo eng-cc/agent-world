@@ -51,6 +51,7 @@ mod apply_domain_event_intent;
 mod apply_domain_event_main_token;
 mod command_projection;
 mod logistics_path_authority;
+pub(crate) mod module_instance_transition;
 mod projection;
 #[path = "state_defaults.rs"]
 mod state_defaults;
@@ -985,42 +986,6 @@ impl WorldState {
         raw_weight as u32
     }
 
-    fn settle_module_action_fee(
-        &mut self,
-        agent_id: &str,
-        fee_kind: ResourceKind,
-        fee_amount: i64,
-        now: WorldTime,
-    ) -> Result<(), WorldError> {
-        if fee_amount < 0 {
-            return Err(WorldError::ResourceBalanceInvalid {
-                reason: format!("module action fee must be >= 0, got {}", fee_amount),
-            });
-        }
-
-        let cell = self
-            .agents
-            .get_mut(agent_id)
-            .ok_or_else(|| WorldError::AgentNotFound {
-                agent_id: agent_id.to_string(),
-            })?;
-        if fee_amount > 0 {
-            cell.state
-                .resources
-                .remove(fee_kind, fee_amount)
-                .map_err(|err| WorldError::ResourceBalanceInvalid {
-                    reason: format!(
-                        "module action fee debit failed: agent={} kind={:?} amount={} err={:?}",
-                        agent_id, fee_kind, fee_amount, err
-                    ),
-                })?;
-            let treasury = self.resources.entry(fee_kind).or_insert(0);
-            *treasury = treasury.saturating_add(fee_amount);
-        }
-        cell.last_active = now;
-        Ok(())
-    }
-
     pub fn apply_domain_event(
         &mut self,
         event: &DomainEvent,
@@ -1036,6 +1001,14 @@ impl WorldState {
         envelope_event_seq: Option<WorldEventId>,
         committed_receipt_event_id: Option<WorldEventId>,
     ) -> Result<(), WorldError> {
+        if matches!(
+            event,
+            DomainEvent::ModuleInstalled { .. } | DomainEvent::ModuleUpgraded { .. }
+        ) {
+            self.prepare_module_instance_event(event, now)?
+                .install_infallible(self);
+            return Ok(());
+        }
         self.migrate_compat_material_ledgers();
         match event {
             DomainEvent::AgentIntentProposed { .. }

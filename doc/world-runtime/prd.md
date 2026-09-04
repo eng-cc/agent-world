@@ -56,6 +56,15 @@ debit leaves canonical balances unchanged, including when both fees share a
 resource kind. Replay uses the same charge preparation. This is an event-level
 guarantee, not completion of the whole root transaction.
 
+Module instance install/upgrade events likewise prepare the payer fee, instance,
+module-keyed install target, install counter, and legacy world-material cache
+normalization before mutation. Active schedule lookup must succeed before state
+or publication changes. Invalid upgrades and post-prepare failures leave state,
+mailboxes, schedules, event allocators, journal/backpressure, and consensus intact.
+Successful retry/replay preserves the existing identity, fee/error ordering, and
+schedule semantics. This event-level boundary does not group the preceding
+governance proposal application with the final install/upgrade event.
+
 Standalone public action routing now stages the complete deterministically
 sorted module invocation set against a borrowed `World` base and installs one
 prepared result containing module state, effects, emits, runtime charges,

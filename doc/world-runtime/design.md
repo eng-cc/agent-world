@@ -202,6 +202,21 @@ state, journal retention/backpressure, event id/era, and consensus installation.
 `ModuleEmitted` remains a no-state event in the existing output order. This closes
 these event seams only, not all nested operations or the root transaction.
 
+`ModuleInstalled` and `ModuleUpgraded` prepare sparse instance/payer/treasury
+replacements plus the module-keyed target and install-counter successor. Fee
+validation retains priority over upgrade instance/owner/module/version checks.
+The direct state reducer prepares legacy world-ledger/cache normalization only
+after validation, so rejected events cannot leak compatibility migration writes.
+The world reducer also prepares registry-backed schedule lookup before installing
+anything; replay shares those preparations. Install state keys keep blank-to-module
+and trimmed-nonblank compatibility, while nonblank schedule keys and upgrade lookup
+remain raw. Inactive events remove schedules without requiring registry records;
+active events require a record even when it has no tick subscription. A borrowed
+projection merges the touched instance, target, material ledger/cache and fee
+entries, including exactly one routed mailbox event, into the consensus root.
+Publication installs only after consensus checks and the existing failpoint.
+This boundary does not make the surrounding governance/action workflow atomic.
+
 The target production boundary is an explicit `ExecutionTransaction` holding
 a read-only canonical `World` base, a `TransitionBuffer`, and a `Live` or
 `Replay` mode. `TransitionBuffer` is a typed overlay rather than a cloned

@@ -75,6 +75,7 @@ pub struct WorldStateProjection<'a> {
     state: &'a WorldState,
     body_overlay: Option<BodyOverlay>,
     command_overlay: Option<CommandStateOverlay<'a>>,
+    module_instance_overlay: Option<&'a module_instance_transition::PreparedModuleInstance>,
     governance_identity_profile_overlay: Option<GovernanceIdentityProfileOverlay>,
 }
 
@@ -84,12 +85,21 @@ impl<'a> WorldStateProjection<'a> {
             state,
             body_overlay: None,
             command_overlay: None,
+            module_instance_overlay: None,
             governance_identity_profile_overlay: None,
         }
     }
 
     pub fn with_body_overlay(mut self, body_overlay: BodyOverlay) -> Self {
         self.body_overlay = Some(body_overlay);
+        self
+    }
+
+    pub(crate) fn with_module_instance_overlay(
+        mut self,
+        overlay: &'a module_instance_transition::PreparedModuleInstance,
+    ) -> Self {
+        self.module_instance_overlay = Some(overlay);
         self
     }
 
@@ -130,7 +140,7 @@ impl Serialize for WorldState {
     where
         S: serde::Serializer,
     {
-        serialize_world_state(self, None, None, None, serializer)
+        serialize_world_state(self, None, None, None, None, serializer)
     }
 }
 
@@ -152,6 +162,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.state,
             self.body_overlay.as_ref(),
             self.command_overlay.as_ref(),
+            self.module_instance_overlay,
             self.governance_identity_profile_overlay.as_ref(),
             serializer,
         )
@@ -328,6 +339,7 @@ fn serialize_world_state<S>(
     state: &WorldState,
     body_overlay: Option<&BodyOverlay>,
     command_overlay: Option<&CommandStateOverlay<'_>>,
+    module_instance_overlay: Option<&module_instance_transition::PreparedModuleInstance>,
     governance_identity_profile_overlay: Option<&GovernanceIdentityProfileOverlay>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
@@ -458,8 +470,12 @@ where
     } else {
         output.serialize_field("resources", &state.resources)?;
     }
-    output.serialize_field("materials", &state.materials)?;
-    output.serialize_field("material_ledgers", &state.material_ledgers)?;
+    if let Some(overlay) = module_instance_overlay {
+        overlay.serialize_material_fields(state, &mut output)?;
+    } else {
+        output.serialize_field("materials", &state.materials)?;
+        output.serialize_field("material_ledgers", &state.material_ledgers)?;
+    }
     output.serialize_field("material_profiles", &state.material_profiles)?;
     output.serialize_field("logistics_routes", &state.logistics_routes)?;
     output.serialize_field(
@@ -579,7 +595,11 @@ where
     output.serialize_field("module_artifact_owners", &state.module_artifact_owners)?;
     output.serialize_field("module_artifact_listings", &state.module_artifact_listings)?;
     output.serialize_field("module_artifact_bids", &state.module_artifact_bids)?;
-    output.serialize_field("module_instances", &state.module_instances)?;
+    if let Some(overlay) = module_instance_overlay {
+        overlay.serialize_fields(state, &mut output)?;
+    } else {
+        output.serialize_field("module_instances", &state.module_instances)?;
+    }
     output.serialize_field("module_release_requests", &state.module_release_requests)?;
     output.serialize_field(
         "module_release_manifest_mappings",
@@ -593,8 +613,12 @@ where
         "module_release_role_bindings",
         &state.module_release_role_bindings,
     )?;
-    output.serialize_field("installed_module_targets", &state.installed_module_targets)?;
-    output.serialize_field("next_module_instance_id", &state.next_module_instance_id)?;
+    if let Some(overlay) = module_instance_overlay {
+        overlay.serialize_target_fields(state, &mut output)?;
+    } else {
+        output.serialize_field("installed_module_targets", &state.installed_module_targets)?;
+        output.serialize_field("next_module_instance_id", &state.next_module_instance_id)?;
+    }
     output.serialize_field(
         "next_module_market_order_id",
         &state.next_module_market_order_id,

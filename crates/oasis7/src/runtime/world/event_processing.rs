@@ -782,6 +782,25 @@ impl World {
             WorldEventBody::Domain(event) => {
                 let committed_receipt_event_id =
                     self.validate_agent_intent_receipt_reference(event, envelope_event_seq)?;
+                if matches!(
+                    event,
+                    DomainEvent::ModuleInstalled { .. } | DomainEvent::ModuleUpgraded { .. }
+                ) {
+                    let prepared = self.state.prepare_module_instance_event(event, time)?;
+                    let (key, next) = self.prepare_module_instance_schedule(event, time)?;
+                    prepared.install_infallible(&mut self.state);
+                    match next {
+                        Some(tick) => {
+                            self.module_tick_schedule.insert(key, tick);
+                        }
+                        None => {
+                            self.module_tick_schedule.remove(&key);
+                        }
+                    }
+                    self.state.route_domain_event(event);
+                    self.state.time = time;
+                    return Ok(());
+                }
                 if let Some(prepared) = prepared_body {
                     if !prepared.matches_event(event) {
                         return Err(WorldError::ResourceBalanceInvalid {
@@ -798,49 +817,6 @@ impl World {
                     )?;
                 }
                 self.state.route_domain_event(event);
-                if let super::super::DomainEvent::ModuleInstalled {
-                    instance_id,
-                    module_id,
-                    module_version,
-                    active,
-                    ..
-                } = event
-                {
-                    let schedule_key = if instance_id.trim().is_empty() {
-                        module_id.as_str()
-                    } else {
-                        instance_id.as_str()
-                    };
-                    if *active {
-                        self.sync_tick_schedule_for_instance(
-                            schedule_key,
-                            module_id.as_str(),
-                            module_version.as_str(),
-                            time,
-                        )?;
-                    } else {
-                        self.remove_tick_schedule(schedule_key);
-                    }
-                }
-                if let super::super::DomainEvent::ModuleUpgraded {
-                    instance_id,
-                    module_id,
-                    to_module_version,
-                    active,
-                    ..
-                } = event
-                {
-                    if *active {
-                        self.sync_tick_schedule_for_instance(
-                            instance_id.as_str(),
-                            module_id.as_str(),
-                            to_module_version.as_str(),
-                            time,
-                        )?;
-                    } else {
-                        self.remove_tick_schedule(instance_id.as_str());
-                    }
-                }
             }
             WorldEventBody::EffectQueued(intent) => {
                 self.push_pending_effect_bounded(intent.clone())?;

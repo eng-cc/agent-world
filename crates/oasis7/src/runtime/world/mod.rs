@@ -34,6 +34,8 @@ mod governance_quote;
 mod prepared_base_head_transaction_regressions;
 #[cfg(test)]
 mod module_output_publication_transaction_regressions;
+#[cfg(test)]
+mod module_instance_publication_transaction_regressions;
 mod war_declaration_quote;
 pub use war_declaration_quote::WarDeclarationQuote;
 mod logistics;

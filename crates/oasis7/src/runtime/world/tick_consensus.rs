@@ -882,6 +882,28 @@ impl World {
         hash_json(&projection)
     }
 
+    pub(super) fn state_root_hash_with_module_instance_overlay(
+        &self,
+        prepared: &super::super::state::module_instance_transition::PreparedModuleInstance,
+    ) -> Result<String, WorldError> {
+        let manifest_hash = self.current_manifest_hash()?;
+        let policy_hash = hash_json(&self.policies)?;
+        let agents = prepared.routed_agents();
+        let module_states = std::collections::BTreeMap::new();
+        let state_projection = WorldStateProjection::borrowed(&self.state)
+            .with_command_overlay(CommandStateOverlay {
+                module_states: &module_states,
+                resources: &prepared.resources,
+                agents: &agents,
+            })
+            .with_module_instance_overlay(prepared);
+        hash_json(&StateRootProjection {
+            state: &state_projection,
+            manifest_hash: manifest_hash.as_str(),
+            policy_hash: policy_hash.as_str(),
+        })
+    }
+
     fn consensus_height_for_tick(&self, tick: WorldTime) -> u64 {
         match self
             .tick_consensus_records
