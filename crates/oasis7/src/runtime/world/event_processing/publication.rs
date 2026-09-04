@@ -1,7 +1,12 @@
 use super::*;
+use std::collections::BTreeMap;
 
 pub(super) enum PreparedEventStateDelta {
     NoState,
+    ModuleStateUpdated {
+        module_states: BTreeMap<String, Vec<u8>>,
+    },
+    ModuleRuntimeCharged(super::super::module_runtime_metering::PreparedModuleRuntimeCharge),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -74,6 +79,12 @@ impl PreparedEventStateDelta {
 
     fn matches_body(&self, body: &WorldEventBody) -> bool {
         match self {
+            Self::ModuleStateUpdated { module_states } => matches!(body,
+                WorldEventBody::ModuleStateUpdated(update)
+                if module_states.len() == 1 && module_states.get(&update.module_id) == Some(&update.state)),
+            Self::ModuleRuntimeCharged(prepared) => matches!(body,
+                WorldEventBody::ModuleRuntimeCharged(charge)
+                if prepared.agents.contains_key(&charge.payer_agent_id)),
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -153,6 +164,9 @@ impl PreparedEventStateDelta {
 
     fn state_overlay(&self, event: DomainEvent) -> super::super::super::BodyOverlay {
         match self {
+            Self::ModuleStateUpdated { .. } | Self::ModuleRuntimeCharged(_) => {
+                unreachable!("module output uses a command overlay")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -188,6 +202,10 @@ impl PreparedEventStateDelta {
 
     fn install_infallible(self, world: &mut World) {
         match self {
+            Self::ModuleStateUpdated { module_states } => {
+                world.state.module_states.extend(module_states)
+            }
+            Self::ModuleRuntimeCharged(prepared) => prepared.install_infallible(world),
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -274,8 +292,23 @@ impl World {
         body: WorldEventBody,
         caused_by: Option<CausedBy>,
     ) -> Result<WorldEventId, WorldError> {
-        let state_delta = prepared_governance_events::prepare(self, &body)?
-            .or_else(|| PreparedEventStateDelta::for_body(&body));
+        let state_delta = match &body {
+            WorldEventBody::ModuleStateUpdated(update) => {
+                Some(PreparedEventStateDelta::ModuleStateUpdated {
+                    module_states: BTreeMap::from([(
+                        update.module_id.clone(),
+                        update.state.clone(),
+                    )]),
+                })
+            }
+            WorldEventBody::ModuleRuntimeCharged(charge) => {
+                Some(PreparedEventStateDelta::ModuleRuntimeCharged(
+                    self.prepare_module_runtime_charge_event(charge, self.state.time)?,
+                ))
+            }
+            _ => prepared_governance_events::prepare(self, &body)?
+                .or_else(|| PreparedEventStateDelta::for_body(&body)),
+        };
         self.append_event_internal(body, caused_by, state_delta)
     }
 
@@ -416,6 +449,22 @@ impl World {
             .cloned()
             .collect();
         let state_root = match &state_delta {
+            PreparedEventStateDelta::ModuleStateUpdated { module_states } => self
+                .state_root_hash_with_command_overlay(
+                    super::super::super::state::CommandStateOverlay {
+                        module_states,
+                        resources: &BTreeMap::new(),
+                        agents: &BTreeMap::new(),
+                    },
+                )?,
+            PreparedEventStateDelta::ModuleRuntimeCharged(prepared) => self
+                .state_root_hash_with_command_overlay(
+                    super::super::super::state::CommandStateOverlay {
+                        module_states: &BTreeMap::new(),
+                        resources: &prepared.resources,
+                        agents: &prepared.agents,
+                    },
+                )?,
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {
                 let Some(domain_event) = domain_event.as_ref() else {

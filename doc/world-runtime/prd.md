@@ -48,6 +48,14 @@ Governance proposal creation and shadowing now preview proposal allocation and p
 
 Approval and queueing now prepare the ordered `Approved`/`Queued` pair before one canonical install, while rejection keeps its single `Approved` event semantics. Post-prepare failure leaves the proposal, event allocator, bounded-journal retention/backpressure, and tick-consensus record unchanged; retry and replay preserve both event payloads and the final consensus counters. The proposal sidecar remains outside the canonical `WorldState` root schema, so this is a bounded guarantee rather than whole-World root atomicity.
 
+Module output event publication prepares `ModuleStateUpdated` and
+`ModuleRuntimeCharged` state before publishing the journal, event allocator/era,
+backpressure, and consensus record. Runtime charging validates both ordered
+debits on an owned payer cell and touched treasury entries; a failed second
+debit leaves canonical balances unchanged, including when both fees share a
+resource kind. Replay uses the same charge preparation. This is an event-level
+guarantee, not completion of the whole root transaction.
+
 Standalone public action routing now stages the complete deterministically
 sorted module invocation set against a borrowed `World` base and installs one
 prepared result containing module state, effects, emits, runtime charges,

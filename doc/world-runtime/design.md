@@ -190,6 +190,18 @@ dynamic World Database.
 
 #### 6.2.1 Explicit transaction and typed-delta model
 
+Module-state updates and runtime-charge events use the prepared event-publication
+boundary. Charge preparation owns one replacement payer cell and only touched
+treasury entries, applies compute then electricity debits locally, and preserves
+negative-fee/missing-payer/error ordering, saturating credits, zero-fee activity
+timestamps, and shared-resource aggregation. Replay invokes the same pure
+preparation followed by infallible installation. Publication hashes the prepared
+entries through the existing borrowed `CommandStateOverlay`; it does not clone
+`World` or `WorldState`. Consensus validation and the post-prepare failpoint precede
+state, journal retention/backpressure, event id/era, and consensus installation.
+`ModuleEmitted` remains a no-state event in the existing output order. This closes
+these event seams only, not all nested operations or the root transaction.
+
 The target production boundary is an explicit `ExecutionTransaction` holding
 a read-only canonical `World` base, a `TransitionBuffer`, and a `Live` or
 `Replay` mode. `TransitionBuffer` is a typed overlay rather than a cloned
