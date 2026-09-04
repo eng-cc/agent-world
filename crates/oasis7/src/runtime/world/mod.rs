@@ -37,6 +37,7 @@ mod market_quote_decision_preview;
 pub use market_quote_decision_preview::{MarketQuoteDecisionPreview, MarketQuoteSupplyDelta};
 mod main_token_economy_audit;
 mod module_actions;
+mod module_routing_runtime;
 mod module_runtime;
 mod module_runtime_labels;
 mod module_runtime_metering;

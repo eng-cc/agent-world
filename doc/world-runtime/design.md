@@ -66,6 +66,26 @@ nothing and emits no audit. This closes only the direct action-route seam and
 does not claim a root `ExecutionTransaction` for `step()` or other nested
 event/tick paths.
 
+Standalone public event-module routing now uses that same borrowed stage for
+the sorted subscribed invocation set. The input event bytes and post-event
+context are prepared together with module state, effects, emits, runtime
+charges, cache, allocators, journal, and tick consensus before one install.
+Module faults discard staged business output before one existing
+`ModuleCallFailed` audit; post-prepare infrastructure failures install
+nothing and emit no audit. Tick schedule and routing metrics remain a separate
+lifecycle boundary and are not implied by this event-route guarantee.
+
+Standalone public tick routing now stages due schedule removals, wake
+directives, deterministic routing metrics, module business output, cache,
+allocators, journal, and backpressure together. Its prepared envelope carries
+no consensus candidate: `run_modules_for_current_tick()` remains the owner of
+the single final tick record. A snapshot taken after direct routing but before
+that finalization is intentionally not a replayable canonical checkpoint; only
+a finalized-tick snapshot is. A pre-route snapshot plus the later journal
+cannot reconstruct schedule/metric sidecars that were absent from that
+snapshot. Due-record preflight errors retain the compatibility exception of
+recording metrics directly while leaving the schedule unchanged.
+
 Gameplay-cycle migration is stage-scoped: economic-contract expiry now freezes the due atomic-contract set, contract-id order, status-derived reputation deltas, and event bodies from an immutable view before publication. Governance proposal finalization is prepared only after those economic events apply; it freezes the sorted due proposal keys and the vote-derived winner, quorum, threshold, and final event payloads from that immutable post-economic state before publication. Crisis lifecycle then prepares at most one deterministic auto-spawn event from the post-governance state and publishes it before freezing the crisis-id-sorted timeout vector from the resulting state. War conclusion deliberately uses a narrower one-event decision: it prepares the lexicographically first due active war from the current post-crisis state, publishes that outcome, then re-reads resources and reputation before preparing the next due war. This preserves both contract-expiry effects and earlier war participant outcomes in later scoring and settlement. Active gameplay-module lifecycle directives follow the same one-directive boundary after their envelope is decoded: each directive is translated against the current immutable state into zero or one domain event, published canonically, and only then may the next directive resolve state-derived fields such as the war loser fallback; zero-point meta grants remain no-ops and malformed envelopes retain their existing module-failure path. These stage-local prepared decisions and vectors remain composable precursors under the outer cloned-`World` rollback boundary, not a whole-cycle or root transaction commit.
 
 ## 6. Architecture status, migration proof, and execution boundary

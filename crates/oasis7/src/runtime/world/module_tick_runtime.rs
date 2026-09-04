@@ -8,6 +8,7 @@ use std::time::Instant;
 use super::super::util::{hash_json, to_canonical_cbor};
 use super::super::{ModuleKind, ModuleManifest, ModuleRegistry, WorldError};
 use super::World;
+use super::capability_authorization_command_stage::TrustedCommandStage;
 use super::module_runtime_labels::{
     module_kind_label, module_role_label, subscription_stage_label,
 };
@@ -151,11 +152,43 @@ impl World {
         }
         let due_count = due_invocations.len();
 
+        let mut staged = TrustedCommandStage::new(self);
+        let routed = self.route_tick_to_staged(
+            &mut staged,
+            due_invocations,
+            schedule_len,
+            due_count,
+            missing_invocation_count,
+            oldest_overdue_ticks,
+            world_config_hash,
+            routing_started_at,
+            sandbox,
+        );
+        self.finalize_prepared_module_route(staged.prepare_tick_route(routed))
+    }
+
+    fn route_tick_to_staged(
+        &self,
+        staged: &mut TrustedCommandStage<'_>,
+        due_invocations: Vec<(
+            String,
+            Option<super::module_runtime::ActiveModuleInvocation>,
+        )>,
+        schedule_len: usize,
+        due_count: usize,
+        missing_invocation_count: usize,
+        oldest_overdue_ticks: Option<u64>,
+        world_config_hash: String,
+        routing_started_at: Instant,
+        sandbox: &mut dyn ModuleSandbox,
+    ) -> Result<usize, WorldError> {
+        let now = self.state.time;
+
         let mut invoked = 0;
         for (invocation_id, invocation) in due_invocations {
             // Always remove the previous schedule first. The module output decides whether to
             // reschedule itself (wake) or stay suspended.
-            self.module_tick_schedule.remove(invocation_id.as_str());
+            staged.remove_tick_schedule(invocation_id.as_str());
 
             let Some(invocation) = invocation else {
                 continue;
@@ -192,13 +225,7 @@ impl World {
                 }
             };
             let state = match manifest.kind {
-                ModuleKind::Reducer => Some(
-                    self.state
-                        .module_states
-                        .get(&instance_id)
-                        .cloned()
-                        .unwrap_or_default(),
-                ),
+                ModuleKind::Reducer => Some(staged.module_state(&instance_id)),
                 ModuleKind::Pure => None,
             };
             let input = ModuleCallInput {
@@ -220,7 +247,7 @@ impl World {
                     ),
                     world_config_hash: Some(world_config_hash.clone()),
                     manifest_hash: Some(module_manifest_hash),
-                    journal_height: Some(self.journal.events.len() as u64),
+                    journal_height: Some(staged.journal_height_for_route()),
                     module_version: Some(manifest.version.clone()),
                     module_kind: Some(module_kind_label(&manifest.kind).to_string()),
                     module_role: Some(module_role_label(&manifest.role).to_string()),
@@ -230,7 +257,7 @@ impl World {
                 state,
             };
             let input_bytes = to_canonical_cbor(&input)?;
-            let output = self.execute_module_call_with_manifest_and_state_key(
+            let output = staged.execute_module_call_with_manifest_and_state_key(
                 module_id.as_str(),
                 instance_id.as_str(),
                 &manifest,
@@ -243,13 +270,12 @@ impl World {
             match output.tick_lifecycle {
                 Some(ModuleTickLifecycleDirective::WakeAfterTicks { ticks }) => {
                     let wake_after = ticks.max(1);
-                    self.module_tick_schedule
-                        .insert(instance_id, now.saturating_add(wake_after));
+                    staged.schedule_tick(instance_id, now.saturating_add(wake_after));
                 }
                 Some(ModuleTickLifecycleDirective::Suspend) | None => {}
             }
         }
-        self.record_module_tick_routing_metrics(
+        staged.record_tick_routing_metrics(
             schedule_len,
             due_count,
             invoked,
@@ -314,7 +340,7 @@ impl ModuleTickRoutingMetrics {
         }
     }
 
-    fn record(
+    pub(super) fn record(
         &mut self,
         _schedule_len: usize,
         due_count: usize,

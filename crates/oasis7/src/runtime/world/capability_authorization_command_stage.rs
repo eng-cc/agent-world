@@ -18,6 +18,7 @@ use super::super::{
     WorldTime,
 };
 use super::World;
+use super::module_tick_runtime::ModuleTickRoutingMetrics;
 use crate::simulator::ResourceKind;
 
 const MODULE_RUNTIME_FEE_BYTES_PER_UNIT: u64 = 1_024;
@@ -109,7 +110,9 @@ pub(super) struct PreparedTrustedCommand {
     pub(super) next_intent_id_era: u64,
     pub(super) journal_events: Vec<WorldEvent>,
     pub(super) journal_events_evicted: u64,
-    pub(super) consensus_record: super::super::TickConsensusRecord,
+    pub(super) module_tick_schedule: BTreeMap<String, WorldTime>,
+    pub(super) module_tick_routing_metrics: ModuleTickRoutingMetrics,
+    pub(super) consensus_record: Option<super::super::TickConsensusRecord>,
 }
 
 /// A command-local overlay over immutable canonical state.
@@ -126,6 +129,8 @@ pub(super) struct TrustedCommandStage<'a> {
     next_intent_id: u64,
     next_intent_id_era: u64,
     events: Vec<WorldEvent>,
+    module_tick_schedule: BTreeMap<String, WorldTime>,
+    module_tick_routing_metrics: ModuleTickRoutingMetrics,
 }
 
 impl<'a> TrustedCommandStage<'a> {
@@ -143,11 +148,29 @@ impl<'a> TrustedCommandStage<'a> {
             next_intent_id: base.next_intent_id,
             next_intent_id_era: base.next_intent_id_era,
             events: Vec::new(),
+            module_tick_schedule: base.module_tick_schedule.clone(),
+            module_tick_routing_metrics: base.module_tick_routing_metrics.clone(),
         }
     }
 
     pub(super) fn next_event_id(&self) -> u64 {
         self.next_event_id.max(1)
+    }
+
+    /// Finish a staged route without borrowing the canonical world.  The
+    /// caller may then apply the common failpoint/audit publication policy.
+    pub(super) fn prepare_route(
+        self,
+        routed: Result<usize, WorldError>,
+    ) -> Result<Option<(usize, PreparedTrustedCommand)>, WorldError> {
+        match routed {
+            Ok(0) => Ok(None),
+            Ok(invoked) => {
+                let state_root = self.consensus_state_root_hash()?;
+                Ok(Some((invoked, self.prepare(state_root)?)))
+            }
+            Err(error) => Err(error),
+        }
     }
 
     pub(super) fn current_head(&self) -> u64 {
@@ -247,6 +270,33 @@ impl<'a> TrustedCommandStage<'a> {
 
     pub(super) fn journal_height_for_route(&self) -> u64 {
         self.journal_height_for_call()
+    }
+
+    pub(super) fn remove_tick_schedule(&mut self, instance_id: &str) {
+        self.module_tick_schedule.remove(instance_id);
+    }
+
+    pub(super) fn schedule_tick(&mut self, instance_id: String, wake_at: WorldTime) {
+        self.module_tick_schedule.insert(instance_id, wake_at);
+    }
+
+    pub(super) fn record_tick_routing_metrics(
+        &mut self,
+        schedule_len: usize,
+        due_count: usize,
+        invoked_count: usize,
+        missing_invocation_count: usize,
+        oldest_overdue_ticks: Option<u64>,
+        duration: std::time::Duration,
+    ) {
+        self.module_tick_routing_metrics.record(
+            schedule_len,
+            due_count,
+            invoked_count,
+            missing_invocation_count,
+            oldest_overdue_ticks,
+            duration,
+        );
     }
 
     pub(super) fn execute_module_call_with_manifest_and_state_key(
@@ -612,13 +662,7 @@ impl<'a> TrustedCommandStage<'a> {
     }
 
     pub(super) fn prepare(self, state_root: String) -> Result<PreparedTrustedCommand, WorldError> {
-        let mut journal_events = self.base.journal.events.clone();
-        journal_events.extend(self.events.iter().cloned());
-        let max_len = self.base.runtime_memory_limits.max_journal_events.max(1);
-        let overflow = journal_events.len().saturating_sub(max_len);
-        if overflow > 0 {
-            journal_events.drain(0..overflow);
-        }
+        let (journal_events, overflow) = self.journal_projection();
         let tick_events: Vec<WorldEvent> = journal_events
             .iter()
             .filter(|event| event.time == self.base.state.time)
@@ -648,8 +692,53 @@ impl<'a> TrustedCommandStage<'a> {
             next_intent_id_era: self.next_intent_id_era,
             journal_events,
             journal_events_evicted: overflow as u64,
-            consensus_record,
+            module_tick_schedule: self.module_tick_schedule,
+            module_tick_routing_metrics: self.module_tick_routing_metrics,
+            consensus_record: Some(consensus_record),
         })
+    }
+
+    pub(super) fn prepare_tick_route(
+        self,
+        routed: Result<usize, WorldError>,
+    ) -> Result<Option<(usize, PreparedTrustedCommand)>, WorldError> {
+        match routed {
+            Ok(invoked) => {
+                let (journal_events, overflow) = self.journal_projection();
+                Ok(Some((
+                    invoked,
+                    PreparedTrustedCommand {
+                        module_cache: self.module_cache,
+                        module_states: self.module_states,
+                        agent_updates: self.agent_updates,
+                        resource_updates: self.resource_updates,
+                        pending_effects: self.pending_effects,
+                        pending_effects_evicted: self.pending_effects_evicted,
+                        next_event_id: self.next_event_id,
+                        next_event_id_era: self.next_event_id_era,
+                        next_intent_id: self.next_intent_id,
+                        next_intent_id_era: self.next_intent_id_era,
+                        journal_events,
+                        journal_events_evicted: overflow as u64,
+                        module_tick_schedule: self.module_tick_schedule,
+                        module_tick_routing_metrics: self.module_tick_routing_metrics,
+                        consensus_record: None,
+                    },
+                )))
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    fn journal_projection(&self) -> (Vec<WorldEvent>, usize) {
+        let mut journal_events = self.base.journal.events.clone();
+        journal_events.extend(self.events.iter().cloned());
+        let max_len = self.base.runtime_memory_limits.max_journal_events.max(1);
+        let overflow = journal_events.len().saturating_sub(max_len);
+        if overflow > 0 {
+            journal_events.drain(0..overflow);
+        }
+        (journal_events, overflow)
     }
 }
 
@@ -737,6 +826,8 @@ impl PreparedTrustedCommand {
         world.next_intent_id = self.next_intent_id;
         world.next_intent_id_era = self.next_intent_id_era;
         world.journal.events = self.journal_events;
+        world.module_tick_schedule = self.module_tick_schedule;
+        world.module_tick_routing_metrics = self.module_tick_routing_metrics;
         world.runtime_backpressure_stats.pending_effects_evicted = world
             .runtime_backpressure_stats
             .pending_effects_evicted
@@ -745,6 +836,8 @@ impl PreparedTrustedCommand {
             .runtime_backpressure_stats
             .journal_events_evicted
             .saturating_add(self.journal_events_evicted);
-        world.install_prepared_tick_consensus_record(self.consensus_record);
+        if let Some(consensus_record) = self.consensus_record {
+            world.install_prepared_tick_consensus_record(consensus_record);
+        }
     }
 }

@@ -57,6 +57,26 @@ post-prepare infrastructure failures install neither business output nor an
 audit. This is a bounded direct action-route guarantee, not a claim that
 `step()` or all nested event/tick paths already share the root transaction.
 
+Standalone public event routing now uses the same borrowed prepared stage for
+the sorted subscribed invocation set. Event bytes, post-event context,
+module state, effects, emits, runtime charges, cache, allocators, journal, and
+tick consensus are installed once after preparation. Module faults discard
+staged business output before retaining one existing `ModuleCallFailed` audit;
+post-prepare infrastructure failures install neither business output nor an
+audit. This closes only the direct event-route seam; tick scheduling and
+metrics remain a separate lifecycle boundary.
+
+Standalone public tick routing stages due schedule removals, wake directives,
+deterministic routing metrics, module output, cache, allocators, journal, and
+backpressure together. Its prepared envelope deliberately carries no
+consensus candidate; `run_modules_for_current_tick()` owns the single final
+tick record. A snapshot taken after direct routing but before that finalization
+is therefore not a replayable canonical checkpoint, and a pre-route snapshot
+plus the later journal cannot reconstruct schedule/metric sidecars absent from
+that snapshot. Only a finalized-tick snapshot is a replay/restore boundary.
+Due-record preflight errors retain the compatibility exception of recording
+metrics directly while leaving the schedule unchanged.
+
 ### Kernel、governed physics 与 institution module 边界
 
 本节把 issue #3370 的架构建议落为 world-runtime 的执行约束。它不定义产品规则、WASM wire ABI、Agent tool schema 或 p2p finality 算法；产品规则仍由产品/gameplay authority 拥有，ABI 细节由 [`wasm-interface.md`](wasm/wasm-interface.md) 拥有，finality 由 [`doc/p2p/`](../p2p/) 拥有。
