@@ -51,7 +51,9 @@ Approval and queueing now prepare the ordered `Approved`/`Queued` pair before on
 Standalone public action routing now stages the complete deterministically
 sorted module invocation set against a borrowed `World` base and installs one
 prepared result containing module state, effects, emits, runtime charges,
-cache, allocators, journal, and tick consensus. Module faults discard staged
+cache-miss additions, allocators, journal, and tick consensus. A grouped
+durable base-head check rejects stale prepared installs before any write, while
+live process-local cache entries and wall-clock telemetry remain local. Module faults discard staged
 business output before retaining one existing `ModuleCallFailed` audit;
 post-prepare infrastructure failures install neither business output nor an
 audit. This is a bounded direct action-route guarantee, not a claim that
@@ -59,15 +61,16 @@ audit. This is a bounded direct action-route guarantee, not a claim that
 
 Standalone public event routing now uses the same borrowed prepared stage for
 the sorted subscribed invocation set. Event bytes, post-event context,
-module state, effects, emits, runtime charges, cache, allocators, journal, and
-tick consensus are installed once after preparation. Module faults discard
+module state, effects, emits, runtime charges, cache-miss additions, allocators,
+journal, and tick consensus are installed once after preparation. The same
+durable base-head guard runs before publication. Module faults discard
 staged business output before retaining one existing `ModuleCallFailed` audit;
 post-prepare infrastructure failures install neither business output nor an
 audit. This closes only the direct event-route seam; tick scheduling and
 metrics remain a separate lifecycle boundary.
 
 Standalone public tick routing stages due schedule removals, wake directives,
-deterministic routing metrics, module output, cache, allocators, journal, and
+deterministic routing metrics, module output, cache-miss additions, allocators, journal, and
 backpressure together. Its prepared envelope deliberately carries no
 consensus candidate; `run_modules_for_current_tick()` owns the single final
 tick record. A snapshot taken after direct routing but before that finalization

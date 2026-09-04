@@ -29,6 +29,9 @@ mod governance;
 mod governance_identity_penalty;
 mod governance_publication;
 mod governance_quote;
+#[cfg(test)]
+#[path = "prepared_base_head_transaction_regressions.rs"]
+mod prepared_base_head_transaction_regressions;
 mod war_declaration_quote;
 pub use war_declaration_quote::WarDeclarationQuote;
 mod logistics;
@@ -45,6 +48,7 @@ mod module_runtime_publication;
 mod module_tick_runtime;
 mod operability_release_gate;
 mod persistence;
+mod prepared_base_head;
 pub use persistence::{
     AuthoritativeRecoveryCommitError, AuthoritativeRecoveryCommitStatus,
     CommittedAuthoritativeRecoveryGeneration,

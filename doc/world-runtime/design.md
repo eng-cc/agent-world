@@ -58,9 +58,11 @@ Approval and queueing now prepare the `Approved` and `Queued` event pair against
 
 Standalone public action-module routing now uses the same borrowed
 `TrustedCommandStage` for the complete sorted invocation set. Module state,
-effects, emits, runtime charges, cache, allocators, journal, and the single
-tick-consensus candidate are prepared against the staged context and installed
-once. A module fault discards staged business output before one existing
+effects, emits, runtime charges, cache-miss additions, allocators, journal, and
+the single tick-consensus candidate are prepared against the staged context and
+installed once. A durable grouped base-head (state, journal, authorization,
+policy, artifacts, scheduling, consensus, and governance) is checked before
+any install write; a stale head returns `DistributedValidationFailed`. A module fault discards staged business output before one existing
 `ModuleCallFailed` audit; an infrastructure failure after preparation installs
 nothing and emits no audit. This closes only the direct action-route seam and
 does not claim a root `ExecutionTransaction` for `step()` or other nested
@@ -69,15 +71,17 @@ event/tick paths.
 Standalone public event-module routing now uses that same borrowed stage for
 the sorted subscribed invocation set. The input event bytes and post-event
 context are prepared together with module state, effects, emits, runtime
-charges, cache, allocators, journal, and tick consensus before one install.
+charges, cache-miss additions, allocators, journal, and tick consensus before
+one install. The same durable base-head check runs before publication, while
+live process-local cache entries and wall-clock telemetry are preserved.
 Module faults discard staged business output before one existing
 `ModuleCallFailed` audit; post-prepare infrastructure failures install
 nothing and emit no audit. Tick schedule and routing metrics remain a separate
 lifecycle boundary and are not implied by this event-route guarantee.
 
 Standalone public tick routing now stages due schedule removals, wake
-directives, deterministic routing metrics, module business output, cache,
-allocators, journal, and backpressure together. Its prepared envelope carries
+directives, deterministic routing metrics, module business output, cache-miss
+additions, allocators, journal, and backpressure together. Its prepared envelope carries
 no consensus candidate: `run_modules_for_current_tick()` remains the owner of
 the single final tick record. A snapshot taken after direct routing but before
 that finalization is intentionally not a replayable canonical checkpoint; only

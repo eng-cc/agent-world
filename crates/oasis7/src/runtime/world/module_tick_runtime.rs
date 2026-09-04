@@ -152,7 +152,7 @@ impl World {
         }
         let due_count = due_invocations.len();
 
-        let mut staged = TrustedCommandStage::new(self);
+        let mut staged = TrustedCommandStage::new(self)?;
         let routed = self.route_tick_to_staged(
             &mut staged,
             due_invocations,
@@ -291,7 +291,7 @@ impl World {
             .snapshot(self.module_tick_schedule.len())
     }
 
-    fn record_module_tick_routing_metrics(
+    pub(super) fn record_module_tick_routing_metrics(
         &mut self,
         schedule_len: usize,
         due_count: usize,

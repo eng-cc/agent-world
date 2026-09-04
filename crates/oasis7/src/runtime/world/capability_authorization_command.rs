@@ -242,7 +242,7 @@ impl World {
             .get(&budget_key)
             .cloned()
             .ok_or_else(|| deny("capability budget account is not available"))?;
-        let mut staged = TrustedCommandStage::new(self);
+        let mut staged = TrustedCommandStage::new(self)?;
         staged.reserve_capability_budget(&mut budget_account, reservation_units)?;
         let output = self.execute_trusted_module_sandbox(
             &mut staged,
@@ -383,13 +383,19 @@ impl World {
                 reason: "injected append_event failure after publication preparation".to_string(),
             });
         }
-        prepared.install(self);
-        self.capability_grants_v2 = projected_grants_v2;
-        self.capability_nonce_records = projected_nonce_records;
-        self.capability_authorization_receipts = projected_receipts;
-        self.capability_budget_accounts = projected_budget_accounts;
-        self.capability_effect_receipt_links = projected_effect_receipt_links;
-        self.capability_authorization_root = capability_authorization_root;
+        prepared
+            .with_capability_authorization_projection(
+                super::capability_authorization_command_stage::
+                    PreparedCapabilityAuthorizationProjection {
+                    capability_grants_v2: projected_grants_v2,
+                    capability_nonce_records: projected_nonce_records,
+                    capability_authorization_receipts: projected_receipts,
+                    capability_budget_accounts: projected_budget_accounts,
+                    capability_effect_receipt_links: projected_effect_receipt_links,
+                    capability_authorization_root,
+                },
+            )
+            .install(self)?;
         Ok(receipt)
     }
 

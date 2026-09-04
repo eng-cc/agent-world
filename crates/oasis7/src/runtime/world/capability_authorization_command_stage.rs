@@ -5,11 +5,13 @@
 //! assignments are deliberately infallible after preparation has completed.
 
 use oasis7_wasm_abi::{
-    ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleOutput, ModuleSandbox,
-    canonical_hash,
+    ModuleArtifact, ModuleCallErrorCode, ModuleCallFailure, ModuleCallRequest, ModuleOutput,
+    ModuleSandbox, canonical_hash,
 };
+use serde_json::Value as JsonValue;
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
+use std::time::Duration;
 
 use super::super::state::{CommandStateOverlay, WorldStateProjection};
 use super::super::{
@@ -18,7 +20,7 @@ use super::super::{
     WorldTime,
 };
 use super::World;
-use super::module_tick_runtime::ModuleTickRoutingMetrics;
+use super::prepared_base_head::WorldPreparedBaseHead;
 use crate::simulator::ResourceKind;
 
 const MODULE_RUNTIME_FEE_BYTES_PER_UNIT: u64 = 1_024;
@@ -96,9 +98,31 @@ fn metering_units(bytes: u64) -> i64 {
     i64::try_from(units).unwrap_or(i64::MAX)
 }
 
+pub(super) struct PreparedCapabilityAuthorizationProjection {
+    pub(super) capability_grants_v2: BTreeMap<String, JsonValue>,
+    pub(super) capability_nonce_records:
+        BTreeMap<String, super::super::CapabilityAuthorizationNonceRecord>,
+    pub(super) capability_authorization_receipts:
+        BTreeMap<String, super::super::CapabilityAuthorizationAuditReceipt>,
+    pub(super) capability_budget_accounts: BTreeMap<String, super::super::CapabilityBudgetAccount>,
+    pub(super) capability_effect_receipt_links:
+        BTreeMap<String, super::super::CapabilityEffectReceiptLink>,
+    pub(super) capability_authorization_root: String,
+}
+
+pub(super) struct PreparedModuleTickRoutingSample {
+    pub(super) schedule_len: usize,
+    pub(super) due_count: usize,
+    pub(super) invoked_count: usize,
+    pub(super) missing_invocation_count: usize,
+    pub(super) oldest_overdue_ticks: Option<u64>,
+    pub(super) duration: Duration,
+}
+
 /// All state that a trusted command can publish after validation.
 pub(super) struct PreparedTrustedCommand {
-    pub(super) module_cache: oasis7_wasm_abi::ModuleCache,
+    pub(super) base_head: WorldPreparedBaseHead,
+    pub(super) module_cache_additions: Vec<ModuleArtifact>,
     pub(super) module_states: BTreeMap<String, Vec<u8>>,
     pub(super) agent_updates: BTreeMap<String, super::super::agent_cell::AgentCell>,
     pub(super) resource_updates: BTreeMap<ResourceKind, i64>,
@@ -111,14 +135,17 @@ pub(super) struct PreparedTrustedCommand {
     pub(super) journal_events: Vec<WorldEvent>,
     pub(super) journal_events_evicted: u64,
     pub(super) module_tick_schedule: BTreeMap<String, WorldTime>,
-    pub(super) module_tick_routing_metrics: ModuleTickRoutingMetrics,
+    pub(super) module_tick_routing_sample: Option<PreparedModuleTickRoutingSample>,
     pub(super) consensus_record: Option<super::super::TickConsensusRecord>,
+    pub(super) capability_authorization: Option<PreparedCapabilityAuthorizationProjection>,
 }
 
 /// A command-local overlay over immutable canonical state.
 pub(super) struct TrustedCommandStage<'a> {
     base: &'a World,
+    base_head: WorldPreparedBaseHead,
     module_cache: oasis7_wasm_abi::ModuleCache,
+    module_cache_additions: Vec<ModuleArtifact>,
     module_states: BTreeMap<String, Vec<u8>>,
     agent_updates: BTreeMap<String, super::super::agent_cell::AgentCell>,
     resource_updates: BTreeMap<ResourceKind, i64>,
@@ -130,14 +157,16 @@ pub(super) struct TrustedCommandStage<'a> {
     next_intent_id_era: u64,
     events: Vec<WorldEvent>,
     module_tick_schedule: BTreeMap<String, WorldTime>,
-    module_tick_routing_metrics: ModuleTickRoutingMetrics,
+    module_tick_routing_sample: Option<PreparedModuleTickRoutingSample>,
 }
 
 impl<'a> TrustedCommandStage<'a> {
-    pub(super) fn new(base: &'a World) -> Self {
-        Self {
+    pub(super) fn new(base: &'a World) -> Result<Self, WorldError> {
+        Ok(Self {
             base,
+            base_head: WorldPreparedBaseHead::capture(base)?,
             module_cache: base.module_cache.clone(),
+            module_cache_additions: Vec::new(),
             module_states: BTreeMap::new(),
             agent_updates: BTreeMap::new(),
             resource_updates: BTreeMap::new(),
@@ -149,8 +178,8 @@ impl<'a> TrustedCommandStage<'a> {
             next_intent_id_era: base.next_intent_id_era,
             events: Vec::new(),
             module_tick_schedule: base.module_tick_schedule.clone(),
-            module_tick_routing_metrics: base.module_tick_routing_metrics.clone(),
-        }
+            module_tick_routing_sample: None,
+        })
     }
 
     pub(super) fn next_event_id(&self) -> u64 {
@@ -289,14 +318,14 @@ impl<'a> TrustedCommandStage<'a> {
         oldest_overdue_ticks: Option<u64>,
         duration: std::time::Duration,
     ) {
-        self.module_tick_routing_metrics.record(
+        self.module_tick_routing_sample = Some(PreparedModuleTickRoutingSample {
             schedule_len,
             due_count,
             invoked_count,
             missing_invocation_count,
             oldest_overdue_ticks,
             duration,
-        );
+        });
     }
 
     pub(super) fn execute_module_call_with_manifest_and_state_key(
@@ -410,6 +439,10 @@ impl<'a> TrustedCommandStage<'a> {
                     ),
                 })?;
             self.module_cache.insert(oasis7_wasm_abi::ModuleArtifact {
+                wasm_hash: wasm_hash.clone(),
+                bytes: bytes.clone(),
+            });
+            self.module_cache_additions.push(ModuleArtifact {
                 wasm_hash: wasm_hash.clone(),
                 bytes: bytes.clone(),
             });
@@ -680,7 +713,8 @@ impl<'a> TrustedCommandStage<'a> {
                 state_root.as_str(),
             )?;
         Ok(PreparedTrustedCommand {
-            module_cache: self.module_cache,
+            base_head: self.base_head,
+            module_cache_additions: self.module_cache_additions,
             module_states: self.module_states,
             agent_updates: self.agent_updates,
             resource_updates: self.resource_updates,
@@ -693,8 +727,9 @@ impl<'a> TrustedCommandStage<'a> {
             journal_events,
             journal_events_evicted: overflow as u64,
             module_tick_schedule: self.module_tick_schedule,
-            module_tick_routing_metrics: self.module_tick_routing_metrics,
+            module_tick_routing_sample: self.module_tick_routing_sample,
             consensus_record: Some(consensus_record),
+            capability_authorization: None,
         })
     }
 
@@ -708,7 +743,8 @@ impl<'a> TrustedCommandStage<'a> {
                 Ok(Some((
                     invoked,
                     PreparedTrustedCommand {
-                        module_cache: self.module_cache,
+                        base_head: self.base_head,
+                        module_cache_additions: self.module_cache_additions,
                         module_states: self.module_states,
                         agent_updates: self.agent_updates,
                         resource_updates: self.resource_updates,
@@ -721,8 +757,9 @@ impl<'a> TrustedCommandStage<'a> {
                         journal_events,
                         journal_events_evicted: overflow as u64,
                         module_tick_schedule: self.module_tick_schedule,
-                        module_tick_routing_metrics: self.module_tick_routing_metrics,
+                        module_tick_routing_sample: self.module_tick_routing_sample,
                         consensus_record: None,
+                        capability_authorization: None,
                     },
                 )))
             }
@@ -809,8 +846,21 @@ impl ModuleCallTarget for TrustedCommandStage<'_> {
 }
 
 impl PreparedTrustedCommand {
-    pub(super) fn install(self, world: &mut World) {
-        world.module_cache = self.module_cache;
+    pub(super) fn with_capability_authorization_projection(
+        mut self,
+        projection: PreparedCapabilityAuthorizationProjection,
+    ) -> Self {
+        self.capability_authorization = Some(projection);
+        self
+    }
+
+    pub(super) fn install(self, world: &mut World) -> Result<(), WorldError> {
+        if WorldPreparedBaseHead::capture(world)? != self.base_head {
+            return Err(WorldPreparedBaseHead::stale_error());
+        }
+        for artifact in self.module_cache_additions {
+            world.module_cache.insert(artifact);
+        }
         for (module_id, state) in self.module_states {
             world.state.module_states.insert(module_id, state);
         }
@@ -827,7 +877,16 @@ impl PreparedTrustedCommand {
         world.next_intent_id_era = self.next_intent_id_era;
         world.journal.events = self.journal_events;
         world.module_tick_schedule = self.module_tick_schedule;
-        world.module_tick_routing_metrics = self.module_tick_routing_metrics;
+        if let Some(sample) = self.module_tick_routing_sample {
+            world.record_module_tick_routing_metrics(
+                sample.schedule_len,
+                sample.due_count,
+                sample.invoked_count,
+                sample.missing_invocation_count,
+                sample.oldest_overdue_ticks,
+                sample.duration,
+            );
+        }
         world.runtime_backpressure_stats.pending_effects_evicted = world
             .runtime_backpressure_stats
             .pending_effects_evicted
@@ -839,5 +898,14 @@ impl PreparedTrustedCommand {
         if let Some(consensus_record) = self.consensus_record {
             world.install_prepared_tick_consensus_record(consensus_record);
         }
+        if let Some(projection) = self.capability_authorization {
+            world.capability_grants_v2 = projection.capability_grants_v2;
+            world.capability_nonce_records = projection.capability_nonce_records;
+            world.capability_authorization_receipts = projection.capability_authorization_receipts;
+            world.capability_budget_accounts = projection.capability_budget_accounts;
+            world.capability_effect_receipt_links = projection.capability_effect_receipt_links;
+            world.capability_authorization_root = projection.capability_authorization_root;
+        }
+        Ok(())
     }
 }

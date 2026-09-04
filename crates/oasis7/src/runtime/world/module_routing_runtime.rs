@@ -27,7 +27,7 @@ impl World {
         event: &WorldEvent,
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<usize, WorldError> {
-        let mut staged = TrustedCommandStage::new(self);
+        let mut staged = TrustedCommandStage::new(self)?;
         let routed = self.route_event_to_staged(&mut staged, event, sandbox);
         self.finalize_prepared_module_route(staged.prepare_route(routed))
     }
@@ -135,7 +135,7 @@ impl World {
         result_event: Option<&WorldEvent>,
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<usize, WorldError> {
-        let mut staged = TrustedCommandStage::new(self);
+        let mut staged = TrustedCommandStage::new(self)?;
         let routed =
             self.route_action_to_staged(&mut staged, envelope, stage, result_event, sandbox);
         self.finalize_prepared_module_route(staged.prepare_route(routed))
@@ -244,7 +244,7 @@ impl World {
                             .to_string(),
                     });
                 }
-                prepared.install(self);
+                prepared.install(self)?;
                 Ok(invoked)
             }
             Err(error @ WorldError::ModuleCallFailed { .. }) => {

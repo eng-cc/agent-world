@@ -16,7 +16,7 @@ impl World {
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<ModuleOutput, WorldError> {
         let manifest = self.active_module_manifest(module_id)?.clone();
-        let mut staged = TrustedCommandStage::new(self);
+        let mut staged = TrustedCommandStage::new(self)?;
         let result = staged.execute_module_call_with_manifest_and_state_key(
             module_id,
             module_id,
@@ -74,7 +74,7 @@ impl World {
         provenance: ModuleInvocationProvenance,
         sandbox: &mut dyn ModuleSandbox,
     ) -> Result<ModuleOutput, WorldError> {
-        let mut staged = TrustedCommandStage::new(self);
+        let mut staged = TrustedCommandStage::new(self)?;
         let result = self.execute_module_command_with_provenance_inner(
             &mut staged,
             module_id,
@@ -108,7 +108,7 @@ impl World {
                             .to_string(),
                     });
                 }
-                prepared.install(self);
+                prepared.install(self)?;
                 Ok(output)
             }
             Err(error @ WorldError::ModuleCallFailed { .. }) => {
