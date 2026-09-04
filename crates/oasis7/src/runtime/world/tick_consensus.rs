@@ -912,6 +912,35 @@ impl World {
         })
     }
 
+    pub(super) fn state_root_hash_with_module_release_overlay(
+        &self,
+        instance: Option<&super::super::state::module_instance_transition::PreparedModuleInstance>,
+        release: &super::super::state::module_release_transition::PreparedModuleRelease,
+        manifest_hash: &str,
+    ) -> Result<String, WorldError> {
+        let policy_hash = hash_json(&self.policies)?;
+        let agents = release.routed_agents();
+        let empty_resources = std::collections::BTreeMap::new();
+        let module_states = std::collections::BTreeMap::new();
+        let mut projection = WorldStateProjection::borrowed(&self.state)
+            .with_command_overlay(CommandStateOverlay {
+                module_states: &module_states,
+                resources: instance
+                    .map(|delta| &delta.resources)
+                    .unwrap_or(&empty_resources),
+                agents: &agents,
+            })
+            .with_module_release_overlay(release);
+        if let Some(instance) = instance {
+            projection = projection.with_module_instance_overlay(instance);
+        }
+        hash_json(&StateRootProjection {
+            state: &projection,
+            manifest_hash,
+            policy_hash: &policy_hash,
+        })
+    }
+
     fn consensus_height_for_tick(&self, tick: WorldTime) -> u64 {
         match self
             .tick_consensus_records

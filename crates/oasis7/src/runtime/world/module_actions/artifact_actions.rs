@@ -283,6 +283,27 @@ impl World {
         install_target: ModuleInstallTarget,
         finality_certificate: Option<&GovernanceFinalityCertificate>,
     ) -> Result<bool, WorldError> {
+        self.apply_install_module_action_with_release(
+            action_id,
+            installer_agent_id,
+            manifest,
+            activate,
+            install_target,
+            finality_certificate,
+            None,
+        )
+    }
+
+    pub(super) fn apply_install_module_action_with_release(
+        &mut self,
+        action_id: u64,
+        installer_agent_id: &str,
+        manifest: &oasis7_wasm_abi::ModuleManifest,
+        activate: bool,
+        install_target: ModuleInstallTarget,
+        finality_certificate: Option<&GovernanceFinalityCertificate>,
+        completion: Option<super::super::module_release_publication::ModuleReleaseCompletion>,
+    ) -> Result<bool, WorldError> {
         if !self.state.agents.contains_key(installer_agent_id) {
             self.append_event(
                 WorldEventBody::Domain(DomainEvent::ActionRejected {
@@ -485,7 +506,9 @@ impl World {
         };
         let caused_by = Some(CausedBy::Action(action_id));
         if let Some(prepared) = governance {
-            prepared.publish_lifecycle_tail(self, event, caused_by)?;
+            prepared.publish_lifecycle_tail_with_release(self, event, caused_by, completion)?;
+        } else if let Some(completion) = completion {
+            self.append_module_install_with_release(event, caused_by, completion)?;
         } else {
             self.append_event(WorldEventBody::Domain(event), caused_by)?;
         }

@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 
 pub(super) enum PreparedEventStateDelta {
     NoState,
+    ModuleRelease(super::super::super::state::module_release_transition::PreparedModuleRelease),
     ModuleInstance {
         prepared: super::super::super::state::module_instance_transition::PreparedModuleInstance,
         schedule: Option<(String, Option<WorldTime>)>,
@@ -83,6 +84,9 @@ impl PreparedEventStateDelta {
 
     fn matches_body(&self, body: &WorldEventBody) -> bool {
         match self {
+            Self::ModuleRelease(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::ModuleInstance { prepared, .. } => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
@@ -171,6 +175,7 @@ impl PreparedEventStateDelta {
 
     fn state_overlay(&self, event: DomainEvent) -> super::super::super::BodyOverlay {
         match self {
+            Self::ModuleRelease(_) => unreachable!("release uses a sparse release overlay"),
             Self::ModuleInstance { .. }
             | Self::ModuleStateUpdated { .. }
             | Self::ModuleRuntimeCharged(_) => {
@@ -211,6 +216,7 @@ impl PreparedEventStateDelta {
 
     fn install_infallible(self, world: &mut World) {
         match self {
+            Self::ModuleRelease(prepared) => prepared.install_infallible(&mut world.state),
             Self::ModuleInstance { prepared, schedule } => {
                 prepared.install_infallible(&mut world.state);
                 world.install_prepared_module_instance_schedule(schedule);
@@ -306,6 +312,15 @@ impl World {
         caused_by: Option<CausedBy>,
     ) -> Result<WorldEventId, WorldError> {
         let state_delta = match &body {
+            WorldEventBody::Domain(
+                event @ (DomainEvent::ProductProfileGoverned { .. }
+                | DomainEvent::RecipeProfileGoverned { .. }
+                | DomainEvent::FactoryProfileGoverned { .. }
+                | DomainEvent::ModuleReleaseApplied { .. }),
+            ) => Some(PreparedEventStateDelta::ModuleRelease(
+                self.state
+                    .prepare_module_release_event(event, self.state.time)?,
+            )),
             WorldEventBody::Domain(
                 event @ (DomainEvent::ModuleInstalled { .. }
                 | DomainEvent::ModuleUpgraded { .. }
@@ -408,6 +423,16 @@ impl World {
             });
         }
 
+        self.install_event_publication(prepared, None)
+    }
+
+    fn install_event_publication(
+        &mut self,
+        prepared: PreparedEventPublication,
+        release: Option<
+            super::super::super::state::module_release_transition::PreparedModuleRelease,
+        >,
+    ) -> Result<WorldEventId, WorldError> {
         let PreparedEventPublication {
             event,
             next_event_id,
@@ -427,10 +452,64 @@ impl World {
             .journal_events_evicted
             .saturating_add(journal_events_evicted);
         self.install_prepared_tick_consensus_record(consensus_record);
-        if let WorldEventBody::Domain(domain_event) = &event.body {
+        if let Some(release) = release {
+            release.install_routed(&mut self.state);
+        } else if let WorldEventBody::Domain(domain_event) = &event.body {
             self.state.route_domain_event(domain_event);
         }
         Ok(event.id)
+    }
+
+    pub(in crate::runtime::world) fn append_module_install_with_release(
+        &mut self,
+        event: DomainEvent,
+        caused_by: Option<CausedBy>,
+        completion: super::super::module_release_publication::ModuleReleaseCompletion,
+    ) -> Result<(), WorldError> {
+        let instance = self
+            .state
+            .prepare_module_instance_event(&event, self.state.time)?;
+        let schedule = self.prepare_module_instance_schedule(&event, self.state.time)?;
+        let mut prepared = self.prepare_event_publication(
+            WorldEventBody::Domain(event.clone()),
+            caused_by.clone(),
+            PreparedEventStateDelta::ModuleInstance {
+                prepared: instance,
+                schedule,
+            },
+        )?;
+        if self.take_fail_next_append_after_publication_prepare_for_test() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "injected append_event failure after publication preparation".to_string(),
+            });
+        }
+        let PreparedEventStateDelta::ModuleInstance {
+            prepared: instance, ..
+        } = &prepared.state_delta
+        else {
+            unreachable!()
+        };
+        let manifest_hash = self.current_manifest_hash()?;
+        let tail = self.prepare_module_release_tail(
+            instance,
+            &event,
+            completion,
+            super::super::module_release_publication::ReleasePublicationJournal {
+                next_event_id: prepared.next_event_id,
+                next_event_id_era: prepared.next_event_id_era,
+                events: std::mem::take(&mut prepared.journal_events),
+                evicted: prepared.journal_events_evicted,
+            },
+            &manifest_hash,
+            caused_by,
+        )?;
+        prepared.next_event_id = tail.journal.next_event_id;
+        prepared.next_event_id_era = tail.journal.next_event_id_era;
+        prepared.journal_events = tail.journal.events;
+        prepared.journal_events_evicted = tail.journal.evicted;
+        prepared.consensus_record = tail.consensus_record;
+        self.install_event_publication(prepared, Some(tail.state))?;
+        Ok(())
     }
 
     fn prepare_event_publication(
@@ -473,6 +552,12 @@ impl World {
             .cloned()
             .collect();
         let state_root = match &state_delta {
+            PreparedEventStateDelta::ModuleRelease(prepared) => self
+                .state_root_hash_with_module_release_overlay(
+                    None,
+                    prepared,
+                    &self.current_manifest_hash()?,
+                )?,
             PreparedEventStateDelta::ModuleInstance { prepared, .. } => {
                 self.state_root_hash_with_module_instance_overlay(prepared)?
             }

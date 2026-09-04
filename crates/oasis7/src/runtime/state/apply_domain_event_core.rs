@@ -590,56 +590,9 @@ impl WorldState {
                     cell.last_active = now;
                 }
             }
-            DomainEvent::ModuleReleaseApplied {
-                request_id,
-                operator_agent_id,
-                manifest_hash,
-                proposal_id,
-                ..
-            } => {
-                let request = self
-                    .module_release_requests
-                    .get_mut(request_id)
-                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release apply rejected: request not found ({request_id})"
-                        ),
-                    })?;
-                if !matches!(request.status, ModuleReleaseRequestStatus::Approved) {
-                    return Err(WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release apply invalid status for request {}: {:?}",
-                            request_id, request.status
-                        ),
-                    });
-                }
-                request.status = ModuleReleaseRequestStatus::Applied;
-                request.applied_manifest_hash = Some(manifest_hash.clone());
-                request.applied_proposal_id = if *proposal_id == 0 {
-                    None
-                } else {
-                    Some(*proposal_id)
-                };
-                request.updated_at = now;
-                let mapping = self
-                    .module_release_manifest_mappings
-                    .get_mut(request_id)
-                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release mapping missing for apply request_id={request_id}"
-                        ),
-                    })?;
-                mapping.status = ModuleReleaseRequestStatus::Applied;
-                mapping.applied_manifest_hash = Some(manifest_hash.clone());
-                mapping.applied_proposal_id = if *proposal_id == 0 {
-                    None
-                } else {
-                    Some(*proposal_id)
-                };
-                mapping.updated_at = now;
-                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
-                    cell.last_active = now;
-                }
+            DomainEvent::ModuleReleaseApplied { .. } => {
+                self.prepare_module_release_event(event, now)?
+                    .install_infallible(self);
             }
             DomainEvent::ModuleRollbackApplied { .. } => {
                 self.prepare_module_instance_event(event, now)?

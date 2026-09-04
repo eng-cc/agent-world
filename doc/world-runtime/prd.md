@@ -71,8 +71,20 @@ approved/queued, a lifecycle-tail failure publishes neither applied governance
 state nor the instance change, fees, cache invalidations, business journal batch,
 or consensus candidate. Proposal creation/shadow/approval audit remains outside
 this boundary. Governance-preparation errors keep their action-rejection handling;
-tail errors propagate. Release profile changes and final release status remain
-separate, as does the enclosing action/root transaction.
+tail errors propagate. Release application extends that same boundary through
+the sorted product/recipe/factory profiles and final release request/mapping
+status. Already-registered modules use the same completion tail without a
+governance batch. Any tail error leaves installation, fees, profiles and release
+status unpublished; proposal/shadow/approval audit remains outside. The enclosing
+action/root transaction is still a separate boundary.
+
+Raw profile and final-release events also use prepared state/publication paths,
+including replay. Preparation preserves actor/proposal/field validation order
+and request/status/mapping error priority, and touches only affected map entries,
+agents and legacy world-material normalization. Installer/operator identity
+overlap preserves both the fee debit and exactly-once mailbox routing. A matching
+module with proposal id zero still rejects nonempty governed profiles; empty
+profile completion remains permitted.
 
 Standalone public action routing now stages the complete deterministically
 sorted module invocation set against a borrowed `World` base and installs one

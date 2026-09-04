@@ -229,9 +229,26 @@ Only then are governance sidecars, cache invalidations, instance state and its
 single mailbox event installed. Governance errors retain the caller's existing
 `ActionRejected` conversion; lifecycle-tail errors propagate without installing
 the governance batch. Local certificate policy/build ordering and explicit
-certificate validation are unchanged. Proposal/shadow/approval prelude and release
-profile/final-release events remain outside this bounded commit; it is not full
-action/root atomicity.
+certificate validation are unchanged. Proposal/shadow/approval prelude remains
+outside this bounded commit; it is not full action/root atomicity.
+
+Release completion supplies an owned typed context to the install path instead
+of inferring its result from the last live journal entry. Both governed and
+already-registered installs extend their unpublished envelopes with sorted
+product, recipe, factory events and `ModuleReleaseApplied`. Each stage validates
+its root/consensus candidate and logical failpoint before any canonical install.
+The sparse release delta owns only changed profile/request/mapping entries,
+affected agents and legacy world-material normalization, never a `World` or
+`WorldState` clone. Its agent overlay begins with the fee-debited install cell
+and install mailbox, so a shared installer/operator cannot overwrite the debit
+or lose/duplicate events. Borrowed projections merge both instance and release
+entries under the prepared manifest hash. Final request/status/mapping checks
+retain their order without partial request mutation. Raw profile/final-status
+reducers and publication reuse those preparations, preserving replay and direct
+event semantics. Input-order prevalidation, profile overwrite rejection,
+proposal-id-zero rejection for nonempty profiles, and empty-profile success are
+unchanged. This adds release business completion, not prelude deduplication or
+global action/root atomicity.
 
 The target production boundary is an explicit `ExecutionTransaction` holding
 a read-only canonical `World` base, a `TransitionBuffer`, and a `Live` or

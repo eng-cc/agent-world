@@ -52,6 +52,7 @@ mod apply_domain_event_main_token;
 mod command_projection;
 mod logistics_path_authority;
 pub(crate) mod module_instance_transition;
+pub(crate) mod module_release_transition;
 mod projection;
 #[path = "state_defaults.rs"]
 mod state_defaults;
@@ -1001,6 +1002,17 @@ impl WorldState {
         envelope_event_seq: Option<WorldEventId>,
         committed_receipt_event_id: Option<WorldEventId>,
     ) -> Result<(), WorldError> {
+        if matches!(
+            event,
+            DomainEvent::ProductProfileGoverned { .. }
+                | DomainEvent::RecipeProfileGoverned { .. }
+                | DomainEvent::FactoryProfileGoverned { .. }
+                | DomainEvent::ModuleReleaseApplied { .. }
+        ) {
+            self.prepare_module_release_event(event, now)?
+                .install_infallible(self);
+            return Ok(());
+        }
         if matches!(
             event,
             DomainEvent::ModuleInstalled { .. }

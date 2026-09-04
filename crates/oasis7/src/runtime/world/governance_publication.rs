@@ -229,10 +229,20 @@ impl PreparedGovernanceProposalApply {
     /// tail. All tail errors propagate to the action caller; no governance
     /// sidecar, cache invalidation, or publication is installed on error.
     pub(super) fn publish_lifecycle_tail(
+        self,
+        world: &mut World,
+        event: DomainEvent,
+        caused_by: Option<CausedBy>,
+    ) -> Result<(), WorldError> {
+        self.publish_lifecycle_tail_with_release(world, event, caused_by, None)
+    }
+
+    pub(super) fn publish_lifecycle_tail_with_release(
         mut self,
         world: &mut World,
         event: DomainEvent,
         caused_by: Option<CausedBy>,
+        completion: Option<super::module_release_publication::ModuleReleaseCompletion>,
     ) -> Result<(), WorldError> {
         let (proposal_id, manifest_hash) = match &event {
             DomainEvent::ModuleInstalled {
@@ -288,7 +298,7 @@ impl PreparedGovernanceProposalApply {
         self.journal_events.push(WorldEvent {
             id,
             time: world.state.time,
-            caused_by,
+            caused_by: caused_by.clone(),
             body: WorldEventBody::Domain(event.clone()),
         });
         let overflow = self
@@ -326,9 +336,36 @@ impl PreparedGovernanceProposalApply {
             });
         }
 
+        let release = if let Some(completion) = completion {
+            let tail = world.prepare_module_release_tail(
+                &instance,
+                &event,
+                completion,
+                super::module_release_publication::ReleasePublicationJournal {
+                    next_event_id: self.next_event_id,
+                    next_event_id_era: self.next_event_id_era,
+                    events: std::mem::take(&mut self.journal_events),
+                    evicted: self.journal_events_evicted,
+                },
+                &self.applied_hash,
+                caused_by,
+            )?;
+            self.next_event_id = tail.journal.next_event_id;
+            self.next_event_id_era = tail.journal.next_event_id_era;
+            self.journal_events = tail.journal.events;
+            self.journal_events_evicted = tail.journal.evicted;
+            self.consensus_record = tail.consensus_record;
+            Some(tail.state)
+        } else {
+            None
+        };
         self.install(world);
         instance.install_infallible(&mut world.state);
-        world.state.route_domain_event(&event);
+        if let Some(release) = release {
+            release.install_routed(&mut world.state);
+        } else {
+            world.state.route_domain_event(&event);
+        }
         Ok(())
     }
 
