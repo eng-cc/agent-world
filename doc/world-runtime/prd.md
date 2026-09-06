@@ -114,6 +114,20 @@ available, same-hash redeployment retains its fee and overwrite semantics, and
 the module cache is unchanged. Artifact-byte recovery remains the persistence
 sidecar contract because the event carries only hash and byte length.
 
+Module artifact delist, bid-cancel, and destroy events MUST validate their
+complete canonical transition before publishing state, journal, event
+allocation, retention, or consensus changes. Failed publication MUST preserve
+legacy material-ledger representation and all touched marketplace and agent
+state. Raw destroy events MUST retain their state-only compatibility and MUST
+NOT remove artifact membership, bytes, or cache entries.
+
+A successful `DestroyModuleArtifact` action MUST bind its retirement sidecar
+to a destroyed event for the identical hash. Canonical teardown and removal of
+artifact membership, bytes, and the complete module cache MUST either all
+become visible or all remain absent. Cache capacity, registry, instances, and
+tick schedules MUST remain unchanged; action validation priority and supplied
+reason bytes remain compatible.
+
 Standalone public action routing now stages the complete deterministically
 sorted module invocation set against a borrowed `World` base and installs one
 prepared result containing module state, effects, emits, runtime charges,

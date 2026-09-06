@@ -2,6 +2,19 @@
 use super::*;
 use serde::ser::SerializeMap;
 
+pub(crate) fn is_module_marketplace_event(event: &DomainEvent) -> bool {
+    matches!(
+        event,
+        DomainEvent::ModuleArtifactDeployed { .. }
+            | DomainEvent::ModuleArtifactListed { .. }
+            | DomainEvent::ModuleArtifactDelisted { .. }
+            | DomainEvent::ModuleArtifactDestroyed { .. }
+            | DomainEvent::ModuleArtifactBidPlaced { .. }
+            | DomainEvent::ModuleArtifactBidCancelled { .. }
+            | DomainEvent::ModuleArtifactSaleCompleted { .. }
+    )
+}
+
 #[derive(Debug)]
 pub(crate) struct PreparedModuleMarketplace {
     events: Vec<DomainEvent>,
@@ -30,8 +43,21 @@ impl PreparedModuleMarketplace {
                 fee_kind,
                 fee_amount,
                 ..
+            }
+            | DomainEvent::ModuleArtifactDelisted {
+                wasm_hash,
+                fee_kind,
+                fee_amount,
+                ..
+            }
+            | DomainEvent::ModuleArtifactDestroyed {
+                wasm_hash,
+                fee_kind,
+                fee_amount,
+                ..
             } => (wasm_hash, (*fee_amount > 0).then_some(*fee_kind)),
             DomainEvent::ModuleArtifactBidPlaced { wasm_hash, .. }
+            | DomainEvent::ModuleArtifactBidCancelled { wasm_hash, .. }
             | DomainEvent::ModuleArtifactSaleCompleted { wasm_hash, .. } => (wasm_hash, None),
             _ => unreachable!("marketplace preparation requires a marketplace event"),
         };
@@ -104,6 +130,21 @@ impl PreparedModuleMarketplace {
                 publisher_agent_id,
                 ..
             } => (wasm_hash, vec![publisher_agent_id]),
+            DomainEvent::ModuleArtifactDelisted {
+                wasm_hash,
+                seller_agent_id,
+                ..
+            } => (wasm_hash, vec![seller_agent_id]),
+            DomainEvent::ModuleArtifactDestroyed {
+                wasm_hash,
+                owner_agent_id,
+                ..
+            } => (wasm_hash, vec![owner_agent_id]),
+            DomainEvent::ModuleArtifactBidCancelled {
+                wasm_hash,
+                bidder_agent_id,
+                ..
+            } => (wasm_hash, vec![bidder_agent_id]),
             _ => unreachable!(),
         };
         assert_eq!(
@@ -237,6 +278,102 @@ impl PreparedModuleMarketplace {
                         .max(order_id.saturating_add(1));
                 }
             }
+            DomainEvent::ModuleArtifactDelisted {
+                seller_agent_id,
+                wasm_hash,
+                order_id,
+                fee_kind,
+                fee_amount,
+            } => {
+                let listing = self
+                    .module_artifact_listings
+                    .get(wasm_hash)
+                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                        reason: format!("module artifact listing missing for hash {}", wasm_hash),
+                    })?;
+                if listing.seller_agent_id != *seller_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact delist seller mismatch: hash={} listing_seller={} event_seller={}",
+                            wasm_hash, listing.seller_agent_id, seller_agent_id
+                        ),
+                    });
+                }
+                if let Some(expected_order_id) = order_id
+                    && listing.order_id != *expected_order_id
+                {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact delist order mismatch: hash={} listing_order_id={} event_order_id={}",
+                            wasm_hash, listing.order_id, expected_order_id
+                        ),
+                    });
+                }
+                let owner = self.module_artifact_owners.get(wasm_hash).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact owner missing for delist hash {}",
+                            wasm_hash
+                        ),
+                    }
+                })?;
+                if owner != seller_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact delist seller is not owner: hash={} owner={} seller={}",
+                            wasm_hash, owner, seller_agent_id
+                        ),
+                    });
+                }
+                self.settle_module_action_fee(
+                    seller_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                self.module_artifact_listings.remove(wasm_hash);
+            }
+            DomainEvent::ModuleArtifactDestroyed {
+                owner_agent_id,
+                wasm_hash,
+                reason,
+                fee_kind,
+                fee_amount,
+            } => {
+                if reason.trim().is_empty() {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact destroy reason cannot be empty for hash {}",
+                            wasm_hash
+                        ),
+                    });
+                }
+                let owner = self.module_artifact_owners.get(wasm_hash).ok_or_else(|| {
+                    WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact owner missing for destroy hash {}",
+                            wasm_hash
+                        ),
+                    }
+                })?;
+                if owner != owner_agent_id {
+                    return Err(WorldError::ResourceBalanceInvalid {
+                        reason: format!(
+                            "module artifact destroy owner mismatch: hash={} owner={} event_owner={}",
+                            wasm_hash, owner, owner_agent_id
+                        ),
+                    });
+                }
+                self.settle_module_action_fee(
+                    owner_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                self.module_artifact_owners.remove(wasm_hash);
+                self.module_artifact_listings.remove(wasm_hash);
+                self.module_artifact_bids.remove(wasm_hash);
+            }
             DomainEvent::ModuleArtifactBidPlaced {
                 bidder_agent_id,
                 wasm_hash,
@@ -278,6 +415,40 @@ impl PreparedModuleMarketplace {
                         price_amount: *price_amount,
                         bid_at: now,
                     });
+                if let Some(cell) = self.agents.get_mut(bidder_agent_id) {
+                    cell.last_active = now;
+                }
+            }
+            DomainEvent::ModuleArtifactBidCancelled {
+                bidder_agent_id,
+                wasm_hash,
+                order_id,
+                ..
+            } => {
+                let remove_empty_entry = {
+                    let bids = self
+                        .module_artifact_bids
+                        .get_mut(wasm_hash)
+                        .ok_or_else(|| WorldError::ResourceBalanceInvalid {
+                            reason: format!("module artifact bids missing for hash {}", wasm_hash),
+                        })?;
+                    let before = bids.len();
+                    bids.retain(|entry| {
+                        !(entry.order_id == *order_id && entry.bidder_agent_id == *bidder_agent_id)
+                    });
+                    if before == bids.len() {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "module artifact bid cancel target not found: hash={} order_id={} bidder={}",
+                                wasm_hash, order_id, bidder_agent_id
+                            ),
+                        });
+                    }
+                    bids.is_empty()
+                };
+                if remove_empty_entry {
+                    self.module_artifact_bids.remove(wasm_hash);
+                }
                 if let Some(cell) = self.agents.get_mut(bidder_agent_id) {
                     cell.last_active = now;
                 }

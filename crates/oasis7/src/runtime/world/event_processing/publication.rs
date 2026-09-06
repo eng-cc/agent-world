@@ -323,7 +323,10 @@ impl World {
             WorldEventBody::Domain(
                 event @ (DomainEvent::ModuleArtifactDeployed { .. }
                 | DomainEvent::ModuleArtifactListed { .. }
+                | DomainEvent::ModuleArtifactDelisted { .. }
+                | DomainEvent::ModuleArtifactDestroyed { .. }
                 | DomainEvent::ModuleArtifactBidPlaced { .. }
+                | DomainEvent::ModuleArtifactBidCancelled { .. }
                 | DomainEvent::ModuleArtifactSaleCompleted { .. }),
             ) => Some(PreparedEventStateDelta::ModuleMarketplace(
                 self.state
@@ -515,6 +518,33 @@ impl World {
         }
         let event_id = self.install_event_publication(prepared, None)?;
         registration.install(self);
+        Ok(event_id)
+    }
+
+    pub(in crate::runtime::world) fn append_module_artifact_retirement(
+        &mut self,
+        event: DomainEvent,
+        caused_by: Option<CausedBy>,
+        retirement: super::super::module_artifact_retirement::PreparedModuleArtifactRetirement,
+    ) -> Result<WorldEventId, WorldError> {
+        if !retirement.matches_event(&event) {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: "artifact retirement requires a matching destroyed event".to_string(),
+            });
+        }
+        let state_delta = PreparedEventStateDelta::ModuleMarketplace(
+            self.state
+                .prepare_module_marketplace_event(&event, self.state.time)?,
+        );
+        let prepared =
+            self.prepare_event_publication(WorldEventBody::Domain(event), caused_by, state_delta)?;
+        if self.take_fail_next_append_after_publication_prepare_for_test() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "injected append_event failure after publication preparation".to_string(),
+            });
+        }
+        let event_id = self.install_event_publication(prepared, None)?;
+        retirement.install(self);
         Ok(event_id)
     }
 

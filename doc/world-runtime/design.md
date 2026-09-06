@@ -295,6 +295,22 @@ deployed event records only hash and byte length, event-only replay reconstructs
 fee/owner/market state but not new byte content; durable bytes remain the
 artifact persistence sidecar contract.
 
+Marketplace teardown completes the one-hash sparse transition for delist,
+bid-cancel and destroy events. Their validation, fee settlement, agent
+activity, owner/listing/bid deletions, legacy world-material normalization,
+journal retention, allocator and consensus root are prepared before one
+infallible install. Raw destroy remains a canonical-state-only event and does
+not remove artifact membership, bytes or cache entries.
+
+The `DestroyModuleArtifact` action additionally carries a prepared retirement
+sidecar bound to the identical destroyed-event hash. Only after publication
+preparation succeeds does installation remove artifact membership and bytes
+and reset the complete module cache while retaining its configured capacity.
+Registry, instances and tick schedules are outside the retirement delta. A
+failed tail installs neither canonical teardown nor sidecars, so retry charges
+and publishes once. This does not change action validation priority, raw-event
+sidecar compatibility, persistence, or general action idempotency.
+
 The target production boundary is an explicit `ExecutionTransaction` holding
 a read-only canonical `World` base, a `TransitionBuffer`, and a `Live` or
 `Replay` mode. `TransitionBuffer` is a typed overlay rather than a cloned

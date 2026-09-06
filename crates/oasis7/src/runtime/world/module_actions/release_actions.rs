@@ -912,20 +912,18 @@ impl World {
                     return Ok(true);
                 }
 
-                self.append_event(
-                    WorldEventBody::Domain(DomainEvent::ModuleArtifactDestroyed {
+                let retirement = self.prepare_module_artifact_retirement(wasm_hash.clone());
+                self.append_module_artifact_retirement(
+                    DomainEvent::ModuleArtifactDestroyed {
                         owner_agent_id: owner_agent_id.clone(),
                         wasm_hash: wasm_hash.clone(),
                         reason: reason.clone(),
                         fee_kind,
                         fee_amount,
-                    }),
+                    },
                     Some(CausedBy::Action(action_id)),
+                    retirement,
                 )?;
-                self.module_artifacts.remove(wasm_hash);
-                self.module_artifact_bytes.remove(wasm_hash);
-                let max_cached = self.module_cache.max_cached_modules();
-                self.module_cache = oasis7_wasm_abi::ModuleCache::new(max_cached);
                 Ok(true)
             }
             _ => Ok(false),

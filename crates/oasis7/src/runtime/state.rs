@@ -1003,13 +1003,7 @@ impl WorldState {
         envelope_event_seq: Option<WorldEventId>,
         committed_receipt_event_id: Option<WorldEventId>,
     ) -> Result<(), WorldError> {
-        if matches!(
-            event,
-            DomainEvent::ModuleArtifactDeployed { .. }
-                | DomainEvent::ModuleArtifactListed { .. }
-                | DomainEvent::ModuleArtifactBidPlaced { .. }
-                | DomainEvent::ModuleArtifactSaleCompleted { .. }
-        ) {
+        if module_marketplace_transition::is_module_marketplace_event(event) {
             self.prepare_module_marketplace_event(event, now)?
                 .install_infallible(self);
             return Ok(());
