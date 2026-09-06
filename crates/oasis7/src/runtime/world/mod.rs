@@ -36,6 +36,8 @@ mod module_artifact_deployment_transaction_regressions;
 #[cfg(test)]
 mod module_artifact_retirement_transaction_regressions;
 #[cfg(test)]
+mod module_change_batch_transaction_regressions;
+#[cfg(test)]
 mod module_instance_publication_transaction_regressions;
 #[cfg(test)]
 mod module_marketplace_transaction_regressions;
@@ -57,6 +59,7 @@ pub use market_quote_decision_preview::{MarketQuoteDecisionPreview, MarketQuoteS
 mod main_token_economy_audit;
 mod module_actions;
 mod module_artifact_retirement;
+mod module_change_batch_publication;
 mod module_marketplace_publication;
 mod module_release_publication;
 mod module_routing_runtime;

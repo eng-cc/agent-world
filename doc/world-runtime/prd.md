@@ -128,6 +128,15 @@ become visible or all remain absent. Cache capacity, registry, instances, and
 tick schedules MUST remain unchanged; action validation priority and supplied
 reason bytes remain compatible.
 
+The standalone multi-module change API MUST commit its sorted register,
+upgrade, activate, and deactivate events as one failure boundary. A validation,
+publication, retention, allocator, schedule, cache-invalidation, or consensus
+failure in any event MUST preserve the complete pre-batch world. Equal module
+ids retain input order; proposal id, actor fields, exact upgrade/deactivation
+payloads, and `caused_by = None` remain compatible. Empty changesets MUST be
+strict no-ops, and raw single-module events and governed proposal behavior MUST
+remain unchanged.
+
 Standalone public action routing now stages the complete deterministically
 sorted module invocation set against a borrowed `World` base and installs one
 prepared result containing module state, effects, emits, runtime charges,

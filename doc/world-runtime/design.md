@@ -311,6 +311,17 @@ failed tail installs neither canonical teardown nor sidecars, so retry charges
 and publishes once. This does not change action validation priority, raw-event
 sidecar compatibility, persistence, or general action idempotency.
 
+The standalone `apply_module_changes` compatibility API now reuses the governed
+lifecycle projector but owns a separate batch publication boundary. It keeps
+the stable category order register, upgrade, activate, deactivate and the
+stable module-id sort within each category, while projecting registry records,
+artifact membership, tick schedules and targeted prepared-subscription cache
+invalidations before allocating any durable event. Every `ModuleEvent` retains
+the caller's proposal id and actor fields with no `caused_by` value. Journal
+retention, event-id era and the final tick-consensus record install once after
+all events validate; an empty changeset is a strict no-op. This does not alter
+the raw single-`ModuleEvent` path or governed proposal application.
+
 The target production boundary is an explicit `ExecutionTransaction` holding
 a read-only canonical `World` base, a `TransitionBuffer`, and a `Live` or
 `Replay` mode. `TransitionBuffer` is a typed overlay rather than a cloned

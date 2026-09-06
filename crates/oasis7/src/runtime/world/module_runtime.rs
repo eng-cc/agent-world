@@ -770,65 +770,7 @@ impl World {
         changes: &super::super::ModuleChangeSet,
         actor: &str,
     ) -> Result<(), WorldError> {
-        let mut registers = changes.register.clone();
-        registers.sort_by(|left, right| left.module_id.cmp(&right.module_id));
-        for module in registers {
-            let event = ModuleEvent {
-                proposal_id,
-                kind: ModuleEventKind::RegisterModule {
-                    module,
-                    registered_by: actor.to_string(),
-                },
-            };
-            self.append_event(WorldEventBody::ModuleEvent(event), None)?;
-        }
-
-        let mut upgrades = changes.upgrade.clone();
-        upgrades.sort_by(|left, right| left.module_id.cmp(&right.module_id));
-        for upgrade in upgrades {
-            let event = ModuleEvent {
-                proposal_id,
-                kind: ModuleEventKind::UpgradeModule {
-                    module_id: upgrade.module_id,
-                    from_version: upgrade.from_version,
-                    to_version: upgrade.to_version,
-                    wasm_hash: upgrade.manifest.wasm_hash.clone(),
-                    manifest: upgrade.manifest,
-                    upgraded_by: actor.to_string(),
-                },
-            };
-            self.append_event(WorldEventBody::ModuleEvent(event), None)?;
-        }
-
-        let mut activations = changes.activate.clone();
-        activations.sort_by(|left, right| left.module_id.cmp(&right.module_id));
-        for activation in activations {
-            let event = ModuleEvent {
-                proposal_id,
-                kind: ModuleEventKind::ActivateModule {
-                    module_id: activation.module_id,
-                    version: activation.version,
-                    activated_by: actor.to_string(),
-                },
-            };
-            self.append_event(WorldEventBody::ModuleEvent(event), None)?;
-        }
-
-        let mut deactivations = changes.deactivate.clone();
-        deactivations.sort_by(|left, right| left.module_id.cmp(&right.module_id));
-        for deactivation in deactivations {
-            let event = ModuleEvent {
-                proposal_id,
-                kind: ModuleEventKind::DeactivateModule {
-                    module_id: deactivation.module_id,
-                    reason: deactivation.reason,
-                    deactivated_by: actor.to_string(),
-                },
-            };
-            self.append_event(WorldEventBody::ModuleEvent(event), None)?;
-        }
-
-        Ok(())
+        self.apply_prepared_module_change_batch(proposal_id, changes, actor)
     }
 
     #[cfg(test)]

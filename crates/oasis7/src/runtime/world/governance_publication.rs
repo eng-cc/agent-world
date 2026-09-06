@@ -409,7 +409,7 @@ impl PreparedGovernanceProposalApply {
     }
 }
 
-fn project_module_changes(
+pub(super) fn project_module_changes(
     time: u64,
     proposal_id: ProposalId,
     changes: &ModuleChangeSet,
