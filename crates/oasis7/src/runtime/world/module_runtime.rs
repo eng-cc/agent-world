@@ -432,11 +432,11 @@ impl World {
             .retain(|key, _| !key.starts_with(&prefix));
     }
 
-    pub fn register_module_artifact(
-        &mut self,
+    pub(super) fn prepare_module_artifact_registration(
+        &self,
         wasm_hash: impl Into<String>,
         bytes: &[u8],
-    ) -> Result<(), WorldError> {
+    ) -> Result<PreparedModuleArtifactRegistration, WorldError> {
         let wasm_hash = wasm_hash.into();
         let computed = super::super::util::sha256_hex(bytes);
         if computed != wasm_hash {
@@ -444,9 +444,19 @@ impl World {
                 reason: format!("artifact hash mismatch expected {wasm_hash} found {computed}"),
             });
         }
-        self.module_artifacts.insert(wasm_hash);
-        self.module_artifact_bytes
-            .insert(computed, Arc::<[u8]>::from(bytes));
+        Ok(PreparedModuleArtifactRegistration {
+            wasm_hash,
+            bytes: Arc::<[u8]>::from(bytes),
+        })
+    }
+
+    pub fn register_module_artifact(
+        &mut self,
+        wasm_hash: impl Into<String>,
+        bytes: &[u8],
+    ) -> Result<(), WorldError> {
+        self.prepare_module_artifact_registration(wasm_hash, bytes)?
+            .install(self);
         Ok(())
     }
 
@@ -918,6 +928,24 @@ impl World {
             wasm_bytes: artifact.bytes.clone(),
         };
         sandbox.call(&request)
+    }
+}
+
+pub(super) struct PreparedModuleArtifactRegistration {
+    wasm_hash: String,
+    bytes: Arc<[u8]>,
+}
+
+impl PreparedModuleArtifactRegistration {
+    pub(super) fn wasm_hash(&self) -> &str {
+        &self.wasm_hash
+    }
+
+    pub(super) fn install(self, world: &mut World) {
+        world.module_artifacts.insert(self.wasm_hash.clone());
+        world
+            .module_artifact_bytes
+            .insert(self.wasm_hash, self.bytes);
     }
 }
 

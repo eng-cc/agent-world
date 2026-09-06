@@ -106,23 +106,9 @@ impl WorldState {
                     });
                 }
             }
-            DomainEvent::ModuleArtifactDeployed {
-                publisher_agent_id,
-                wasm_hash,
-                fee_kind,
-                fee_amount,
-                ..
-            } => {
-                self.settle_module_action_fee(
-                    publisher_agent_id.as_str(),
-                    *fee_kind,
-                    *fee_amount,
-                    now,
-                )?;
-                self.module_artifact_owners
-                    .insert(wasm_hash.clone(), publisher_agent_id.clone());
-                self.module_artifact_listings.remove(wasm_hash);
-                self.module_artifact_bids.remove(wasm_hash);
+            DomainEvent::ModuleArtifactDeployed { .. } => {
+                self.prepare_module_marketplace_event(event, now)?
+                    .install_infallible(self);
             }
             DomainEvent::ModuleInstalled { .. } | DomainEvent::ModuleUpgraded { .. } => {
                 self.prepare_module_instance_event(event, now)?

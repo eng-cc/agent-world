@@ -25,6 +25,12 @@ impl PreparedModuleMarketplace {
                 fee_amount,
                 ..
             } => (wasm_hash, (*fee_amount > 0).then_some(*fee_kind)),
+            DomainEvent::ModuleArtifactDeployed {
+                wasm_hash,
+                fee_kind,
+                fee_amount,
+                ..
+            } => (wasm_hash, (*fee_amount > 0).then_some(*fee_kind)),
             DomainEvent::ModuleArtifactBidPlaced { wasm_hash, .. }
             | DomainEvent::ModuleArtifactSaleCompleted { wasm_hash, .. } => (wasm_hash, None),
             _ => unreachable!("marketplace preparation requires a marketplace event"),
@@ -93,6 +99,11 @@ impl PreparedModuleMarketplace {
                 buyer_agent_id,
                 ..
             } => (wasm_hash, vec![seller_agent_id, buyer_agent_id]),
+            DomainEvent::ModuleArtifactDeployed {
+                wasm_hash,
+                publisher_agent_id,
+                ..
+            } => (wasm_hash, vec![publisher_agent_id]),
             _ => unreachable!(),
         };
         assert_eq!(
@@ -153,6 +164,24 @@ impl PreparedModuleMarketplace {
 
     fn apply_inner(&mut self, event: &DomainEvent, now: WorldTime) -> Result<(), WorldError> {
         match event {
+            DomainEvent::ModuleArtifactDeployed {
+                publisher_agent_id,
+                wasm_hash,
+                fee_kind,
+                fee_amount,
+                ..
+            } => {
+                self.settle_module_action_fee(
+                    publisher_agent_id.as_str(),
+                    *fee_kind,
+                    *fee_amount,
+                    now,
+                )?;
+                self.module_artifact_owners
+                    .insert(wasm_hash.clone(), publisher_agent_id.clone());
+                self.module_artifact_listings.remove(wasm_hash);
+                self.module_artifact_bids.remove(wasm_hash);
+            }
             DomainEvent::ModuleArtifactListed {
                 seller_agent_id,
                 wasm_hash,

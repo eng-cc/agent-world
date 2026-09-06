@@ -110,6 +110,7 @@ mod main_token;
 mod main_token_economy_audit;
 mod market_quote_decision_preview;
 mod module_action_loop;
+pub(crate) use module_action_loop::SOURCE_COMPILER_ENV_LOCK;
 mod module_command_provenance;
 mod module_event_routing_transaction_regressions;
 mod module_lifecycle_transaction_regressions;

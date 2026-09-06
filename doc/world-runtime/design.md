@@ -281,6 +281,20 @@ This is a marketplace business boundary, not whole-World cloning or general
 action idempotency; delist, cancellation, destruction and deployment are not
 newly composed into it.
 
+Artifact deployment extends the same one-hash sparse state preparation with
+publisher fee settlement, owner replacement and listing/bid deletion. Source
+and binary action validation still finish first; a validated owned registration
+then holds the hash and immutable bytes beside the prepared deployed event.
+Journal retention, cursor, consensus root and logical failpoint validate before
+the event state and artifact set/byte map install. Standalone artifact
+registration retains immediate validate-then-install behavior by using the same
+owned registration. Same-hash redeployment therefore continues to charge the
+fee, overwrite ownership and clear market orders while leaving the module cache
+untouched. External source compilation is outside rollback. Because the
+deployed event records only hash and byte length, event-only replay reconstructs
+fee/owner/market state but not new byte content; durable bytes remain the
+artifact persistence sidecar contract.
+
 The target production boundary is an explicit `ExecutionTransaction` holding
 a read-only canonical `World` base, a `TransitionBuffer`, and a `Live` or
 `Replay` mode. `TransitionBuffer` is a typed overlay rather than a cloned

@@ -105,6 +105,15 @@ are unchanged. Sparse deletion-aware projections preserve published/replay root
 equality without cloning the world. This does not migrate other marketplace
 actions or alter module-instance ownership.
 
+Validated source or binary deployment bytes and the corresponding deployed
+event must install together. A publication failure preserves the artifact hash
+set and byte map as well as publisher fees, ownership, market orders, mailboxes,
+journal and consensus. Raw deployed events reuse sparse state preparation but
+do not validate or reconstruct artifact bytes. Standalone registration remains
+available, same-hash redeployment retains its fee and overwrite semantics, and
+the module cache is unchanged. Artifact-byte recovery remains the persistence
+sidecar contract because the event carries only hash and byte length.
+
 Standalone public action routing now stages the complete deterministically
 sorted module invocation set against a borrowed `World` base and installs one
 prepared result containing module state, effects, emits, runtime charges,

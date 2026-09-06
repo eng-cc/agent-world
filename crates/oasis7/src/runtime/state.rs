@@ -1005,7 +1005,8 @@ impl WorldState {
     ) -> Result<(), WorldError> {
         if matches!(
             event,
-            DomainEvent::ModuleArtifactListed { .. }
+            DomainEvent::ModuleArtifactDeployed { .. }
+                | DomainEvent::ModuleArtifactListed { .. }
                 | DomainEvent::ModuleArtifactBidPlaced { .. }
                 | DomainEvent::ModuleArtifactSaleCompleted { .. }
         ) {

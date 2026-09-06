@@ -91,17 +91,21 @@ impl World {
                     return Ok(true);
                 }
 
-                match self.register_module_artifact(wasm_hash.clone(), compiled_bytes.as_slice()) {
-                    Ok(()) => {
-                        self.append_event(
-                            WorldEventBody::Domain(DomainEvent::ModuleArtifactDeployed {
+                match self.prepare_module_artifact_registration(
+                    wasm_hash.clone(),
+                    compiled_bytes.as_slice(),
+                ) {
+                    Ok(registration) => {
+                        self.append_module_artifact_deployment(
+                            DomainEvent::ModuleArtifactDeployed {
                                 publisher_agent_id: publisher_agent_id.clone(),
                                 wasm_hash,
                                 bytes_len: compiled_bytes.len() as u64,
                                 fee_kind,
                                 fee_amount,
-                            }),
+                            },
                             Some(CausedBy::Action(action_id)),
+                            registration,
                         )?;
                     }
                     Err(err) => {
@@ -166,17 +170,20 @@ impl World {
                     return Ok(true);
                 }
 
-                match self.register_module_artifact(wasm_hash.clone(), wasm_bytes.as_slice()) {
-                    Ok(()) => {
-                        self.append_event(
-                            WorldEventBody::Domain(DomainEvent::ModuleArtifactDeployed {
+                match self
+                    .prepare_module_artifact_registration(wasm_hash.clone(), wasm_bytes.as_slice())
+                {
+                    Ok(registration) => {
+                        self.append_module_artifact_deployment(
+                            DomainEvent::ModuleArtifactDeployed {
                                 publisher_agent_id: publisher_agent_id.clone(),
                                 wasm_hash: wasm_hash.clone(),
                                 bytes_len: wasm_bytes.len() as u64,
                                 fee_kind,
                                 fee_amount,
-                            }),
+                            },
                             Some(CausedBy::Action(action_id)),
+                            registration,
                         )?;
                     }
                     Err(err) => {

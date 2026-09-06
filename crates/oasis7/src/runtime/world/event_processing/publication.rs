@@ -321,7 +321,8 @@ impl World {
     ) -> Result<WorldEventId, WorldError> {
         let state_delta = match &body {
             WorldEventBody::Domain(
-                event @ (DomainEvent::ModuleArtifactListed { .. }
+                event @ (DomainEvent::ModuleArtifactDeployed { .. }
+                | DomainEvent::ModuleArtifactListed { .. }
                 | DomainEvent::ModuleArtifactBidPlaced { .. }
                 | DomainEvent::ModuleArtifactSaleCompleted { .. }),
             ) => Some(PreparedEventStateDelta::ModuleMarketplace(
@@ -477,6 +478,44 @@ impl World {
             self.state.route_domain_event(domain_event);
         }
         Ok(event.id)
+    }
+
+    pub(in crate::runtime::world) fn append_module_artifact_deployment(
+        &mut self,
+        event: DomainEvent,
+        caused_by: Option<CausedBy>,
+        registration: super::super::module_runtime::PreparedModuleArtifactRegistration,
+    ) -> Result<WorldEventId, WorldError> {
+        let event_wasm_hash = match &event {
+            DomainEvent::ModuleArtifactDeployed { wasm_hash, .. } => wasm_hash,
+            _ => {
+                return Err(WorldError::ModuleChangeInvalid {
+                    reason: "artifact registration requires a deployment event".to_string(),
+                });
+            }
+        };
+        if event_wasm_hash != registration.wasm_hash() {
+            return Err(WorldError::ModuleChangeInvalid {
+                reason: format!(
+                    "artifact registration hash {} does not match deployment hash {event_wasm_hash}",
+                    registration.wasm_hash()
+                ),
+            });
+        }
+        let state_delta = PreparedEventStateDelta::ModuleMarketplace(
+            self.state
+                .prepare_module_marketplace_event(&event, self.state.time)?,
+        );
+        let prepared =
+            self.prepare_event_publication(WorldEventBody::Domain(event), caused_by, state_delta)?;
+        if self.take_fail_next_append_after_publication_prepare_for_test() {
+            return Err(WorldError::ResourceBalanceInvalid {
+                reason: "injected append_event failure after publication preparation".to_string(),
+            });
+        }
+        let event_id = self.install_event_publication(prepared, None)?;
+        registration.install(self);
+        Ok(event_id)
     }
 
     pub(in crate::runtime::world) fn append_module_install_with_release(

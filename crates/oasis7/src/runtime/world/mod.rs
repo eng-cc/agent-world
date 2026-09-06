@@ -32,6 +32,8 @@ mod governance_quote;
 #[cfg(test)]
 mod governed_module_lifecycle_transaction_regressions;
 #[cfg(test)]
+mod module_artifact_deployment_transaction_regressions;
+#[cfg(test)]
 mod module_instance_publication_transaction_regressions;
 #[cfg(test)]
 mod module_marketplace_transaction_regressions;
