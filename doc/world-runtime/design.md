@@ -250,6 +250,20 @@ proposal-id-zero rejection for nonempty profiles, and empty-profile success are
 unchanged. This adds release business completion, not prelude deduplication or
 global action/root atomicity.
 
+Release review events use that same sparse request/mapping/agent preparation.
+Shadowing validates request and status, then requires and clones the mapping
+before changing either copy. Role approval preserves normalized-role,
+required-role and existing-approver priority; rejection preserves terminal
+status and nonblank-reason priority. Approval and rejection continue to update
+a mapping only when one exists, while raw events still tolerate a missing actor
+and therefore omit activity/mailbox delivery. The prepared request, optional
+mapping, actor replacement and legacy material normalization drive the borrowed
+root projection before journal, allocator, retention, consensus and failpoint
+installation. Action handlers retain their stricter actor/policy validation and
+continue to propagate a valid Shadow event's required-mapping reducer error.
+This review-event boundary does not include request submission, attestation,
+role binding or outer-action idempotency.
+
 Marketplace listing and bid actions prepare their order and optional immediate
 sale as one publication batch. The event-bound delta owns only affected agents,
 one artifact's owner/listing/bid entries, fee-resource replacements, market

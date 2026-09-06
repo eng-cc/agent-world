@@ -86,6 +86,16 @@ overlap preserves both the fee debit and exactly-once mailbox routing. A matchin
 module with proposal id zero still rejects nonempty governed profiles; empty
 profile completion remains permitted.
 
+Shadowed, role-approved and rejected release-review events must prepare their
+request, optional or required mapping, affected actor and publication metadata
+before canonical installation. Failed validation or publication leaves review
+status, hash/reason/approvals, actor activity/mailbox, legacy material state,
+journal cursors/retention and consensus unchanged. Shadow requires its mapping;
+approval and rejection intentionally tolerate one being absent. Raw-event
+normalization and missing-actor behavior remain distinct from stricter action
+validation, and replay must reproduce the published root without cloning the
+world.
+
 Marketplace listed, bid-placed and sale-completed events now prepare affected
 state before publication, including replay. A listing/bid and its immediate
 matching sale commit together or leave fees, agents, owner, order book, market

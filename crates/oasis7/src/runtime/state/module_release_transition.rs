@@ -113,7 +113,16 @@ impl PreparedModuleRelease {
             DomainEvent::ModuleReleaseApplied {
                 operator_agent_id, ..
             } => (operator_agent_id, "", None),
-            _ => unreachable!("release preparation requires a profile or completion event"),
+            DomainEvent::ModuleReleaseShadowed {
+                operator_agent_id, ..
+            } => (operator_agent_id, "", None),
+            DomainEvent::ModuleReleaseRoleApproved {
+                approver_agent_id, ..
+            } => (approver_agent_id, "", None),
+            DomainEvent::ModuleReleaseRejected {
+                rejector_agent_id, ..
+            } => (rejector_agent_id, "", None),
+            _ => unreachable!("release preparation requires a review, profile or completion event"),
         };
         if let Some(proposal_id) = proposal_id {
             if !self.agents.contains_key(operator) && !state.agents.contains_key(operator) {
@@ -128,6 +137,164 @@ impl PreparedModuleRelease {
             }
         }
         match event {
+            DomainEvent::ModuleReleaseShadowed {
+                request_id,
+                manifest_hash,
+                ..
+            } => {
+                let mut request = self
+                    .requests
+                    .get(request_id)
+                    .or_else(|| state.module_release_requests.get(request_id))
+                    .ok_or_else(|| {
+                        invalid(format!(
+                            "module release shadow rejected: request not found ({request_id})"
+                        ))
+                    })?
+                    .clone();
+                if !matches!(request.status, ModuleReleaseRequestStatus::Requested) {
+                    return Err(invalid(format!(
+                        "module release shadow invalid status for request {}: {:?}",
+                        request_id, request.status
+                    )));
+                }
+                let mut mapping = self
+                    .mappings
+                    .get(request_id)
+                    .or_else(|| state.module_release_manifest_mappings.get(request_id))
+                    .ok_or_else(|| {
+                        invalid(format!(
+                            "module release mapping missing for shadow request_id={request_id}"
+                        ))
+                    })?
+                    .clone();
+                request.status = ModuleReleaseRequestStatus::Shadowed;
+                request.shadow_manifest_hash = Some(manifest_hash.clone());
+                request.updated_at = now;
+                mapping.status = ModuleReleaseRequestStatus::Shadowed;
+                mapping.shadow_manifest_hash = Some(manifest_hash.clone());
+                mapping.updated_at = now;
+                self.requests.insert(*request_id, request);
+                self.mappings.insert(*request_id, mapping);
+            }
+            DomainEvent::ModuleReleaseRoleApproved {
+                request_id,
+                approver_agent_id,
+                role,
+            } => {
+                let mut request = self
+                    .requests
+                    .get(request_id)
+                    .or_else(|| state.module_release_requests.get(request_id))
+                    .ok_or_else(|| {
+                        invalid(format!(
+                            "module release approve_role rejected: request not found ({request_id})"
+                        ))
+                    })?
+                    .clone();
+                if !matches!(
+                    request.status,
+                    ModuleReleaseRequestStatus::Shadowed
+                        | ModuleReleaseRequestStatus::PartiallyApproved
+                        | ModuleReleaseRequestStatus::Approved
+                ) {
+                    return Err(invalid(format!(
+                        "module release approve_role invalid status for request {}: {:?}",
+                        request_id, request.status
+                    )));
+                }
+                let normalized_role = role.trim().to_ascii_lowercase();
+                if normalized_role.is_empty() {
+                    return Err(invalid(format!(
+                        "module release approve_role role cannot be empty (request_id={request_id})"
+                    )));
+                }
+                if !request
+                    .required_roles
+                    .iter()
+                    .any(|item| item == &normalized_role)
+                {
+                    return Err(invalid(format!(
+                        "module release approve_role role not required: request_id={} role={}",
+                        request_id, normalized_role
+                    )));
+                }
+                if let Some(existing) = request.role_approvals.get(&normalized_role) {
+                    if existing != approver_agent_id {
+                        return Err(invalid(format!(
+                            "module release approve_role approver mismatch: request_id={} role={} existing={} incoming={}",
+                            request_id, normalized_role, existing, approver_agent_id
+                        )));
+                    }
+                } else {
+                    request
+                        .role_approvals
+                        .insert(normalized_role, approver_agent_id.clone());
+                }
+                request.status = if request
+                    .required_roles
+                    .iter()
+                    .all(|required| request.role_approvals.contains_key(required))
+                {
+                    ModuleReleaseRequestStatus::Approved
+                } else {
+                    ModuleReleaseRequestStatus::PartiallyApproved
+                };
+                request.updated_at = now;
+                if let Some(mut mapping) = self
+                    .mappings
+                    .get(request_id)
+                    .or_else(|| state.module_release_manifest_mappings.get(request_id))
+                    .cloned()
+                {
+                    mapping.status = request.status;
+                    mapping.updated_at = now;
+                    self.mappings.insert(*request_id, mapping);
+                }
+                self.requests.insert(*request_id, request);
+            }
+            DomainEvent::ModuleReleaseRejected {
+                request_id, reason, ..
+            } => {
+                let mut request = self
+                    .requests
+                    .get(request_id)
+                    .or_else(|| state.module_release_requests.get(request_id))
+                    .ok_or_else(|| {
+                        invalid(format!(
+                            "module release reject rejected: request not found ({request_id})"
+                        ))
+                    })?
+                    .clone();
+                if matches!(
+                    request.status,
+                    ModuleReleaseRequestStatus::Applied | ModuleReleaseRequestStatus::Rejected
+                ) {
+                    return Err(invalid(format!(
+                        "module release reject invalid status for request {}: {:?}",
+                        request_id, request.status
+                    )));
+                }
+                if reason.trim().is_empty() {
+                    return Err(invalid(format!(
+                        "module release reject reason cannot be empty (request_id={request_id})"
+                    )));
+                }
+                request.status = ModuleReleaseRequestStatus::Rejected;
+                request.rejected_reason = Some(reason.clone());
+                request.updated_at = now;
+                if let Some(mut mapping) = self
+                    .mappings
+                    .get(request_id)
+                    .or_else(|| state.module_release_manifest_mappings.get(request_id))
+                    .cloned()
+                {
+                    mapping.status = ModuleReleaseRequestStatus::Rejected;
+                    mapping.updated_at = now;
+                    self.mappings.insert(*request_id, mapping);
+                }
+                self.requests.insert(*request_id, request);
+            }
             DomainEvent::ProductProfileGoverned { profile, .. } => {
                 if profile.product_id.trim().is_empty() {
                     return Err(invalid("product profile product_id cannot be empty"));

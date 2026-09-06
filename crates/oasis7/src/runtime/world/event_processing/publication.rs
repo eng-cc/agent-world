@@ -329,7 +329,10 @@ impl World {
                     .prepare_module_marketplace_event(event, self.state.time)?,
             )),
             WorldEventBody::Domain(
-                event @ (DomainEvent::ProductProfileGoverned { .. }
+                event @ (DomainEvent::ModuleReleaseShadowed { .. }
+                | DomainEvent::ModuleReleaseRoleApproved { .. }
+                | DomainEvent::ModuleReleaseRejected { .. }
+                | DomainEvent::ProductProfileGoverned { .. }
                 | DomainEvent::RecipeProfileGoverned { .. }
                 | DomainEvent::FactoryProfileGoverned { .. }
                 | DomainEvent::ModuleReleaseApplied { .. }),

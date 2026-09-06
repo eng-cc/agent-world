@@ -218,44 +218,9 @@ impl WorldState {
                     cell.last_active = now;
                 }
             }
-            DomainEvent::ModuleReleaseShadowed {
-                request_id,
-                operator_agent_id,
-                manifest_hash,
-            } => {
-                let request = self
-                    .module_release_requests
-                    .get_mut(request_id)
-                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release shadow rejected: request not found ({request_id})"
-                        ),
-                    })?;
-                if !matches!(request.status, ModuleReleaseRequestStatus::Requested) {
-                    return Err(WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release shadow invalid status for request {}: {:?}",
-                            request_id, request.status
-                        ),
-                    });
-                }
-                request.status = ModuleReleaseRequestStatus::Shadowed;
-                request.shadow_manifest_hash = Some(manifest_hash.clone());
-                request.updated_at = now;
-                let mapping = self
-                    .module_release_manifest_mappings
-                    .get_mut(request_id)
-                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release mapping missing for shadow request_id={request_id}"
-                        ),
-                    })?;
-                mapping.status = ModuleReleaseRequestStatus::Shadowed;
-                mapping.shadow_manifest_hash = Some(manifest_hash.clone());
-                mapping.updated_at = now;
-                if let Some(cell) = self.agents.get_mut(operator_agent_id) {
-                    cell.last_active = now;
-                }
+            DomainEvent::ModuleReleaseShadowed { .. } => {
+                self.prepare_module_release_event(event, now)?
+                    .install_infallible(self);
             }
             DomainEvent::ModuleReleaseAttested {
                 request_id,
@@ -434,83 +399,9 @@ impl WorldState {
                     cell.last_active = now;
                 }
             }
-            DomainEvent::ModuleReleaseRoleApproved {
-                request_id,
-                approver_agent_id,
-                role,
-            } => {
-                let request = self
-                    .module_release_requests
-                    .get_mut(request_id)
-                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release approve_role rejected: request not found ({request_id})"
-                        ),
-                    })?;
-                if !matches!(
-                    request.status,
-                    ModuleReleaseRequestStatus::Shadowed
-                        | ModuleReleaseRequestStatus::PartiallyApproved
-                        | ModuleReleaseRequestStatus::Approved
-                ) {
-                    return Err(WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release approve_role invalid status for request {}: {:?}",
-                            request_id, request.status
-                        ),
-                    });
-                }
-                let normalized_role = role.trim().to_ascii_lowercase();
-                if normalized_role.is_empty() {
-                    return Err(WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release approve_role role cannot be empty (request_id={request_id})"
-                        ),
-                    });
-                }
-                if !request
-                    .required_roles
-                    .iter()
-                    .any(|item| item == &normalized_role)
-                {
-                    return Err(WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release approve_role role not required: request_id={} role={}",
-                            request_id, normalized_role
-                        ),
-                    });
-                }
-                if let Some(existing_approver) = request.role_approvals.get(&normalized_role) {
-                    if existing_approver != approver_agent_id {
-                        return Err(WorldError::ResourceBalanceInvalid {
-                            reason: format!(
-                                "module release approve_role approver mismatch: request_id={} role={} existing={} incoming={}",
-                                request_id, normalized_role, existing_approver, approver_agent_id
-                            ),
-                        });
-                    }
-                } else {
-                    request
-                        .role_approvals
-                        .insert(normalized_role, approver_agent_id.clone());
-                }
-                let all_roles_approved = request
-                    .required_roles
-                    .iter()
-                    .all(|required| request.role_approvals.contains_key(required));
-                request.status = if all_roles_approved {
-                    ModuleReleaseRequestStatus::Approved
-                } else {
-                    ModuleReleaseRequestStatus::PartiallyApproved
-                };
-                request.updated_at = now;
-                if let Some(mapping) = self.module_release_manifest_mappings.get_mut(request_id) {
-                    mapping.status = request.status;
-                    mapping.updated_at = now;
-                }
-                if let Some(cell) = self.agents.get_mut(approver_agent_id) {
-                    cell.last_active = now;
-                }
+            DomainEvent::ModuleReleaseRoleApproved { .. } => {
+                self.prepare_module_release_event(event, now)?
+                    .install_infallible(self);
             }
             DomainEvent::ModuleReleaseRolesBound {
                 operator_agent_id,
@@ -548,47 +439,9 @@ impl WorldState {
                     }
                 }
             }
-            DomainEvent::ModuleReleaseRejected {
-                request_id,
-                rejector_agent_id,
-                reason,
-            } => {
-                let request = self
-                    .module_release_requests
-                    .get_mut(request_id)
-                    .ok_or_else(|| WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release reject rejected: request not found ({request_id})"
-                        ),
-                    })?;
-                if matches!(
-                    request.status,
-                    ModuleReleaseRequestStatus::Applied | ModuleReleaseRequestStatus::Rejected
-                ) {
-                    return Err(WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release reject invalid status for request {}: {:?}",
-                            request_id, request.status
-                        ),
-                    });
-                }
-                if reason.trim().is_empty() {
-                    return Err(WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "module release reject reason cannot be empty (request_id={request_id})"
-                        ),
-                    });
-                }
-                request.status = ModuleReleaseRequestStatus::Rejected;
-                request.rejected_reason = Some(reason.clone());
-                request.updated_at = now;
-                if let Some(mapping) = self.module_release_manifest_mappings.get_mut(request_id) {
-                    mapping.status = ModuleReleaseRequestStatus::Rejected;
-                    mapping.updated_at = now;
-                }
-                if let Some(cell) = self.agents.get_mut(rejector_agent_id) {
-                    cell.last_active = now;
-                }
+            DomainEvent::ModuleReleaseRejected { .. } => {
+                self.prepare_module_release_event(event, now)?
+                    .install_infallible(self);
             }
             DomainEvent::ModuleReleaseApplied { .. } => {
                 self.prepare_module_release_event(event, now)?
