@@ -81,6 +81,9 @@ pub struct WorldStateProjection<'a> {
     module_marketplace_overlay:
         Option<&'a module_marketplace_transition::PreparedModuleMarketplace>,
     governance_identity_profile_overlay: Option<GovernanceIdentityProfileOverlay>,
+    governance_registry_overlay: Option<
+        &'a crate::runtime::world::governance_registry_publication::PreparedGovernanceRegistryEvent,
+    >,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -93,7 +96,16 @@ impl<'a> WorldStateProjection<'a> {
             module_release_overlay: None,
             module_marketplace_overlay: None,
             governance_identity_profile_overlay: None,
+            governance_registry_overlay: None,
         }
+    }
+
+    pub(crate) fn with_governance_registry_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::governance_registry_publication::PreparedGovernanceRegistryEvent,
+    ) -> Self {
+        self.governance_registry_overlay = Some(overlay);
+        self
     }
 
     pub fn with_body_overlay(mut self, body_overlay: BodyOverlay) -> Self {
@@ -162,7 +174,7 @@ impl Serialize for WorldState {
     where
         S: serde::Serializer,
     {
-        serialize_world_state(self, None, None, None, None, None, None, serializer)
+        serialize_world_state(self, None, None, None, None, None, None, None, serializer)
     }
 }
 
@@ -188,6 +200,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.module_release_overlay,
             self.module_marketplace_overlay,
             self.governance_identity_profile_overlay.as_ref(),
+            self.governance_registry_overlay,
             serializer,
         )
     }
@@ -367,6 +380,9 @@ fn serialize_world_state<S>(
     module_release_overlay: Option<&module_release_transition::PreparedModuleRelease>,
     module_marketplace_overlay: Option<&module_marketplace_transition::PreparedModuleMarketplace>,
     governance_identity_profile_overlay: Option<&GovernanceIdentityProfileOverlay>,
+    governance_registry_overlay: Option<
+        &crate::runtime::world::governance_registry_publication::PreparedGovernanceRegistryEvent,
+    >,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -758,10 +774,15 @@ where
         "system_order_pool_budgets",
         &state.system_order_pool_budgets,
     )?;
-    output.serialize_field("node_identity_bindings", &state.node_identity_bindings)?;
+    output.serialize_field(
+        "node_identity_bindings",
+        governance_registry_overlay.map_or(&state.node_identity_bindings, |o| &o.identity_bindings),
+    )?;
     output.serialize_field(
         "node_main_token_account_bindings",
-        &state.node_main_token_account_bindings,
+        governance_registry_overlay.map_or(&state.node_main_token_account_bindings, |o| {
+            &o.account_bindings
+        }),
     )?;
     output.serialize_field(
         "governance_finality_signer_registry",
@@ -769,11 +790,14 @@ where
     )?;
     output.serialize_field(
         "governance_validator_admissions",
-        &state.governance_validator_admissions,
+        governance_registry_overlay
+            .map_or(&state.governance_validator_admissions, |o| &o.admissions),
     )?;
     output.serialize_field(
         "governance_main_token_controller_registry",
-        &state.governance_main_token_controller_registry,
+        governance_registry_overlay.map_or(&state.governance_main_token_controller_registry, |o| {
+            &o.controller_registry
+        }),
     )?;
     output.serialize_field(
         "reward_signature_governance_policy",

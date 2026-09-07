@@ -39,6 +39,9 @@ pub(super) enum PreparedEventStateDelta {
         update: ManifestUpdate,
         manifest: Manifest,
     },
+    GovernanceRegistry(
+        super::super::governance_registry_publication::PreparedGovernanceRegistryEvent,
+    ),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -140,6 +143,9 @@ impl PreparedEventStateDelta {
             Self::ManifestUpdated { update, .. } => {
                 matches!(body, WorldEventBody::ManifestUpdated(body_update) if body_update == update)
             }
+            Self::GovernanceRegistry(prepared) => {
+                matches!(body, WorldEventBody::Governance(event) if prepared.matches_event(event))
+            }
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -232,6 +238,9 @@ impl PreparedEventStateDelta {
             Self::ModuleEvent { .. } | Self::ManifestUpdated { .. } => {
                 unreachable!("module metadata does not have a body state overlay")
             }
+            Self::GovernanceRegistry(_) => {
+                unreachable!("governance registry uses a state projection")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -314,6 +323,7 @@ impl PreparedEventStateDelta {
                 }
             }
             Self::ManifestUpdated { manifest, .. } => world.manifest = manifest,
+            Self::GovernanceRegistry(prepared) => prepared.install(world),
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -462,6 +472,15 @@ impl World {
                     manifest: update.manifest.clone(),
                 })
             }
+            WorldEventBody::Governance(
+                event @ (GovernanceEvent::RestrictedStarterClaimAdminRegistryUpdated { .. }
+                | GovernanceEvent::ValidatorAdmissionSubmitted { .. }
+                | GovernanceEvent::ValidatorAdmissionApproved { .. }
+                | GovernanceEvent::ValidatorAdmissionActivated { .. }
+                | GovernanceEvent::ValidatorAdmissionRevoked { .. }),
+            ) => Some(PreparedEventStateDelta::GovernanceRegistry(
+                self.prepare_governance_registry_event(event)?,
+            )),
             _ => prepared_governance_events::prepare(self, &body)?
                 .or_else(|| PreparedEventStateDelta::for_body(&body)),
         };
@@ -831,6 +850,9 @@ impl World {
             PreparedEventStateDelta::ModuleEvent { .. } => self.current_state_root_hash()?,
             PreparedEventStateDelta::ManifestUpdated { manifest, .. } => {
                 super::super::governance_publication::state_root_hash_with_manifest(self, manifest)?
+            }
+            PreparedEventStateDelta::GovernanceRegistry(prepared) => {
+                self.state_root_hash_with_governance_registry_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {

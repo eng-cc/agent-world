@@ -31,6 +31,9 @@ mod governance;
 mod governance_identity_penalty;
 mod governance_publication;
 mod governance_quote;
+pub(crate) mod governance_registry_publication;
+#[cfg(test)]
+mod governance_registry_publication_transaction_regressions;
 #[cfg(test)]
 mod governed_module_lifecycle_transaction_regressions;
 #[cfg(test)]

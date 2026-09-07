@@ -839,6 +839,21 @@ impl World {
         hash_json(&projection)
     }
 
+    pub(super) fn state_root_hash_with_governance_registry_overlay(
+        &self,
+        overlay: &super::governance_registry_publication::PreparedGovernanceRegistryEvent,
+    ) -> Result<String, WorldError> {
+        let manifest_hash = self.current_manifest_hash()?;
+        let policy_hash = hash_json(&self.policies)?;
+        let state =
+            WorldStateProjection::borrowed(&self.state).with_governance_registry_overlay(overlay);
+        hash_json(&StateRootProjection {
+            state: &state,
+            manifest_hash: manifest_hash.as_str(),
+            policy_hash: policy_hash.as_str(),
+        })
+    }
+
     fn state_root_hash_for_state(&self, state: &WorldState) -> Result<String, WorldError> {
         let manifest_hash = self.current_manifest_hash()?;
         let policy_hash = hash_json(&self.policies)?;
