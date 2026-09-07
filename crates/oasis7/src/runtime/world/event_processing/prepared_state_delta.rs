@@ -49,6 +49,7 @@ pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
     ),
     AgentIntent(super::super::super::agent_intent_publication::PreparedAgentIntent),
     EconomyData(super::super::super::economy_data_publication::PreparedEconomyDataEvent),
+    EconomicContract(super::super::super::economic_contract_publication::PreparedEconomicContractEvent),
     PowerRedemption(super::super::super::power_redemption_publication::PreparedPowerRedemptionEvent),
     NodePointsSettlement(
         super::super::super::node_points_settlement_publication::PreparedNodePointsSettlement,
@@ -193,6 +194,9 @@ impl PreparedEventStateDelta {
             Self::EconomyData(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
+            Self::EconomicContract(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::PowerRedemption(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
@@ -334,6 +338,9 @@ impl PreparedEventStateDelta {
             Self::EconomyData(_) => {
                 unreachable!("economy/data events use a sparse state projection")
             }
+            Self::EconomicContract(_) => {
+                unreachable!("economic contract uses a sparse state projection")
+            }
             Self::PowerRedemption(_) => {
                 unreachable!("power redemption uses a sparse state projection")
             }
@@ -448,6 +455,7 @@ impl PreparedEventStateDelta {
             Self::CapabilityEffectReceipt(prepared) => prepared.install(world),
             Self::AgentIntent(prepared) => prepared.install_infallible(&mut world.state),
             Self::EconomyData(prepared) => prepared.install_infallible(&mut world.state),
+            Self::EconomicContract(prepared) => prepared.install_infallible(&mut world.state),
             Self::PowerRedemption(prepared) => prepared.install_infallible(&mut world.state),
             Self::NodePointsSettlement(prepared) => prepared.install_infallible(&mut world.state),
             Self::MainTokenMonetary(prepared) => prepared.install_infallible(&mut world.state),

@@ -88,6 +88,9 @@ pub struct WorldStateProjection<'a> {
         Option<&'a crate::runtime::world::agent_intent_publication::PreparedAgentIntent>,
     economy_data_overlay:
         Option<&'a crate::runtime::world::economy_data_publication::PreparedEconomyDataEvent>,
+    economic_contract_overlay: Option<
+        &'a crate::runtime::world::economic_contract_publication::PreparedEconomicContractEvent,
+    >,
     power_redemption_overlay: Option<
         &'a crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
     >,
@@ -126,6 +129,7 @@ impl<'a> WorldStateProjection<'a> {
             governance_registry_overlay: None,
             agent_intent_overlay: None,
             economy_data_overlay: None,
+            economic_contract_overlay: None,
             power_redemption_overlay: None,
             node_points_settlement_overlay: None,
             main_token_monetary_overlay: None,
@@ -159,6 +163,14 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a crate::runtime::world::economy_data_publication::PreparedEconomyDataEvent,
     ) -> Self {
         self.economy_data_overlay = Some(overlay);
+        self
+    }
+
+    pub(crate) fn with_economic_contract_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::economic_contract_publication::PreparedEconomicContractEvent,
+    ) -> Self {
+        self.economic_contract_overlay = Some(overlay);
         self
     }
 
@@ -300,7 +312,7 @@ impl Serialize for WorldState {
     {
         serialize_world_state(
             self, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, serializer,
+            None, None, None, None, None, None, serializer,
         )
     }
 }
@@ -330,6 +342,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.governance_registry_overlay,
             self.agent_intent_overlay,
             self.economy_data_overlay,
+            self.economic_contract_overlay,
             self.power_redemption_overlay,
             self.node_points_settlement_overlay,
             self.main_token_monetary_overlay,
@@ -527,6 +540,9 @@ fn serialize_world_state<S>(
     economy_data_overlay: Option<
         &crate::runtime::world::economy_data_publication::PreparedEconomyDataEvent,
     >,
+    economic_contract_overlay: Option<
+        &crate::runtime::world::economic_contract_publication::PreparedEconomicContractEvent,
+    >,
     power_redemption_overlay: Option<
         &crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
     >,
@@ -674,6 +690,8 @@ where
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = economy_data_overlay {
         overlay.serialize_agents(state, &mut output)?;
+    } else if let Some(overlay) = economic_contract_overlay {
+        overlay.serialize_agents(state, &mut output)?;
     } else if let Some(command_overlay) = command_overlay {
         output.serialize_field(
             "agents",
@@ -712,6 +730,8 @@ where
                 updates: command_overlay.resources,
             },
         )?;
+    } else if let Some(overlay) = economic_contract_overlay {
+        overlay.serialize_resources(state, &mut output)?;
     } else {
         output.serialize_field("resources", &state.resources)?;
     }
@@ -741,6 +761,8 @@ where
         overlay.serialize_material_fields(state, &mut output)?;
     } else if let Some(overlay) = module_marketplace_overlay {
         overlay.serialize_material_fields(state, &mut output)?;
+    } else if let Some(overlay) = economic_contract_overlay {
+        overlay.serialize_materials(state, &mut output)?;
     } else {
         output.serialize_field("materials", &state.materials)?;
         output.serialize_field("material_ledgers", &state.material_ledgers)?;
@@ -824,7 +846,11 @@ where
     } else {
         output.serialize_field("data_access_permissions", &state.data_access_permissions)?;
     }
-    output.serialize_field("economic_contracts", &state.economic_contracts)?;
+    if let Some(overlay) = economic_contract_overlay {
+        overlay.serialize_contracts(state, &mut output)?;
+    } else {
+        output.serialize_field("economic_contracts", &state.economic_contracts)?;
+    }
     if let Some(overlay) = agent_claim_terminal_overlay {
         overlay.serialize_claims(state, &mut output)?;
     } else if let Some(overlay) = agent_claim_economic_overlay {
@@ -859,19 +885,23 @@ where
             &state.agent_claim_last_processed_epoch,
         )?;
     }
-    output.serialize_field(
-        "contract_pair_last_success_settled_at",
-        &state.contract_pair_last_success_settled_at,
-    )?;
-    output.serialize_field(
-        "reputation_reward_window_started_at",
-        &state.reputation_reward_window_started_at,
-    )?;
-    output.serialize_field(
-        "reputation_reward_window_accumulated",
-        &state.reputation_reward_window_accumulated,
-    )?;
-    output.serialize_field("reputation_scores", &state.reputation_scores)?;
+    if let Some(overlay) = economic_contract_overlay {
+        overlay.serialize_reputation(state, &mut output)?;
+    } else {
+        output.serialize_field(
+            "contract_pair_last_success_settled_at",
+            &state.contract_pair_last_success_settled_at,
+        )?;
+        output.serialize_field(
+            "reputation_reward_window_started_at",
+            &state.reputation_reward_window_started_at,
+        )?;
+        output.serialize_field(
+            "reputation_reward_window_accumulated",
+            &state.reputation_reward_window_accumulated,
+        )?;
+        output.serialize_field("reputation_scores", &state.reputation_scores)?;
+    }
     output.serialize_field("wars", &state.wars)?;
     output.serialize_field("governance_votes", &state.governance_votes)?;
     output.serialize_field("governance_proposals", &state.governance_proposals)?;

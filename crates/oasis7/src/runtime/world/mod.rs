@@ -25,6 +25,7 @@ mod capability_authorization_publication;
 mod capability_authorization_state;
 mod capability_authorization_validation;
 mod capability_effect_receipt_projection;
+pub(crate) mod economic_contract_publication;
 mod economy;
 pub(crate) mod economy_data_publication;
 mod effect_publication;

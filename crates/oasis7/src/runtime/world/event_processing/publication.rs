@@ -143,6 +143,7 @@ impl World {
             )),
             WorldEventBody::Domain(event @ (DomainEvent::AgentClaimed { .. } | DomainEvent::AgentClaimUpkeepSettled { .. })) => Some(PreparedEventStateDelta::AgentClaimEconomic(super::super::agent_claim_economic_publication::PreparedAgentClaimEconomic::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::Domain(event @ (DomainEvent::AgentClaimReleased { .. } | DomainEvent::AgentClaimReclaimed { .. })) => Some(PreparedEventStateDelta::AgentClaimTerminal(super::super::agent_claim_terminal_publication::PreparedAgentClaimTerminal::prepare(&self.state,event,self.state.time)?)),
+            WorldEventBody::Domain(event @ (DomainEvent::EconomicContractOpened { .. } | DomainEvent::EconomicContractAccepted { .. } | DomainEvent::EconomicContractSettled { .. } | DomainEvent::EconomicContractExpired { .. })) => Some(PreparedEventStateDelta::EconomicContract(super::super::economic_contract_publication::PreparedEconomicContractEvent::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::ModuleStateUpdated(update) => {
                 Some(PreparedEventStateDelta::ModuleStateUpdated {
                     module_states: BTreeMap::from([(
@@ -580,6 +581,9 @@ impl World {
             }
             PreparedEventStateDelta::EconomyData(prepared) => {
                 self.state_root_hash_with_economy_data_overlay(prepared)?
+            }
+            PreparedEventStateDelta::EconomicContract(prepared) => {
+                self.state_root_hash_with_economic_contract_overlay(prepared)?
             }
             PreparedEventStateDelta::PowerRedemption(prepared) => {
                 self.state_root_hash_with_power_redemption_overlay(prepared)?

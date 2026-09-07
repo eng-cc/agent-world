@@ -27,6 +27,19 @@ impl WorldState {
             .install_infallible(self);
             return Ok(());
         }
+        if matches!(
+            event,
+            DomainEvent::EconomicContractOpened { .. }
+                | DomainEvent::EconomicContractAccepted { .. }
+                | DomainEvent::EconomicContractSettled { .. }
+                | DomainEvent::EconomicContractExpired { .. }
+        ) {
+            crate::runtime::world::economic_contract_publication::PreparedEconomicContractEvent::prepare(
+                self, event, now,
+            )?
+            .install_infallible(self);
+            return Ok(());
+        }
         match event {
             DomainEvent::StarterOcClaimed { .. } => unreachable!("handled by starter projector"),
             DomainEvent::GameplayPolicyUpdated {

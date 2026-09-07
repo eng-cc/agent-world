@@ -85,6 +85,7 @@ mod capability_grant_v2_regressions;
 mod capability_grant_v2_selector_authz_regressions;
 mod data_access_control;
 mod direct_module_output_transaction;
+mod economic_contract_publication_transaction_regressions;
 mod economy;
 mod economy_bootstrap;
 mod economy_factory_lifecycle;
