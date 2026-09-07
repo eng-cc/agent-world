@@ -17,11 +17,16 @@ const bundlePath = resolve(viewerRoot, ".software-safe-build/viewer.js");
 const session = `player-visual-feedback-${process.pid}`;
 const browserBin = process.env.AGENT_BROWSER_BIN || "agent-browser";
 const skipBuild = process.argv.includes("--skip-build");
+const onlyProduction = process.argv.includes("--only-production");
 const statuses = ["ready", "replay", "empty", "gap", "unavailable"];
 const viewports = [
   { name: "mobile", width: 390, height: 844 },
   { name: "tablet", width: 768, height: 1024 },
   { name: "desktop", width: 1440, height: 1000 },
+];
+const shortLandscapeViewports = [
+  { name: "landscape-phone", width: 844, height: 390 },
+  { name: "landscape-compact", width: 640, height: 360 },
 ];
 const summary = {
   caseId: "S6-Q1-player-visual-feedback",
@@ -30,11 +35,14 @@ const summary = {
   inputMode: "visible-ui-controls-plus-dom-readback",
   mockDisabled: false,
   fixtureBoundary: "deterministic QA bridge and fake world_feed; no runtime/provider/playability claim",
+  phase: onlyProduction ? "production-hotspot-only" : "full-matrix",
   status: "running",
   startedAt: new Date().toISOString(),
   viewports: {},
+  shortLandscape: {},
   feedStatuses: {},
   interactions: {},
+  productionHotspot: {},
 };
 
 mkdirSync(outDir, { recursive: true });
@@ -189,8 +197,34 @@ export function derivePixelWorldRenderState(input) {
   };
 }`;
 
+// Production-overlay regression data is sent as a normal snapshot message by
+// the deterministic transport below. It intentionally does not use the
+// pixel-world visual-fixture query or body marker that enables the historical
+// fixture shell.
+const productionSnapshot = {
+  time: 12,
+  config: { space: { width_cm: 10_000_000, depth_cm: 5_000_000, height_cm: 1_000_000 } },
+  model: {
+    agents: { "agent-0": { id: "agent-0", name: "Agent 0", location_id: "loc-0", pos: { x_cm: 2_400_000, y_cm: 1_800_000, z_cm: 0 } } },
+    locations: { "loc-0": { id: "loc-0", name: "Factory Anchor", pos: { x_cm: 2_000_000, y_cm: 1_500_000, z_cm: 0 } } },
+  },
+  player_gameplay: {
+    stage_status: "blocked",
+    goal_title: "Recover sustainable capability",
+    objective: "Stabilize the first production line before expanding.",
+    progress_detail: "The primary line is blocked by missing material input.",
+    blocker_kind: "material_shortage",
+    blocker_detail: "iron input exhausted at factory-0",
+    next_step_hint: "Replenish upstream materials, then advance again to confirm the line resumes.",
+    available_actions: [{ action_id: "request_snapshot", label: "Request snapshot", protocol_action: "world.request_snapshot", execute_kind: "request_snapshot" }],
+    recent_feedback: { action: "build_factory_smelter_mk1", stage: "completed_no_progress", effect: "Smelter build request reached factory-0; iron shortage blocks construction." },
+    last_world_change: "Smelter build request reached factory-0; iron shortage blocks construction.",
+  },
+};
+
 const fakeWebSocket = String.raw`(() => {
   const status = new URLSearchParams(location.search).get("feed_status") || "ready";
+  const sendProductionSnapshot = !new URLSearchParams(location.search).has("pixel_world_visual_fixture");
   const listeners = new WeakMap();
   const emit = (socket, type, payload = {}) => {
     const callbacks = listeners.get(socket)?.[type] || [];
@@ -205,7 +239,7 @@ const fakeWebSocket = String.raw`(() => {
     constructor(url) { this.url = url; this.readyState = FixtureWebSocket.CONNECTING; listeners.set(this, {}); queueMicrotask(() => { this.readyState = FixtureWebSocket.OPEN; emit(this, "open"); }); }
     addEventListener(type, callback) { const table = listeners.get(this); table[type] ||= []; table[type].push(callback); }
     removeEventListener(type, callback) { const list = listeners.get(this)?.[type] || []; const index = list.indexOf(callback); if (index >= 0) list.splice(index, 1); }
-    send(raw) { const message = JSON.parse(raw); if (message.type === "hello") queueMicrotask(() => emit(this, "message", { data: JSON.stringify({ type: "hello_ack", server: "qa-fixture", world_id: "fixture-world", control_profile: "fixture" }) })); if (message.type === "request_world_feed") queueMicrotask(() => emit(this, "message", { data: JSON.stringify({ type: "world_feed", feed: feed(status) }) })); }
+    send(raw) { const message = JSON.parse(raw); if (message.type === "hello") { if (sendProductionSnapshot) queueMicrotask(() => emit(this, "message", { data: JSON.stringify({ type: "snapshot", snapshot: ${JSON.stringify(productionSnapshot)} }) })); queueMicrotask(() => emit(this, "message", { data: JSON.stringify({ type: "hello_ack", server: "qa-fixture", world_id: "fixture-world", control_profile: "fixture" }) })); } if (message.type === "request_world_feed") queueMicrotask(() => emit(this, "message", { data: JSON.stringify({ type: "world_feed", feed: feed(status) }) })); }
     close() { this.readyState = FixtureWebSocket.CLOSED; emit(this, "close"); }
   }
   window.WebSocket = FixtureWebSocket;
@@ -223,6 +257,9 @@ const fixtureCanvasCompatibility = String.raw`(() => {
     if (type === "webgl2") return { __qaWebgl2ProbeOnly: true };
     return nativeGetContext.call(this, type, ...args);
   };
+})();`;
+
+const fixtureVisualOverlayBootstrap = String.raw`(() => {
   document.body.setAttribute("data-viewer-visual-fixture", "shell_selected_blocker");
 })();`;
 
@@ -245,7 +282,10 @@ function serveFile(request, response) {
   try {
     let body = readFileSync(filePath, "utf8");
     if (pathname === "/viewer.html" && requestUrl.searchParams.get("browser_fixture") === "1") {
-      body = body.replace('<script type="module" src="./viewer.js"></script>', `<script>${fixtureCanvasCompatibility}</script><script>${fakeWebSocket}</script><script type="module" src="./viewer.js"></script>`);
+      const visualOverlayBootstrap = requestUrl.searchParams.get("visual_fixture") === "1"
+        ? fixtureVisualOverlayBootstrap
+        : "";
+      body = body.replace('<script type="module" src="./viewer.js"></script>', `<script>${fixtureCanvasCompatibility}${visualOverlayBootstrap}</script><script>${fakeWebSocket}</script><script type="module" src="./viewer.js"></script>`);
     }
     response.writeHead(200, { "Content-Type": contentType(filePath), "Cache-Control": "no-store" });
     response.end(body);
@@ -258,11 +298,16 @@ function statSafe(path) {
   try { return statSync(path).isFile(); } catch { return false; }
 }
 
-function fixtureUrl(port, { status = "ready", locale = "en" } = {}) {
+function fixtureUrl(port, { status = "ready", locale = "en", visualFixture = true } = {}) {
   const params = new URLSearchParams({
     browser_fixture: "1", test_api: "1", connect: "1", hosted_bootstrap: "0", ws: "ws://qa-fixture",
-    locale, feed_status: status, viewer_visual_fixture: "shell_selected_blocker", pixel_world_visual_fixture: "selected_blocker", t: Date.now().toString(),
+    locale, feed_status: status, t: Date.now().toString(),
   });
+  if (visualFixture) {
+    params.set("visual_fixture", "1");
+    params.set("viewer_visual_fixture", "shell_selected_blocker");
+    params.set("pixel_world_visual_fixture", "selected_blocker");
+  }
   return `http://127.0.0.1:${port}/viewer.html?${params}`;
 }
 
@@ -277,8 +322,10 @@ const probe = String.raw`(() => {
     return document.elementsFromPoint(x, y).slice(0, 6).map((node) => ({ tag: node.tagName, id: node.id || null, className: node.className || null, overlay: node.getAttribute?.('data-viewer-overlay') || null, text: String(node.textContent || '').trim().slice(0, 160) }));
   };
   const feed = document.querySelector('[data-viewer-overlay="feed"]');
+  const feedSummary = feed?.querySelector("summary");
   const command = document.querySelector('[data-viewer-overlay="next-move"]');
   const primary = command?.querySelector('[data-shell-region="next-move-primary"]') || command;
+  const primaryAction = primary?.querySelector('.pixel-world-command-cell__action');
   const supporting = command?.querySelector('[data-shell-region="supporting-context"]');
   const receipt = document.querySelector('.pixel-world-action-receipt');
   const selection = document.querySelector('.pixel-world-canvas__selection');
@@ -286,15 +333,17 @@ const probe = String.raw`(() => {
   const hotspotNodes = [...document.querySelectorAll('[data-hotspot-kind]')];
   return JSON.stringify({
     runtime: window.__AW_TEST__?.getState?.() || null,
-    feed: feed ? { status: feed.dataset.worldFeedStatus || null, open: feed.open, text: feed.textContent.trim(), rect: rect(feed), statusRow: text('.world-feed__status-row', feed), scrollTop: feed.scrollTop, scrollHeight: feed.scrollHeight, clientHeight: feed.clientHeight } : null,
+    feed: feed ? { status: feed.dataset.worldFeedStatus || null, open: feed.open, text: feed.textContent.trim(), rect: rect(feed), summaryRect: rect(feedSummary), statusRow: text('.world-feed__status-row', feed), scrollTop: feed.scrollTop, scrollHeight: feed.scrollHeight, clientHeight: feed.clientHeight } : null,
     readout: readout ? { text: readout.textContent.trim(), classes: [...readout.querySelectorAll('.badge')].map((node) => ({ text: node.textContent.trim(), className: node.className })) } : null,
     selection: selection ? { text: selection.textContent.trim(), rect: rect(selection) } : null,
-    primary: primary ? { text: primary.textContent.trim(), rect: rect(primary), visible: getComputedStyle(primary).display !== 'none' && getComputedStyle(primary).visibility !== 'hidden' } : null,
+    primary: primary ? { text: primary.textContent.trim(), rect: rect(primary), visible: getComputedStyle(primary).display !== 'none' && getComputedStyle(primary).visibility !== 'hidden', scrollTop: primary.scrollTop, scrollHeight: primary.scrollHeight, clientHeight: primary.clientHeight, actionRect: rect(primaryAction), actionText: primaryAction?.textContent.trim() || null } : null,
     supporting: supporting ? { text: supporting.textContent.trim(), rect: rect(supporting), visible: getComputedStyle(supporting).display !== 'none' } : null,
     receipt: receipt ? { present: receipt.dataset.receiptPresent, state: receipt.dataset.receiptState, confidence: receipt.dataset.receiptConfidence, text: receipt.textContent.trim(), rect: rect(receipt), visible: getComputedStyle(receipt).display !== 'none', scrollTop: receipt.scrollTop, scrollHeight: receipt.scrollHeight, clientHeight: receipt.clientHeight } : null,
-    tooltip: document.querySelector('[data-hotspot-tooltip]') ? { text: text('[data-hotspot-tooltip]'), rect: rect(document.querySelector('[data-hotspot-tooltip]')) } : null,
+    tooltip: document.querySelector('[data-hotspot-tooltip]') ? { text: text('[data-hotspot-tooltip]'), rect: rect(document.querySelector('[data-hotspot-tooltip]')), close: (() => { const node = document.querySelector('.pixel-world-canvas__hotspot-tooltip-close'); return node ? { ariaLabel: node.getAttribute('aria-label'), rect: rect(node) } : null; })() } : null,
     hotspots: hotspotNodes.map((node) => ({ tag: node.tagName, kind: node.dataset.hotspotKind, label: node.getAttribute('aria-label'), title: node.getAttribute('title'), role: node.getAttribute('role'), tabIndex: node.tabIndex, text: node.textContent.trim(), rect: rect(node) })),
     viewport: { width: innerWidth, height: innerHeight, clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth, overflowX: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth) },
+    visualFixture: Boolean(document.body.getAttribute("data-viewer-visual-fixture")),
+    activeElement: (() => { const node = document.activeElement; return node ? { tag: node.tagName, id: node.id || null, className: node.className || null, ariaLabel: node.getAttribute?.('aria-label') || null, kind: node.getAttribute?.('data-hotspot-kind') || null } : null; })(),
     hitTest: { selection: stackAt(selection ? rect(selection) : null), feed: stackAt(feed ? rect(feed) : null) },
     bodyText: document.body.innerText,
   });
@@ -318,6 +367,16 @@ async function waitForFeedStatus(status) {
   return evalJson(probe);
 }
 
+async function waitForProductionHotspots() {
+  const end = Date.now() + 10_000;
+  while (Date.now() < end) {
+    const result = await evalJson(probe);
+    if (result.visualFixture === false && result.hotspots?.some((hotspot) => hotspot.kind === "goal" && hotspot.rect?.width > 0 && hotspot.rect?.height > 0)) return result;
+    await browserRaw(["wait", "100"]);
+  }
+  return evalJson(probe);
+}
+
 async function openFixture(port, options) {
   await browserJson(["open", fixtureUrl(port, options)], { timeout: 45_000 });
   await browserJson(["set", "viewport", String(options.width || 390), String(options.height || 844)]);
@@ -330,7 +389,39 @@ async function clickVisible(selector) {
   return { selector };
 }
 
+async function clickVisibleInPlace(selector) {
+  const selectorLiteral = JSON.stringify(selector);
+  const target = await evalJson(`(() => { const node = document.querySelector(${selectorLiteral}); if (!node) throw new Error("missing visible target"); const rect = node.getBoundingClientRect(); const x = Math.max(1, Math.min(innerWidth - 1, rect.left + Math.max(1, rect.width / 2))); const y = Math.max(1, Math.min(innerHeight - 1, rect.top + Math.max(1, rect.height / 2))); const visible = rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight; const topHit = document.elementsFromPoint(x, y).slice(0, 4).map((hit) => ({ tag: hit.tagName, className: hit.className || null, kind: hit.getAttribute?.("data-hotspot-kind") || null })); return JSON.stringify({ visible, rect: { x: Math.round(rect.x), y: Math.round(rect.y), right: Math.round(rect.right), bottom: Math.round(rect.bottom) }, topHit }); })()`);
+  assert(target.visible, `target is not visible in place: ${selector}`, target);
+  const x = Math.round((target.rect.x + target.rect.right) / 2);
+  const y = Math.round((target.rect.y + target.rect.bottom) / 2);
+  await browserJson(["mouse", "move", String(x), String(y)]);
+  await browserJson(["mouse", "down"]);
+  await browserJson(["mouse", "up"]);
+  return { selector, target };
+}
+
+async function clickRecordedRect(rect, description) {
+  assert(rect?.width > 0 && rect?.height > 0 && rect.x >= 0 && rect.y >= 0, `${description} is not visible in place`, rect);
+  const x = Math.round((rect.x + rect.right) / 2);
+  const y = Math.round((rect.y + rect.bottom) / 2);
+  await browserJson(["mouse", "move", String(x), String(y)]);
+  await browserJson(["mouse", "down"]);
+  await browserJson(["mouse", "up"]);
+  return { rect, x, y };
+}
+
 async function waitShort() { await browserRaw(["wait", "180"]); }
+
+async function waitForTooltip() {
+  const end = Date.now() + 5_000;
+  while (Date.now() < end) {
+    const result = await evalJson(probe);
+    if (result.tooltip) return result;
+    await browserRaw(["wait", "100"]);
+  }
+  return evalJson(probe);
+}
 
 function assertBase(label, result, expectedStatus) {
   assert(result.runtime?.pixelWorldRuntimeStatus === "ready", `${label}: runtime not ready`, result);
@@ -403,18 +494,16 @@ async function runInteractions(port) {
     assert(hotspot.tabIndex >= 0 || hotspot.role === "button" || hotspot.tag === "BUTTON" || visible(hotspot.label), `A4: hotspot ${hotspot.kind} has no keyboard/accessibility affordance`, hotspot);
   }
   const beforeInteractionState = before.runtime || {};
-  await clickVisible('[data-hotspot-kind="goal"]');
-  await waitShort();
-  const afterPointerHotspot = await evalJson(probe);
-  assert(afterPointerHotspot.tooltip?.text?.includes("Goal: stabilize the first production line"), "A4: visible hotspot click did not expose a goal explanation", afterPointerHotspot.tooltip);
-  await clickVisible('.pixel-world-canvas__hotspot-tooltip-close');
+  const goalClick = await clickVisibleInPlace('[data-hotspot-kind="goal"]');
+  const afterPointerHotspot = await waitForTooltip();
+  assert(afterPointerHotspot.tooltip?.text?.includes("Goal: stabilize the first production line"), "A4: visible hotspot click did not expose a goal explanation", { tooltip: afterPointerHotspot.tooltip, goalClick });
+  await clickRecordedRect(afterPointerHotspot.tooltip.close?.rect, "A4 tooltip close control");
   await waitShort();
   const afterPointerClose = await evalJson(probe);
   assert(!afterPointerClose.tooltip, "A4: visible tooltip close control did not dismiss the explanation", afterPointerClose);
   await evalJson(`(() => { const node = document.querySelector('[data-hotspot-kind="blocker"]'); if (!node) throw new Error("missing blocker hotspot"); node.scrollIntoView({ block: "center" }); node.focus?.(); return JSON.stringify({ active: document.activeElement === node, tag: node.tagName }); })()`);
   await browserRaw(["press", "Enter"]);
-  await waitShort();
-  const afterHotspot = await evalJson(probe);
+  const afterHotspot = await waitForTooltip();
   const explanation = afterHotspot.bodyText.includes("Blocker: iron input is exhausted") || afterHotspot.bodyText.includes("阻塞") || afterHotspot.bodyText.includes("iron input");
   assert(explanation, "A4: blocker hotspot did not expose a readable explanation after keyboard activation", { hotspots: afterHotspot.hotspots, bodyText: afterHotspot.bodyText.slice(-2500) });
   const afterHotspotState = afterHotspot.runtime || {};
@@ -464,6 +553,89 @@ async function runViewportMatrix(port) {
   summary.viewports.resize = resized;
 }
 
+async function runShortLandscapeMatrix(port) {
+  for (const viewport of shortLandscapeViewports) {
+    await openFixture(port, { status: "ready", locale: "en", width: viewport.width, height: viewport.height });
+    const before = await waitForFeedStatus("ready");
+    await clickVisible('[data-viewer-overlay="feed"] > summary');
+    await waitShort();
+    const opened = await evalJson(probe);
+    const feedRect = opened.feed?.rect;
+    const summaryRect = opened.feed?.summaryRect;
+    assert(opened.feed?.open === true, `A3/${viewport.name}: Feed did not open`, opened.feed);
+    assert(feedRect?.width > 0 && feedRect?.height > 0, `A3/${viewport.name}: Feed has no usable area`, opened.feed);
+    const viewportHeight = Number(opened.viewport?.height);
+    const feedTop = Number(feedRect?.y);
+    const feedBottom = Number(feedRect?.bottom);
+    const feedWithinViewport = Number.isFinite(viewportHeight) && Number.isFinite(feedTop) && Number.isFinite(feedBottom)
+      && feedTop >= 0 && feedBottom <= viewportHeight;
+    assert(feedWithinViewport, `A3/${viewport.name}: Feed leaves the viewport`, { feed: feedRect, viewport: opened.viewport, feedTop, feedBottom, viewportHeight });
+    assert(feedRect.height >= Math.max(48, (summaryRect?.height || 0) + 8), `A3/${viewport.name}: Feed is too short for its summary`, { feed: feedRect, summary: summaryRect });
+    assert(opened.feed.clientHeight > 0, `A3/${viewport.name}: Feed client height is zero`, opened.feed);
+    assert(!intersects(feedRect, opened.primary?.rect), `A3/${viewport.name}: Feed overlaps Next Move`, { feed: feedRect, primary: opened.primary?.rect });
+    assert(!intersects(feedRect, opened.receipt?.rect), `A3/${viewport.name}: Feed overlaps Action Receipt`, { feed: feedRect, receipt: opened.receipt?.rect });
+    await browserRaw(["scroll", "down", "320", "--selector", '[data-viewer-overlay="feed"]']);
+    await waitShort();
+    const feedScrolled = await evalJson(probe);
+    assert(feedScrolled.feed?.scrollTop > 0 || feedScrolled.feed?.scrollHeight <= feedScrolled.feed?.clientHeight, `A3/${viewport.name}: expanded Feed detail could not scroll`, feedScrolled.feed);
+    await browserRaw(["scroll", "down", "320", "--selector", '[data-shell-region="next-move-primary"]']);
+    await waitShort();
+    const primaryScrolled = await evalJson(probe);
+    const actionRect = primaryScrolled.primary?.actionRect;
+    assert(primaryScrolled.primary?.scrollTop > 0 || primaryScrolled.primary?.scrollHeight <= primaryScrolled.primary?.clientHeight, `A3/${viewport.name}: Next Move detail could not scroll`, primaryScrolled.primary);
+    assert(actionRect?.width > 0 && actionRect?.height > 0 && actionRect.y >= 0 && actionRect.bottom <= viewportHeight, `A3/${viewport.name}: Next Move action control is not reachable after scroll`, { primary: primaryScrolled.primary, viewport: primaryScrolled.viewport });
+    const screenshot = join(outDir, `a3-${viewport.name}-feed-open.png`);
+    await browserRaw(["screenshot", screenshot], { timeout: 20_000 });
+    summary.shortLandscape[viewport.name] = { viewport, before, opened: { ...opened, screenshot, feedScrolled: feedScrolled.feed, primaryScrolled: primaryScrolled.primary } };
+    await clickVisible('[data-viewer-overlay="feed"] > summary');
+  }
+}
+
+async function runProductionHotspotRegression(port) {
+  // Keep the deterministic bridge/feed transport, but omit every visual-fixture
+  // query and body marker. This exercises production overlay enablement rather
+  // than allowing fixture-only controls to mask it.
+  await openFixture(port, { status: "ready", locale: "zh-CN", width: 390, height: 844, visualFixture: false });
+  await waitForFeedStatus("ready");
+  const initial = await waitForProductionHotspots();
+  assert(initial.visualFixture === false, "R2/production: visual fixture marker unexpectedly enabled", initial);
+  assert(initial.hotspots.length >= 2, "R2/production: production path did not expose hotspot buttons", initial.hotspots);
+  assert(initial.hotspots.every((hotspot) => hotspot.tag === "BUTTON" && hotspot.tabIndex >= 0), "R2/production: hotspot is not keyboard reachable", initial.hotspots);
+
+  const zhGoalClick = await clickVisibleInPlace('[data-hotspot-kind="goal"]');
+  const zhGoal = await waitForTooltip();
+  assert(zhGoal.visualFixture === false, "R2/zh-CN: visual fixture marker unexpectedly enabled", zhGoal);
+  assert(zhGoal.tooltip?.text?.includes("目标"), "R2/zh-CN: tooltip kind did not localize", { tooltip: zhGoal.tooltip, goalClick: zhGoalClick });
+  assert(zhGoal.tooltip?.close?.ariaLabel?.includes("关闭"), "R2/zh-CN: tooltip close label did not localize", zhGoal.tooltip);
+  await clickRecordedRect(zhGoal.tooltip.close?.rect, "R2/zh-CN tooltip close control");
+  await waitShort();
+  const zhClosed = await evalJson(probe);
+  assert(!zhClosed.tooltip, "R2/zh-CN: visible tooltip close did not dismiss", zhClosed);
+
+  await evalJson(`(() => { const node = document.querySelector('[data-hotspot-kind="blocker"]'); if (!node) throw new Error("missing production blocker hotspot"); node.scrollIntoView({ block: "center" }); node.focus(); return JSON.stringify({ active: document.activeElement === node }); })()`);
+  await browserRaw(["press", "Enter"]);
+  const keyboardOpened = await waitForTooltip();
+  assert(keyboardOpened.tooltip?.text?.includes("阻塞"), "R2/production: keyboard inspection did not expose localized blocker tooltip", keyboardOpened);
+  let closeFocused = false;
+  for (let tab = 0; tab < 8; tab += 1) {
+    await browserRaw(["press", "Tab"]);
+    const focus = await evalJson(probe);
+    if (focus.activeElement?.className?.includes("pixel-world-canvas__hotspot-tooltip-close")) {
+      closeFocused = true;
+      assert(focus.activeElement.ariaLabel?.includes("关闭"), "R2/production: focused close control has wrong localized label", focus.activeElement);
+      break;
+    }
+  }
+  assert(closeFocused, "R2/production: Tab could not focus the tooltip close control", await evalJson(probe));
+  await browserRaw(["press", "Escape"]);
+  await waitShort();
+  const afterTabEscape = await evalJson(probe);
+  assert(!afterTabEscape.tooltip, "R2/production: Escape on focused tooltip close did not dismiss", afterTabEscape);
+  const screenshot = join(outDir, "r2-production-zh-hotspot-tab-close.png");
+  await browserRaw(["screenshot", screenshot], { timeout: 20_000 });
+  summary.productionHotspot = { initial, zhGoal, zhClosed, keyboardOpened, afterTabEscape, screenshot };
+}
+
 async function main() {
   if (!skipBuild) {
     const build = spawnSync("npm", ["--prefix", "crates/oasis7_viewer", "run", "build:viewer:bundle"], { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
@@ -478,9 +650,15 @@ async function main() {
   const port = address.port;
   try {
     closeBrowser();
-    await runStatusMatrix(port);
-    await runViewportMatrix(port);
-    await runInteractions(port);
+    if (onlyProduction) {
+      await runProductionHotspotRegression(port);
+    } else {
+      await runStatusMatrix(port);
+      await runViewportMatrix(port);
+      await runShortLandscapeMatrix(port);
+      await runProductionHotspotRegression(port);
+      await runInteractions(port);
+    }
     const consoleOutput = await browserRaw(["console"]);
     writeFileSync(join(outDir, "browser-console.log"), consoleOutput, "utf8");
     assert(!/\[(?:error|pageerror)\]|\b(?:fatal|CONTEXT_LOST_WEBGL)\b/i.test(consoleOutput), "browser console contains runtime errors", { consoleOutput });

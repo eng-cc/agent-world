@@ -222,6 +222,14 @@ function pixelWorldVisualState(renderState) {
     visualHotspots: arrayField(state, "visual_hotspots", "visualHotspots").map(normalizeVisualEntity),
   };
 }
+function PixelWorldHostHotspotLayer(props) {
+  const visualState = () => pixelWorldVisualState(props.renderState());
+  return <For each={visualState().visualHotspots.slice(0, 8)}>{(hotspot, index) => (
+    <PixelWorldHotspot locale={props.locale()} hotspot={hotspot}
+      style={hotspotStyle(hotspot, visualState().worldBounds, index())} onHover={props.onHover}
+      onHotspotInspect={props.onHotspotInspect} onHotspotClear={props.onHotspotClear} />
+  )}</For>;
+}
 function PixelWorldHostVisualLayer(props) {
   const visualState = () => pixelWorldVisualState(props.renderState());
   const selection = () => props.selection?.() || visualState().selection;
@@ -265,18 +273,6 @@ function PixelWorldHostVisualLayer(props) {
               title={`${link.kind}:target`}
             />
           </>
-        )}
-      </For>
-      <For each={visualState().visualHotspots.slice(0, 8)}>
-        {(hotspot, index) => (
-          <PixelWorldHotspot
-            locale={props.locale()}
-            hotspot={hotspot}
-            style={hotspotStyle(hotspot, visualState().worldBounds, index())}
-            onHover={props.onHover}
-            onHotspotInspect={props.onHotspotInspect}
-            onHotspotClear={props.onHotspotClear}
-          />
         )}
       </For>
       <Index each={visualState().locations.slice(0, 8)}>
@@ -601,9 +597,10 @@ function PixelWorldCanvasRenderer(props) {
           selection={props.selection}
           onSelect={props.onSelect}
           onHover={props.onHover}
-          onHotspotInspect={setInspectedHotspot}
-          onHotspotClear={() => setInspectedHotspot(null)}
         />
+        <PixelWorldHostHotspotLayer locale={props.locale} renderState={props.renderState}
+          onHover={props.onHover} onHotspotInspect={setInspectedHotspot}
+          onHotspotClear={() => setInspectedHotspot(null)} />
         <Show when={visualState().goalHighlight}>
           <div class="pixel-world-canvas__callout pixel-world-canvas__callout--goal">
             {`${tr(props.locale(), "目标", "Goal")}: ${visualState().goalHighlight.title}`}
@@ -616,7 +613,7 @@ function PixelWorldCanvasRenderer(props) {
         </Show>
         <Show when={activeHotspot()}>
           <PixelWorldHotspotTooltip
-            locale={props.locale}
+            locale={props.locale()}
             hotspot={activeHotspot()}
             onClose={() => {
               setInspectedHotspot(null);

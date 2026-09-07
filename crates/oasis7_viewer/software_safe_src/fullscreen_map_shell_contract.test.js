@@ -21,6 +21,11 @@ function hasDeclaration(rule, property, valuePattern) {
   return Boolean(match && (!valuePattern || valuePattern.test(match[1])));
 }
 
+function numericDeclaration(rule, property) {
+  const declarationPattern = new RegExp(`(?:^|[;\\s])${property}\\s*:\\s*([0-9]+)`, "i");
+  return Number(rule?.declarations?.match(declarationPattern)?.[1]);
+}
+
 function findRule(source, selectorPattern) {
   return cssRules(source, selectorPattern)[0] || null;
 }
@@ -137,6 +142,54 @@ describe("fullscreen map shell contract", () => {
         expect(/bottom\s*:|inset\s*:[^;]*\d/i.test(sheetDeclarations), routePanel).toBe(true);
         expect(/max-height\s*:/i.test(sheetDeclarations), routePanel).toBe(true);
       }
+    }
+  });
+
+  it("keeps expanded Feed usable in short landscape viewports", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    expect(terminalShellCss).toMatch(
+      /@media\s*\(max-width:\s*1240px\)\s*and\s*\(max-height:\s*640px\)[\s\S]*?\[data-viewer-overlay="feed"\]\[open\][\s\S]*?top:\s*\d+px;[\s\S]*?bottom:\s*calc\([^;]+\);[\s\S]*?max-height:\s*calc\(100dvh[^;]*\)/i,
+    );
+  });
+
+  it("compacts short-landscape Feed chrome while preserving its title and status", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    expect(terminalShellCss).toMatch(
+      /@media\s*\(max-width:\s*1240px\)\s*and\s*\(max-height:\s*640px\)[\s\S]*?\[data-viewer-overlay="feed"\]\[open\]\s+\.panel__eyebrow,[\s\S]*?\[data-viewer-overlay="feed"\]\[open\]\s+\.panel__meta-copy\s*\{[\s\S]*?display:\s*none/i,
+    );
+  });
+
+  it("bounds short-landscape Next Move content inside its receipt-safe band", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    expect(terminalShellCss).toMatch(
+      /@media\s*\(max-width:\s*1240px\)\s*and\s*\(max-height:\s*640px\)[\s\S]*?\[data-viewer-overlay="next-move"\][\s\S]*?height:\s*min\(42dvh,\s*calc\(100dvh\s*-\s*72px\s*-\s*min\(12dvh,\s*48px\)\s*-\s*16px\s*-\s*8px\s*-\s*96px\)\);[\s\S]*?max-height:\s*none;[\s\S]*?overflow-y:\s*auto[\s\S]*?\[data-viewer-overlay="next-move"\]\s+\[data-shell-region="next-move-primary"\][\s\S]*?overflow-y:\s*auto/i,
+    );
+  });
+
+  it("reserves a meaningful Feed body at both supported short-landscape heights", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    expect(terminalShellCss).toMatch(
+      /height:\s*min\(42dvh,\s*calc\(100dvh\s*-\s*72px\s*-\s*min\(12dvh,\s*48px\)\s*-\s*16px\s*-\s*8px\s*-\s*96px\)\)/i,
+    );
+    const feedSummaryHeight = 64;
+    const feedBodyMinimum = 32;
+    for (const viewportHeight of [390, 360]) {
+      const receiptHeight = Math.min(viewportHeight * 0.12, 48);
+      const nextMoveHeight = Math.min(
+        viewportHeight * 0.42,
+        viewportHeight - 72 - receiptHeight - 16 - 8 - feedSummaryHeight - feedBodyMinimum,
+      );
+      const feedHeight = viewportHeight - 72 - receiptHeight - 16 - 8 - nextMoveHeight;
+      expect(feedHeight - feedSummaryHeight, `${viewportHeight}px`).toBeGreaterThanOrEqual(feedBodyMinimum);
+    }
+  });
+
+  it("keeps hotspots above selected entity markers for pointer inspection", async () => {
+    const { viewerHtml, compatHtml } = await readViewerHtml();
+    for (const html of [viewerHtml, compatHtml]) {
+      const hotspot = findRule(html, /\.pixel-world-hotspot(?:\s|$)/);
+      const selectedEntity = findRule(html, /\.pixel-world-entity\[data-selected="true"\],/);
+      expect(numericDeclaration(hotspot, "z-index")).toBeGreaterThan(numericDeclaration(selectedEntity, "z-index"));
     }
   });
 

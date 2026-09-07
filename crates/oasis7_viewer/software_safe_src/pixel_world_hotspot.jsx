@@ -84,6 +84,13 @@ export function PixelWorldHotspotTooltip(props) {
         type="button"
         class="pixel-world-canvas__hotspot-tooltip-close"
         aria-label={tr(props.locale, "关闭热点说明", "Close hotspot explanation")}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            props.onClose?.();
+          }
+        }}
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();

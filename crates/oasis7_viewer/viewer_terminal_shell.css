@@ -1211,3 +1211,39 @@ body {
     display: none;
   }
 }
+
+/* On short landscape screens, the normal portrait-safe offsets leave no Feed
+ * viewport. Compress the secondary bands and keep an explicit scroll region
+ * between the top chrome and those bands. */
+@media (max-width: 1240px) and (max-height: 640px) {
+  [data-viewer-overlay="receipt"] {
+    max-height: min(12dvh, 48px);
+  }
+
+  [data-viewer-overlay="next-move"] {
+    bottom: calc(48px + 16px);
+    /* Keep a 64px Feed summary plus a 32px scroll body at 844x390 and
+     * 640x360; Next Move remains the largest band that fits that budget. */
+    height: min(42dvh, calc(100dvh - 72px - min(12dvh, 48px) - 16px - 8px - 96px));
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  [data-viewer-overlay="next-move"] [data-shell-region="next-move-primary"],
+  [data-viewer-overlay="next-move"] [data-shell-region="supporting-context"] {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  [data-viewer-overlay="feed"][open] .panel__eyebrow,
+  [data-viewer-overlay="feed"][open] .panel__meta-copy {
+    display: none;
+  }
+
+  [data-viewer-overlay="feed"][open] {
+    top: 72px;
+    bottom: calc(48px + 16px + min(42dvh, calc(100dvh - 72px - min(12dvh, 48px) - 16px - 8px - 96px)) + 8px);
+    max-height: calc(100dvh - 72px - 48px - 16px - min(42dvh, calc(100dvh - 72px - min(12dvh, 48px) - 16px - 8px - 96px)) - 8px);
+  }
+}

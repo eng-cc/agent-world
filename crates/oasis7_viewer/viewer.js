@@ -10427,6 +10427,13 @@ function PixelWorldHotspotTooltip(props) {
       event.stopPropagation();
       props.onClose?.();
     };
+    _el$5.$$keydown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        props.onClose?.();
+      }
+    };
     createRenderEffect((_p$) => {
       var _v$6 = pixelWorldHotspotTooltipId(hotspot()), _v$7 = tr$3(props.locale, "关闭热点说明", "Close hotspot explanation");
       _v$6 !== _p$.e && setAttribute(_el$3, "id", _p$.e = _v$6);
@@ -10660,6 +10667,32 @@ function pixelWorldVisualState(renderState) {
     visualHotspots: arrayField(state2, "visual_hotspots", "visualHotspots").map(normalizeVisualEntity)
   };
 }
+function PixelWorldHostHotspotLayer(props) {
+  const visualState = () => pixelWorldVisualState(props.renderState());
+  return createComponent(For, {
+    get each() {
+      return visualState().visualHotspots.slice(0, 8);
+    },
+    children: (hotspot, index) => createComponent(PixelWorldHotspot, {
+      get locale() {
+        return props.locale();
+      },
+      hotspot,
+      get style() {
+        return hotspotStyle(hotspot, visualState().worldBounds, index());
+      },
+      get onHover() {
+        return props.onHover;
+      },
+      get onHotspotInspect() {
+        return props.onHotspotInspect;
+      },
+      get onHotspotClear() {
+        return props.onHotspotClear;
+      }
+    })
+  });
+}
 function PixelWorldHostVisualLayer(props) {
   const visualState = () => pixelWorldVisualState(props.renderState());
   const selection = () => props.selection?.() || visualState().selection;
@@ -10732,28 +10765,6 @@ function PixelWorldHostVisualLayer(props) {
       });
       return _el$7;
     })()]
-  }), createComponent(For, {
-    get each() {
-      return visualState().visualHotspots.slice(0, 8);
-    },
-    children: (hotspot, index) => createComponent(PixelWorldHotspot, {
-      get locale() {
-        return props.locale();
-      },
-      hotspot,
-      get style() {
-        return hotspotStyle(hotspot, visualState().worldBounds, index());
-      },
-      get onHover() {
-        return props.onHover;
-      },
-      get onHotspotInspect() {
-        return props.onHotspotInspect;
-      },
-      get onHotspotClear() {
-        return props.onHotspotClear;
-      }
-    })
   }), createComponent(Index, {
     get each() {
       return visualState().locations.slice(0, 8);
@@ -11169,6 +11180,17 @@ function PixelWorldCanvasRenderer(props) {
       },
       get onHover() {
         return props.onHover;
+      }
+    }), null);
+    insert(_el$15, createComponent(PixelWorldHostHotspotLayer, {
+      get locale() {
+        return props.locale;
+      },
+      get renderState() {
+        return props.renderState;
+      },
+      get onHover() {
+        return props.onHover;
       },
       onHotspotInspect: setInspectedHotspot,
       onHotspotClear: () => setInspectedHotspot(null)
@@ -11200,7 +11222,7 @@ function PixelWorldCanvasRenderer(props) {
       get children() {
         return createComponent(PixelWorldHotspotTooltip, {
           get locale() {
-            return props.locale;
+            return props.locale();
           },
           get hotspot() {
             return activeHotspot();

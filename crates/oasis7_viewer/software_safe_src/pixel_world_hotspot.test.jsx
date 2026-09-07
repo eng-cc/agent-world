@@ -38,4 +38,12 @@ describe("pixel world hotspot controls", () => {
     fireEvent.click(close);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("closes the explanation when Escape is pressed from the close control", () => {
+    const onClose = vi.fn();
+    render(() => <PixelWorldHotspotTooltip locale="en" hotspot={hotspot} onClose={onClose} />);
+    const close = screen.getByRole("button", { name: "Close hotspot explanation" });
+    fireEvent.keyDown(close, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
