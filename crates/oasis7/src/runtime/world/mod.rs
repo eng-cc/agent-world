@@ -20,6 +20,7 @@ mod capability_authorization_events;
 mod capability_authorization_publication;
 mod capability_authorization_state;
 mod capability_authorization_validation;
+mod capability_effect_receipt_projection;
 mod economy;
 mod effect_publication;
 #[cfg(test)]

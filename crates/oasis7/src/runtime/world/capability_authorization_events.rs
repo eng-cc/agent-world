@@ -69,6 +69,32 @@ impl World {
         )
     }
 
+    pub(super) fn prepare_raw_effect_receipt_commit(
+        &self,
+        event: &CapabilityAuthorizationEvent,
+    ) -> Result<
+        super::capability_effect_receipt_projection::PreparedCapabilityEffectReceipt,
+        WorldError,
+    > {
+        let CapabilityAuthorizationEvent::EffectReceiptCommitted {
+            intent_id,
+            authorization_receipt_id,
+            effect_receipt_id,
+        } = event
+        else {
+            return Err(deny(
+                "effect receipt projection requires an effect receipt commit event",
+            ));
+        };
+        prepare_effect_receipt_commit(
+            self,
+            event,
+            intent_id,
+            authorization_receipt_id,
+            effect_receipt_id,
+        )
+    }
+
     pub(super) fn verify_capability_authority_finality(
         &self,
         record: &CapabilityAuthorityRecord,
@@ -241,17 +267,9 @@ impl World {
                 self.prepare_raw_command_commit(event, time)?.install(self);
                 return Ok(());
             }
-            CapabilityAuthorizationEvent::EffectReceiptCommitted {
-                intent_id,
-                authorization_receipt_id,
-                effect_receipt_id,
-            } => {
-                apply_effect_receipt_commit(
-                    self,
-                    intent_id,
-                    authorization_receipt_id,
-                    effect_receipt_id,
-                )?;
+            CapabilityAuthorizationEvent::EffectReceiptCommitted { .. } => {
+                self.prepare_raw_effect_receipt_commit(event)?.install(self);
+                return Ok(());
             }
         }
         self.refresh_capability_authorization_root()
@@ -793,12 +811,16 @@ fn apply_command_commit(
     )
 }
 
-fn apply_effect_receipt_commit(
-    world: &mut World,
+fn prepare_effect_receipt_commit(
+    world: &World,
+    event: &CapabilityAuthorizationEvent,
     intent_id: &str,
     authorization_receipt_id: &str,
     effect_receipt_id: &str,
-) -> Result<(), WorldError> {
+) -> Result<super::capability_effect_receipt_projection::PreparedCapabilityEffectReceipt, WorldError>
+{
+    let mut capability_authorization_receipts = world.capability_authorization_receipts.clone();
+    let mut capability_effect_receipt_links = world.capability_effect_receipt_links.clone();
     if intent_id.trim().is_empty()
         || authorization_receipt_id.trim().is_empty()
         || effect_receipt_id.trim().is_empty()
@@ -818,15 +840,31 @@ fn apply_effect_receipt_commit(
                     || receipt.committed_effect_receipt_id.as_deref() == Some(effect_receipt_id)
             });
         if already_committed {
-            return Ok(());
+            let capability_authorization_root = world
+                .compute_capability_authorization_root_with_full_projection(
+                    &world.capability_grants_v2,
+                    &world.capability_revocation_state,
+                    &world.capability_invocation_contexts,
+                    &world.capability_budget_accounts,
+                    &world.capability_nonce_records,
+                    &capability_authorization_receipts,
+                    &capability_effect_receipt_links,
+                )?;
+            return Ok(
+                super::capability_effect_receipt_projection::PreparedCapabilityEffectReceipt {
+                    event: event.clone(),
+                    capability_authorization_receipts,
+                    capability_effect_receipt_links,
+                    capability_authorization_root,
+                },
+            );
         }
         return Err(deny("effect receipt authorization link is missing"));
     };
     if link.authorization_receipt_id != authorization_receipt_id {
         return Err(deny("effect receipt authorization link does not match"));
     }
-    let audit = world
-        .capability_authorization_receipts
+    let audit = capability_authorization_receipts
         .get_mut(authorization_receipt_id)
         .ok_or_else(|| deny("effect receipt authorization link has no audit receipt"))?;
     // One authorization command may emit multiple independently receipted
@@ -839,8 +877,25 @@ fn apply_effect_receipt_commit(
     audit
         .committed_effect_receipt_ids
         .insert(effect_receipt_id.to_string());
-    world.capability_effect_receipt_links.remove(intent_id);
-    Ok(())
+    capability_effect_receipt_links.remove(intent_id);
+    let capability_authorization_root = world
+        .compute_capability_authorization_root_with_full_projection(
+            &world.capability_grants_v2,
+            &world.capability_revocation_state,
+            &world.capability_invocation_contexts,
+            &world.capability_budget_accounts,
+            &world.capability_nonce_records,
+            &capability_authorization_receipts,
+            &capability_effect_receipt_links,
+        )?;
+    Ok(
+        super::capability_effect_receipt_projection::PreparedCapabilityEffectReceipt {
+            event: event.clone(),
+            capability_authorization_receipts,
+            capability_effect_receipt_links,
+            capability_authorization_root,
+        },
+    )
 }
 
 fn validate_grant_body(grant: &CapabilityGrantV2, time: WorldTime) -> Result<(), WorldError> {

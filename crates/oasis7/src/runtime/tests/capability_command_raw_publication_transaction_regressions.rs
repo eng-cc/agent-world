@@ -2,7 +2,7 @@ use super::super::*;
 use oasis7_wasm_abi::{ModuleEffectIntent, ModuleOutput};
 use serde_json::json;
 
-fn captured_command() -> (World, CapabilityAuthorizationEvent) {
+pub(super) fn captured_command() -> (World, CapabilityAuthorizationEvent) {
     let mut world = super::capability_grant_v2::fixture_world();
     let grant =
         super::capability_grant_v2::signed_grant(super::capability_grant_v2::grant_json(json!({})));

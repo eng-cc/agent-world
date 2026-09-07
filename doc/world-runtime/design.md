@@ -433,6 +433,14 @@ All link checks finish before those staged maps and the root are installed with
 the event envelope. This path does not execute a command or replace the
 `TrustedCommandStage` live command boundary.
 
+Raw `EffectReceiptCommitted` likewise has a replay-equivalent, full-event-bound
+prepared delta, but owns only authorization receipts and effect links. It
+preserves the reducer's blank-field, missing-link idempotency, link-binding,
+and audit lookup order, accepts the event's arbitrary non-empty effect receipt
+id, and derives the full authorization root with the other five maps borrowed.
+It neither consumes effect queues nor signs or appends an external receipt;
+those remain coupled exclusively in specialized `ingest_receipt` publication.
+
 The trusted capability-command executor and public direct module call/command
 now use the same architectural seam without cloning canonical `World`: a
 borrowed-base typed stage owns only the

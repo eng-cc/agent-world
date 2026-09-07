@@ -49,6 +49,9 @@ pub(super) enum PreparedEventStateDelta {
     CapabilityCommandCommit(
         super::super::capability_authorization_command_projection::PreparedCapabilityCommandCommit,
     ),
+    CapabilityEffectReceipt(
+        super::super::capability_effect_receipt_projection::PreparedCapabilityEffectReceipt,
+    ),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -166,6 +169,10 @@ impl PreparedEventStateDelta {
                 body,
                 WorldEventBody::CapabilityAuthorization(event) if prepared.matches_event(event)
             ),
+            Self::CapabilityEffectReceipt(prepared) => matches!(
+                body,
+                WorldEventBody::CapabilityAuthorization(event) if prepared.matches_event(event)
+            ),
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -270,6 +277,9 @@ impl PreparedEventStateDelta {
             Self::CapabilityCommandCommit(_) => {
                 unreachable!("capability command commit uses sidecar state")
             }
+            Self::CapabilityEffectReceipt(_) => {
+                unreachable!("capability effect receipt uses sidecar state")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -358,6 +368,7 @@ impl PreparedEventStateDelta {
             Self::GovernanceRegistry(prepared) => prepared.install(world),
             Self::CapabilityAuthorization(prepared) => prepared.install(world),
             Self::CapabilityCommandCommit(prepared) => prepared.install(world),
+            Self::CapabilityEffectReceipt(prepared) => prepared.install(world),
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -534,6 +545,11 @@ impl World {
                 event @ CapabilityAuthorizationEvent::CommandCommitted { .. },
             ) => Some(PreparedEventStateDelta::CapabilityCommandCommit(
                 self.prepare_raw_command_commit(event, self.state.time)?,
+            )),
+            WorldEventBody::CapabilityAuthorization(
+                event @ CapabilityAuthorizationEvent::EffectReceiptCommitted { .. },
+            ) => Some(PreparedEventStateDelta::CapabilityEffectReceipt(
+                self.prepare_raw_effect_receipt_commit(event)?,
             )),
             _ => prepared_governance_events::prepare(self, &body)?
                 .or_else(|| PreparedEventStateDelta::for_body(&body)),
@@ -909,7 +925,8 @@ impl World {
                 self.state_root_hash_with_governance_registry_overlay(prepared)?
             }
             PreparedEventStateDelta::CapabilityAuthorization(_)
-            | PreparedEventStateDelta::CapabilityCommandCommit(_) => {
+            | PreparedEventStateDelta::CapabilityCommandCommit(_)
+            | PreparedEventStateDelta::CapabilityEffectReceipt(_) => {
                 self.current_state_root_hash()?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
