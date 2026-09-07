@@ -199,6 +199,7 @@ class FullNetworkCleanRoomPlanTests(unittest.TestCase):
         _write_fixture_json(self.signing.context, context)
         self.signing.context_digest = _fixture_digest(self.signing.context)
         trust = json.loads(self.signing.trust.read_text(encoding="utf-8"))
+        trust["rotation_epoch"] = context["rotation_epoch"]
         for signer in trust["allowlist"]:
             signer["valid_from"] = context["capture_start"]
             signer["valid_until"] = context["expires_at"]
