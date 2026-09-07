@@ -436,6 +436,24 @@ body {
   list-style: none;
 }
 
+.world-feed__summary-line {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.world-feed__summary-line .panel__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.world-feed__summary-line .world-feed__status-badge {
+  flex: 0 0 auto;
+}
+
 .world-feed__summary::-webkit-details-marker {
   display: none;
 }
@@ -464,6 +482,39 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.world-feed__status-badge::before,
+.pixel-world-readout__status::before {
+  display: inline-block;
+  margin-right: 5px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.world-feed__status-badge--ready::before,
+.pixel-world-readout__status--ready::before {
+  content: "•";
+}
+
+.world-feed__status-badge--replay::before,
+.pixel-world-readout__status--replay::before {
+  content: "↺";
+}
+
+.world-feed__status-badge--empty::before,
+.pixel-world-readout__status--empty::before {
+  content: "—";
+}
+
+.world-feed__status-badge--gap::before,
+.pixel-world-readout__status--gap::before {
+  content: "!";
+}
+
+.world-feed__status-badge--unavailable::before,
+.pixel-world-readout__status--unavailable::before {
+  content: "×";
 }
 
 .world-feed__notice,
@@ -774,6 +825,31 @@ body {
     max-height: min(62dvh, 520px);
   }
 
+  [data-viewer-overlay="feed"][open] {
+    position: fixed;
+    top: 160px;
+    bottom: 300px;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .pixel-world-canvas__hotspot-tooltip {
+    top: 112px;
+    right: 10px;
+    width: min(420px, calc(100% - 20px));
+    max-width: calc(100% - 20px);
+  }
+
+  .pixel-world-host:has(+ [data-viewer-overlay="feed"]:not([open])) .pixel-world-canvas__selection {
+    top: 160px;
+  }
+
+  .stack:has(> [data-viewer-overlay="feed"]:not([open])) > [data-viewer-overlay="world-hud"] .pixel-world-canvas__selection {
+    top: 160px;
+  }
+
   [data-viewer-overlay="world-summary"]:has(#viewer-gameplay-details[open]) {
     inset: 82px 12px 72px;
     width: auto;
@@ -925,7 +1001,17 @@ body {
   }
 
   [data-viewer-overlay="world-hud"] .pixel-world-canvas__selection {
-    display: none;
+    display: flex;
+    top: 104px;
+    right: auto;
+    left: 10px;
+    width: fit-content;
+    max-width: calc(100vw - 20px);
+    max-height: 48px;
+    min-width: 0;
+    overflow: auto;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   [data-viewer-shell="player-fullscreen"] .pixel-world-readout {
@@ -937,6 +1023,20 @@ body {
     top: 104px;
   }
 
+  [data-viewer-overlay="feed"][open] {
+    top: 160px;
+    bottom: calc(144px + min(38dvh, 280px) + 8px);
+  }
+
+  .pixel-world-canvas__hotspot-tooltip {
+    top: auto;
+    right: 10px;
+    bottom: calc(144px + min(38dvh, 280px) + 8px);
+    left: 10px;
+    width: auto;
+    max-width: none;
+  }
+
   [data-viewer-overlay="next-move"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: calc(100vw - 20px);
@@ -945,6 +1045,28 @@ body {
     bottom: calc(96px + 48px);
     max-height: min(38dvh, 280px);
     overflow-y: auto;
+  }
+
+  .pixel-world-command-cell--next .pixel-world-command-cell__value {
+    display: block;
+    min-width: 0;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: unset;
+  }
+
+  .pixel-world-command-cell--next .pixel-world-command-cell__detail {
+    display: block;
+    max-height: min(20dvh, 120px);
+    min-width: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+  }
+
+  .pixel-world-command-cell--next .pixel-world-command-cell__blocker-chip {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   [data-viewer-overlay="next-move"] .pixel-world-command-cell--next {

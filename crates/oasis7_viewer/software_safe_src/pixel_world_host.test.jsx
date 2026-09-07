@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@solidjs/testing-library";
+import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const runtimeMock = vi.hoisted(() => ({
@@ -861,44 +861,6 @@ describe("pixel world host", () => {
     expect(canvas.querySelector(".pixel-world-route")).toBeNull();
     expect(canvas.querySelector(".pixel-world-canvas__selection")).toHaveTextContent("Selected: Agent 0");
     expect(runtimeMock.deriveRenderState).toHaveBeenCalled();
-  }, HEAVY_UI_TEST_TIMEOUT_MS);
-
-  it("shows the exact hotspot label only while its hover identity remains in render state", async () => {
-    runtimeMock.deriveRenderState = vi.fn((input) => ({
-      ...buildTestRustRenderState(input),
-      visualHotspots: [{
-        id: "hotspot-blocker",
-        label: "Blocked route",
-        kind: "blocker",
-        pos: { x_cm: 5_000_000, y_cm: 2_500_000, z_cm: 0 },
-      }],
-    }));
-
-    await renderPixelWorldHost();
-    await waitFor(() => {
-      expect(runtimeMock.onEvent).toEqual(expect.any(Function));
-    });
-
-    runtimeMock.onEvent({
-      type: "hover_entity",
-      selection: { kind: "hotspot", id: "hotspot-blocker" },
-    });
-    await waitFor(() => {
-      expect(document.querySelector("[data-hotspot-tooltip]")).toHaveTextContent("Blocked route");
-    });
-
-    runtimeMock.onEvent({ type: "hover_entity", selection: null });
-    await waitFor(() => {
-      expect(document.querySelector("[data-hotspot-tooltip]")).toBeNull();
-    });
-
-    runtimeMock.onEvent({
-      type: "hover_entity",
-      selection: { kind: "hotspot", id: "removed-hotspot" },
-    });
-    await waitFor(() => {
-      expect(document.querySelector("[data-hotspot-tooltip]")).toBeNull();
-    });
   }, HEAVY_UI_TEST_TIMEOUT_MS);
 
   it("makes the rendered canvas focusable with a read-only accessible world description", async () => {

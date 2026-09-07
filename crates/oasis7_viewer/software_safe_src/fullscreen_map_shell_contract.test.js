@@ -400,6 +400,37 @@ describe("fullscreen map shell contract", () => {
     expect(mobileBlock).toMatch(/\.pixel-world-command-cell--next[^{]*\{[^}]*grid-column\s*:\s*1\s*\/\s*-1/i);
     expect(mobileBlock).not.toMatch(/\[data-viewer-overlay=["']next-move["']\][^{]*\{[^}]*overflow\s*:\s*auto/i);
   });
+
+  it("keeps an expanded World Feed inside the safe area above Next Move and Action Receipt", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    const tabletBlock = terminalShellCss.match(/@media\s*\(max-width:\s*1240px\)[\s\S]*?(?=@media\s*\(max-width:\s*640px\))/i)?.[0] || "";
+    const mobileBlock = terminalShellCss.match(/@media\s*\(max-width:\s*640px\)[\s\S]*$/i)?.[0] || "";
+    expect(tabletBlock).toMatch(/\[data-viewer-overlay=["']feed["']\]\[open\][^{]*\{[^}]*position\s*:\s*fixed/i);
+    expect(tabletBlock).toMatch(/\[data-viewer-overlay=["']feed["']\]\[open\][^{]*\{[^}]*bottom\s*:\s*300px/i);
+    expect(tabletBlock).toMatch(/\[data-viewer-overlay=["']feed["']\]\[open\][^{]*\{[^}]*overflow-y\s*:\s*auto/i);
+    expect(mobileBlock).toMatch(/\[data-viewer-overlay=["']feed["']\]\[open\][^{]*\{[^}]*top\s*:\s*160px/i);
+    expect(mobileBlock).toMatch(/\[data-viewer-overlay=["']feed["']\]\[open\][^{]*\{[^}]*bottom\s*:\s*calc\(144px\s*\+\s*min\(38dvh,\s*280px\)\s*\+\s*8px\)/i);
+  });
+
+  it("moves the selected chip when normal AppShell places World Summary between Host and Feed", async () => {
+    const [{ terminalShellCss }, mainSource] = await Promise.all([
+      readViewerHtml(),
+      readFile("software_safe_src/main.jsx", "utf8"),
+    ]);
+    expect(mainSource).toMatch(/<PixelWorldHost[\s\S]*<WorldSummaryPanel[\s\S]*<WorldFeedSurface/);
+    const tabletBlock = terminalShellCss.match(/@media\s*\(max-width:\s*1240px\)[\s\S]*?(?=@media\s*\(max-width:\s*640px\))/i)?.[0] || "";
+    expect(tabletBlock).toMatch(/\.stack:has\(>\s*\[data-viewer-overlay=["']feed["']\]:not\(\[open\]\)\)\s*>\s*\[data-viewer-overlay=["']world-hud["']\][^{]*\{[^}]*top:\s*160px/i);
+  });
+
+  it("allows long Next Move and blocker copy to wrap and remain scrollable on mobile", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    const mobileBlock = terminalShellCss.match(/@media\s*\(max-width:\s*640px\)[\s\S]*$/i)?.[0] || "";
+    expect(mobileBlock).toMatch(/\.pixel-world-command-cell--next\s+\.pixel-world-command-cell__detail[^{]*\{[^}]*display\s*:\s*block/i);
+    expect(mobileBlock).toMatch(/\.pixel-world-command-cell--next\s+\.pixel-world-command-cell__detail[^{]*\{[^}]*overflow-y\s*:\s*auto/i);
+    expect(mobileBlock).toMatch(/\.pixel-world-command-cell--next\s+\.pixel-world-command-cell__value[^{]*\{[^}]*display\s*:\s*block/i);
+    expect(mobileBlock).toMatch(/\.pixel-world-command-cell--next\s+\.pixel-world-command-cell__value[^{]*\{[^}]*-webkit-line-clamp\s*:\s*unset/i);
+    expect(mobileBlock).toMatch(/\.pixel-world-command-cell--next\s+\.pixel-world-command-cell__value[^{]*\{[^}]*overflow-wrap\s*:\s*anywhere/i);
+  });
 });
 
 describe("headed visual smoke serving contract", () => {

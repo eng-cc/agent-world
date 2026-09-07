@@ -17,11 +17,24 @@ function statusCopy(locale, tr, status) {
   return tr(locale, copy[0], copy[1]);
 }
 
+function statusBadgeLabel(locale, tr, status) {
+  const copy = {
+    loading: ["同步中", "SYNCING"],
+    ready: ["实时", "LIVE"],
+    empty: ["暂无动态", "NO EVENTS"],
+    replay: ["回放", "REPLAY"],
+    gap: ["断档", "GAP"],
+    unavailable: ["不可用", "UNAVAILABLE"],
+  }[status] || ["不可用", "UNAVAILABLE"];
+  return tr(locale, copy[0], copy[1]);
+}
+
 function statusBadgeClass(status) {
-  if (status === "ready") return "badge badge--accent";
-  if (status === "replay") return "badge badge--accent";
-  if (status === "gap" || status === "unavailable") return "badge badge--warn";
-  return "badge";
+  const stateClass = `world-feed__status-badge world-feed__status-badge--${status || "unknown"}`;
+  if (status === "ready") return `badge badge--accent ${stateClass}`;
+  if (status === "replay") return `badge badge--accent ${stateClass}`;
+  if (status === "gap" || status === "unavailable") return `badge badge--warn ${stateClass}`;
+  return `badge ${stateClass}`;
 }
 
 function reasonCopy(locale, tr, feed) {
@@ -101,6 +114,7 @@ function WorldFeedPanel(props) {
   );
   const status = () => String(feed().status || "unavailable");
   const statusLabel = () => statusCopy(locale(), tr, status());
+  const summaryStatusLabel = () => statusBadgeLabel(locale(), tr, status());
   const shouldReload = () => status() !== "unavailable"
     && Boolean(feed().snapshotReloadRequired || status() === "gap");
 
@@ -115,7 +129,10 @@ function WorldFeedPanel(props) {
     >
       <summary class="panel__header panel__header--stack world-feed__summary">
         <div class="panel__eyebrow">{tr(locale(), "环境上下文", "Ambient Context")}</div>
-        <div class="panel__title">{tr(locale(), "World Feed", "World Feed")}</div>
+        <div class="world-feed__summary-line">
+          <div class="panel__title">{tr(locale(), "World Feed", "World Feed")}</div>
+          <span class={statusBadgeClass(status())} data-world-feed-summary-status={status()}>{summaryStatusLabel()}</span>
+        </div>
         <div class="panel__meta-copy">
           {tr(locale(), "只读的运行时环境投影；不会替代 Action Receipt，也不会证明玩家动作成功。", "Read-only runtime context; it never replaces Action Receipt or proves a player action succeeded.")}
         </div>
