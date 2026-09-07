@@ -40,8 +40,12 @@ impl World {
             main_token_bridge_total_amount,
             main_token_bridge_distributions,
         };
-        let mut preview_state = self.state.clone();
-        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+        if let Err(err) =
+            super::super::node_points_settlement_publication::PreparedNodePointsSettlement::prepare(
+                &self.state,
+                &event,
+            )
+        {
             return DomainEvent::ActionRejected {
                 action_id,
                 reason: RejectReason::RuleDenied {

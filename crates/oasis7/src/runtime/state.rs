@@ -57,7 +57,7 @@ pub(crate) mod module_release_transition;
 mod projection;
 #[path = "state_defaults.rs"]
 mod state_defaults;
-mod support;
+pub(crate) mod support;
 
 use self::support::*;
 pub(crate) use command_projection::{

@@ -91,6 +91,9 @@ pub struct WorldStateProjection<'a> {
     power_redemption_overlay: Option<
         &'a crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
     >,
+    node_points_settlement_overlay: Option<
+        &'a crate::runtime::world::node_points_settlement_publication::PreparedNodePointsSettlement,
+    >,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -107,6 +110,7 @@ impl<'a> WorldStateProjection<'a> {
             agent_intent_overlay: None,
             economy_data_overlay: None,
             power_redemption_overlay: None,
+            node_points_settlement_overlay: None,
         }
     }
 
@@ -139,6 +143,14 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
     ) -> Self {
         self.power_redemption_overlay = Some(overlay);
+        self
+    }
+
+    pub(crate) fn with_node_points_settlement_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::node_points_settlement_publication::PreparedNodePointsSettlement,
+    ) -> Self {
+        self.node_points_settlement_overlay = Some(overlay);
         self
     }
 
@@ -209,7 +221,7 @@ impl Serialize for WorldState {
         S: serde::Serializer,
     {
         serialize_world_state(
-            self, None, None, None, None, None, None, None, None, None, None, serializer,
+            self, None, None, None, None, None, None, None, None, None, None, None, serializer,
         )
     }
 }
@@ -240,6 +252,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.agent_intent_overlay,
             self.economy_data_overlay,
             self.power_redemption_overlay,
+            self.node_points_settlement_overlay,
             serializer,
         )
     }
@@ -431,6 +444,9 @@ fn serialize_world_state<S>(
     power_redemption_overlay: Option<
         &crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
     >,
+    node_points_settlement_overlay: Option<
+        &crate::runtime::world::node_points_settlement_publication::PreparedNodePointsSettlement,
+    >,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -580,7 +596,9 @@ where
     } else {
         output.serialize_field("resources", &state.resources)?;
     }
-    if let Some(overlay) = power_redemption_overlay {
+    if let Some(overlay) = node_points_settlement_overlay {
+        overlay.serialize_materials(state, &mut output)?;
+    } else if let Some(overlay) = power_redemption_overlay {
         overlay.serialize_materials(state, &mut output)?;
     } else if let Some(overlay) = economy_data_overlay {
         overlay.serialize_material_fields(state, &mut output)?;
@@ -818,8 +836,12 @@ where
         )?;
     }
     output.serialize_field("main_token_config", &state.main_token_config)?;
-    output.serialize_field("main_token_supply", &state.main_token_supply)?;
-    output.serialize_field("main_token_balances", &state.main_token_balances)?;
+    if let Some(overlay) = node_points_settlement_overlay {
+        overlay.serialize_main_token_accounts(state, &mut output)?;
+    } else {
+        output.serialize_field("main_token_supply", &state.main_token_supply)?;
+        output.serialize_field("main_token_balances", &state.main_token_balances)?;
+    }
     output.serialize_field(
         "restricted_starter_claim_grants",
         &state.restricted_starter_claim_grants,
@@ -832,10 +854,14 @@ where
         "main_token_epoch_issuance_records",
         &state.main_token_epoch_issuance_records,
     )?;
-    output.serialize_field(
-        "main_token_treasury_balances",
-        &state.main_token_treasury_balances,
-    )?;
+    if let Some(overlay) = node_points_settlement_overlay {
+        overlay.serialize_treasury(state, &mut output)?;
+    } else {
+        output.serialize_field(
+            "main_token_treasury_balances",
+            &state.main_token_treasury_balances,
+        )?;
+    }
     output.serialize_field("main_token_claim_nonces", &state.main_token_claim_nonces)?;
     output.serialize_field(
         "main_token_transfer_nonces",
@@ -845,10 +871,14 @@ where
         "main_token_scheduled_policy_updates",
         &state.main_token_scheduled_policy_updates,
     )?;
-    output.serialize_field(
-        "main_token_node_points_bridge_records",
-        &state.main_token_node_points_bridge_records,
-    )?;
+    if let Some(overlay) = node_points_settlement_overlay {
+        overlay.serialize_bridge(state, &mut output)?;
+    } else {
+        output.serialize_field(
+            "main_token_node_points_bridge_records",
+            &state.main_token_node_points_bridge_records,
+        )?;
+    }
     output.serialize_field(
         "main_token_treasury_distribution_records",
         &state.main_token_treasury_distribution_records,
@@ -858,23 +888,34 @@ where
         &state.restricted_starter_claim_liveops_pool_top_up_records,
     )?;
     output.serialize_field("reward_asset_config", &state.reward_asset_config)?;
-    if let Some(overlay) = power_redemption_overlay {
+    if let Some(overlay) = node_points_settlement_overlay {
+        overlay.serialize_node_balances(state, &mut output)?;
+        output.serialize_field("protocol_power_reserve", &state.protocol_power_reserve)?;
+    } else if let Some(overlay) = power_redemption_overlay {
         overlay.serialize_node_balances(state, &mut output)?;
         overlay.serialize_reserve(state, &mut output)?;
     } else {
         output.serialize_field("node_asset_balances", &state.node_asset_balances)?;
         output.serialize_field("protocol_power_reserve", &state.protocol_power_reserve)?;
     }
-    output.serialize_field("reward_mint_records", &state.reward_mint_records)?;
+    if let Some(overlay) = node_points_settlement_overlay {
+        overlay.serialize_reward_mints(&mut output)?;
+    } else {
+        output.serialize_field("reward_mint_records", &state.reward_mint_records)?;
+    }
     if let Some(overlay) = power_redemption_overlay {
         overlay.serialize_nonces(state, &mut output)?;
     } else {
         output.serialize_field("node_redeem_nonces", &state.node_redeem_nonces)?;
     }
-    output.serialize_field(
-        "system_order_pool_budgets",
-        &state.system_order_pool_budgets,
-    )?;
+    if let Some(overlay) = node_points_settlement_overlay {
+        overlay.serialize_budgets(state, &mut output)?;
+    } else {
+        output.serialize_field(
+            "system_order_pool_budgets",
+            &state.system_order_pool_budgets,
+        )?;
+    }
     output.serialize_field(
         "node_identity_bindings",
         governance_registry_overlay.map_or(&state.node_identity_bindings, |o| &o.identity_bindings),

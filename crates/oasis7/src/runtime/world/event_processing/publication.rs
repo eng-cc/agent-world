@@ -55,6 +55,9 @@ pub(super) enum PreparedEventStateDelta {
     AgentIntent(super::super::agent_intent_publication::PreparedAgentIntent),
     EconomyData(super::super::economy_data_publication::PreparedEconomyDataEvent),
     PowerRedemption(super::super::power_redemption_publication::PreparedPowerRedemptionEvent),
+    NodePointsSettlement(
+        super::super::node_points_settlement_publication::PreparedNodePointsSettlement,
+    ),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -185,6 +188,9 @@ impl PreparedEventStateDelta {
             Self::PowerRedemption(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
+            Self::NodePointsSettlement(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -299,6 +305,9 @@ impl PreparedEventStateDelta {
             Self::PowerRedemption(_) => {
                 unreachable!("power redemption uses a sparse state projection")
             }
+            Self::NodePointsSettlement(_) => {
+                unreachable!("node points settlement uses a sparse state projection")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -391,6 +400,7 @@ impl PreparedEventStateDelta {
             Self::AgentIntent(prepared) => prepared.install_infallible(&mut world.state),
             Self::EconomyData(prepared) => prepared.install_infallible(&mut world.state),
             Self::PowerRedemption(prepared) => prepared.install_infallible(&mut world.state),
+            Self::NodePointsSettlement(prepared) => prepared.install_infallible(&mut world.state),
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -553,6 +563,14 @@ impl World {
                     self.state.time,
                 )?,
             )),
+            WorldEventBody::Domain(event @ DomainEvent::NodePointsSettlementApplied { .. }) => {
+                Some(PreparedEventStateDelta::NodePointsSettlement(
+                    super::super::node_points_settlement_publication::PreparedNodePointsSettlement::prepare(
+                        &self.state,
+                        event,
+                    )?,
+                ))
+            }
             WorldEventBody::ModuleStateUpdated(update) => {
                 Some(PreparedEventStateDelta::ModuleStateUpdated {
                     module_states: BTreeMap::from([(
@@ -994,6 +1012,9 @@ impl World {
             }
             PreparedEventStateDelta::PowerRedemption(prepared) => {
                 self.state_root_hash_with_power_redemption_overlay(prepared)?
+            }
+            PreparedEventStateDelta::NodePointsSettlement(prepared) => {
+                self.state_root_hash_with_node_points_settlement_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {

@@ -634,7 +634,7 @@ pub(super) fn remove_resource_balance(
     Ok(())
 }
 
-fn verify_reward_mint_record_signature_with_state(
+pub(crate) fn verify_reward_mint_record_signature_with_state(
     state: &WorldState,
     record: &NodeRewardMintRecord,
 ) -> Result<(), String> {
@@ -696,7 +696,7 @@ fn verify_reward_mint_record_signature_with_state(
     ))
 }
 
-fn ensure_system_order_budget_caps_for_epoch(
+pub(crate) fn ensure_system_order_budget_caps_for_epoch(
     report: &EpochSettlementReport,
     budget: &mut SystemOrderPoolBudget,
 ) {

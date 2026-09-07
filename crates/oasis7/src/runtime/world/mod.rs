@@ -62,6 +62,7 @@ mod module_release_publication_transaction_regressions;
 mod module_release_review_publication_transaction_regressions;
 #[cfg(test)]
 mod module_store_load_transaction_regressions;
+pub(crate) mod node_points_settlement_publication;
 #[cfg(test)]
 mod power_publication_transaction_regressions;
 pub(crate) mod power_redemption_publication;
