@@ -4,6 +4,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 #[path = "agent_claims/basic_claim_regressions.rs"]
 mod basic_claim_regressions;
+#[path = "agent_claims/raw_claim_monetary_publication_transaction_regressions.rs"]
+mod raw_claim_monetary_publication_transaction_regressions;
 #[path = "agent_claims/raw_light_lifecycle_publication_transaction_regressions.rs"]
 mod raw_light_lifecycle_publication_transaction_regressions;
 

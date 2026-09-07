@@ -10,6 +10,13 @@ impl WorldState {
     ) -> Result<(), WorldError> {
         if matches!(
             event,
+            DomainEvent::AgentClaimed { .. } | DomainEvent::AgentClaimUpkeepSettled { .. }
+        ) {
+            crate::runtime::world::agent_claim_economic_publication::PreparedAgentClaimEconomic::prepare(self,event,now)?.install_infallible(self);
+            return Ok(());
+        }
+        if matches!(
+            event,
             DomainEvent::AgentClaimReleaseRequested { .. }
                 | DomainEvent::AgentClaimEnteredGrace { .. }
                 | DomainEvent::AgentClaimIdleWarning { .. }
