@@ -869,6 +869,54 @@ raise SystemExit(adapter.main(sys.argv[1:]))
         self.assertEqual(output.read_bytes(), output_bytes)
         self.assertEqual(evidence_map_out.read_bytes(), evidence_bytes)
 
+    def test_sidecar_rejects_registry_provider_authority_aliases(self) -> None:
+        trusted_wrapper = self._tool_wrapper()
+        registry = json.loads(self.signing.registry.read_text(encoding="utf-8"))
+        authority_paths: list[tuple[str, Path]] = []
+        for index, provider in enumerate(registry["providers"]):
+            for field in ("adapter_path", "public_key_ref"):
+                authority_paths.append((f"provider-{index}-{field}", Path(provider[field])))
+        for label, authority_path in authority_paths:
+            with self.subTest(authority=label):
+                before = authority_path.read_bytes()
+                before_mode = stat.S_IMODE(authority_path.stat().st_mode)
+                evidence_map_out = self.root / f"{label}-evidence-map.json"
+                try:
+                    result = self._run(
+                        SIDECAR,
+                        *self._sidecar_args(authority_path, evidence_map_out, trusted_wrapper),
+                    )
+                    self.assertNotEqual(result.returncode, 0, f"{label} alias unexpectedly succeeded")
+                    self.assertRegex(result.stderr.lower(), r"alias|protected|output")
+                    self.assertEqual(authority_path.read_bytes(), before)
+                    self.assertFalse(evidence_map_out.exists())
+                finally:
+                    authority_path.write_bytes(before)
+                    authority_path.chmod(before_mode)
+
+    def test_sidecar_restores_output_pair_when_evidence_map_write_fails(self) -> None:
+        trusted_wrapper = self._tool_wrapper()
+        output = self.root / "previous-output.json"
+        evidence_root = self.root / "unwritable-evidence-root"
+        evidence_root.mkdir(mode=0o700)
+        evidence_map_out = evidence_root / "previous-evidence-map.json"
+        output_bytes = b"previous envelope\n"
+        evidence_bytes = b"previous evidence map\n"
+        output.write_bytes(output_bytes)
+        evidence_map_out.write_bytes(evidence_bytes)
+        evidence_root.chmod(0o500)
+        try:
+            result = self._run(
+                SIDECAR,
+                *self._sidecar_args(output, evidence_map_out, trusted_wrapper),
+            )
+        finally:
+            evidence_root.chmod(0o700)
+        self.assertNotEqual(result.returncode, 0, "unwritable evidence-map parent unexpectedly succeeded")
+        self.assertRegex(result.stderr.lower(), r"permission|evidence|write|output")
+        self.assertEqual(output.read_bytes(), output_bytes)
+        self.assertEqual(evidence_map_out.read_bytes(), evidence_bytes)
+
     def test_cross_pair_or_missing_evidence_rejects_before_any_mutation(self) -> None:
         bad_map = self.root / "cross-pair-map.json"
         value = json.loads(self.evidence_map.read_text(encoding="utf-8"))

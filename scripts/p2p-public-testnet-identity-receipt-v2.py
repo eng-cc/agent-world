@@ -581,6 +581,70 @@ def _clear_derived_output(path: Path, label: str) -> None:
     # _write_bytes_atomically successfully replaces it.
 
 
+def _snapshot_derived_output(path: Path, label: str) -> tuple[bool, bytes | None]:
+    """Capture an existing derived output for recoverable pair publication."""
+
+    if path.is_symlink() or not path.exists():
+        if path.is_symlink():
+            die(f"{label} must be an absent regular output or a regular file")
+        return False, None
+    if not path.is_file():
+        die(f"{label} must be an absent regular output or a regular file")
+    try:
+        return True, path.read_bytes()
+    except OSError as error:
+        die(f"cannot read prior {label}: {error.__class__.__name__}")
+
+
+def _restore_derived_output(
+    path: Path, existed: bool, previous: bytes | None, label: str
+) -> None:
+    """Restore one output only when publication changed it."""
+
+    current_exists = path.exists() or path.is_symlink()
+    if existed:
+        if previous is None:
+            die(f"cannot restore prior {label}: missing snapshot")
+        if current_exists and not path.is_symlink() and path.is_file():
+            try:
+                if path.read_bytes() == previous:
+                    return
+            except OSError:
+                pass
+        _write_bytes_atomically(path, previous, label)
+        return
+    if not current_exists:
+        return
+    if path.is_symlink() or not path.is_file():
+        die(f"cannot remove unpublished {label}: path is not a regular file")
+    try:
+        path.unlink()
+    except OSError as error:
+        die(f"cannot remove unpublished {label}: {error.__class__.__name__}")
+
+
+def _registry_authority_paths(registry: dict[str, Any]) -> list[tuple[Path, str]]:
+    """Return provider-referenced files that must never be output targets."""
+
+    paths: list[tuple[Path, str]] = []
+    trust_path = registry.get("trust_config_path")
+    if isinstance(trust_path, str) and trust_path.strip():
+        paths.append((Path(trust_path), "provider registry trust_config_path"))
+    providers = registry.get("providers")
+    if not isinstance(providers, list):
+        return paths
+    for index, provider in enumerate(providers):
+        if not isinstance(provider, dict):
+            continue
+        for field in ("adapter_path", "public_key_ref"):
+            value = provider.get(field)
+            if isinstance(value, str) and value.strip():
+                paths.append(
+                    (Path(value), f"provider registry providers[{index}].{field}")
+                )
+    return paths
+
+
 def _run_signing_command(tool: Path, command: str, arguments: list[str]) -> None:
     """Run only the fixed file-oriented signing-tool vocabulary.
 
@@ -626,21 +690,23 @@ def _bridge_create(args: argparse.Namespace) -> dict[str, Any]:
     verifier_tool = _registry_verifier_assertion(registry, verifier_tool)
     output_path = Path(args.out)
     evidence_path = Path(args.evidence_map_out)
+    protected = [
+        (raw_path, "raw-v1"),
+        (template_path, "v2 template"),
+        (context_path, "signing context"),
+        (intent_path, "plan intent"),
+        (trust_path, "trust config"),
+        (registry_path, "provider registry"),
+        (signer_tool, "signer tool"),
+        (verifier_tool, "verifier tool"),
+    ]
+    protected.extend(_registry_authority_paths(registry))
     _reject_output_aliases(
         [
             (output_path, "verified envelope output"),
             (evidence_path, "evidence-map output"),
         ],
-        [
-            (raw_path, "raw-v1"),
-            (template_path, "v2 template"),
-            (context_path, "signing context"),
-            (intent_path, "plan intent"),
-            (trust_path, "trust config"),
-            (registry_path, "provider registry"),
-            (signer_tool, "signer tool"),
-            (verifier_tool, "verifier tool"),
-        ],
+        protected,
     )
     _clear_derived_output(output_path, "verified envelope output")
     _clear_derived_output(evidence_path, "evidence-map output")
@@ -760,12 +826,30 @@ def _bridge_create(args: argparse.Namespace) -> dict[str, Any]:
                 }
             ],
         }
+        prior_output_exists, prior_output = _snapshot_derived_output(
+            output_path, "verified envelope output"
+        )
+        prior_evidence_exists, prior_evidence = _snapshot_derived_output(
+            evidence_path, "evidence-map output"
+        )
         _write_bytes_atomically(output_path, final_bytes, "verified envelope output")
         try:
             _write_atomically(evidence_path, evidence)
-        except SystemExit:
+        except BaseException:
             # Do not leave a verified envelope without the evidence closure.
-            _clear_derived_output(output_path, "verified envelope output")
+            # Restore both prior outputs when publication of the pair fails.
+            _restore_derived_output(
+                evidence_path,
+                prior_evidence_exists,
+                prior_evidence,
+                "evidence-map output",
+            )
+            _restore_derived_output(
+                output_path,
+                prior_output_exists,
+                prior_output,
+                "verified envelope output",
+            )
             raise
         return final_value
     except BaseException:
