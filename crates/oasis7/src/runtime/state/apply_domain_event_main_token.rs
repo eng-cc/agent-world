@@ -14,7 +14,7 @@ mod economy;
 #[path = "apply_domain_event_main_token_genesis.rs"]
 mod genesis;
 #[path = "apply_domain_event_main_token_helpers.rs"]
-pub(super) mod helpers;
+pub(crate) mod helpers;
 #[path = "apply_domain_event_main_token_restricted_claims.rs"]
 mod restricted_claims;
 
@@ -24,54 +24,18 @@ impl WorldState {
         event: &DomainEvent,
         now: WorldTime,
     ) -> Result<(), WorldError> {
+        if matches!(
+            event,
+            DomainEvent::MainTokenGenesisInitialized { .. }
+                | DomainEvent::MainTokenVestingClaimed { .. }
+                | DomainEvent::MainTokenTransferred { .. }
+                | DomainEvent::MainTokenEpochIssued { .. }
+                | DomainEvent::MainTokenFeeSettled { .. }
+        ) {
+            crate::runtime::world::main_token_monetary_publication::PreparedMainTokenMonetaryEvent::prepare(self, event, now)?.install_infallible(self);
+            return Ok(());
+        }
         match event {
-            DomainEvent::MainTokenGenesisInitialized {
-                total_supply,
-                allocations,
-            } => self.apply_main_token_genesis_initialized(*total_supply, allocations)?,
-            DomainEvent::MainTokenVestingClaimed {
-                bucket_id,
-                beneficiary,
-                amount,
-                nonce,
-            } => {
-                self.apply_main_token_vesting_claimed(bucket_id, beneficiary, *amount, *nonce, now)?
-            }
-            DomainEvent::MainTokenTransferred {
-                from_account_id,
-                to_account_id,
-                amount,
-                nonce,
-                ..
-            } => self.apply_main_token_transfer(from_account_id, to_account_id, *amount, *nonce)?,
-            DomainEvent::MainTokenEpochIssued {
-                epoch_index,
-                inflation_rate_bps,
-                issued_amount,
-                staking_reward_amount,
-                node_service_reward_amount,
-                ecosystem_pool_amount,
-                security_reserve_amount,
-            } => self.apply_main_token_epoch_issued(
-                *epoch_index,
-                *inflation_rate_bps,
-                *issued_amount,
-                *staking_reward_amount,
-                *node_service_reward_amount,
-                *ecosystem_pool_amount,
-                *security_reserve_amount,
-            )?,
-            DomainEvent::MainTokenFeeSettled {
-                fee_kind,
-                amount,
-                burn_amount,
-                treasury_amount,
-            } => self.apply_main_token_fee_settled(
-                *fee_kind,
-                *amount,
-                *burn_amount,
-                *treasury_amount,
-            )?,
             DomainEvent::MainTokenPolicyUpdateScheduled {
                 proposal_id,
                 effective_epoch,

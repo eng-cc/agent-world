@@ -94,6 +94,9 @@ pub struct WorldStateProjection<'a> {
     node_points_settlement_overlay: Option<
         &'a crate::runtime::world::node_points_settlement_publication::PreparedNodePointsSettlement,
     >,
+    main_token_monetary_overlay: Option<
+        &'a crate::runtime::world::main_token_monetary_publication::PreparedMainTokenMonetaryEvent,
+    >,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -111,6 +114,7 @@ impl<'a> WorldStateProjection<'a> {
             economy_data_overlay: None,
             power_redemption_overlay: None,
             node_points_settlement_overlay: None,
+            main_token_monetary_overlay: None,
         }
     }
 
@@ -151,6 +155,14 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a crate::runtime::world::node_points_settlement_publication::PreparedNodePointsSettlement,
     ) -> Self {
         self.node_points_settlement_overlay = Some(overlay);
+        self
+    }
+
+    pub(crate) fn with_main_token_monetary_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::main_token_monetary_publication::PreparedMainTokenMonetaryEvent,
+    ) -> Self {
+        self.main_token_monetary_overlay = Some(overlay);
         self
     }
 
@@ -221,7 +233,8 @@ impl Serialize for WorldState {
         S: serde::Serializer,
     {
         serialize_world_state(
-            self, None, None, None, None, None, None, None, None, None, None, None, serializer,
+            self, None, None, None, None, None, None, None, None, None, None, None, None,
+            serializer,
         )
     }
 }
@@ -253,6 +266,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.economy_data_overlay,
             self.power_redemption_overlay,
             self.node_points_settlement_overlay,
+            self.main_token_monetary_overlay,
             serializer,
         )
     }
@@ -447,6 +461,9 @@ fn serialize_world_state<S>(
     node_points_settlement_overlay: Option<
         &crate::runtime::world::node_points_settlement_publication::PreparedNodePointsSettlement,
     >,
+    main_token_monetary_overlay: Option<
+        &crate::runtime::world::main_token_monetary_publication::PreparedMainTokenMonetaryEvent,
+    >,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -551,7 +568,9 @@ where
         );
     let mut output = serializer.serialize_struct("WorldState", field_count)?;
     output.serialize_field("time", &state.time)?;
-    if let Some(overlay) = power_redemption_overlay {
+    if let Some(overlay) = main_token_monetary_overlay {
+        overlay.serialize_agents(state, &mut output)?;
+    } else if let Some(overlay) = power_redemption_overlay {
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = economy_data_overlay {
         overlay.serialize_agents(state, &mut output)?;
@@ -596,7 +615,9 @@ where
     } else {
         output.serialize_field("resources", &state.resources)?;
     }
-    if let Some(overlay) = node_points_settlement_overlay {
+    if let Some(overlay) = main_token_monetary_overlay {
+        overlay.serialize_materials(state, &mut output)?;
+    } else if let Some(overlay) = node_points_settlement_overlay {
         overlay.serialize_materials(state, &mut output)?;
     } else if let Some(overlay) = power_redemption_overlay {
         overlay.serialize_materials(state, &mut output)?;
@@ -836,7 +857,9 @@ where
         )?;
     }
     output.serialize_field("main_token_config", &state.main_token_config)?;
-    if let Some(overlay) = node_points_settlement_overlay {
+    if let Some(overlay) = main_token_monetary_overlay {
+        overlay.serialize_supply_balances(state, &mut output)?;
+    } else if let Some(overlay) = node_points_settlement_overlay {
         overlay.serialize_main_token_accounts(state, &mut output)?;
     } else {
         output.serialize_field("main_token_supply", &state.main_token_supply)?;
@@ -846,15 +869,22 @@ where
         "restricted_starter_claim_grants",
         &state.restricted_starter_claim_grants,
     )?;
-    output.serialize_field(
-        "main_token_genesis_buckets",
-        &state.main_token_genesis_buckets,
-    )?;
-    output.serialize_field(
-        "main_token_epoch_issuance_records",
-        &state.main_token_epoch_issuance_records,
-    )?;
-    if let Some(overlay) = node_points_settlement_overlay {
+    if let Some(overlay) = main_token_monetary_overlay {
+        overlay.serialize_buckets(state, &mut output)?;
+        overlay.serialize_issuance(state, &mut output)?;
+    } else {
+        output.serialize_field(
+            "main_token_genesis_buckets",
+            &state.main_token_genesis_buckets,
+        )?;
+        output.serialize_field(
+            "main_token_epoch_issuance_records",
+            &state.main_token_epoch_issuance_records,
+        )?;
+    }
+    if let Some(overlay) = main_token_monetary_overlay {
+        overlay.serialize_treasury(state, &mut output)?;
+    } else if let Some(overlay) = node_points_settlement_overlay {
         overlay.serialize_treasury(state, &mut output)?;
     } else {
         output.serialize_field(
@@ -862,11 +892,16 @@ where
             &state.main_token_treasury_balances,
         )?;
     }
-    output.serialize_field("main_token_claim_nonces", &state.main_token_claim_nonces)?;
-    output.serialize_field(
-        "main_token_transfer_nonces",
-        &state.main_token_transfer_nonces,
-    )?;
+    if let Some(overlay) = main_token_monetary_overlay {
+        overlay.serialize_claim_nonces(state, &mut output)?;
+        overlay.serialize_transfer_nonces(state, &mut output)?;
+    } else {
+        output.serialize_field("main_token_claim_nonces", &state.main_token_claim_nonces)?;
+        output.serialize_field(
+            "main_token_transfer_nonces",
+            &state.main_token_transfer_nonces,
+        )?;
+    }
     output.serialize_field(
         "main_token_scheduled_policy_updates",
         &state.main_token_scheduled_policy_updates,

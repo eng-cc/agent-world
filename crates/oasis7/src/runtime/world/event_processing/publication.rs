@@ -58,6 +58,9 @@ pub(super) enum PreparedEventStateDelta {
     NodePointsSettlement(
         super::super::node_points_settlement_publication::PreparedNodePointsSettlement,
     ),
+    MainTokenMonetary(
+        super::super::main_token_monetary_publication::PreparedMainTokenMonetaryEvent,
+    ),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -191,6 +194,9 @@ impl PreparedEventStateDelta {
             Self::NodePointsSettlement(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
+            Self::MainTokenMonetary(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -308,6 +314,9 @@ impl PreparedEventStateDelta {
             Self::NodePointsSettlement(_) => {
                 unreachable!("node points settlement uses a sparse state projection")
             }
+            Self::MainTokenMonetary(_) => {
+                unreachable!("main-token monetary events use a sparse state projection")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -401,6 +410,7 @@ impl PreparedEventStateDelta {
             Self::EconomyData(prepared) => prepared.install_infallible(&mut world.state),
             Self::PowerRedemption(prepared) => prepared.install_infallible(&mut world.state),
             Self::NodePointsSettlement(prepared) => prepared.install_infallible(&mut world.state),
+            Self::MainTokenMonetary(prepared) => prepared.install_infallible(&mut world.state),
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -569,6 +579,15 @@ impl World {
                         &self.state,
                         event,
                     )?,
+                ))
+            }
+            WorldEventBody::Domain(event @ (DomainEvent::MainTokenGenesisInitialized { .. }
+                | DomainEvent::MainTokenVestingClaimed { .. }
+                | DomainEvent::MainTokenTransferred { .. }
+                | DomainEvent::MainTokenEpochIssued { .. }
+                | DomainEvent::MainTokenFeeSettled { .. })) => {
+                Some(PreparedEventStateDelta::MainTokenMonetary(
+                    super::super::main_token_monetary_publication::PreparedMainTokenMonetaryEvent::prepare(&self.state, event, self.state.time)?,
                 ))
             }
             WorldEventBody::ModuleStateUpdated(update) => {
@@ -1015,6 +1034,9 @@ impl World {
             }
             PreparedEventStateDelta::NodePointsSettlement(prepared) => {
                 self.state_root_hash_with_node_points_settlement_overlay(prepared)?
+            }
+            PreparedEventStateDelta::MainTokenMonetary(prepared) => {
+                self.state_root_hash_with_main_token_monetary_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {

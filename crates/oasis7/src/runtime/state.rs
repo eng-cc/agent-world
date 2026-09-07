@@ -48,7 +48,7 @@ mod apply_domain_event_governance_meta;
 mod apply_domain_event_industry;
 mod apply_domain_event_industry_helpers;
 mod apply_domain_event_intent;
-mod apply_domain_event_main_token;
+pub(crate) mod apply_domain_event_main_token;
 mod command_projection;
 mod logistics_path_authority;
 pub(crate) mod module_instance_transition;

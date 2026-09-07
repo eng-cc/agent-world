@@ -71,8 +71,13 @@ impl World {
             asset_id: asset_id.map(ToOwned::to_owned),
             memo: memo.map(ToOwned::to_owned),
         };
-        let mut preview_state = self.state.clone();
-        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+        if let Err(err) =
+            super::super::super::main_token_monetary_publication::PreparedMainTokenMonetaryEvent::prepare(
+                &self.state,
+                &event,
+                self.state.time,
+            )
+        {
             return DomainEvent::ActionRejected {
                 action_id,
                 reason: RejectReason::RuleDenied {
