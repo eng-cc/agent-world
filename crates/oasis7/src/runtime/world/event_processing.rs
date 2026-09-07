@@ -59,7 +59,7 @@ mod action_to_event_gameplay_meta;
 mod action_to_event_policy_contract;
 mod action_to_event_policy_contract_rejection;
 mod main_token;
-mod prepared_governance_events;
+pub(super) mod prepared_governance_events;
 mod publication;
 
 use publication::PreparedEventStateDelta;

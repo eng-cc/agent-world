@@ -67,6 +67,11 @@ pub(super) enum PreparedEventStateDelta {
         proposal_id: ProposalId,
         next: super::super::super::Proposal,
     },
+    GovernanceProposalStatus {
+        event: GovernanceEvent,
+        proposal_id: ProposalId,
+        next: super::super::super::Proposal,
+    },
     GovernanceIdentityPenaltyAppeal {
         penalty_id: u64,
         next: GovernanceIdentityPenaltyRecord,
@@ -199,6 +204,9 @@ impl PreparedEventStateDelta {
                     ..
                 }) if proposal_id == event_proposal_id
             ),
+            Self::GovernanceProposalStatus { event, .. } => {
+                matches!(body, WorldEventBody::Governance(body_event) if body_event == event)
+            }
             Self::GovernanceIdentityPenaltyAppeal { penalty_id, .. } => matches!(
                 body,
                 WorldEventBody::Governance(GovernanceEvent::IdentityPenaltyAppealed {
@@ -261,6 +269,9 @@ impl PreparedEventStateDelta {
             }
             Self::GovernanceProposalShadow { .. } => {
                 unreachable!("governance proposal shadow does not have a state overlay")
+            }
+            Self::GovernanceProposalStatus { .. } => {
+                unreachable!("governance proposal status does not have a state overlay")
             }
             Self::GovernanceIdentityPenaltyAppeal { .. } => {
                 unreachable!("identity penalty appeal does not have a state overlay")
@@ -357,6 +368,11 @@ impl PreparedEventStateDelta {
                 world.next_proposal_id_era = next_proposal_id_era;
             }
             Self::GovernanceProposalShadow { proposal_id, next } => {
+                world.proposals.insert(proposal_id, next);
+            }
+            Self::GovernanceProposalStatus {
+                proposal_id, next, ..
+            } => {
                 world.proposals.insert(proposal_id, next);
             }
             Self::GovernanceIdentityPenaltyAppeal { penalty_id, next } => {
@@ -880,7 +896,8 @@ impl World {
                 self.current_state_root_hash()?
             }
             PreparedEventStateDelta::GovernanceProposal { .. }
-            | PreparedEventStateDelta::GovernanceProposalShadow { .. } => {
+            | PreparedEventStateDelta::GovernanceProposalShadow { .. }
+            | PreparedEventStateDelta::GovernanceProposalStatus { .. } => {
                 // Governance proposals are persisted World sidecar data and
                 // intentionally remain outside the canonical WorldState root schema.
                 self.current_state_root_hash()?

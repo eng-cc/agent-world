@@ -29,6 +29,8 @@ mod gameplay_layer;
 mod gameplay_loop;
 mod governance;
 mod governance_identity_penalty;
+#[cfg(test)]
+mod governance_proposal_status_publication_transaction_regressions;
 mod governance_publication;
 mod governance_quote;
 pub(crate) mod governance_registry_publication;

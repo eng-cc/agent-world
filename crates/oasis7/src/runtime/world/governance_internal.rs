@@ -722,27 +722,14 @@ impl World {
             } => {
                 let proposal =
                     self.proposals
-                        .get_mut(proposal_id)
+                        .get(proposal_id)
                         .ok_or(WorldError::ProposalNotFound {
                             proposal_id: *proposal_id,
                         })?;
-                let ProposalStatus::Approved {
-                    manifest_hash: approved_hash,
-                    ..
-                } = &proposal.status
-                else {
-                    return Err(WorldError::ProposalInvalidState {
-                        proposal_id: *proposal_id,
-                        expected: "approved".to_string(),
-                        found: proposal.status.label(),
-                    });
-                };
-                let applied_hash = manifest_hash
-                    .clone()
-                    .unwrap_or_else(|| approved_hash.clone());
-                proposal.status = ProposalStatus::Applied {
-                    manifest_hash: applied_hash,
-                };
+                let next = crate::runtime::world::event_processing::prepared_governance_events::prepare_applied_proposal(
+                    proposal, *proposal_id, manifest_hash,
+                )?;
+                self.proposals.insert(*proposal_id, next);
             }
             GovernanceEvent::FinalityEpochSnapshotSet { snapshot, previous } => {
                 self.validate_governance_finality_epoch_snapshot_set(snapshot, previous)?;

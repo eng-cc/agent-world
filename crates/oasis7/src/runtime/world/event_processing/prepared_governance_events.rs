@@ -49,6 +49,80 @@ pub(super) fn prepare(
     body: &WorldEventBody,
 ) -> Result<Option<PreparedEventStateDelta>, WorldError> {
     match body {
+        WorldEventBody::Governance(
+            event @ GovernanceEvent::Approved {
+                proposal_id,
+                approver,
+                decision,
+            },
+        ) => {
+            let proposal =
+                world
+                    .proposals
+                    .get(proposal_id)
+                    .ok_or(WorldError::ProposalNotFound {
+                        proposal_id: *proposal_id,
+                    })?;
+            let next = prepare_approved_proposal(proposal, *proposal_id, approver, decision)?;
+            Ok(Some(PreparedEventStateDelta::GovernanceProposalStatus {
+                event: event.clone(),
+                proposal_id: *proposal_id,
+                next,
+            }))
+        }
+        WorldEventBody::Governance(
+            event @ GovernanceEvent::Queued {
+                proposal_id,
+                manifest_hash,
+                queued_at_tick,
+                not_before_tick,
+                activate_epoch,
+                timelock_ticks,
+            },
+        ) => {
+            let proposal =
+                world
+                    .proposals
+                    .get(proposal_id)
+                    .ok_or(WorldError::ProposalNotFound {
+                        proposal_id: *proposal_id,
+                    })?;
+            let next = prepare_queued_proposal(
+                proposal,
+                *proposal_id,
+                manifest_hash,
+                *queued_at_tick,
+                *not_before_tick,
+                *activate_epoch,
+                *timelock_ticks,
+            )?;
+            Ok(Some(PreparedEventStateDelta::GovernanceProposalStatus {
+                event: event.clone(),
+                proposal_id: *proposal_id,
+                next,
+            }))
+        }
+        WorldEventBody::Governance(
+            event @ GovernanceEvent::Applied {
+                proposal_id,
+                manifest_hash,
+                ..
+            },
+        ) => {
+            let proposal =
+                world
+                    .proposals
+                    .get(proposal_id)
+                    .ok_or(WorldError::ProposalNotFound {
+                        proposal_id: *proposal_id,
+                    })?;
+            let next = prepare_applied_proposal(proposal, *proposal_id, manifest_hash)?;
+            Ok(Some(PreparedEventStateDelta::GovernanceProposalStatus {
+                event: event.clone(),
+                proposal_id: *proposal_id,
+                next,
+            }))
+        }
         WorldEventBody::Governance(GovernanceEvent::Proposed {
             proposal_id,
             author,
@@ -194,6 +268,31 @@ pub(super) fn prepare(
         }
         _ => Ok(None),
     }
+}
+
+pub(crate) fn prepare_applied_proposal(
+    proposal: &Proposal,
+    proposal_id: ProposalId,
+    manifest_hash: &Option<String>,
+) -> Result<Proposal, WorldError> {
+    let ProposalStatus::Approved {
+        manifest_hash: approved_hash,
+        ..
+    } = &proposal.status
+    else {
+        return Err(WorldError::ProposalInvalidState {
+            proposal_id,
+            expected: "approved".to_string(),
+            found: proposal.status.label(),
+        });
+    };
+    let mut next = proposal.clone();
+    next.status = ProposalStatus::Applied {
+        manifest_hash: manifest_hash
+            .clone()
+            .unwrap_or_else(|| approved_hash.clone()),
+    };
+    Ok(next)
 }
 
 pub(crate) fn prepare_approved_proposal(
