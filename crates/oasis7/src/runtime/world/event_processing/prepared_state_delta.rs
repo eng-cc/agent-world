@@ -65,6 +65,7 @@ pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
     StarterOcClaimed(PreparedStarterOcClaimed),
     AgentClaimLightLifecycle(PreparedAgentClaimLightLifecycle),
     AgentClaimEconomic(super::super::super::agent_claim_economic_publication::PreparedAgentClaimEconomic),
+    AgentClaimTerminal(super::super::super::agent_claim_terminal_publication::PreparedAgentClaimTerminal),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -216,6 +217,9 @@ impl PreparedEventStateDelta {
             Self::AgentClaimEconomic(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
+            Self::AgentClaimTerminal(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -352,6 +356,7 @@ impl PreparedEventStateDelta {
                 unreachable!("light claim lifecycle uses a sparse state projection")
             }
             Self::AgentClaimEconomic(_) => unreachable!("claim economic uses sparse projection"),
+            Self::AgentClaimTerminal(_) => unreachable!("claim terminal uses sparse projection"),
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -457,6 +462,7 @@ impl PreparedEventStateDelta {
                 prepared.install_infallible(&mut world.state)
             }
             Self::AgentClaimEconomic(prepared) => prepared.install_infallible(&mut world.state),
+            Self::AgentClaimTerminal(prepared) => prepared.install_infallible(&mut world.state),
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {

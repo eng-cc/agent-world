@@ -17,6 +17,16 @@ impl WorldState {
         }
         if matches!(
             event,
+            DomainEvent::AgentClaimReleased { .. } | DomainEvent::AgentClaimReclaimed { .. }
+        ) {
+            crate::runtime::world::agent_claim_terminal_publication::PreparedAgentClaimTerminal::prepare(
+                self, event, now,
+            )?
+            .install_infallible(self);
+            return Ok(());
+        }
+        if matches!(
+            event,
             DomainEvent::AgentClaimReleaseRequested { .. }
                 | DomainEvent::AgentClaimEnteredGrace { .. }
                 | DomainEvent::AgentClaimIdleWarning { .. }

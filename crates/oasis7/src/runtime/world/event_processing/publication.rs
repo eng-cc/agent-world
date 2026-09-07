@@ -142,6 +142,7 @@ impl World {
                 PreparedAgentClaimLightLifecycle::prepare(&self.state, event, self.state.time)?,
             )),
             WorldEventBody::Domain(event @ (DomainEvent::AgentClaimed { .. } | DomainEvent::AgentClaimUpkeepSettled { .. })) => Some(PreparedEventStateDelta::AgentClaimEconomic(super::super::agent_claim_economic_publication::PreparedAgentClaimEconomic::prepare(&self.state,event,self.state.time)?)),
+            WorldEventBody::Domain(event @ (DomainEvent::AgentClaimReleased { .. } | DomainEvent::AgentClaimReclaimed { .. })) => Some(PreparedEventStateDelta::AgentClaimTerminal(super::super::agent_claim_terminal_publication::PreparedAgentClaimTerminal::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::ModuleStateUpdated(update) => {
                 Some(PreparedEventStateDelta::ModuleStateUpdated {
                     module_states: BTreeMap::from([(
@@ -603,6 +604,9 @@ impl World {
             }
             PreparedEventStateDelta::AgentClaimEconomic(prepared) => {
                 self.state_root_hash_with_agent_claim_economic_overlay(prepared)?
+            }
+            PreparedEventStateDelta::AgentClaimTerminal(prepared) => {
+                self.state_root_hash_with_agent_claim_terminal_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {

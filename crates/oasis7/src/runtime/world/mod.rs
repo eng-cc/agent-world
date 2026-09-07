@@ -3,6 +3,7 @@
 mod actions;
 pub(crate) mod agent_claim_economic_publication;
 pub(crate) mod agent_claim_light_lifecycle_publication;
+pub(crate) mod agent_claim_terminal_publication;
 mod agent_claims;
 mod agent_intent;
 pub(crate) mod agent_intent_publication;

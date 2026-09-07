@@ -110,6 +110,7 @@ pub struct WorldStateProjection<'a> {
         &'a crate::runtime::world::agent_claim_light_lifecycle_publication::PreparedAgentClaimLightLifecycle,
     >,
     agent_claim_economic_overlay: Option<&'a crate::runtime::world::agent_claim_economic_publication::PreparedAgentClaimEconomic>,
+    agent_claim_terminal_overlay: Option<&'a crate::runtime::world::agent_claim_terminal_publication::PreparedAgentClaimTerminal>,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -133,6 +134,7 @@ impl<'a> WorldStateProjection<'a> {
             starter_oc_claim_overlay: None,
             agent_claim_light_lifecycle_overlay: None,
             agent_claim_economic_overlay: None,
+            agent_claim_terminal_overlay: None,
         }
     }
 
@@ -222,6 +224,13 @@ impl<'a> WorldStateProjection<'a> {
         self.agent_claim_economic_overlay = Some(overlay);
         self
     }
+    pub(crate) fn with_agent_claim_terminal_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::agent_claim_terminal_publication::PreparedAgentClaimTerminal,
+    ) -> Self {
+        self.agent_claim_terminal_overlay = Some(overlay);
+        self
+    }
 
     pub fn with_body_overlay(mut self, body_overlay: BodyOverlay) -> Self {
         self.body_overlay = Some(body_overlay);
@@ -291,7 +300,7 @@ impl Serialize for WorldState {
     {
         serialize_world_state(
             self, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, serializer,
+            None, None, None, None, None, serializer,
         )
     }
 }
@@ -329,6 +338,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.starter_oc_claim_overlay,
             self.agent_claim_light_lifecycle_overlay,
             self.agent_claim_economic_overlay,
+            self.agent_claim_terminal_overlay,
             serializer,
         )
     }
@@ -541,6 +551,9 @@ fn serialize_world_state<S>(
     agent_claim_economic_overlay: Option<
         &crate::runtime::world::agent_claim_economic_publication::PreparedAgentClaimEconomic,
     >,
+    agent_claim_terminal_overlay: Option<
+        &crate::runtime::world::agent_claim_terminal_publication::PreparedAgentClaimTerminal,
+    >,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -645,7 +658,9 @@ where
         );
     let mut output = serializer.serialize_struct("WorldState", field_count)?;
     output.serialize_field("time", &state.time)?;
-    if let Some(overlay) = agent_claim_economic_overlay {
+    if let Some(overlay) = agent_claim_terminal_overlay {
+        overlay.serialize_agents(state, &mut output)?;
+    } else if let Some(overlay) = agent_claim_economic_overlay {
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = agent_claim_light_lifecycle_overlay {
         overlay.serialize_agents(state, &mut output)?;
@@ -700,7 +715,9 @@ where
     } else {
         output.serialize_field("resources", &state.resources)?;
     }
-    if let Some(overlay) = agent_claim_economic_overlay {
+    if let Some(overlay) = agent_claim_terminal_overlay {
+        overlay.serialize_materials(state, &mut output)?;
+    } else if let Some(overlay) = agent_claim_economic_overlay {
         overlay.serialize_materials(state, &mut output)?;
     } else if let Some(overlay) = agent_claim_light_lifecycle_overlay {
         overlay.serialize_materials(state, &mut output)?;
@@ -808,7 +825,9 @@ where
         output.serialize_field("data_access_permissions", &state.data_access_permissions)?;
     }
     output.serialize_field("economic_contracts", &state.economic_contracts)?;
-    if let Some(overlay) = agent_claim_economic_overlay {
+    if let Some(overlay) = agent_claim_terminal_overlay {
+        overlay.serialize_claims(state, &mut output)?;
+    } else if let Some(overlay) = agent_claim_economic_overlay {
         overlay.serialize_claims(state, &mut output)?;
     } else if let Some(overlay) = agent_claim_light_lifecycle_overlay {
         overlay.serialize_claims(state, &mut output)?;
@@ -830,7 +849,9 @@ where
             &state.authenticated_collect_data_last_nonces,
         )?;
     }
-    if let Some(overlay) = agent_claim_economic_overlay {
+    if let Some(overlay) = agent_claim_terminal_overlay {
+        overlay.serialize_last_epoch(&mut output)?;
+    } else if let Some(overlay) = agent_claim_economic_overlay {
         overlay.serialize_last_epoch(&mut output)?;
     } else {
         output.serialize_field(
@@ -964,7 +985,9 @@ where
         )?;
     }
     output.serialize_field("main_token_config", &state.main_token_config)?;
-    if let Some(overlay) = agent_claim_economic_overlay {
+    if let Some(overlay) = agent_claim_terminal_overlay {
+        overlay.serialize_token(state, &mut output)?;
+    } else if let Some(overlay) = agent_claim_economic_overlay {
         overlay.serialize_token(state, &mut output)?;
     } else if let Some(overlay) = starter_oc_claim_overlay {
         overlay.serialize_supply_balances(state, &mut output)?;
@@ -1001,7 +1024,9 @@ where
             &state.main_token_epoch_issuance_records,
         )?;
     }
-    if let Some(overlay) = agent_claim_economic_overlay {
+    if let Some(overlay) = agent_claim_terminal_overlay {
+        overlay.serialize_treasury(state, &mut output)?;
+    } else if let Some(overlay) = agent_claim_economic_overlay {
         overlay.serialize_treasury(state, &mut output)?;
     } else if let Some(overlay) = starter_oc_claim_overlay {
         overlay.serialize_treasury(state, &mut output)?;
