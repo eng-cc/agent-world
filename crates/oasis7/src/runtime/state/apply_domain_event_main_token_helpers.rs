@@ -20,7 +20,7 @@ pub(crate) fn add_main_token_treasury_balance(
     Ok(())
 }
 
-pub(in super::super) fn debit_main_token_treasury_balance(
+pub(crate) fn debit_main_token_treasury_balance(
     balances: &mut BTreeMap<String, u64>,
     bucket_id: &str,
     amount: u64,
@@ -38,7 +38,7 @@ pub(in super::super) fn debit_main_token_treasury_balance(
     Ok(())
 }
 
-pub(super) fn debit_main_token_restricted_starter_claim_balance(
+pub(crate) fn debit_main_token_restricted_starter_claim_balance(
     balances: &mut BTreeMap<String, MainTokenAccountBalance>,
     account_id: &str,
     amount: u64,
@@ -63,7 +63,7 @@ pub(super) fn debit_main_token_restricted_starter_claim_balance(
     Ok(())
 }
 
-pub(super) fn restricted_starter_claim_grant_can_be_inserted(
+pub(crate) fn restricted_starter_claim_grant_can_be_inserted(
     state: &WorldState,
     beneficiary_account_id: &str,
 ) -> bool {

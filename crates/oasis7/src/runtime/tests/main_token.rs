@@ -3,6 +3,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 #[path = "main_token/raw_monetary_core_publication_transaction_regressions.rs"]
 mod raw_monetary_core_publication_transaction_regressions;
+#[path = "main_token/raw_monetary_governance_publication_transaction_regressions.rs"]
+mod raw_monetary_governance_publication_transaction_regressions;
 #[path = "main_token/raw_policy_treasury_publication_transaction_regressions.rs"]
 mod raw_policy_treasury_publication_transaction_regressions;
 

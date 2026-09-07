@@ -43,91 +43,16 @@ impl WorldState {
             crate::runtime::world::main_token_governance_monetary_publication::PreparedMainTokenGovernanceMonetaryEvent::prepare(self, event, now)?.install_infallible(self);
             return Ok(());
         }
-        match event {
-            DomainEvent::RestrictedStarterClaimLiveopsPoolToppedUp {
-                controller_account_id,
-                top_up_id,
-                source_treasury_bucket_id,
-                target_treasury_bucket_id,
-                amount,
-                topped_up_at_epoch,
-            } => self.apply_restricted_starter_claim_liveops_pool_top_up(
-                controller_account_id,
-                top_up_id,
-                source_treasury_bucket_id,
-                target_treasury_bucket_id,
-                *amount,
-                *topped_up_at_epoch,
-            )?,
-            DomainEvent::RestrictedStarterClaimGrantIssued {
-                issuer_id,
-                beneficiary_account_id,
-                source_treasury_bucket_id,
-                amount,
-                issuance_reason,
-                spend_scope,
-                issued_at_epoch,
-                expires_at_epoch,
-            } => self.apply_restricted_starter_claim_grant_issued(
-                issuer_id,
-                beneficiary_account_id,
-                source_treasury_bucket_id,
-                *amount,
-                issuance_reason,
-                spend_scope,
-                *issued_at_epoch,
-                *expires_at_epoch,
-            )?,
-            DomainEvent::RestrictedStarterClaimGrantExpired {
-                beneficiary_account_id,
-                issuer_id,
-                issuance_reason,
-                spend_scope,
-                source_treasury_bucket_id,
-                issued_amount,
-                expired_amount,
-                issued_at_epoch,
-                expired_at_epoch,
-                configured_expires_at_epoch,
-            } => self.apply_restricted_starter_claim_grant_expired(
-                beneficiary_account_id,
-                issuer_id,
-                issuance_reason,
-                spend_scope,
-                source_treasury_bucket_id,
-                *issued_amount,
-                *expired_amount,
-                *issued_at_epoch,
-                *expired_at_epoch,
-                *configured_expires_at_epoch,
-            )?,
-            DomainEvent::RestrictedStarterClaimGrantRevoked {
-                beneficiary_account_id,
-                issuer_id,
-                issuance_reason,
-                spend_scope,
-                source_treasury_bucket_id,
-                issued_amount,
-                revoked_amount,
-                issued_at_epoch,
-                revoked_at_epoch,
-                configured_expires_at_epoch,
-                revoke_reason,
-            } => self.apply_restricted_starter_claim_grant_revoked(
-                beneficiary_account_id,
-                issuer_id,
-                issuance_reason,
-                spend_scope,
-                source_treasury_bucket_id,
-                *issued_amount,
-                *revoked_amount,
-                *issued_at_epoch,
-                *revoked_at_epoch,
-                *configured_expires_at_epoch,
-                revoke_reason,
-            )?,
-            _ => unreachable!("apply_domain_event_main_token received unsupported event variant"),
+        if matches!(
+            event,
+            DomainEvent::RestrictedStarterClaimLiveopsPoolToppedUp { .. }
+                | DomainEvent::RestrictedStarterClaimGrantIssued { .. }
+                | DomainEvent::RestrictedStarterClaimGrantExpired { .. }
+                | DomainEvent::RestrictedStarterClaimGrantRevoked { .. }
+        ) {
+            crate::runtime::world::main_token_restricted_claim_publication::PreparedMainTokenRestrictedClaimEvent::prepare(self, event)?.install_infallible(self);
+            return Ok(());
         }
-        Ok(())
+        unreachable!("apply_domain_event_main_token received unsupported event variant")
     }
 }

@@ -44,6 +44,7 @@ mod governance_registry_publication_transaction_regressions;
 mod governed_module_lifecycle_transaction_regressions;
 pub(crate) mod main_token_governance_monetary_publication;
 pub(crate) mod main_token_monetary_publication;
+pub(crate) mod main_token_restricted_claim_publication;
 #[cfg(test)]
 mod module_artifact_deployment_transaction_regressions;
 #[cfg(test)]

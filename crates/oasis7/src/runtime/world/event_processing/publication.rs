@@ -64,6 +64,9 @@ pub(super) enum PreparedEventStateDelta {
     MainTokenGovernanceMonetary(
         super::super::main_token_governance_monetary_publication::PreparedMainTokenGovernanceMonetaryEvent,
     ),
+    MainTokenRestrictedClaim(
+        super::super::main_token_restricted_claim_publication::PreparedMainTokenRestrictedClaimEvent,
+    ),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -203,6 +206,9 @@ impl PreparedEventStateDelta {
             Self::MainTokenGovernanceMonetary(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
+            Self::MainTokenRestrictedClaim(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -326,6 +332,9 @@ impl PreparedEventStateDelta {
             Self::MainTokenGovernanceMonetary(_) => {
                 unreachable!("main-token governance monetary events use a sparse state projection")
             }
+            Self::MainTokenRestrictedClaim(_) => {
+                unreachable!("restricted-claim events use a sparse state projection")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -421,6 +430,9 @@ impl PreparedEventStateDelta {
             Self::NodePointsSettlement(prepared) => prepared.install_infallible(&mut world.state),
             Self::MainTokenMonetary(prepared) => prepared.install_infallible(&mut world.state),
             Self::MainTokenGovernanceMonetary(prepared) => {
+                prepared.install_infallible(&mut world.state)
+            }
+            Self::MainTokenRestrictedClaim(prepared) => {
                 prepared.install_infallible(&mut world.state)
             }
             Self::Body(prepared) => prepared.install_infallible(world),
@@ -606,6 +618,14 @@ impl World {
                 | DomainEvent::MainTokenTreasuryDistributed { .. })) => {
                 Some(PreparedEventStateDelta::MainTokenGovernanceMonetary(
                     super::super::main_token_governance_monetary_publication::PreparedMainTokenGovernanceMonetaryEvent::prepare(&self.state, event, self.state.time)?,
+                ))
+            }
+            WorldEventBody::Domain(event @ (DomainEvent::RestrictedStarterClaimLiveopsPoolToppedUp { .. }
+                | DomainEvent::RestrictedStarterClaimGrantIssued { .. }
+                | DomainEvent::RestrictedStarterClaimGrantExpired { .. }
+                | DomainEvent::RestrictedStarterClaimGrantRevoked { .. })) => {
+                Some(PreparedEventStateDelta::MainTokenRestrictedClaim(
+                    super::super::main_token_restricted_claim_publication::PreparedMainTokenRestrictedClaimEvent::prepare(&self.state, event)?,
                 ))
             }
             WorldEventBody::ModuleStateUpdated(update) => {
@@ -1058,6 +1078,9 @@ impl World {
             }
             PreparedEventStateDelta::MainTokenGovernanceMonetary(prepared) => {
                 self.state_root_hash_with_main_token_governance_monetary_overlay(prepared)?
+            }
+            PreparedEventStateDelta::MainTokenRestrictedClaim(prepared) => {
+                self.state_root_hash_with_main_token_restricted_claim_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {
