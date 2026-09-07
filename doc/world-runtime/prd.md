@@ -96,6 +96,8 @@ normalization and missing-actor behavior remain distinct from stricter action
 validation, and replay must reproduce the published root without cloning the
 world.
 
+Release request、attestation 与 role-binding 三类 precursor 也必须进入同一 sparse prepared release delta。request/mapping、request allocator、role-binding 增删、受影响 agent activity、requester/operator mailbox 与 legacy material normalization 必须先形成 borrowed root，再经过 publication failpoint 一次安装。attestation 的 late mapping 错误不得留下 request attestation；role binding 必须更新 operator 与不同 target 的 activity，但 mailbox 只投递 operator。raw reducer 的验证顺序与 action 层更严格的规范化/拒绝边界保持不变。
+
 Marketplace listed, bid-placed and sale-completed events now prepare affected
 state before publication, including replay. A listing/bid and its immediate
 matching sale commit together or leave fees, agents, owner, order book, market

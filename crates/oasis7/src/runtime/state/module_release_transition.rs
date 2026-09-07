@@ -11,6 +11,8 @@ pub(crate) struct PreparedModuleRelease {
     pub(crate) factories: BTreeMap<String, FactoryProfileV1>,
     pub(crate) requests: BTreeMap<u64, ModuleReleaseRequestState>,
     pub(crate) mappings: BTreeMap<u64, ModuleReleaseManifestMappingState>,
+    pub(crate) next_request_id: Option<u64>,
+    pub(crate) role_bindings: BTreeMap<String, Option<BTreeSet<String>>>,
     world_materials: BTreeMap<String, i64>,
 }
 
@@ -24,6 +26,8 @@ impl PreparedModuleRelease {
             factories: BTreeMap::new(),
             requests: BTreeMap::new(),
             mappings: BTreeMap::new(),
+            next_request_id: None,
+            role_bindings: BTreeMap::new(),
             world_materials: state
                 .material_ledgers
                 .get(&MaterialLedgerId::world())
@@ -61,6 +65,19 @@ impl PreparedModuleRelease {
         state.factory_profiles.extend(self.factories);
         state.module_release_requests.extend(self.requests);
         state.module_release_manifest_mappings.extend(self.mappings);
+        if let Some(next_request_id) = self.next_request_id {
+            state.next_module_release_request_id = next_request_id;
+        }
+        for (agent_id, roles) in self.role_bindings {
+            match roles {
+                Some(roles) => {
+                    state.module_release_role_bindings.insert(agent_id, roles);
+                }
+                None => {
+                    state.module_release_role_bindings.remove(&agent_id);
+                }
+            }
+        }
         state.materials = self.world_materials.clone();
         state
             .material_ledgers
@@ -113,6 +130,15 @@ impl PreparedModuleRelease {
             DomainEvent::ModuleReleaseApplied {
                 operator_agent_id, ..
             } => (operator_agent_id, "", None),
+            DomainEvent::ModuleReleaseRequested {
+                requester_agent_id, ..
+            } => (requester_agent_id, "", None),
+            DomainEvent::ModuleReleaseAttested {
+                operator_agent_id, ..
+            }
+            | DomainEvent::ModuleReleaseRolesBound {
+                operator_agent_id, ..
+            } => (operator_agent_id, "", None),
             DomainEvent::ModuleReleaseShadowed {
                 operator_agent_id, ..
             } => (operator_agent_id, "", None),
@@ -122,7 +148,9 @@ impl PreparedModuleRelease {
             DomainEvent::ModuleReleaseRejected {
                 rejector_agent_id, ..
             } => (rejector_agent_id, "", None),
-            _ => unreachable!("release preparation requires a review, profile or completion event"),
+            _ => unreachable!(
+                "release preparation requires a precursor, review, profile or completion event"
+            ),
         };
         if let Some(proposal_id) = proposal_id {
             if !self.agents.contains_key(operator) && !state.agents.contains_key(operator) {
@@ -137,6 +165,89 @@ impl PreparedModuleRelease {
             }
         }
         match event {
+            DomainEvent::ModuleReleaseRequested {
+                request_id,
+                requester_agent_id,
+                manifest,
+                activate,
+                install_target,
+                required_roles,
+                profile_changes,
+            } => {
+                if *request_id == 0 {
+                    return Err(invalid("module release request_id must be > 0"));
+                }
+                if !state.agents.contains_key(requester_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: requester_agent_id.clone(),
+                    });
+                }
+                if state.module_release_requests.contains_key(request_id) {
+                    return Err(invalid(format!(
+                        "module release request already exists: request_id={request_id}"
+                    )));
+                }
+                let mut normalized_roles: Vec<String> = required_roles
+                    .iter()
+                    .map(|role| role.trim().to_ascii_lowercase())
+                    .filter(|role| !role.is_empty())
+                    .collect();
+                normalized_roles.sort();
+                normalized_roles.dedup();
+                if normalized_roles.is_empty() {
+                    normalized_roles = default_module_release_required_roles();
+                }
+                self.requests.insert(
+                    *request_id,
+                    ModuleReleaseRequestState {
+                        request_id: *request_id,
+                        requester_agent_id: requester_agent_id.clone(),
+                        manifest: manifest.clone(),
+                        activate: *activate,
+                        install_target: install_target.clone(),
+                        profile_changes: profile_changes.clone(),
+                        required_roles: normalized_roles,
+                        role_approvals: BTreeMap::new(),
+                        attestations: BTreeMap::new(),
+                        status: ModuleReleaseRequestStatus::Requested,
+                        shadow_manifest_hash: None,
+                        applied_manifest_hash: None,
+                        applied_proposal_id: None,
+                        rejected_reason: None,
+                        created_at: now,
+                        updated_at: now,
+                    },
+                );
+                self.mappings.insert(
+                    *request_id,
+                    ModuleReleaseManifestMappingState {
+                        request_id: *request_id,
+                        release_id: format!("release-{request_id}"),
+                        module_id: manifest.module_id.clone(),
+                        attestation_count: 0,
+                        release_wasm_hash: None,
+                        release_source_hash: None,
+                        release_build_manifest_hash: None,
+                        release_builder_image_digest: None,
+                        release_container_platform: None,
+                        release_canonicalizer_version: None,
+                        attestation_platforms: Vec::new(),
+                        attestation_proof_cids: Vec::new(),
+                        receipt_evidence_conflict: false,
+                        shadow_manifest_hash: None,
+                        applied_manifest_hash: None,
+                        applied_proposal_id: None,
+                        status: ModuleReleaseRequestStatus::Requested,
+                        created_at: now,
+                        updated_at: now,
+                    },
+                );
+                self.next_request_id = Some(
+                    state
+                        .next_module_release_request_id
+                        .max(request_id.saturating_add(1)),
+                );
+            }
             DomainEvent::ModuleReleaseShadowed {
                 request_id,
                 manifest_hash,
@@ -173,6 +284,168 @@ impl PreparedModuleRelease {
                 request.updated_at = now;
                 mapping.status = ModuleReleaseRequestStatus::Shadowed;
                 mapping.shadow_manifest_hash = Some(manifest_hash.clone());
+                mapping.updated_at = now;
+                self.requests.insert(*request_id, request);
+                self.mappings.insert(*request_id, mapping);
+            }
+            DomainEvent::ModuleReleaseAttested {
+                request_id,
+                operator_agent_id,
+                signer_node_id,
+                platform,
+                build_manifest_hash,
+                source_hash,
+                wasm_hash,
+                proof_cid,
+                builder_image_digest,
+                container_platform,
+                canonicalizer_version,
+            } => {
+                if !state.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                if signer_node_id.trim().is_empty() {
+                    return Err(invalid(format!(
+                        "module release attestation signer_node_id cannot be empty (request_id={request_id})"
+                    )));
+                }
+                if !state
+                    .node_identity_bindings
+                    .contains_key(signer_node_id.trim())
+                {
+                    return Err(invalid(format!(
+                        "module release attestation signer_node_id is untrusted: {signer_node_id}"
+                    )));
+                }
+                let normalized_platform = platform.trim().to_ascii_lowercase();
+                if normalized_platform.is_empty() {
+                    return Err(invalid(format!(
+                        "module release attestation platform cannot be empty (request_id={request_id})"
+                    )));
+                }
+                let mut request = state
+                    .module_release_requests
+                    .get(request_id)
+                    .ok_or_else(|| {
+                        invalid(format!(
+                            "module release attestation rejected: request not found ({request_id})"
+                        ))
+                    })?
+                    .clone();
+                if matches!(
+                    request.status,
+                    ModuleReleaseRequestStatus::Rejected | ModuleReleaseRequestStatus::Applied
+                ) {
+                    return Err(invalid(format!(
+                        "module release attestation invalid status for request {}: {:?}",
+                        request_id, request.status
+                    )));
+                }
+                if request.manifest.wasm_hash != *wasm_hash {
+                    return Err(invalid(format!(
+                        "module release attestation wasm hash mismatch: request_id={} expected={} found={}",
+                        request_id, request.manifest.wasm_hash, wasm_hash
+                    )));
+                }
+                let attestation_key = format!("{}|{}", signer_node_id.trim(), normalized_platform);
+                let next_attestation = ModuleReleaseAttestationState {
+                    request_id: *request_id,
+                    signer_node_id: signer_node_id.trim().to_string(),
+                    platform: normalized_platform,
+                    submitted_by_agent_id: operator_agent_id.clone(),
+                    build_manifest_hash: build_manifest_hash.clone(),
+                    source_hash: source_hash.clone(),
+                    wasm_hash: wasm_hash.clone(),
+                    proof_cid: proof_cid.clone(),
+                    builder_image_digest: builder_image_digest.clone(),
+                    container_platform: container_platform.clone(),
+                    canonicalizer_version: canonicalizer_version.clone(),
+                    submitted_at: now,
+                };
+                if let Some(existing) = request.attestations.get(attestation_key.as_str()) {
+                    let same_payload = existing.request_id == *request_id
+                        && existing.signer_node_id == next_attestation.signer_node_id
+                        && existing.platform == next_attestation.platform
+                        && existing.build_manifest_hash == next_attestation.build_manifest_hash
+                        && existing.source_hash == next_attestation.source_hash
+                        && existing.wasm_hash == next_attestation.wasm_hash
+                        && existing.proof_cid == next_attestation.proof_cid
+                        && existing.builder_image_digest == next_attestation.builder_image_digest
+                        && existing.container_platform == next_attestation.container_platform
+                        && existing.canonicalizer_version == next_attestation.canonicalizer_version;
+                    if !same_payload {
+                        return Err(invalid(format!(
+                            "module release attestation conflict: request_id={} signer={} platform={}",
+                            request_id, signer_node_id, platform
+                        )));
+                    }
+                } else {
+                    request
+                        .attestations
+                        .insert(attestation_key, next_attestation.clone());
+                }
+                request.updated_at = now;
+                let mut mapping = state
+                    .module_release_manifest_mappings
+                    .get(request_id)
+                    .ok_or_else(|| {
+                        invalid(format!(
+                            "module release mapping missing for attestation request_id={request_id}"
+                        ))
+                    })?
+                    .clone();
+                mapping.attestation_count = request.attestations.len() as u32;
+                if !mapping
+                    .attestation_platforms
+                    .contains(&next_attestation.platform)
+                {
+                    mapping
+                        .attestation_platforms
+                        .push(next_attestation.platform.clone());
+                    mapping.attestation_platforms.sort();
+                }
+                if !mapping
+                    .attestation_proof_cids
+                    .contains(&next_attestation.proof_cid)
+                {
+                    mapping
+                        .attestation_proof_cids
+                        .push(next_attestation.proof_cid.clone());
+                    mapping.attestation_proof_cids.sort();
+                }
+                match mapping.release_wasm_hash.as_ref() {
+                    None => {
+                        mapping.release_wasm_hash = Some(next_attestation.wasm_hash.clone());
+                        mapping.release_source_hash = Some(next_attestation.source_hash.clone());
+                        mapping.release_build_manifest_hash =
+                            Some(next_attestation.build_manifest_hash.clone());
+                        mapping.release_builder_image_digest =
+                            Some(next_attestation.builder_image_digest.clone());
+                        mapping.release_container_platform =
+                            Some(next_attestation.container_platform.clone());
+                        mapping.release_canonicalizer_version =
+                            Some(next_attestation.canonicalizer_version.clone());
+                    }
+                    Some(existing_wasm_hash) => {
+                        let same_release_evidence = existing_wasm_hash
+                            == &next_attestation.wasm_hash
+                            && mapping.release_source_hash.as_ref()
+                                == Some(&next_attestation.source_hash)
+                            && mapping.release_build_manifest_hash.as_ref()
+                                == Some(&next_attestation.build_manifest_hash)
+                            && mapping.release_builder_image_digest.as_ref()
+                                == Some(&next_attestation.builder_image_digest)
+                            && mapping.release_container_platform.as_ref()
+                                == Some(&next_attestation.container_platform)
+                            && mapping.release_canonicalizer_version.as_ref()
+                                == Some(&next_attestation.canonicalizer_version);
+                        if !same_release_evidence {
+                            mapping.receipt_evidence_conflict = true;
+                        }
+                    }
+                }
                 mapping.updated_at = now;
                 self.requests.insert(*request_id, request);
                 self.mappings.insert(*request_id, mapping);
@@ -252,6 +525,38 @@ impl PreparedModuleRelease {
                     self.mappings.insert(*request_id, mapping);
                 }
                 self.requests.insert(*request_id, request);
+            }
+            DomainEvent::ModuleReleaseRolesBound {
+                operator_agent_id,
+                target_agent_id,
+                roles,
+            } => {
+                if !state.agents.contains_key(operator_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: operator_agent_id.clone(),
+                    });
+                }
+                if !state.agents.contains_key(target_agent_id) {
+                    return Err(WorldError::AgentNotFound {
+                        agent_id: target_agent_id.clone(),
+                    });
+                }
+                let normalized_roles: BTreeSet<String> = roles
+                    .iter()
+                    .map(|role| role.trim().to_ascii_lowercase())
+                    .filter(|role| !role.is_empty())
+                    .collect();
+                self.role_bindings.insert(
+                    target_agent_id.clone(),
+                    (!normalized_roles.is_empty()).then_some(normalized_roles),
+                );
+                if operator_agent_id != target_agent_id
+                    && let Some(cell) = state.agents.get(target_agent_id)
+                {
+                    let mut cell = cell.clone();
+                    cell.last_active = now;
+                    self.agents.insert(target_agent_id.clone(), cell);
+                }
             }
             DomainEvent::ModuleReleaseRejected {
                 request_id, reason, ..
@@ -414,6 +719,50 @@ impl WorldState {
 pub(crate) struct ReleaseMapProjection<'a, K, V> {
     pub(crate) base: &'a BTreeMap<K, V>,
     pub(crate) updates: &'a BTreeMap<K, V>,
+}
+
+pub(crate) struct ReleaseOptionalMapProjection<'a, K, V> {
+    pub(crate) base: &'a BTreeMap<K, V>,
+    pub(crate) updates: &'a BTreeMap<K, Option<V>>,
+}
+
+impl<K: Ord + Serialize, V: Serialize> Serialize for ReleaseOptionalMapProjection<'_, K, V> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let retained = self
+            .base
+            .keys()
+            .filter(|key| !matches!(self.updates.get(*key), Some(None)))
+            .count();
+        let added = self
+            .updates
+            .iter()
+            .filter(|(key, value)| value.is_some() && !self.base.contains_key(*key))
+            .count();
+        let mut map = serializer.serialize_map(Some(retained + added))?;
+        let mut updates = self.updates.iter().peekable();
+        for (key, value) in self.base {
+            while updates.peek().is_some_and(|(next, _)| *next < key) {
+                let (next, replacement) = updates.next().unwrap();
+                if let Some(replacement) = replacement {
+                    map.serialize_entry(next, replacement)?;
+                }
+            }
+            if updates.peek().is_some_and(|(next, _)| *next == key) {
+                let (_, replacement) = updates.next().unwrap();
+                if let Some(replacement) = replacement {
+                    map.serialize_entry(key, replacement)?;
+                }
+            } else {
+                map.serialize_entry(key, value)?;
+            }
+        }
+        for (key, replacement) in updates {
+            if let Some(replacement) = replacement {
+                map.serialize_entry(key, replacement)?;
+            }
+        }
+        map.end()
+    }
 }
 
 impl<K: Ord + Serialize, V: Serialize> Serialize for ReleaseMapProjection<'_, K, V> {

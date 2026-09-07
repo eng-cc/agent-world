@@ -835,6 +835,13 @@ impl World {
     }
 
     #[cfg(test)]
+    pub(crate) fn remove_module_release_mapping_for_test(&mut self, request_id: u64) {
+        self.state
+            .module_release_manifest_mappings
+            .remove(&request_id);
+    }
+
+    #[cfg(test)]
     fn take_fail_next_append_after_publication_prepare_for_test(&mut self) -> bool {
         if std::mem::take(&mut self.fail_next_append_after_publication_prepare) {
             return true;

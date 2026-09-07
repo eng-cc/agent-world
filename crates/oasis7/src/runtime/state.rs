@@ -1010,7 +1010,10 @@ impl WorldState {
         }
         if matches!(
             event,
-            DomainEvent::ModuleReleaseShadowed { .. }
+            DomainEvent::ModuleReleaseRequested { .. }
+                | DomainEvent::ModuleReleaseAttested { .. }
+                | DomainEvent::ModuleReleaseRolesBound { .. }
+                | DomainEvent::ModuleReleaseShadowed { .. }
                 | DomainEvent::ModuleReleaseRoleApproved { .. }
                 | DomainEvent::ModuleReleaseRejected { .. }
                 | DomainEvent::ProductProfileGoverned { .. }

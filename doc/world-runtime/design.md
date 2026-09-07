@@ -250,6 +250,17 @@ proposal-id-zero rejection for nonempty profiles, and empty-profile success are
 unchanged. This adds release business completion, not prelude deduplication or
 global action/root atomicity.
 
+The three release precursors (`ModuleReleaseRequested`,
+`ModuleReleaseAttested`, and `ModuleReleaseRolesBound`) also use the sparse
+release projector for raw, live-action, and replay publication. It additionally
+projects the request allocator and role-binding updates, while touched agent
+cells carry activity and the routed projection supplies exactly the
+operator/requester mailbox. Attestation mapping lookup remains late in reducer
+error order but now fails only against the candidate. Role binding updates both
+operator and a distinct target's activity while routing only to the operator.
+Legacy world-material normalization and the final root are projected without a
+`WorldState` clone before the publication failpoint.
+
 Release review events use that same sparse request/mapping/agent preparation.
 Shadowing validates request and status, then requires and clones the mapping
 before changing either copy. Role approval preserves normalized-role,

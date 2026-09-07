@@ -701,12 +701,24 @@ where
     }
     output.serialize_field(
         "next_module_release_request_id",
-        &state.next_module_release_request_id,
+        &module_release_overlay
+            .and_then(|overlay| overlay.next_request_id)
+            .unwrap_or(state.next_module_release_request_id),
     )?;
-    output.serialize_field(
-        "module_release_role_bindings",
-        &state.module_release_role_bindings,
-    )?;
+    if let Some(overlay) = module_release_overlay {
+        output.serialize_field(
+            "module_release_role_bindings",
+            &module_release_transition::ReleaseOptionalMapProjection {
+                base: &state.module_release_role_bindings,
+                updates: &overlay.role_bindings,
+            },
+        )?;
+    } else {
+        output.serialize_field(
+            "module_release_role_bindings",
+            &state.module_release_role_bindings,
+        )?;
+    }
     if let Some(overlay) = module_instance_overlay {
         overlay.serialize_target_fields(state, &mut output)?;
     } else {
