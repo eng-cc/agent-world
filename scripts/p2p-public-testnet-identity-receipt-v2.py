@@ -529,15 +529,56 @@ def _descriptor(path: Path, label: str) -> dict[str, Any]:
     return {"path": str(path), "sha256": hashlib.sha256(value).hexdigest(), "size_bytes": len(value)}
 
 
+def _reject_output_aliases(
+    outputs: list[tuple[Path, str]], protected: list[tuple[Path, str]]
+) -> None:
+    """Reject output aliases before cleanup can destroy caller-owned evidence."""
+
+    seen: list[tuple[Path, Path, str]] = []
+    protected_paths = list(protected)
+    protected_paths.extend(
+        [(Path(__file__), "sidecar code"), (PLANNER_PATH, "planner code")]
+    )
+    for output, output_label in outputs:
+        if output.is_symlink():
+            die(f"{output_label} must not be a symlink")
+        resolved = output.resolve()
+        for previous, previous_resolved, previous_label in seen:
+            same_file = False
+            try:
+                same_file = (
+                    output.exists()
+                    and previous.exists()
+                    and os.path.samefile(output, previous)
+                )
+            except OSError:
+                pass
+            if resolved == previous_resolved or same_file:
+                die(f"{output_label} aliases {previous_label}")
+        seen.append((output, resolved, output_label))
+        for protected_path, protected_label in protected_paths:
+            same_file = False
+            try:
+                same_file = (
+                    output.exists()
+                    and protected_path.exists()
+                    and os.path.samefile(output, protected_path)
+                )
+            except OSError:
+                pass
+            if resolved == protected_path.resolve() or same_file:
+                die(f"{output_label} aliases protected {protected_label}")
+
+
 def _clear_derived_output(path: Path, label: str) -> None:
+    """Validate a derived output while retaining prior evidence for retries."""
+
     if not path.exists():
         return
     if path.is_symlink() or not path.is_file():
         die(f"{label} must be an absent regular output or a regular file")
-    try:
-        path.unlink()
-    except OSError as error:
-        die(f"cannot clear stale {label}: {error.__class__.__name__}")
+    # Keep existing output in place until _write_atomically or
+    # _write_bytes_atomically successfully replaces it.
 
 
 def _run_signing_command(tool: Path, command: str, arguments: list[str]) -> None:
@@ -585,6 +626,22 @@ def _bridge_create(args: argparse.Namespace) -> dict[str, Any]:
     verifier_tool = _registry_verifier_assertion(registry, verifier_tool)
     output_path = Path(args.out)
     evidence_path = Path(args.evidence_map_out)
+    _reject_output_aliases(
+        [
+            (output_path, "verified envelope output"),
+            (evidence_path, "evidence-map output"),
+        ],
+        [
+            (raw_path, "raw-v1"),
+            (template_path, "v2 template"),
+            (context_path, "signing context"),
+            (intent_path, "plan intent"),
+            (trust_path, "trust config"),
+            (registry_path, "provider registry"),
+            (signer_tool, "signer tool"),
+            (verifier_tool, "verifier tool"),
+        ],
+    )
     _clear_derived_output(output_path, "verified envelope output")
     _clear_derived_output(evidence_path, "evidence-map output")
     staging, promoted, _ = _create_evidence_directory(args.evidence_dir)
@@ -732,6 +789,10 @@ def create(
         die("governed signing context is required when signer/verifier seams are used")
     planner = _load_planner()
     _regular_file(raw_path, "raw-v1")
+    _reject_output_aliases(
+        [(Path(output_path), "verified envelope output")],
+        [(raw_path, "raw-v1"), (template_path, "v2 template")],
+    )
     raw_bytes = raw_path.read_bytes()
     raw = _validate_raw_v1(raw_bytes)
     template = _validate_template(_read_json(template_path, "v2 template"), planner, raw)

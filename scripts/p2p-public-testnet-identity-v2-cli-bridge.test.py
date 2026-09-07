@@ -777,6 +777,98 @@ raise SystemExit(adapter.main(sys.argv[1:]))
                 self.assertFalse(output.exists())
                 self.assertFalse(evidence_map_out.exists())
 
+    def test_sidecar_rejects_output_aliases_without_mutating_protected_inputs(self) -> None:
+        trusted_wrapper = self._tool_wrapper()
+        item = self.artifacts["sequencer-204"]
+        protected = (
+            ("raw-v1", item["raw_v1"]),
+            ("template", item["template"]),
+            ("context", self.signing.context),
+            ("plan-intent", self.signing.intent),
+            ("trust-config", self.signing.trust),
+            ("provider-registry", self.signing.registry),
+            ("signer-tool", trusted_wrapper),
+            ("verifier-tool", self.signing.verifier),
+        )
+        for label, protected_path in protected:
+            with self.subTest(protected=label):
+                before = protected_path.read_bytes()
+                evidence_map_out = self.root / f"{label}-alias-evidence-map.json"
+                result = self._run(
+                    SIDECAR,
+                    *self._sidecar_args(protected_path, evidence_map_out, trusted_wrapper),
+                )
+                self.assertNotEqual(result.returncode, 0, f"{label} alias unexpectedly succeeded")
+                self.assertRegex(result.stderr.lower(), r"alias|protected|output")
+                self.assertTrue(protected_path.is_file())
+                self.assertEqual(protected_path.read_bytes(), before)
+                self.assertFalse(evidence_map_out.exists())
+
+    def test_sidecar_rejects_hardlink_output_alias_without_mutation(self) -> None:
+        trusted_wrapper = self._tool_wrapper()
+        raw_path = self.artifacts["sequencer-204"]["raw_v1"]
+        hardlink = self.root / "raw-v1-hardlink"
+        os.link(raw_path, hardlink)
+        before = raw_path.read_bytes()
+        evidence_map_out = self.root / "hardlink-alias-evidence-map.json"
+        result = self._run(
+            SIDECAR,
+            *self._sidecar_args(hardlink, evidence_map_out, trusted_wrapper),
+        )
+        self.assertNotEqual(result.returncode, 0, "hardlink output alias unexpectedly succeeded")
+        self.assertRegex(result.stderr.lower(), r"alias|protected|output")
+        self.assertEqual(raw_path.read_bytes(), before)
+        self.assertEqual(hardlink.read_bytes(), before)
+        self.assertFalse(evidence_map_out.exists())
+
+    def test_sidecar_rejects_evidence_map_alias_without_mutating_protected_input(self) -> None:
+        trusted_wrapper = self._tool_wrapper()
+        raw_path = self.artifacts["sequencer-204"]["raw_v1"]
+        before = raw_path.read_bytes()
+        output = self.root / "independent-envelope-output.json"
+        result = self._run(
+            SIDECAR,
+            *self._sidecar_args(output, raw_path, trusted_wrapper),
+        )
+        self.assertNotEqual(result.returncode, 0, "evidence-map raw alias unexpectedly succeeded")
+        self.assertRegex(result.stderr.lower(), r"alias|protected|output")
+        self.assertEqual(raw_path.read_bytes(), before)
+        self.assertFalse(output.exists())
+
+    def test_sidecar_rejects_output_pair_alias_without_mutating_existing_output(self) -> None:
+        trusted_wrapper = self._tool_wrapper()
+        output = self.root / "aliased-output.json"
+        sentinel = b"previous verified output\n"
+        output.write_bytes(sentinel)
+        result = self._run(
+            SIDECAR,
+            *self._sidecar_args(output, output, trusted_wrapper),
+        )
+        self.assertNotEqual(result.returncode, 0, "output pair alias unexpectedly succeeded")
+        self.assertRegex(result.stderr.lower(), r"alias|output")
+        self.assertEqual(output.read_bytes(), sentinel)
+
+    def test_sidecar_preserves_existing_outputs_when_validation_fails(self) -> None:
+        trusted_wrapper = self._tool_wrapper()
+        invalid_raw = self.root / "invalid.raw-v1"
+        invalid_bytes = b"not-json\n"
+        invalid_raw.write_bytes(invalid_bytes)
+        output = self.root / "previous-output.json"
+        evidence_map_out = self.root / "previous-evidence-map.json"
+        output_bytes = b"previous envelope\n"
+        evidence_bytes = b"previous evidence map\n"
+        output.write_bytes(output_bytes)
+        evidence_map_out.write_bytes(evidence_bytes)
+        args = self._sidecar_args(output, evidence_map_out, trusted_wrapper)
+        raw_index = args.index("--raw-v1")
+        args[raw_index + 1] = str(invalid_raw)
+        result = self._run(SIDECAR, *args)
+        self.assertNotEqual(result.returncode, 0, "invalid raw-v1 unexpectedly succeeded")
+        self.assertRegex(result.stderr.lower(), r"raw|json|signing-tool|invalid")
+        self.assertEqual(invalid_raw.read_bytes(), invalid_bytes)
+        self.assertEqual(output.read_bytes(), output_bytes)
+        self.assertEqual(evidence_map_out.read_bytes(), evidence_bytes)
+
     def test_cross_pair_or_missing_evidence_rejects_before_any_mutation(self) -> None:
         bad_map = self.root / "cross-pair-map.json"
         value = json.loads(self.evidence_map.read_text(encoding="utf-8"))
