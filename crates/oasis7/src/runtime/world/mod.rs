@@ -44,6 +44,8 @@ mod module_instance_publication_transaction_regressions;
 #[cfg(test)]
 mod module_marketplace_transaction_regressions;
 #[cfg(test)]
+mod module_metadata_publication_transaction_regressions;
+#[cfg(test)]
 mod module_output_publication_transaction_regressions;
 #[cfg(test)]
 mod module_release_publication_transaction_regressions;

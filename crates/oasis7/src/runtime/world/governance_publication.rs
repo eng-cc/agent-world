@@ -515,7 +515,7 @@ pub(super) fn project_module_changes(
     Ok(())
 }
 
-fn project_module_event(
+pub(super) fn project_module_event(
     time: u64,
     event: &ModuleEvent,
     module_registry: &mut ModuleRegistry,
@@ -592,7 +592,10 @@ fn project_module_event(
     Ok(())
 }
 
-fn state_root_hash_with_manifest(world: &World, manifest: &Manifest) -> Result<String, WorldError> {
+pub(super) fn state_root_hash_with_manifest(
+    world: &World,
+    manifest: &Manifest,
+) -> Result<String, WorldError> {
     let manifest_hash = hash_json(manifest)?;
     let policy_hash = hash_json(&world.policies)?;
     let projection = StateRootProjection {

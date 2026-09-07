@@ -1,6 +1,8 @@
 use super::*;
-use crate::runtime::{EffectIntent, EffectReceipt};
-use std::collections::{BTreeMap, VecDeque};
+use crate::runtime::{
+    EffectIntent, EffectReceipt, Manifest, ManifestUpdate, ModuleEvent, ModuleRegistry,
+};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 pub(super) enum PreparedEventStateDelta {
     NoState,
@@ -25,6 +27,17 @@ pub(super) enum PreparedEventStateDelta {
         intent_id: String,
         pending_effects: VecDeque<EffectIntent>,
         inflight_effects: BTreeMap<String, EffectIntent>,
+    },
+    ModuleEvent {
+        event: ModuleEvent,
+        module_registry: ModuleRegistry,
+        module_artifacts: BTreeSet<String>,
+        module_tick_schedule: BTreeMap<String, WorldTime>,
+        cache_invalidations: BTreeSet<String>,
+    },
+    ManifestUpdated {
+        update: ManifestUpdate,
+        manifest: Manifest,
     },
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
@@ -121,6 +134,12 @@ impl PreparedEventStateDelta {
                 body,
                 WorldEventBody::ReceiptAppended(receipt) if &receipt.intent_id == intent_id
             ),
+            Self::ModuleEvent { event, .. } => {
+                matches!(body, WorldEventBody::ModuleEvent(body_event) if body_event == event)
+            }
+            Self::ManifestUpdated { update, .. } => {
+                matches!(body, WorldEventBody::ManifestUpdated(body_update) if body_update == update)
+            }
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -210,6 +229,9 @@ impl PreparedEventStateDelta {
             Self::EffectQueued { .. } | Self::ReceiptAppended { .. } => {
                 unreachable!("effect sidecars do not have a state overlay")
             }
+            Self::ModuleEvent { .. } | Self::ManifestUpdated { .. } => {
+                unreachable!("module metadata does not have a body state overlay")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -274,6 +296,24 @@ impl PreparedEventStateDelta {
                 world.pending_effects = pending_effects;
                 world.inflight_effects = inflight_effects;
             }
+            Self::ModuleEvent {
+                module_registry,
+                module_artifacts,
+                module_tick_schedule,
+                cache_invalidations,
+                ..
+            } => {
+                world.module_registry = module_registry;
+                world.module_artifacts = module_artifacts;
+                world.module_tick_schedule = module_tick_schedule;
+                for record_key in cache_invalidations {
+                    let prefix = format!("{record_key}|");
+                    world
+                        .prepared_subscription_cache
+                        .retain(|key, _| !key.starts_with(prefix.as_str()));
+                }
+            }
+            Self::ManifestUpdated { manifest, .. } => world.manifest = manifest,
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -415,6 +455,13 @@ impl World {
             WorldEventBody::ReceiptAppended(receipt) => {
                 Some(self.prepare_raw_receipt_delta(receipt)?)
             }
+            WorldEventBody::ModuleEvent(event) => Some(self.prepare_raw_module_event_delta(event)?),
+            WorldEventBody::ManifestUpdated(update) => {
+                Some(PreparedEventStateDelta::ManifestUpdated {
+                    update: update.clone(),
+                    manifest: update.manifest.clone(),
+                })
+            }
             _ => prepared_governance_events::prepare(self, &body)?
                 .or_else(|| PreparedEventStateDelta::for_body(&body)),
         };
@@ -512,6 +559,31 @@ impl World {
             intent_id: receipt.intent_id.clone(),
             pending_effects,
             inflight_effects,
+        })
+    }
+
+    fn prepare_raw_module_event_delta(
+        &self,
+        event: &ModuleEvent,
+    ) -> Result<PreparedEventStateDelta, WorldError> {
+        let mut module_registry = self.module_registry.clone();
+        let mut module_artifacts = self.module_artifacts.clone();
+        let mut module_tick_schedule = self.module_tick_schedule.clone();
+        let mut cache_invalidations = BTreeSet::new();
+        super::super::governance_publication::project_module_event(
+            self.state.time,
+            event,
+            &mut module_registry,
+            &mut module_artifacts,
+            &mut module_tick_schedule,
+            &mut cache_invalidations,
+        )?;
+        Ok(PreparedEventStateDelta::ModuleEvent {
+            event: event.clone(),
+            module_registry,
+            module_artifacts,
+            module_tick_schedule,
+            cache_invalidations,
         })
     }
 
@@ -755,6 +827,10 @@ impl World {
                 // Effect queues are persisted World sidecars outside the
                 // canonical WorldState root schema.
                 self.current_state_root_hash()?
+            }
+            PreparedEventStateDelta::ModuleEvent { .. } => self.current_state_root_hash()?,
+            PreparedEventStateDelta::ManifestUpdated { manifest, .. } => {
+                super::super::governance_publication::state_root_hash_with_manifest(self, manifest)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {
