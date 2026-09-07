@@ -553,8 +553,9 @@ design.
 
 - The default world directory owns one module-store closure: registry, manifest metadata, and content-addressed wasm artifacts. `save_to_dir` / `load_from_dir` are the normal route; compatibility `*_with_modules` entrypoints do not establish a parallel format.
 - Restore accepts legacy directories without a store, but an existing store must validate registry/meta/artifact hash consistency and return structured version, missing-artifact, or manifest-mismatch errors rather than silently repairing bytes.
+- `load_module_store_from_dir` uses a sparse prepared replacement: it loads and validates every sorted registry record into owned registry/set/byte values, then installs those three values once. No `World` clone is required, validation error priority is unchanged, failed hydration preserves the live cache and all world authority, and successful hydration preserves the existing cache policy.
 - Module instance identity/version/hash, owner, install target, active state, and install time are persisted for replay routing. Upgrades currently validate compatibility and append ordered lifecycle events; one atomic registry/state/event transition remains a target and requires lifecycle failure-injection proof.
-- Runtime anchors are `crates/oasis7/src/runtime/module_store.rs`, `runtime/error.rs`, and `runtime/tests/persistence.rs`.
+- Runtime anchors are `crates/oasis7/src/runtime/module_store.rs`, `runtime/error.rs`, `runtime/tests/persistence.rs`, and `runtime/world/module_store_load_transaction_regressions.rs`.
 
 ## 设计目标
 

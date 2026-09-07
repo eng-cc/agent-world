@@ -48,6 +48,8 @@ mod module_release_publication_transaction_regressions;
 #[cfg(test)]
 mod module_release_review_publication_transaction_regressions;
 #[cfg(test)]
+mod module_store_load_transaction_regressions;
+#[cfg(test)]
 #[path = "prepared_base_head_transaction_regressions.rs"]
 mod prepared_base_head_transaction_regressions;
 mod war_declaration_quote;

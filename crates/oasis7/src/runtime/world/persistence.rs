@@ -1,8 +1,9 @@
 use super::super::capability_authorization::CapabilityRevocationState;
 use super::super::util::{hash_json, read_json_from_path, write_json_to_path};
 use super::super::{
-    Journal, JournalSegmentRef, LocalCasStore, ModuleCache, ModuleStore, SegmentConfig, Snapshot,
-    TickConsensusRecord, WorldError, WorldEvent, WorldTime, segment_journal, segment_snapshot,
+    Journal, JournalSegmentRef, LocalCasStore, ModuleCache, ModuleRegistry, ModuleStore,
+    SegmentConfig, Snapshot, TickConsensusRecord, WorldError, WorldEvent, WorldTime,
+    segment_journal, segment_snapshot,
 };
 use super::World;
 use super::module_tick_runtime::ModuleTickRoutingMetrics;
@@ -14,6 +15,7 @@ use std::collections::BTreeSet;
 use std::collections::VecDeque;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 #[path = "authoritative_recovery_generation.rs"]
 mod authoritative_recovery_generation;
@@ -60,6 +62,20 @@ const SIDECAR_GENERATION_KEEP_LATEST: usize = 2;
 const SIDECAR_GENERATION_SNAPSHOT_MANIFEST_FILE: &str = "snapshot.manifest.json";
 const SIDECAR_GENERATION_JOURNAL_SEGMENTS_FILE: &str = "journal.segments.json";
 const SIDECAR_GENERATION_RECOVERY_METADATA_FILE: &str = "viewer-recovery.bin";
+
+struct PreparedModuleStoreLoad {
+    registry: ModuleRegistry,
+    artifacts: BTreeSet<String>,
+    artifact_bytes: BTreeMap<String, Arc<[u8]>>,
+}
+
+impl PreparedModuleStoreLoad {
+    fn install(self, world: &mut World) {
+        world.module_registry = self.registry;
+        world.module_artifacts = self.artifacts;
+        world.module_artifact_bytes = self.artifact_bytes;
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct SidecarGcResult {
@@ -555,12 +571,19 @@ impl World {
         if !store.registry_path().exists() {
             return Ok(());
         }
-        let registry = store.load_registry()?;
-        self.module_registry = registry;
-        self.module_artifacts.clear();
-        self.module_artifact_bytes.clear();
+        self.prepare_module_store_load(&store)?.install(self);
+        Ok(())
+    }
 
-        for record in self.module_registry.records.values() {
+    fn prepare_module_store_load(
+        &self,
+        store: &ModuleStore,
+    ) -> Result<PreparedModuleStoreLoad, WorldError> {
+        let registry = store.load_registry()?;
+        let mut artifacts = BTreeSet::new();
+        let mut artifact_bytes = BTreeMap::new();
+
+        for record in registry.records.values() {
             let wasm_hash = &record.manifest.wasm_hash;
             let meta = store.read_meta(wasm_hash)?;
             if meta != record.manifest {
@@ -576,11 +599,14 @@ impl World {
                 });
             }
             self.validate_module_artifact_identity(&record.manifest)?;
-            self.module_artifacts.insert(wasm_hash.clone());
-            self.module_artifact_bytes
-                .insert(wasm_hash.clone(), bytes.into());
+            artifacts.insert(wasm_hash.clone());
+            artifact_bytes.insert(wasm_hash.clone(), bytes.into());
         }
-        Ok(())
+        Ok(PreparedModuleStoreLoad {
+            registry,
+            artifacts,
+            artifact_bytes,
+        })
     }
 
     fn load_selected_generation_module_artifacts_from_dir(

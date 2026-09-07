@@ -363,8 +363,9 @@ proposer 可以提交候选 receipt；active validator 必须从同一 committed
 
 - Default `World::save_to_dir` / `load_from_dir` persist the module registry, manifest metadata, and content-addressed artifact bytes together. Compatibility `*_with_modules` APIs remain directed callers, not a second persistence truth.
 - A legacy directory without a module store loads compatibly. Once registry/meta/artifact files exist, restore verifies their mutual consistency and artifact hash; missing or damaged data must return `ModuleStoreVersionMismatch`, `ModuleStoreArtifactMissing`, or `ModuleStoreManifestMismatch` (or governed recovery), never silently substitute bytes.
+- Direct module-store hydration prepares the complete registry, artifact-key set, and artifact-byte map in owned replacements before changing a live `World`. Failure on any sorted persisted record leaves the prior registry, bytes, artifact set, and process-local cache unchanged; successful hydration retains the established cache policy rather than silently resetting it.
 - Persisted instances retain module identity/version/hash, owner, install target, activation state, and installation time so replay routes by stable instance identity rather than global `module_id` replacement. Governed proposal apply now stages ordered lifecycle events and every touched registry/artifact/schedule/cache/manifest/proposal/journal/consensus projection in a typed prepared batch and publishes only on full success; atomically aligning registry with persisted instance state, recovery/replay, receipt/outbox, and every non-proposal lifecycle entrypoint remains a target transaction contract.
-- Evidence anchors: `crates/oasis7/src/runtime/module_store.rs`, `runtime/error.rs`, and `runtime/tests/persistence.rs` cover default roundtrip, tamper rejection, and legacy no-store load.
+- Evidence anchors: `crates/oasis7/src/runtime/module_store.rs`, `runtime/error.rs`, `runtime/tests/persistence.rs`, and `runtime/world/module_store_load_transaction_regressions.rs` cover default roundtrip, tamper rejection, legacy no-store load, and late-record atomicity.
 
 ## 里程碑
 - M1 (2026-03-03): 完成模块设计 PRD 主体重写与任务改造。
