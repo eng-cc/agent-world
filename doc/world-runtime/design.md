@@ -423,6 +423,16 @@ allocator, journal, consensus, root, or deterministic metric state. Identical
 installation remains a no-op, and committed events retain the existing replay
 reducers and event order.
 
+Raw `CommandCommitted` replay-equivalent publication uses a separate,
+full-event-bound prepared delta. It validates against the current state,
+manifest, journal head, invocation context, authority state, and durable effect
+queues while staging only the five maps it can change: grants, nonces,
+authorization receipts, budgets, and effect links. Revocation and invocation
+context maps remain borrowed inputs to the full authorization-root projection.
+All link checks finish before those staged maps and the root are installed with
+the event envelope. This path does not execute a command or replace the
+`TrustedCommandStage` live command boundary.
+
 The trusted capability-command executor and public direct module call/command
 now use the same architectural seam without cloning canonical `World`: a
 borrowed-base typed stage owns only the

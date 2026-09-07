@@ -14,6 +14,7 @@ mod bootstrap_power;
 mod capability_authorization;
 mod capability_authorization_admin;
 mod capability_authorization_command;
+mod capability_authorization_command_projection;
 mod capability_authorization_command_stage;
 mod capability_authorization_events;
 mod capability_authorization_publication;
@@ -821,6 +822,15 @@ impl World {
     #[cfg(test)]
     pub(crate) fn seed_capability_grant_for_test(&mut self, grant_id: String, encoded: JsonValue) {
         self.capability_grants_v2.insert(grant_id, encoded);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn seed_capability_budget_account_for_test(
+        &mut self,
+        key: String,
+        account: crate::runtime::CapabilityBudgetAccount,
+    ) {
+        self.capability_budget_accounts.insert(key, account);
     }
 
     #[cfg(test)]

@@ -27,6 +27,48 @@ use super::capability_authorization::{
 use super::capability_authorization_state::{capability_budget_key, validate_budget_account};
 
 impl World {
+    pub(super) fn prepare_raw_command_commit(
+        &self,
+        event: &CapabilityAuthorizationEvent,
+        time: WorldTime,
+    ) -> Result<
+        super::capability_authorization_command_projection::PreparedCapabilityCommandCommit,
+        WorldError,
+    > {
+        let CapabilityAuthorizationEvent::CommandCommitted {
+            budget_key,
+            budget_before_remaining_units,
+            budget_before_spent_units,
+            state_hash_before,
+            receipt_hash,
+            budget_account,
+            grant,
+            nonce_key,
+            nonce_record,
+            receipt,
+            effect_receipt_links,
+        } = event
+        else {
+            return Err(deny("command projection requires a command commit event"));
+        };
+        apply_command_commit(
+            self,
+            event,
+            budget_key,
+            *budget_before_remaining_units,
+            *budget_before_spent_units,
+            state_hash_before,
+            receipt_hash,
+            budget_account,
+            grant,
+            nonce_key,
+            nonce_record,
+            receipt,
+            effect_receipt_links,
+            time,
+        )
+    }
+
     pub(super) fn verify_capability_authority_finality(
         &self,
         record: &CapabilityAuthorityRecord,
@@ -195,34 +237,9 @@ impl World {
             CapabilityAuthorizationEvent::GrantRegistered { grant } => {
                 apply_registered_grant(self, grant, time)?;
             }
-            CapabilityAuthorizationEvent::CommandCommitted {
-                budget_key,
-                budget_before_remaining_units,
-                budget_before_spent_units,
-                state_hash_before,
-                receipt_hash,
-                budget_account,
-                grant,
-                nonce_key,
-                nonce_record,
-                receipt,
-                effect_receipt_links,
-            } => {
-                apply_command_commit(
-                    self,
-                    budget_key,
-                    *budget_before_remaining_units,
-                    *budget_before_spent_units,
-                    state_hash_before,
-                    receipt_hash,
-                    budget_account,
-                    grant,
-                    nonce_key,
-                    nonce_record,
-                    receipt,
-                    effect_receipt_links,
-                    time,
-                )?;
+            CapabilityAuthorizationEvent::CommandCommitted { .. } => {
+                self.prepare_raw_command_commit(event, time)?.install(self);
+                return Ok(());
             }
             CapabilityAuthorizationEvent::EffectReceiptCommitted {
                 intent_id,
@@ -513,7 +530,8 @@ pub(super) fn validate_and_project_registered_grant(
 
 #[allow(clippy::too_many_arguments)]
 fn apply_command_commit(
-    world: &mut World,
+    world: &World,
+    event: &CapabilityAuthorizationEvent,
     budget_key: &str,
     budget_before_remaining_units: i64,
     budget_before_spent_units: i64,
@@ -526,7 +544,15 @@ fn apply_command_commit(
     receipt: &CapabilityAuthorizationAuditReceipt,
     effect_receipt_links: &std::collections::BTreeMap<String, CapabilityEffectReceiptLink>,
     time: WorldTime,
-) -> Result<(), WorldError> {
+) -> Result<
+    super::capability_authorization_command_projection::PreparedCapabilityCommandCommit,
+    WorldError,
+> {
+    let mut capability_grants_v2 = world.capability_grants_v2.clone();
+    let mut capability_nonce_records = world.capability_nonce_records.clone();
+    let mut capability_authorization_receipts = world.capability_authorization_receipts.clone();
+    let mut capability_budget_accounts = world.capability_budget_accounts.clone();
+    let mut capability_effect_receipt_links = world.capability_effect_receipt_links.clone();
     validate_grant_body(grant, time)?;
     world.verify_issuer(grant)?;
     world.verify_live_revocation(grant)?;
@@ -697,18 +723,14 @@ fn apply_command_commit(
     {
         return Err(deny("immutable grant body changed"));
     }
-    world
-        .capability_grants_v2
-        .insert(grant.grant_id.clone(), encoded);
+    capability_grants_v2.insert(grant.grant_id.clone(), encoded);
 
     if let Some(existing) = world.capability_nonce_records.get(nonce_key)
         && existing != nonce_record
     {
         return Err(deny("capability nonce journal record changed"));
     }
-    world
-        .capability_nonce_records
-        .insert(nonce_key.to_string(), nonce_record.clone());
+    capability_nonce_records.insert(nonce_key.to_string(), nonce_record.clone());
 
     if let Some(existing) = world
         .capability_authorization_receipts
@@ -717,9 +739,7 @@ fn apply_command_commit(
     {
         return Err(deny("capability authorization receipt changed"));
     }
-    world
-        .capability_authorization_receipts
-        .insert(receipt.receipt_id.clone(), receipt.clone());
+    capability_authorization_receipts.insert(receipt.receipt_id.clone(), receipt.clone());
 
     if let Some(existing) = world.capability_budget_accounts.get(budget_key)
         && (existing.remaining_units < budget_account.remaining_units
@@ -727,9 +747,7 @@ fn apply_command_commit(
     {
         return Err(deny("capability budget journal transition regressed"));
     }
-    world
-        .capability_budget_accounts
-        .insert(budget_key.to_string(), budget_account.clone());
+    capability_budget_accounts.insert(budget_key.to_string(), budget_account.clone());
 
     for (intent_id, link) in effect_receipt_links {
         if intent_id.trim().is_empty() || link.authorization_receipt_id != receipt.receipt_id {
@@ -750,11 +768,29 @@ fn apply_command_commit(
         {
             return Err(deny("capability effect receipt link changed"));
         }
-        world
-            .capability_effect_receipt_links
-            .insert(intent_id.clone(), link.clone());
+        capability_effect_receipt_links.insert(intent_id.clone(), link.clone());
     }
-    Ok(())
+    let capability_authorization_root = world
+        .compute_capability_authorization_root_with_full_projection(
+            &capability_grants_v2,
+            &world.capability_revocation_state,
+            &world.capability_invocation_contexts,
+            &capability_budget_accounts,
+            &capability_nonce_records,
+            &capability_authorization_receipts,
+            &capability_effect_receipt_links,
+        )?;
+    Ok(
+        super::capability_authorization_command_projection::PreparedCapabilityCommandCommit {
+            event: event.clone(),
+            capability_grants_v2,
+            capability_nonce_records,
+            capability_authorization_receipts,
+            capability_budget_accounts,
+            capability_effect_receipt_links,
+            capability_authorization_root,
+        },
+    )
 }
 
 fn apply_effect_receipt_commit(
