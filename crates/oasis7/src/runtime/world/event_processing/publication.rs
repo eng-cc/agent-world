@@ -27,6 +27,23 @@ impl World {
         body: WorldEventBody,
         caused_by: Option<CausedBy>,
     ) -> Result<WorldEventId, WorldError> {
+        match &body {
+            WorldEventBody::CapabilityAuthorization(
+                CapabilityAuthorizationEvent::AuthorityInstalled { .. },
+            ) => {
+                return Err(super::super::capability_authorization::deny(
+                    "record-only capability authority event has no replayable finality certificate",
+                ));
+            }
+            WorldEventBody::CapabilityAuthorization(
+                CapabilityAuthorizationEvent::AuthorityInstalledWithFinality { .. },
+            ) => {
+                return Err(super::super::capability_authorization::deny(
+                    "certificate-only capability authority event has no binding proof",
+                ));
+            }
+            _ => {}
+        }
         let state_delta = match &body {
             WorldEventBody::Domain(
                 event @ (DomainEvent::AgentIntentProposed { .. }
@@ -147,7 +164,7 @@ impl World {
             WorldEventBody::Domain(event @ (DomainEvent::AllianceFormed { .. } | DomainEvent::AllianceJoined { .. } | DomainEvent::AllianceLeft { .. } | DomainEvent::AllianceDissolved { .. } | DomainEvent::WarDeclared { .. } | DomainEvent::WarConcluded { .. })) => Some(PreparedEventStateDelta::AllianceWar(super::super::alliance_war_publication::PreparedAllianceWarEvent::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::Domain(event @ (DomainEvent::GovernanceProposalOpened { .. } | DomainEvent::GovernanceVoteCast { .. } | DomainEvent::GovernanceProposalFinalized { .. } | DomainEvent::CrisisSpawned { .. } | DomainEvent::CrisisResolved { .. } | DomainEvent::CrisisTimedOut { .. } | DomainEvent::MetaProgressGranted { .. } | DomainEvent::ProductValidated { .. })) => Some(PreparedEventStateDelta::GovernanceMeta(super::super::governance_meta_publication::PreparedGovernanceMetaEvent::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::Domain(DomainEvent::ActionRejected { .. }) => {
-                Some(PreparedEventStateDelta::NoState)
+                Some(PreparedEventStateDelta::NoState(body.clone()))
             }
             WorldEventBody::Domain(event)
                 if crate::runtime::state::core_policy_transition::PreparedCorePolicyEvent::supports(event) =>
@@ -250,6 +267,9 @@ impl World {
             _ => prepared_governance_events::prepare(self, &body)?
                 .or_else(|| PreparedEventStateDelta::for_body(&body)),
         };
+        let state_delta = state_delta.ok_or_else(|| WorldError::ResourceBalanceInvalid {
+            reason: format!("unclassified world event body cannot be published: {body:?}"),
+        })?;
         self.append_event_internal(body, caused_by, state_delta)
     }
 
@@ -259,14 +279,10 @@ impl World {
         caused_by: Option<CausedBy>,
         prepared: PreparedBodyAttributesUpdate,
     ) -> Result<WorldEventId, WorldError> {
-        self.append_event_internal(
-            body,
-            caused_by,
-            Some(PreparedEventStateDelta::Body(prepared)),
-        )
+        self.append_event_internal(body, caused_by, PreparedEventStateDelta::Body(prepared))
     }
 
-    pub(in crate::runtime::world) fn append_event_with_route_only_domain_event(
+    pub(in crate::runtime::world) fn append_body_attributes_rejected(
         &mut self,
         body: WorldEventBody,
         caused_by: Option<CausedBy>,
@@ -282,47 +298,21 @@ impl World {
             return self.append_event_internal(
                 body,
                 caused_by,
-                Some(PreparedEventStateDelta::CorePolicy(prepared)),
+                PreparedEventStateDelta::CorePolicy(prepared),
             );
         }
-        self.append_event_internal(
-            body,
-            caused_by,
-            Some(PreparedEventStateDelta::RouteOnly { agent_id }),
-        )
+        Err(WorldError::ResourceBalanceInvalid {
+            reason: format!("route-only publication is unsupported for agent {agent_id}"),
+        })
     }
 
     fn append_event_internal(
         &mut self,
         body: WorldEventBody,
         caused_by: Option<CausedBy>,
-        state_delta: Option<PreparedEventStateDelta>,
+        state_delta: PreparedEventStateDelta,
     ) -> Result<WorldEventId, WorldError> {
-        if let Some(state_delta) = state_delta {
-            return self.append_prepared_event(body, caused_by, state_delta);
-        }
-
-        // Domain intent payloads carry the journal position as part of their
-        // authority identity. Validate against the id before mutating state;
-        // this keeps the payload and its envelope inseparable on replay.
-        let expected_event_id = self.next_event_id.max(1);
-        self.apply_event_body_at_with_prepared_body(
-            &body,
-            self.state.time,
-            Some(expected_event_id),
-            None,
-        )?;
-        let event_id = self.allocate_next_event_id();
-        debug_assert_eq!(event_id, expected_event_id);
-        self.journal.append(WorldEvent {
-            id: event_id,
-            time: self.state.time,
-            caused_by,
-            body,
-        });
-        self.enforce_journal_event_limit();
-        self.record_tick_consensus_for_tick(self.state.time)?;
-        Ok(event_id)
+        self.append_prepared_event(body, caused_by, state_delta)
     }
 
     fn prepare_raw_effect_queue_delta(
@@ -685,10 +675,8 @@ impl World {
             PreparedEventStateDelta::AgentClaimTerminal(prepared) => {
                 self.state_root_hash_with_agent_claim_terminal_overlay(prepared)?
             }
-            PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
-            PreparedEventStateDelta::Body(_)
-            | PreparedEventStateDelta::RouteOnly { .. }
-            | PreparedEventStateDelta::DomainRouteOnly { .. } => {
+            PreparedEventStateDelta::NoState(_) => self.current_state_root_hash()?,
+            PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::DomainRouteOnly { .. } => {
                 let Some(domain_event) = domain_event.as_ref() else {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: "prepared body delta requires a domain event".to_string(),

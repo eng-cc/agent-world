@@ -1,7 +1,7 @@
 use super::*;
 
 pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
-    NoState,
+    NoState(WorldEventBody),
     ModuleMarketplace(
         super::super::super::super::state::module_marketplace_transition::PreparedModuleMarketplace,
     ),
@@ -72,9 +72,6 @@ pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
     AgentClaimEconomic(super::super::super::agent_claim_economic_publication::PreparedAgentClaimEconomic),
     AgentClaimTerminal(super::super::super::agent_claim_terminal_publication::PreparedAgentClaimTerminal),
     Body(PreparedBodyAttributesUpdate),
-    RouteOnly {
-        agent_id: String,
-    },
     DomainRouteOnly {
         event: DomainEvent,
         agent_id: String,
@@ -135,7 +132,9 @@ impl PreparedEventStateDelta {
             | WorldEventBody::ModuleEmitted(_)
             | WorldEventBody::SnapshotCreated(_)
             | WorldEventBody::RollbackApplied(_)
-            | WorldEventBody::Domain(DomainEvent::ActionRejected { .. }) => Some(Self::NoState),
+            | WorldEventBody::Domain(DomainEvent::ActionRejected { .. }) => {
+                Some(Self::NoState(body.clone()))
+            }
             WorldEventBody::Governance(GovernanceEvent::EmergencyBrakeActivated {
                 active_until_tick,
                 ..
@@ -245,17 +244,10 @@ impl PreparedEventStateDelta {
             Self::AgentClaimTerminal(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
-            Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
+            Self::NoState(prepared_body) => prepared_body == body,
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
-            Self::RouteOnly { agent_id } => matches!(
-                body,
-                WorldEventBody::Domain(DomainEvent::BodyAttributesRejected {
-                    agent_id: event_agent_id,
-                    ..
-                }) if event_agent_id == agent_id
-            ),
             Self::DomainRouteOnly { event, .. } => {
                 matches!(body, WorldEventBody::Domain(body_event) if body_event == event)
             }
@@ -394,12 +386,8 @@ impl PreparedEventStateDelta {
             }
             Self::AgentClaimEconomic(_) => unreachable!("claim economic uses sparse projection"),
             Self::AgentClaimTerminal(_) => unreachable!("claim terminal uses sparse projection"),
-            Self::NoState => unreachable!("NoState does not have a state overlay"),
+            Self::NoState(_) => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
-            Self::RouteOnly { agent_id } => {
-                { super::super::super::super::BodyOverlay::route_only(agent_id.clone()) }
-                    .with_routed_domain_event(event)
-            }
             Self::DomainRouteOnly { agent_id, .. } => {
                 { super::super::super::super::BodyOverlay::route_only(agent_id.clone()) }
                     .with_routed_domain_event(event)
@@ -579,7 +567,7 @@ impl PreparedEventStateDelta {
                     .governance_identity_profiles
                     .insert(target_agent_id, next_profile);
             }
-            Self::NoState | Self::RouteOnly { .. } | Self::DomainRouteOnly { .. } => {}
+            Self::NoState(_) | Self::DomainRouteOnly { .. } => {}
         }
     }
 }

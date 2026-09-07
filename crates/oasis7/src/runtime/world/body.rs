@@ -131,7 +131,7 @@ impl World {
     ) -> Result<WorldEventId, WorldError> {
         let agent_id = agent_id.into();
         let reason = reason.into();
-        self.append_event_with_route_only_domain_event(
+        self.append_body_attributes_rejected(
             WorldEventBody::Domain(DomainEvent::BodyAttributesRejected {
                 agent_id: agent_id.clone(),
                 reason,

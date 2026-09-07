@@ -886,10 +886,6 @@ impl World {
         self
     }
 
-    pub(super) fn allocate_next_event_id(&mut self) -> WorldEventId {
-        Self::allocate_rolling_sequence_id(&mut self.next_event_id, &mut self.next_event_id_era)
-    }
-
     pub(super) fn preview_next_event_id(
         next_id: WorldEventId,
         era: u64,

@@ -31,7 +31,6 @@ use super::main_token::{
     MainTokenNodePointsBridgeDistribution, MainTokenNodePointsBridgeEpochRecord,
     MainTokenScheduledPolicyUpdate, MainTokenSupplyState, MainTokenTreasuryDistributionRecord,
     RestrictedStarterClaimGrantState, RestrictedStarterClaimLiveopsPoolTopUpRecord,
-    main_token_bucket_unlocked_amount,
 };
 use super::node_points::EpochSettlementReport;
 use super::reward_asset::{

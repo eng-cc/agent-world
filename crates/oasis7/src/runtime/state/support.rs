@@ -610,30 +610,6 @@ fn apply_agent_resource_delta(
         })
 }
 
-pub(super) fn remove_resource_balance(
-    balances: &mut BTreeMap<ResourceKind, i64>,
-    kind: ResourceKind,
-    amount: i64,
-) -> Result<(), String> {
-    if amount < 0 {
-        return Err(format!("negative resource amount not allowed: {amount}"));
-    }
-    let current = balances.get(&kind).copied().unwrap_or(0);
-    if current < amount {
-        return Err(format!(
-            "insufficient resource {:?}: requested={amount} available={current}",
-            kind
-        ));
-    }
-    let next = current - amount;
-    if next == 0 {
-        balances.remove(&kind);
-    } else {
-        balances.insert(kind, next);
-    }
-    Ok(())
-}
-
 pub(crate) fn verify_reward_mint_record_signature_with_state(
     state: &WorldState,
     record: &NodeRewardMintRecord,

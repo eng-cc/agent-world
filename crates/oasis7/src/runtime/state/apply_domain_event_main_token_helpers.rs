@@ -1,4 +1,9 @@
 use super::*;
+use crate::runtime::events::MainTokenFeeKind;
+use crate::runtime::main_token::{
+    MAIN_TOKEN_TREASURY_BUCKET_GAS_FEE, MAIN_TOKEN_TREASURY_BUCKET_MODULE_FEE,
+    MAIN_TOKEN_TREASURY_BUCKET_SLASH, RestrictedStarterClaimGrantStatus,
+};
 
 pub(crate) fn add_main_token_treasury_balance(
     balances: &mut BTreeMap<String, u64>,

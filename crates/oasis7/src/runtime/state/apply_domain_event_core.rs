@@ -1,7 +1,5 @@
 use super::*;
 
-use crate::runtime::AgentActivityV1;
-
 #[path = "apply_domain_event_core_late.rs"]
 mod late;
 
@@ -12,99 +10,12 @@ impl WorldState {
         now: WorldTime,
     ) -> Result<(), WorldError> {
         match event {
-            DomainEvent::AgentRegistered { agent_id, pos } => {
-                let state = AgentState::new(agent_id, *pos);
-                let mut cell = AgentCell::new(state, now);
-                cell.activity = Some(AgentActivityV1::idle(now));
-                self.agents.insert(agent_id.clone(), cell);
-            }
-            DomainEvent::AgentMoved { agent_id, to, .. } => {
-                if let Some(cell) = self.agents.get_mut(agent_id) {
-                    cell.state.pos = *to;
-                    cell.last_active = now;
-                }
-            }
-            DomainEvent::ActionAccepted { .. } => {}
-            DomainEvent::ActionRejected { .. } => {}
             DomainEvent::AgentIntentProposed { .. }
             | DomainEvent::AgentIntentSubmitted { .. }
             | DomainEvent::AgentIntentAccepted { .. }
             | DomainEvent::AgentIntentReplaced { .. }
             | DomainEvent::AgentIntentTransitioned { .. } => {
                 unreachable!("Agent Intent events are handled by apply_domain_event_intent")
-            }
-            DomainEvent::Observation { .. } => {}
-            DomainEvent::BodyAttributesUpdated { agent_id, view, .. } => {
-                let cell =
-                    self.agents
-                        .get_mut(agent_id)
-                        .ok_or_else(|| WorldError::AgentNotFound {
-                            agent_id: agent_id.clone(),
-                        })?;
-                cell.state.body_view = view.clone();
-                cell.last_active = now;
-            }
-            DomainEvent::BodyAttributesRejected { agent_id, .. } => {
-                if let Some(cell) = self.agents.get_mut(agent_id) {
-                    cell.last_active = now;
-                } else {
-                    return Err(WorldError::AgentNotFound {
-                        agent_id: agent_id.clone(),
-                    });
-                }
-            }
-            DomainEvent::BodyInterfaceExpanded {
-                agent_id,
-                slot_capacity,
-                expansion_level,
-                consumed_item_id,
-                new_slot_id,
-                slot_type,
-                ..
-            } => {
-                let cell =
-                    self.agents
-                        .get_mut(agent_id)
-                        .ok_or_else(|| WorldError::AgentNotFound {
-                            agent_id: agent_id.clone(),
-                        })?;
-                cell.state
-                    .body_state
-                    .consume_interface_module_item(consumed_item_id)
-                    .map_err(|reason| WorldError::ResourceBalanceInvalid {
-                        reason: format!(
-                            "consume interface module item failed for {agent_id}: {reason}"
-                        ),
-                    })?;
-                cell.state.body_state.slot_capacity = *slot_capacity;
-                cell.state.body_state.expansion_level = *expansion_level;
-                if !cell
-                    .state
-                    .body_state
-                    .slots
-                    .iter()
-                    .any(|slot| slot.slot_id == *new_slot_id)
-                {
-                    cell.state
-                        .body_state
-                        .slots
-                        .push(crate::models::BodyModuleSlot {
-                            slot_id: new_slot_id.clone(),
-                            slot_type: *slot_type,
-                            installed_module: None,
-                            locked: false,
-                        });
-                }
-                cell.last_active = now;
-            }
-            DomainEvent::BodyInterfaceExpandRejected { agent_id, .. } => {
-                if let Some(cell) = self.agents.get_mut(agent_id) {
-                    cell.last_active = now;
-                } else {
-                    return Err(WorldError::AgentNotFound {
-                        agent_id: agent_id.clone(),
-                    });
-                }
             }
             DomainEvent::ModuleArtifactDeployed { .. } => {
                 self.prepare_module_marketplace_event(event, now)?

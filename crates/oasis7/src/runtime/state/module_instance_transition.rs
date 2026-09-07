@@ -124,20 +124,6 @@ impl<K: Ord + Serialize, V: Serialize> Serialize for SingleEntryProjection<'_, K
 }
 
 impl WorldState {
-    pub(super) fn settle_module_action_fee(
-        &mut self,
-        agent_id: &str,
-        fee_kind: ResourceKind,
-        fee_amount: i64,
-        now: WorldTime,
-    ) -> Result<(), WorldError> {
-        let (cell, resources) =
-            self.prepare_module_action_fee(agent_id, fee_kind, fee_amount, now)?;
-        self.agents.insert(agent_id.to_string(), cell);
-        self.resources.extend(resources);
-        Ok(())
-    }
-
     fn prepare_module_action_fee(
         &self,
         agent_id: &str,
