@@ -103,6 +103,9 @@ pub struct WorldStateProjection<'a> {
     main_token_restricted_claim_overlay: Option<
         &'a crate::runtime::world::main_token_restricted_claim_publication::PreparedMainTokenRestrictedClaimEvent,
     >,
+    starter_oc_claim_overlay: Option<
+        &'a crate::runtime::world::starter_oc_claim_publication::PreparedStarterOcClaimed,
+    >,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -123,6 +126,7 @@ impl<'a> WorldStateProjection<'a> {
             main_token_monetary_overlay: None,
             main_token_governance_monetary_overlay: None,
             main_token_restricted_claim_overlay: None,
+            starter_oc_claim_overlay: None,
         }
     }
 
@@ -187,6 +191,14 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a crate::runtime::world::main_token_restricted_claim_publication::PreparedMainTokenRestrictedClaimEvent,
     ) -> Self {
         self.main_token_restricted_claim_overlay = Some(overlay);
+        self
+    }
+
+    pub(crate) fn with_starter_oc_claim_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::starter_oc_claim_publication::PreparedStarterOcClaimed,
+    ) -> Self {
+        self.starter_oc_claim_overlay = Some(overlay);
         self
     }
 
@@ -258,7 +270,7 @@ impl Serialize for WorldState {
     {
         serialize_world_state(
             self, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, serializer,
+            None, None, serializer,
         )
     }
 }
@@ -293,6 +305,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.main_token_monetary_overlay,
             self.main_token_governance_monetary_overlay,
             self.main_token_restricted_claim_overlay,
+            self.starter_oc_claim_overlay,
             serializer,
         )
     }
@@ -496,6 +509,9 @@ fn serialize_world_state<S>(
     main_token_restricted_claim_overlay: Option<
         &crate::runtime::world::main_token_restricted_claim_publication::PreparedMainTokenRestrictedClaimEvent,
     >,
+    starter_oc_claim_overlay: Option<
+        &crate::runtime::world::starter_oc_claim_publication::PreparedStarterOcClaimed,
+    >,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -593,14 +609,16 @@ where
                 && agent_intent_overlay.is_none_or(|overlay| overlay.ledger_updates.is_empty()),
         )
         - usize::from(state.latest_product_validation.is_none())
-        - usize::from(state.starter_oc_claims.is_empty())
+        - usize::from(state.starter_oc_claims.is_empty() && starter_oc_claim_overlay.is_none())
         - usize::from(
             state.authenticated_collect_data_last_nonces.is_empty()
                 && economy_data_overlay.is_none_or(|overlay| !overlay.has_projected_nonces(state)),
         );
     let mut output = serializer.serialize_struct("WorldState", field_count)?;
     output.serialize_field("time", &state.time)?;
-    if let Some(overlay) = main_token_restricted_claim_overlay {
+    if let Some(overlay) = starter_oc_claim_overlay {
+        overlay.serialize_agents(state, &mut output)?;
+    } else if let Some(overlay) = main_token_restricted_claim_overlay {
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = main_token_monetary_overlay {
         overlay.serialize_agents(state, &mut output)?;
@@ -649,7 +667,9 @@ where
     } else {
         output.serialize_field("resources", &state.resources)?;
     }
-    if let Some(overlay) = main_token_restricted_claim_overlay {
+    if let Some(overlay) = starter_oc_claim_overlay {
+        overlay.serialize_materials(state, &mut output)?;
+    } else if let Some(overlay) = main_token_restricted_claim_overlay {
         overlay.serialize_materials(state, &mut output)?;
     } else if let Some(overlay) = main_token_governance_monetary_overlay {
         overlay.serialize_materials(state, &mut output)?;
@@ -752,7 +772,9 @@ where
     }
     output.serialize_field("economic_contracts", &state.economic_contracts)?;
     output.serialize_field("agent_claims", &state.agent_claims)?;
-    if !state.starter_oc_claims.is_empty() {
+    if let Some(overlay) = starter_oc_claim_overlay {
+        overlay.serialize_claims(state, &mut output)?;
+    } else if !state.starter_oc_claims.is_empty() {
         output.serialize_field("starter_oc_claims", &state.starter_oc_claims)?;
     }
     if let Some(overlay) = economy_data_overlay
@@ -895,7 +917,9 @@ where
         )?;
     }
     output.serialize_field("main_token_config", &state.main_token_config)?;
-    if let Some(overlay) = main_token_restricted_claim_overlay {
+    if let Some(overlay) = starter_oc_claim_overlay {
+        overlay.serialize_supply_balances(state, &mut output)?;
+    } else if let Some(overlay) = main_token_restricted_claim_overlay {
         overlay.serialize_supply_balances(state, &mut output)?;
     } else if let Some(overlay) = main_token_governance_monetary_overlay {
         overlay.serialize_supply_balances(state, &mut output)?;
@@ -928,7 +952,9 @@ where
             &state.main_token_epoch_issuance_records,
         )?;
     }
-    if let Some(overlay) = main_token_restricted_claim_overlay {
+    if let Some(overlay) = starter_oc_claim_overlay {
+        overlay.serialize_treasury(state, &mut output)?;
+    } else if let Some(overlay) = main_token_restricted_claim_overlay {
         overlay.serialize_treasury(state, &mut output)?;
     } else if let Some(overlay) = main_token_governance_monetary_overlay {
         overlay.serialize_treasury(state, &mut output)?;

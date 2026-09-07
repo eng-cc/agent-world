@@ -67,6 +67,7 @@ pub(super) enum PreparedEventStateDelta {
     MainTokenRestrictedClaim(
         super::super::main_token_restricted_claim_publication::PreparedMainTokenRestrictedClaimEvent,
     ),
+    StarterOcClaimed(super::super::starter_oc_claim_publication::PreparedStarterOcClaimed),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -209,6 +210,9 @@ impl PreparedEventStateDelta {
             Self::MainTokenRestrictedClaim(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
+            Self::StarterOcClaimed(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -335,6 +339,9 @@ impl PreparedEventStateDelta {
             Self::MainTokenRestrictedClaim(_) => {
                 unreachable!("restricted-claim events use a sparse state projection")
             }
+            Self::StarterOcClaimed(_) => {
+                unreachable!("starter OC claims use a sparse state projection")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -435,6 +442,7 @@ impl PreparedEventStateDelta {
             Self::MainTokenRestrictedClaim(prepared) => {
                 prepared.install_infallible(&mut world.state)
             }
+            Self::StarterOcClaimed(prepared) => prepared.install_infallible(&mut world.state),
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -626,6 +634,15 @@ impl World {
                 | DomainEvent::RestrictedStarterClaimGrantRevoked { .. })) => {
                 Some(PreparedEventStateDelta::MainTokenRestrictedClaim(
                     super::super::main_token_restricted_claim_publication::PreparedMainTokenRestrictedClaimEvent::prepare(&self.state, event)?,
+                ))
+            }
+            WorldEventBody::Domain(event @ DomainEvent::StarterOcClaimed { .. }) => {
+                Some(PreparedEventStateDelta::StarterOcClaimed(
+                    super::super::starter_oc_claim_publication::PreparedStarterOcClaimed::prepare(
+                        &self.state,
+                        event,
+                        self.state.time,
+                    )?,
                 ))
             }
             WorldEventBody::ModuleStateUpdated(update) => {
@@ -1081,6 +1098,9 @@ impl World {
             }
             PreparedEventStateDelta::MainTokenRestrictedClaim(prepared) => {
                 self.state_root_hash_with_main_token_restricted_claim_overlay(prepared)?
+            }
+            PreparedEventStateDelta::StarterOcClaimed(prepared) => {
+                self.state_root_hash_with_starter_oc_claim_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {

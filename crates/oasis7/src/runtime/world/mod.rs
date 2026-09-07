@@ -72,6 +72,7 @@ pub(crate) mod power_redemption_publication;
 #[cfg(test)]
 #[path = "prepared_base_head_transaction_regressions.rs"]
 mod prepared_base_head_transaction_regressions;
+pub(crate) mod starter_oc_claim_publication;
 mod war_declaration_quote;
 pub use war_declaration_quote::WarDeclarationQuote;
 mod logistics;
