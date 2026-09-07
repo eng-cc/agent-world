@@ -97,6 +97,9 @@ pub struct WorldStateProjection<'a> {
     main_token_monetary_overlay: Option<
         &'a crate::runtime::world::main_token_monetary_publication::PreparedMainTokenMonetaryEvent,
     >,
+    main_token_governance_monetary_overlay: Option<
+        &'a crate::runtime::world::main_token_governance_monetary_publication::PreparedMainTokenGovernanceMonetaryEvent,
+    >,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -115,6 +118,7 @@ impl<'a> WorldStateProjection<'a> {
             power_redemption_overlay: None,
             node_points_settlement_overlay: None,
             main_token_monetary_overlay: None,
+            main_token_governance_monetary_overlay: None,
         }
     }
 
@@ -163,6 +167,14 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a crate::runtime::world::main_token_monetary_publication::PreparedMainTokenMonetaryEvent,
     ) -> Self {
         self.main_token_monetary_overlay = Some(overlay);
+        self
+    }
+
+    pub(crate) fn with_main_token_governance_monetary_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::main_token_governance_monetary_publication::PreparedMainTokenGovernanceMonetaryEvent,
+    ) -> Self {
+        self.main_token_governance_monetary_overlay = Some(overlay);
         self
     }
 
@@ -233,7 +245,7 @@ impl Serialize for WorldState {
         S: serde::Serializer,
     {
         serialize_world_state(
-            self, None, None, None, None, None, None, None, None, None, None, None, None,
+            self, None, None, None, None, None, None, None, None, None, None, None, None, None,
             serializer,
         )
     }
@@ -267,6 +279,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.power_redemption_overlay,
             self.node_points_settlement_overlay,
             self.main_token_monetary_overlay,
+            self.main_token_governance_monetary_overlay,
             serializer,
         )
     }
@@ -464,6 +477,9 @@ fn serialize_world_state<S>(
     main_token_monetary_overlay: Option<
         &crate::runtime::world::main_token_monetary_publication::PreparedMainTokenMonetaryEvent,
     >,
+    main_token_governance_monetary_overlay: Option<
+        &crate::runtime::world::main_token_governance_monetary_publication::PreparedMainTokenGovernanceMonetaryEvent,
+    >,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -615,7 +631,9 @@ where
     } else {
         output.serialize_field("resources", &state.resources)?;
     }
-    if let Some(overlay) = main_token_monetary_overlay {
+    if let Some(overlay) = main_token_governance_monetary_overlay {
+        overlay.serialize_materials(state, &mut output)?;
+    } else if let Some(overlay) = main_token_monetary_overlay {
         overlay.serialize_materials(state, &mut output)?;
     } else if let Some(overlay) = node_points_settlement_overlay {
         overlay.serialize_materials(state, &mut output)?;
@@ -857,7 +875,9 @@ where
         )?;
     }
     output.serialize_field("main_token_config", &state.main_token_config)?;
-    if let Some(overlay) = main_token_monetary_overlay {
+    if let Some(overlay) = main_token_governance_monetary_overlay {
+        overlay.serialize_supply_balances(state, &mut output)?;
+    } else if let Some(overlay) = main_token_monetary_overlay {
         overlay.serialize_supply_balances(state, &mut output)?;
     } else if let Some(overlay) = node_points_settlement_overlay {
         overlay.serialize_main_token_accounts(state, &mut output)?;
@@ -882,7 +902,9 @@ where
             &state.main_token_epoch_issuance_records,
         )?;
     }
-    if let Some(overlay) = main_token_monetary_overlay {
+    if let Some(overlay) = main_token_governance_monetary_overlay {
+        overlay.serialize_treasury(state, &mut output)?;
+    } else if let Some(overlay) = main_token_monetary_overlay {
         overlay.serialize_treasury(state, &mut output)?;
     } else if let Some(overlay) = node_points_settlement_overlay {
         overlay.serialize_treasury(state, &mut output)?;
@@ -902,10 +924,14 @@ where
             &state.main_token_transfer_nonces,
         )?;
     }
-    output.serialize_field(
-        "main_token_scheduled_policy_updates",
-        &state.main_token_scheduled_policy_updates,
-    )?;
+    if let Some(overlay) = main_token_governance_monetary_overlay {
+        overlay.serialize_scheduled(state, &mut output)?;
+    } else {
+        output.serialize_field(
+            "main_token_scheduled_policy_updates",
+            &state.main_token_scheduled_policy_updates,
+        )?;
+    }
     if let Some(overlay) = node_points_settlement_overlay {
         overlay.serialize_bridge(state, &mut output)?;
     } else {
@@ -914,10 +940,14 @@ where
             &state.main_token_node_points_bridge_records,
         )?;
     }
-    output.serialize_field(
-        "main_token_treasury_distribution_records",
-        &state.main_token_treasury_distribution_records,
-    )?;
+    if let Some(overlay) = main_token_governance_monetary_overlay {
+        overlay.serialize_distributions(state, &mut output)?;
+    } else {
+        output.serialize_field(
+            "main_token_treasury_distribution_records",
+            &state.main_token_treasury_distribution_records,
+        )?;
+    }
     output.serialize_field(
         "restricted_starter_claim_liveops_pool_top_up_records",
         &state.restricted_starter_claim_liveops_pool_top_up_records,

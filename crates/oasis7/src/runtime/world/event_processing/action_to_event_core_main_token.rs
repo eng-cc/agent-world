@@ -258,8 +258,11 @@ impl World {
             total_amount,
             distributions: normalized_distributions,
         };
-        let mut preview_state = self.state.clone();
-        if let Err(err) = preview_state.apply_domain_event(&event, self.state.time) {
+        if let Err(err) = super::super::super::main_token_governance_monetary_publication::PreparedMainTokenGovernanceMonetaryEvent::prepare(
+            &self.state,
+            &event,
+            self.state.time,
+        ) {
             return DomainEvent::ActionRejected {
                 action_id,
                 reason: RejectReason::RuleDenied {

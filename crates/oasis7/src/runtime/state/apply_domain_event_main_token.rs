@@ -35,31 +35,15 @@ impl WorldState {
             crate::runtime::world::main_token_monetary_publication::PreparedMainTokenMonetaryEvent::prepare(self, event, now)?.install_infallible(self);
             return Ok(());
         }
+        if matches!(
+            event,
+            DomainEvent::MainTokenPolicyUpdateScheduled { .. }
+                | DomainEvent::MainTokenTreasuryDistributed { .. }
+        ) {
+            crate::runtime::world::main_token_governance_monetary_publication::PreparedMainTokenGovernanceMonetaryEvent::prepare(self, event, now)?.install_infallible(self);
+            return Ok(());
+        }
         match event {
-            DomainEvent::MainTokenPolicyUpdateScheduled {
-                proposal_id,
-                effective_epoch,
-                next,
-            } => self.apply_main_token_policy_update_scheduled(
-                *proposal_id,
-                *effective_epoch,
-                next,
-                now,
-            )?,
-            DomainEvent::MainTokenTreasuryDistributed {
-                proposal_id,
-                distribution_id,
-                bucket_id,
-                total_amount,
-                distributions,
-            } => self.apply_main_token_treasury_distributed(
-                *proposal_id,
-                distribution_id,
-                bucket_id,
-                *total_amount,
-                distributions,
-                now,
-            )?,
             DomainEvent::RestrictedStarterClaimLiveopsPoolToppedUp {
                 controller_account_id,
                 top_up_id,
