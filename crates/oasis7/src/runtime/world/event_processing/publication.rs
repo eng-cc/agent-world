@@ -1,5 +1,6 @@
 use super::*;
-use std::collections::BTreeMap;
+use crate::runtime::{EffectIntent, EffectReceipt};
+use std::collections::{BTreeMap, VecDeque};
 
 pub(super) enum PreparedEventStateDelta {
     NoState,
@@ -15,6 +16,16 @@ pub(super) enum PreparedEventStateDelta {
         module_states: BTreeMap<String, Vec<u8>>,
     },
     ModuleRuntimeCharged(super::super::module_runtime_metering::PreparedModuleRuntimeCharge),
+    EffectQueued {
+        intent_id: String,
+        pending_effects: VecDeque<EffectIntent>,
+        pending_effects_evicted: u64,
+    },
+    ReceiptAppended {
+        intent_id: String,
+        pending_effects: VecDeque<EffectIntent>,
+        inflight_effects: BTreeMap<String, EffectIntent>,
+    },
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -102,6 +113,14 @@ impl PreparedEventStateDelta {
             Self::ModuleRuntimeCharged(prepared) => matches!(body,
                 WorldEventBody::ModuleRuntimeCharged(charge)
                 if prepared.agents.contains_key(&charge.payer_agent_id)),
+            Self::EffectQueued { intent_id, .. } => matches!(
+                body,
+                WorldEventBody::EffectQueued(intent) if &intent.intent_id == intent_id
+            ),
+            Self::ReceiptAppended { intent_id, .. } => matches!(
+                body,
+                WorldEventBody::ReceiptAppended(receipt) if &receipt.intent_id == intent_id
+            ),
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -188,6 +207,9 @@ impl PreparedEventStateDelta {
             | Self::ModuleRuntimeCharged(_) => {
                 unreachable!("module output uses a command overlay")
             }
+            Self::EffectQueued { .. } | Self::ReceiptAppended { .. } => {
+                unreachable!("effect sidecars do not have a state overlay")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -233,6 +255,25 @@ impl PreparedEventStateDelta {
                 world.state.module_states.extend(module_states)
             }
             Self::ModuleRuntimeCharged(prepared) => prepared.install_infallible(world),
+            Self::EffectQueued {
+                pending_effects,
+                pending_effects_evicted,
+                ..
+            } => {
+                world.pending_effects = pending_effects;
+                world.runtime_backpressure_stats.pending_effects_evicted = world
+                    .runtime_backpressure_stats
+                    .pending_effects_evicted
+                    .saturating_add(pending_effects_evicted);
+            }
+            Self::ReceiptAppended {
+                pending_effects,
+                inflight_effects,
+                ..
+            } => {
+                world.pending_effects = pending_effects;
+                world.inflight_effects = inflight_effects;
+            }
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -368,6 +409,12 @@ impl World {
                     self.prepare_module_runtime_charge_event(charge, self.state.time)?,
                 ))
             }
+            WorldEventBody::EffectQueued(intent) => {
+                Some(self.prepare_raw_effect_queue_delta(intent)?)
+            }
+            WorldEventBody::ReceiptAppended(receipt) => {
+                Some(self.prepare_raw_receipt_delta(receipt)?)
+            }
             _ => prepared_governance_events::prepare(self, &body)?
                 .or_else(|| PreparedEventStateDelta::for_body(&body)),
         };
@@ -431,6 +478,41 @@ impl World {
         self.enforce_journal_event_limit();
         self.record_tick_consensus_for_tick(self.state.time)?;
         Ok(event_id)
+    }
+
+    fn prepare_raw_effect_queue_delta(
+        &self,
+        intent: &EffectIntent,
+    ) -> Result<PreparedEventStateDelta, WorldError> {
+        let (pending_effects, pending_effects_evicted) =
+            self.prepare_pending_effect_queue(intent.clone())?;
+        Ok(PreparedEventStateDelta::EffectQueued {
+            intent_id: intent.intent_id.clone(),
+            pending_effects,
+            pending_effects_evicted,
+        })
+    }
+
+    fn prepare_raw_receipt_delta(
+        &self,
+        receipt: &EffectReceipt,
+    ) -> Result<PreparedEventStateDelta, WorldError> {
+        let mut pending_effects = self.pending_effects.clone();
+        let mut inflight_effects = self.inflight_effects.clone();
+        let mut removed = inflight_effects.remove(&receipt.intent_id).is_some();
+        let before = pending_effects.len();
+        pending_effects.retain(|intent| intent.intent_id != receipt.intent_id);
+        removed |= before != pending_effects.len();
+        if !removed {
+            return Err(WorldError::ReceiptUnknownIntent {
+                intent_id: receipt.intent_id.clone(),
+            });
+        }
+        Ok(PreparedEventStateDelta::ReceiptAppended {
+            intent_id: receipt.intent_id.clone(),
+            pending_effects,
+            inflight_effects,
+        })
     }
 
     fn append_prepared_event(
@@ -668,6 +750,12 @@ impl World {
                         agents: &prepared.agents,
                     },
                 )?,
+            PreparedEventStateDelta::EffectQueued { .. }
+            | PreparedEventStateDelta::ReceiptAppended { .. } => {
+                // Effect queues are persisted World sidecars outside the
+                // canonical WorldState root schema.
+                self.current_state_root_hash()?
+            }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {
                 let Some(domain_event) = domain_event.as_ref() else {

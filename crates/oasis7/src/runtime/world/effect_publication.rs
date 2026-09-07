@@ -145,7 +145,7 @@ impl World {
         Ok(event_id)
     }
 
-    fn prepare_pending_effect_queue(
+    pub(super) fn prepare_pending_effect_queue(
         &self,
         intent: EffectIntent,
     ) -> Result<(VecDeque<EffectIntent>, u64), WorldError> {

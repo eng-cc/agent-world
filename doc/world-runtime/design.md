@@ -377,9 +377,14 @@ sequences and eras, eviction metrics, and tick consensus are one prepared
 batch: hard queue-full or a post-prepare infrastructure failure installs none
 of them. A full queue may still deterministically evict an existing unlinked
 intent, preserving the established bounded-queue rule; authorization-linked
-intents are not evictable. This slice does not make legacy nested
-`EffectQueued`, receipt ingestion, durable outbox, or replay allocation part of
-the unified root buffer yet.
+intents are not evictable. Raw `EffectQueued` and `ReceiptAppended` now also use
+a typed sidecar replacement for
+pending/inflight queues and pending-effect eviction accounting before canonical
+event publication. The raw seam preserves queue-full, FIFO eviction,
+unknown-intent, duplicate-removal, journal, allocator, retention, and consensus
+ordering, and installs only after the post-prepare failure boundary. These
+slices do not make durable outbox or replay allocation part of the unified root
+buffer yet.
 
 The next Phase 1 stateful slice migrates public receipt ingestion away from a
 cloned `World`. A typed prepared receipt delta validates the known intent,
