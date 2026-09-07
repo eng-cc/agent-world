@@ -88,6 +88,7 @@ pub struct WorldStateProjection<'a> {
     >,
     alliance_war_overlay: Option<&'a crate::runtime::world::alliance_war_publication::PreparedAllianceWarEvent>,
     governance_meta_overlay: Option<&'a crate::runtime::world::governance_meta_publication::PreparedGovernanceMetaEvent>,
+    pub(crate) industry_overlay: Option<&'a super::industry_transition::PreparedIndustryEvent>,
     power_redemption_overlay: Option<
         &'a crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
     >,
@@ -129,6 +130,7 @@ impl<'a> WorldStateProjection<'a> {
             economic_contract_overlay: None,
             alliance_war_overlay: None,
             governance_meta_overlay: None,
+            industry_overlay: None,
             power_redemption_overlay: None,
             node_points_settlement_overlay: None,
             main_token_monetary_overlay: None,
@@ -187,7 +189,6 @@ impl<'a> WorldStateProjection<'a> {
         self.governance_meta_overlay = Some(overlay);
         self
     }
-
     pub(crate) fn with_power_redemption_overlay(
         mut self,
         overlay: &'a crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
@@ -326,7 +327,7 @@ impl Serialize for WorldState {
     {
         serialize_world_state(
             self, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, serializer,
+            None, None, None, None, None, None, None, None, None, serializer,
         )
     }
 }
@@ -359,6 +360,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.economic_contract_overlay,
             self.alliance_war_overlay,
             self.governance_meta_overlay,
+            self.industry_overlay,
             self.power_redemption_overlay,
             self.node_points_settlement_overlay,
             self.main_token_monetary_overlay,
@@ -519,6 +521,7 @@ fn serialize_world_state<S>(
     governance_meta_overlay: Option<
         &crate::runtime::world::governance_meta_publication::PreparedGovernanceMetaEvent,
     >,
+    industry_overlay: Option<&super::industry_transition::PreparedIndustryEvent>,
     power_redemption_overlay: Option<
         &crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
     >,
@@ -664,6 +667,8 @@ where
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = economy_data_overlay {
         overlay.serialize_agents(state, &mut output)?;
+    } else if let Some(overlay) = industry_overlay {
+        overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = governance_meta_overlay {
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = alliance_war_overlay {
@@ -713,7 +718,9 @@ where
     } else {
         output.serialize_field("resources", &state.resources)?;
     }
-    if let Some(overlay) = agent_claim_terminal_overlay {
+    if let Some(overlay) = industry_overlay {
+        overlay.serialize_materials(state, &mut output)?;
+    } else if let Some(overlay) = agent_claim_terminal_overlay {
         overlay.serialize_materials(state, &mut output)?;
     } else if let Some(overlay) = agent_claim_economic_overlay {
         overlay.serialize_materials(state, &mut output)?;
@@ -748,27 +755,31 @@ where
         output.serialize_field("material_ledgers", &state.material_ledgers)?;
     }
     output.serialize_field("material_profiles", &state.material_profiles)?;
-    output.serialize_field("logistics_routes", &state.logistics_routes)?;
-    output.serialize_field(
-        "completed_logistics_route_ids",
-        &state.completed_logistics_route_ids,
-    )?;
-    output.serialize_field(
-        "completed_logistics_paths",
-        &state.completed_logistics_paths,
-    )?;
-    output.serialize_field(
-        "settled_logistics_transit_ids",
-        &state.settled_logistics_transit_ids,
-    )?;
-    output.serialize_field(
-        "logistics_settlement_receipts",
-        &state.logistics_settlement_receipts,
-    )?;
-    output.serialize_field(
-        "direct_material_transfer_receipts",
-        &state.direct_material_transfer_receipts,
-    )?;
+    if let Some(overlay) = industry_overlay {
+        overlay.serialize_logistics(state, &mut output)?;
+    } else {
+        output.serialize_field("logistics_routes", &state.logistics_routes)?;
+        output.serialize_field(
+            "completed_logistics_route_ids",
+            &state.completed_logistics_route_ids,
+        )?;
+        output.serialize_field(
+            "completed_logistics_paths",
+            &state.completed_logistics_paths,
+        )?;
+        output.serialize_field(
+            "settled_logistics_transit_ids",
+            &state.settled_logistics_transit_ids,
+        )?;
+        output.serialize_field(
+            "logistics_settlement_receipts",
+            &state.logistics_settlement_receipts,
+        )?;
+        output.serialize_field(
+            "direct_material_transfer_receipts",
+            &state.direct_material_transfer_receipts,
+        )?;
+    }
     if let Some(overlay) = module_release_overlay {
         output.serialize_field(
             "product_profiles",
@@ -807,20 +818,28 @@ where
         output.serialize_field("recipe_profiles", &state.recipe_profiles)?;
         output.serialize_field("factory_profiles", &state.factory_profiles)?;
     }
-    output.serialize_field("factories", &state.factories)?;
-    output.serialize_field("retired_factory_ids", &state.retired_factory_ids)?;
-    output.serialize_field(
-        "settled_factory_build_ids",
-        &state.settled_factory_build_ids,
-    )?;
-    output.serialize_field("pending_factory_builds", &state.pending_factory_builds)?;
-    output.serialize_field("pending_recipe_jobs", &state.pending_recipe_jobs)?;
-    output.serialize_field("settled_recipe_job_ids", &state.settled_recipe_job_ids)?;
-    output.serialize_field(
-        "pending_material_transits",
-        &state.pending_material_transits,
-    )?;
-    output.serialize_field("industry_progress", &state.industry_progress)?;
+    if let Some(overlay) = industry_overlay {
+        overlay.serialize_factory_fields(state, &mut output)?;
+    } else {
+        output.serialize_field("factories", &state.factories)?;
+        output.serialize_field("retired_factory_ids", &state.retired_factory_ids)?;
+        output.serialize_field(
+            "settled_factory_build_ids",
+            &state.settled_factory_build_ids,
+        )?;
+        output.serialize_field("pending_factory_builds", &state.pending_factory_builds)?;
+        output.serialize_field("pending_recipe_jobs", &state.pending_recipe_jobs)?;
+        output.serialize_field("settled_recipe_job_ids", &state.settled_recipe_job_ids)?;
+    }
+    if let Some(overlay) = industry_overlay {
+        overlay.serialize_pending_and_progress(state, &mut output)?;
+    } else {
+        output.serialize_field(
+            "pending_material_transits",
+            &state.pending_material_transits,
+        )?;
+        output.serialize_field("industry_progress", &state.industry_progress)?;
+    }
     if let Some(overlay) = alliance_war_overlay {
         overlay.serialize_alliances(state, &mut output)?;
     } else {

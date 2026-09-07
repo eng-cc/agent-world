@@ -52,6 +52,7 @@ pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
     EconomicContract(super::super::super::economic_contract_publication::PreparedEconomicContractEvent),
     AllianceWar(super::super::super::alliance_war_publication::PreparedAllianceWarEvent),
     GovernanceMeta(super::super::super::governance_meta_publication::PreparedGovernanceMetaEvent),
+    Industry(super::super::super::super::state::industry_transition::PreparedIndustryEvent),
     PowerRedemption(super::super::super::power_redemption_publication::PreparedPowerRedemptionEvent),
     NodePointsSettlement(
         super::super::super::node_points_settlement_publication::PreparedNodePointsSettlement,
@@ -71,6 +72,10 @@ pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
     AgentClaimTerminal(super::super::super::agent_claim_terminal_publication::PreparedAgentClaimTerminal),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
+        agent_id: String,
+    },
+    DomainRouteOnly {
+        event: DomainEvent,
         agent_id: String,
     },
     GovernanceEmergencyBrake {
@@ -205,6 +210,9 @@ impl PreparedEventStateDelta {
             Self::GovernanceMeta(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
+            Self::Industry(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches(event))
+            }
             Self::PowerRedemption(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
@@ -243,6 +251,9 @@ impl PreparedEventStateDelta {
                     ..
                 }) if event_agent_id == agent_id
             ),
+            Self::DomainRouteOnly { event, .. } => {
+                matches!(body, WorldEventBody::Domain(body_event) if body_event == event)
+            }
             Self::GovernanceEmergencyBrake { next_until_tick } => match body {
                 WorldEventBody::Governance(GovernanceEvent::EmergencyBrakeActivated {
                     active_until_tick,
@@ -353,6 +364,7 @@ impl PreparedEventStateDelta {
             Self::GovernanceMeta(_) => {
                 unreachable!("governance/meta uses a sparse state projection")
             }
+            Self::Industry(_) => unreachable!("industry uses a sparse state projection"),
             Self::PowerRedemption(_) => {
                 unreachable!("power redemption uses a sparse state projection")
             }
@@ -379,6 +391,10 @@ impl PreparedEventStateDelta {
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
+                { super::super::super::super::BodyOverlay::route_only(agent_id.clone()) }
+                    .with_routed_domain_event(event)
+            }
+            Self::DomainRouteOnly { agent_id, .. } => {
                 { super::super::super::super::BodyOverlay::route_only(agent_id.clone()) }
                     .with_routed_domain_event(event)
             }
@@ -470,6 +486,7 @@ impl PreparedEventStateDelta {
             Self::EconomicContract(prepared) => prepared.install_infallible(&mut world.state),
             Self::AllianceWar(prepared) => prepared.install_infallible(&mut world.state),
             Self::GovernanceMeta(prepared) => prepared.install_infallible(&mut world.state),
+            Self::Industry(prepared) => prepared.install(&mut world.state),
             Self::PowerRedemption(prepared) => prepared.install_infallible(&mut world.state),
             Self::NodePointsSettlement(prepared) => prepared.install_infallible(&mut world.state),
             Self::MainTokenMonetary(prepared) => prepared.install_infallible(&mut world.state),
@@ -555,7 +572,7 @@ impl PreparedEventStateDelta {
                     .governance_identity_profiles
                     .insert(target_agent_id, next_profile);
             }
-            Self::NoState | Self::RouteOnly { .. } => {}
+            Self::NoState | Self::RouteOnly { .. } | Self::DomainRouteOnly { .. } => {}
         }
     }
 }

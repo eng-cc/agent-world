@@ -146,6 +146,38 @@ impl World {
             WorldEventBody::Domain(event @ (DomainEvent::EconomicContractOpened { .. } | DomainEvent::EconomicContractAccepted { .. } | DomainEvent::EconomicContractSettled { .. } | DomainEvent::EconomicContractExpired { .. })) => Some(PreparedEventStateDelta::EconomicContract(super::super::economic_contract_publication::PreparedEconomicContractEvent::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::Domain(event @ (DomainEvent::AllianceFormed { .. } | DomainEvent::AllianceJoined { .. } | DomainEvent::AllianceLeft { .. } | DomainEvent::AllianceDissolved { .. } | DomainEvent::WarDeclared { .. } | DomainEvent::WarConcluded { .. })) => Some(PreparedEventStateDelta::AllianceWar(super::super::alliance_war_publication::PreparedAllianceWarEvent::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::Domain(event @ (DomainEvent::GovernanceProposalOpened { .. } | DomainEvent::GovernanceVoteCast { .. } | DomainEvent::GovernanceProposalFinalized { .. } | DomainEvent::CrisisSpawned { .. } | DomainEvent::CrisisResolved { .. } | DomainEvent::CrisisTimedOut { .. } | DomainEvent::MetaProgressGranted { .. } | DomainEvent::ProductValidated { .. })) => Some(PreparedEventStateDelta::GovernanceMeta(super::super::governance_meta_publication::PreparedGovernanceMetaEvent::prepare(&self.state,event,self.state.time)?)),
+            WorldEventBody::Domain(
+                event @ DomainEvent::LogisticsPathRerouted {
+                    requester_agent_id,
+                    ..
+                },
+            ) => Some(PreparedEventStateDelta::DomainRouteOnly {
+                event: event.clone(),
+                agent_id: requester_agent_id.clone(),
+            }),
+            WorldEventBody::Domain(
+                event @ (DomainEvent::LogisticsRouteRegistered { .. }
+                | DomainEvent::LogisticsRouteAvailabilityChanged { .. }
+                | DomainEvent::MaterialTransferred { .. }
+                | DomainEvent::MaterialTransitStarted { .. }
+                | DomainEvent::MaterialTransitCompleted { .. }
+                | DomainEvent::FactoryBuildStarted { .. }
+                | DomainEvent::FactoryBuilt { .. }
+                | DomainEvent::FactoryDurabilityChanged { .. }
+                | DomainEvent::FactoryMaintained { .. }
+                | DomainEvent::FactoryRecycled { .. }
+                | DomainEvent::RecipeStarted { .. }
+                | DomainEvent::RecipeCompleted { .. }
+                | DomainEvent::FactoryProductionBlocked { .. }
+                | DomainEvent::FactoryProductionResumed { .. }
+                | DomainEvent::FactoryProductionPaused { .. }),
+            ) => Some(PreparedEventStateDelta::Industry(
+                crate::runtime::state::industry_transition::PreparedIndustryEvent::prepare(
+                    &self.state,
+                    event,
+                    self.state.time,
+                )?,
+            )),
             WorldEventBody::ModuleStateUpdated(update) => {
                 Some(PreparedEventStateDelta::ModuleStateUpdated {
                     module_states: BTreeMap::from([(
@@ -593,6 +625,9 @@ impl World {
             PreparedEventStateDelta::GovernanceMeta(prepared) => {
                 self.state_root_hash_with_governance_meta_overlay(prepared)?
             }
+            PreparedEventStateDelta::Industry(prepared) => {
+                self.state_root_hash_with_industry_overlay(prepared)?
+            }
             PreparedEventStateDelta::PowerRedemption(prepared) => {
                 self.state_root_hash_with_power_redemption_overlay(prepared)?
             }
@@ -621,7 +656,9 @@ impl World {
                 self.state_root_hash_with_agent_claim_terminal_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
-            PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {
+            PreparedEventStateDelta::Body(_)
+            | PreparedEventStateDelta::RouteOnly { .. }
+            | PreparedEventStateDelta::DomainRouteOnly { .. } => {
                 let Some(domain_event) = domain_event.as_ref() else {
                     return Err(WorldError::ResourceBalanceInvalid {
                         reason: "prepared body delta requires a domain event".to_string(),

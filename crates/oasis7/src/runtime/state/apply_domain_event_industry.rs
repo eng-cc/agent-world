@@ -11,6 +11,53 @@ impl WorldState {
         event: &DomainEvent,
         now: WorldTime,
     ) -> Result<(), WorldError> {
+        if matches!(
+            event,
+            DomainEvent::LogisticsRouteRegistered { .. }
+                | DomainEvent::LogisticsRouteAvailabilityChanged { .. }
+        ) {
+            super::industry_transition::PreparedLogisticsTopology::prepare(self, event, now)?
+                .install(self);
+            return Ok(());
+        }
+        if matches!(
+            event,
+            DomainEvent::RecipeStarted { .. }
+                | DomainEvent::RecipeCompleted { .. }
+                | DomainEvent::FactoryProductionBlocked { .. }
+                | DomainEvent::FactoryProductionResumed { .. }
+                | DomainEvent::FactoryProductionPaused { .. }
+        ) {
+            super::industry_transition::PreparedRecipeLifecycle::prepare(self, event, now)?
+                .install(self);
+            return Ok(());
+        }
+        if matches!(event, DomainEvent::MaterialTransferred { .. }) {
+            super::industry_transition::PreparedMaterialTransfer::prepare(self, event, now)?
+                .install(self);
+            return Ok(());
+        }
+        if matches!(
+            event,
+            DomainEvent::MaterialTransitStarted { .. }
+                | DomainEvent::MaterialTransitCompleted { .. }
+        ) {
+            super::industry_transition::PreparedMaterialTransit::prepare(self, event, now)?
+                .install(self);
+            return Ok(());
+        }
+        if matches!(
+            event,
+            DomainEvent::FactoryBuildStarted { .. }
+                | DomainEvent::FactoryBuilt { .. }
+                | DomainEvent::FactoryDurabilityChanged { .. }
+                | DomainEvent::FactoryMaintained { .. }
+                | DomainEvent::FactoryRecycled { .. }
+        ) {
+            super::industry_transition::PreparedFactoryLifecycle::prepare(self, event, now)?
+                .install(self);
+            return Ok(());
+        }
         match event {
             DomainEvent::LogisticsRouteRegistered {
                 requester_agent_id,
