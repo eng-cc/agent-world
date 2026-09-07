@@ -146,6 +146,20 @@ impl World {
             WorldEventBody::Domain(event @ (DomainEvent::EconomicContractOpened { .. } | DomainEvent::EconomicContractAccepted { .. } | DomainEvent::EconomicContractSettled { .. } | DomainEvent::EconomicContractExpired { .. })) => Some(PreparedEventStateDelta::EconomicContract(super::super::economic_contract_publication::PreparedEconomicContractEvent::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::Domain(event @ (DomainEvent::AllianceFormed { .. } | DomainEvent::AllianceJoined { .. } | DomainEvent::AllianceLeft { .. } | DomainEvent::AllianceDissolved { .. } | DomainEvent::WarDeclared { .. } | DomainEvent::WarConcluded { .. })) => Some(PreparedEventStateDelta::AllianceWar(super::super::alliance_war_publication::PreparedAllianceWarEvent::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::Domain(event @ (DomainEvent::GovernanceProposalOpened { .. } | DomainEvent::GovernanceVoteCast { .. } | DomainEvent::GovernanceProposalFinalized { .. } | DomainEvent::CrisisSpawned { .. } | DomainEvent::CrisisResolved { .. } | DomainEvent::CrisisTimedOut { .. } | DomainEvent::MetaProgressGranted { .. } | DomainEvent::ProductValidated { .. })) => Some(PreparedEventStateDelta::GovernanceMeta(super::super::governance_meta_publication::PreparedGovernanceMetaEvent::prepare(&self.state,event,self.state.time)?)),
+            WorldEventBody::Domain(DomainEvent::ActionRejected { .. }) => {
+                Some(PreparedEventStateDelta::NoState)
+            }
+            WorldEventBody::Domain(event)
+                if crate::runtime::state::core_policy_transition::PreparedCorePolicyEvent::supports(event) =>
+            {
+                Some(PreparedEventStateDelta::CorePolicy(
+                    crate::runtime::state::core_policy_transition::PreparedCorePolicyEvent::prepare(
+                        &self.state,
+                        event,
+                        self.state.time,
+                    )?,
+                ))
+            }
             WorldEventBody::Domain(
                 event @ DomainEvent::LogisticsPathRerouted {
                     requester_agent_id,
@@ -258,6 +272,19 @@ impl World {
         caused_by: Option<CausedBy>,
         agent_id: String,
     ) -> Result<WorldEventId, WorldError> {
+        if let WorldEventBody::Domain(event @ DomainEvent::BodyAttributesRejected { .. }) = &body {
+            let prepared =
+                crate::runtime::state::core_policy_transition::PreparedCorePolicyEvent::prepare(
+                    &self.state,
+                    event,
+                    self.state.time,
+                )?;
+            return self.append_event_internal(
+                body,
+                caused_by,
+                Some(PreparedEventStateDelta::CorePolicy(prepared)),
+            );
+        }
         self.append_event_internal(
             body,
             caused_by,
@@ -624,6 +651,9 @@ impl World {
             }
             PreparedEventStateDelta::GovernanceMeta(prepared) => {
                 self.state_root_hash_with_governance_meta_overlay(prepared)?
+            }
+            PreparedEventStateDelta::CorePolicy(prepared) => {
+                self.state_root_hash_with_core_policy_overlay(prepared)?
             }
             PreparedEventStateDelta::Industry(prepared) => {
                 self.state_root_hash_with_industry_overlay(prepared)?

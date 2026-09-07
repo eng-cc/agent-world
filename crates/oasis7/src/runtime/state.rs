@@ -49,7 +49,9 @@ mod apply_domain_event_industry;
 mod apply_domain_event_industry_helpers;
 mod apply_domain_event_intent;
 pub(crate) mod apply_domain_event_main_token;
+mod body_projection;
 mod command_projection;
+pub(crate) mod core_policy_transition;
 mod governance_identity_projection;
 pub(crate) mod industry_transition;
 mod logistics_path_authority;
@@ -72,31 +74,24 @@ pub use projection::{BodyOverlay, WorldStateProjection};
 fn default_world_material_ledger() -> MaterialLedgerId {
     state_defaults::default_world_material_ledger()
 }
-
 fn default_logistics_route_available() -> bool {
     state_defaults::default_logistics_route_available()
 }
-
 fn default_logistics_capacity_units() -> i64 {
     state_defaults::default_logistics_capacity_units()
 }
-
 fn default_material_ledgers() -> BTreeMap<MaterialLedgerId, BTreeMap<String, i64>> {
     state_defaults::default_material_ledgers()
 }
-
 fn default_material_transit_priority() -> MaterialTransitPriority {
     state_defaults::default_material_transit_priority()
 }
-
 fn default_module_market_order_id() -> u64 {
     state_defaults::default_module_market_order_id()
 }
-
 fn default_module_market_sale_id() -> u64 {
     state_defaults::default_module_market_sale_id()
 }
-
 fn default_next_module_instance_id() -> u64 {
     state_defaults::default_next_module_instance_id()
 }
@@ -1037,7 +1032,14 @@ impl WorldState {
                 .install_infallible(self);
             return Ok(());
         }
+        if matches!(event, DomainEvent::ActionRejected { .. }) {
+            return Ok(());
+        }
         self.migrate_compat_material_ledgers();
+        if core_policy_transition::PreparedCorePolicyEvent::supports(event) {
+            return core_policy_transition::PreparedCorePolicyEvent::prepare(self, event, now)
+                .map(|prepared| prepared.install_infallible(self));
+        }
         match event {
             DomainEvent::AgentIntentProposed { .. }
             | DomainEvent::AgentIntentSubmitted { .. }

@@ -215,6 +215,8 @@ Factory build、completion、durability、maintenance 与 recycle 同样通过�
 
 Recipe start、completion、blocked、resume 与 pause 使用独立的 sparse recipe-lifecycle transition。它只暂存 touched pending/settled job、factory、material/power ledger、logistics path、actor cell、progress 与 quote sink；重复 completion 或 terminal product-validation block 保持业务状态和 activity 不变，但仍提交一次 raw actor mailbox。材料、power、path allocation、timing、payload 与 output-capacity 校验全部先于 publication，失败不会留下部分 debit、reservation、output、factory slot 或 progress。
 
+Core agent、body、observation、gameplay-policy 与 material-profile 的 raw publication 使用一个 full-event-bound sparse transition。该 transition 只暂存单个 touched agent、兼容 world material ledger、可选 policy/industry-progress 与单个 material profile；`ActionRejected` 保持 true no-state/no-route，缺失目标的 move/observation route 保持 no-op。Body interface consume 与 profile/policy 校验在 publication 前完成，所有成功 raw actor event 的 prospective root 恰好包含一次 mailbox route。
+
 native due-economy completion 先在 immutable world view 上固定全部 `FactoryBuilt` 与 `RecipeCompleted` event bodies：build phase 始终先于 recipe phase，两个 phase 内继续使用既有 production-priority、ready-time、job-id 排序和完整 payload。prepared bodies 仍逐条进入 canonical publication，因此跨事件失败原子性继续由外层 cloned-step rollback 提供，而不是由该 nested seam 独立提供。
 
 agent-claim epoch 不能从同一个 base snapshot 整轮预生成，因为同一 owner 的前一个 upkeep debit、claim removal、grace/release/reclaim 与 refund provenance 会改变后一个 claim 的合法分支。当前 nested seam 因此每次只准备一个 event body，发布后重读最新 claim 与余额，再决定 follow-up；BTreeMap target-agent 顺序与 `agent_claim_last_processed_epoch` 仅在整轮成功后推进的语义保持不变。整轮 publication failure 仍依赖外层 cloned-step rollback。

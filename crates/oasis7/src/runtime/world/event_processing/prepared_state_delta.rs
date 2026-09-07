@@ -52,6 +52,7 @@ pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
     EconomicContract(super::super::super::economic_contract_publication::PreparedEconomicContractEvent),
     AllianceWar(super::super::super::alliance_war_publication::PreparedAllianceWarEvent),
     GovernanceMeta(super::super::super::governance_meta_publication::PreparedGovernanceMetaEvent),
+    CorePolicy(super::super::super::super::state::core_policy_transition::PreparedCorePolicyEvent),
     Industry(super::super::super::super::state::industry_transition::PreparedIndustryEvent),
     PowerRedemption(super::super::super::power_redemption_publication::PreparedPowerRedemptionEvent),
     NodePointsSettlement(
@@ -133,7 +134,8 @@ impl PreparedEventStateDelta {
             | WorldEventBody::ModuleCallFailed(_)
             | WorldEventBody::ModuleEmitted(_)
             | WorldEventBody::SnapshotCreated(_)
-            | WorldEventBody::RollbackApplied(_) => Some(Self::NoState),
+            | WorldEventBody::RollbackApplied(_)
+            | WorldEventBody::Domain(DomainEvent::ActionRejected { .. }) => Some(Self::NoState),
             WorldEventBody::Governance(GovernanceEvent::EmergencyBrakeActivated {
                 active_until_tick,
                 ..
@@ -208,6 +210,9 @@ impl PreparedEventStateDelta {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
             Self::GovernanceMeta(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
+            Self::CorePolicy(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
             Self::Industry(prepared) => {
@@ -364,6 +369,7 @@ impl PreparedEventStateDelta {
             Self::GovernanceMeta(_) => {
                 unreachable!("governance/meta uses a sparse state projection")
             }
+            Self::CorePolicy(_) => unreachable!("core/policy uses a sparse state projection"),
             Self::Industry(_) => unreachable!("industry uses a sparse state projection"),
             Self::PowerRedemption(_) => {
                 unreachable!("power redemption uses a sparse state projection")
@@ -486,6 +492,7 @@ impl PreparedEventStateDelta {
             Self::EconomicContract(prepared) => prepared.install_infallible(&mut world.state),
             Self::AllianceWar(prepared) => prepared.install_infallible(&mut world.state),
             Self::GovernanceMeta(prepared) => prepared.install_infallible(&mut world.state),
+            Self::CorePolicy(prepared) => prepared.install_infallible(&mut world.state),
             Self::Industry(prepared) => prepared.install(&mut world.state),
             Self::PowerRedemption(prepared) => prepared.install_infallible(&mut world.state),
             Self::NodePointsSettlement(prepared) => prepared.install_infallible(&mut world.state),

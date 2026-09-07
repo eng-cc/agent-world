@@ -1,11 +1,12 @@
+use super::body_projection::AgentMapProjection;
 use super::governance_identity_projection::GovernanceIdentityProfileMapProjection;
 use super::module_release_transition::ReleaseMapProjection;
 use super::*;
 use serde::Serialize;
-use serde::ser::{SerializeMap, SerializeSeq, SerializeStruct};
+use serde::ser::SerializeStruct;
 
 #[derive(Debug, Clone, PartialEq)]
-enum BodyOverlayMutation {
+pub(super) enum BodyOverlayMutation {
     Body {
         body_view: crate::models::BodyKernelView,
         last_active: WorldTime,
@@ -19,9 +20,9 @@ enum BodyOverlayMutation {
 /// body fields or represent a route-only event with no body mutation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BodyOverlay {
-    agent_id: String,
-    mutation: BodyOverlayMutation,
-    routed_domain_event: Option<DomainEvent>,
+    pub(super) agent_id: String,
+    pub(super) mutation: BodyOverlayMutation,
+    pub(super) routed_domain_event: Option<DomainEvent>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -88,6 +89,7 @@ pub struct WorldStateProjection<'a> {
     >,
     alliance_war_overlay: Option<&'a crate::runtime::world::alliance_war_publication::PreparedAllianceWarEvent>,
     governance_meta_overlay: Option<&'a crate::runtime::world::governance_meta_publication::PreparedGovernanceMetaEvent>,
+    core_policy_overlay: Option<&'a super::core_policy_transition::PreparedCorePolicyEvent>,
     pub(crate) industry_overlay: Option<&'a super::industry_transition::PreparedIndustryEvent>,
     power_redemption_overlay: Option<
         &'a crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
@@ -130,6 +132,7 @@ impl<'a> WorldStateProjection<'a> {
             economic_contract_overlay: None,
             alliance_war_overlay: None,
             governance_meta_overlay: None,
+            core_policy_overlay: None,
             industry_overlay: None,
             power_redemption_overlay: None,
             node_points_settlement_overlay: None,
@@ -187,6 +190,13 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a crate::runtime::world::governance_meta_publication::PreparedGovernanceMetaEvent,
     ) -> Self {
         self.governance_meta_overlay = Some(overlay);
+        self
+    }
+    pub(crate) fn with_core_policy_overlay(
+        mut self,
+        overlay: &'a super::core_policy_transition::PreparedCorePolicyEvent,
+    ) -> Self {
+        self.core_policy_overlay = Some(overlay);
         self
     }
     pub(crate) fn with_power_redemption_overlay(
@@ -327,7 +337,7 @@ impl Serialize for WorldState {
     {
         serialize_world_state(
             self, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, None, serializer,
+            None, None, None, None, None, None, None, None, None, None, serializer,
         )
     }
 }
@@ -360,6 +370,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.economic_contract_overlay,
             self.alliance_war_overlay,
             self.governance_meta_overlay,
+            self.core_policy_overlay,
             self.industry_overlay,
             self.power_redemption_overlay,
             self.node_points_settlement_overlay,
@@ -372,126 +383,6 @@ impl Serialize for WorldStateProjection<'_> {
             self.agent_claim_terminal_overlay,
             serializer,
         )
-    }
-}
-
-struct AgentMapProjection<'a> {
-    agents: &'a BTreeMap<String, AgentCell>,
-    body_overlay: Option<&'a BodyOverlay>,
-}
-
-impl Serialize for AgentMapProjection<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(self.agents.len()))?;
-        for (agent_id, cell) in self.agents {
-            if let Some(overlay) = self
-                .body_overlay
-                .filter(|overlay| overlay.agent_id == *agent_id)
-            {
-                map.serialize_entry(
-                    agent_id,
-                    &AgentCellProjection {
-                        cell,
-                        body_overlay: overlay,
-                    },
-                )?;
-            } else {
-                map.serialize_entry(agent_id, cell)?;
-            }
-        }
-        map.end()
-    }
-}
-
-struct AgentCellProjection<'a> {
-    cell: &'a AgentCell,
-    body_overlay: &'a BodyOverlay,
-}
-
-impl Serialize for AgentCellProjection<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let field_count =
-            3 + usize::from(self.cell.activity.is_some()) + usize::from(self.cell.intent.is_some());
-        let mut state = serializer.serialize_struct("AgentCell", field_count)?;
-        let body_view = match &self.body_overlay.mutation {
-            BodyOverlayMutation::Body { body_view, .. } => body_view,
-            BodyOverlayMutation::RouteOnly => &self.cell.state.body_view,
-        };
-        let last_active = match &self.body_overlay.mutation {
-            BodyOverlayMutation::Body { last_active, .. } => last_active,
-            BodyOverlayMutation::RouteOnly => &self.cell.last_active,
-        };
-        state.serialize_field(
-            "state",
-            &AgentStateProjection {
-                state: &self.cell.state,
-                body_view,
-            },
-        )?;
-        state.serialize_field(
-            "mailbox",
-            &MailboxProjection {
-                mailbox: &self.cell.mailbox,
-                appended_event: self.body_overlay.routed_domain_event.as_ref(),
-            },
-        )?;
-        state.serialize_field("last_active", last_active)?;
-        if self.cell.activity.is_some() {
-            state.serialize_field("activity", &self.cell.activity)?;
-        }
-        if self.cell.intent.is_some() {
-            state.serialize_field("intent", &self.cell.intent)?;
-        }
-        state.end()
-    }
-}
-
-struct MailboxProjection<'a> {
-    mailbox: &'a std::collections::VecDeque<DomainEvent>,
-    appended_event: Option<&'a DomainEvent>,
-}
-
-impl Serialize for MailboxProjection<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let appended_len = usize::from(self.appended_event.is_some());
-        let mut sequence = serializer.serialize_seq(Some(self.mailbox.len() + appended_len))?;
-        for event in self.mailbox {
-            sequence.serialize_element(event)?;
-        }
-        if let Some(event) = self.appended_event {
-            sequence.serialize_element(event)?;
-        }
-        sequence.end()
-    }
-}
-
-struct AgentStateProjection<'a> {
-    state: &'a crate::models::AgentState,
-    body_view: &'a crate::models::BodyKernelView,
-}
-
-impl Serialize for AgentStateProjection<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct("AgentState", 6)?;
-        state.serialize_field("agent_id", &self.state.agent_id)?;
-        state.serialize_field("pos", &self.state.pos)?;
-        state.serialize_field("body", &self.state.body)?;
-        state.serialize_field("resources", &self.state.resources)?;
-        state.serialize_field("body_view", self.body_view)?;
-        state.serialize_field("body_state", &self.state.body_state)?;
-        state.end()
     }
 }
 
@@ -521,6 +412,7 @@ fn serialize_world_state<S>(
     governance_meta_overlay: Option<
         &crate::runtime::world::governance_meta_publication::PreparedGovernanceMetaEvent,
     >,
+    core_policy_overlay: Option<&super::core_policy_transition::PreparedCorePolicyEvent>,
     industry_overlay: Option<&super::industry_transition::PreparedIndustryEvent>,
     power_redemption_overlay: Option<
         &crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
@@ -667,6 +559,8 @@ where
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = economy_data_overlay {
         overlay.serialize_agents(state, &mut output)?;
+    } else if let Some(overlay) = core_policy_overlay {
+        overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = industry_overlay {
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = governance_meta_overlay {
@@ -718,7 +612,9 @@ where
     } else {
         output.serialize_field("resources", &state.resources)?;
     }
-    if let Some(overlay) = industry_overlay {
+    if let Some(overlay) = core_policy_overlay {
+        overlay.serialize_materials(state, &mut output)?;
+    } else if let Some(overlay) = industry_overlay {
         overlay.serialize_materials(state, &mut output)?;
     } else if let Some(overlay) = agent_claim_terminal_overlay {
         overlay.serialize_materials(state, &mut output)?;
@@ -754,7 +650,11 @@ where
         output.serialize_field("materials", &state.materials)?;
         output.serialize_field("material_ledgers", &state.material_ledgers)?;
     }
-    output.serialize_field("material_profiles", &state.material_profiles)?;
+    if let Some(overlay) = core_policy_overlay {
+        overlay.serialize_profile(state, &mut output)?;
+    } else {
+        output.serialize_field("material_profiles", &state.material_profiles)?;
+    }
     if let Some(overlay) = industry_overlay {
         overlay.serialize_logistics(state, &mut output)?;
     } else {
@@ -838,14 +738,24 @@ where
             "pending_material_transits",
             &state.pending_material_transits,
         )?;
-        output.serialize_field("industry_progress", &state.industry_progress)?;
+        output.serialize_field(
+            "industry_progress",
+            core_policy_overlay.map_or(&state.industry_progress, |overlay| {
+                overlay.projected_progress(state)
+            }),
+        )?;
     }
     if let Some(overlay) = alliance_war_overlay {
         overlay.serialize_alliances(state, &mut output)?;
     } else {
         output.serialize_field("alliances", &state.alliances)?;
     }
-    output.serialize_field("gameplay_policy", &state.gameplay_policy)?;
+    output.serialize_field(
+        "gameplay_policy",
+        core_policy_overlay.map_or(&state.gameplay_policy, |overlay| {
+            overlay.projected_policy(state)
+        }),
+    )?;
     if let Some(overlay) = economy_data_overlay {
         overlay.serialize_permissions(state, &mut output)?;
     } else {
