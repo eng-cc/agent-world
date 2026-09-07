@@ -33,7 +33,62 @@ struct PreparedCapabilityAuthorizationBatch {
     consensus_record: TickConsensusRecord,
 }
 
+pub(super) struct PreparedCapabilityAuthorizationEvent {
+    event: CapabilityAuthorizationEvent,
+    capability_grants_v2: BTreeMap<String, JsonValue>,
+    capability_revocation_state: CapabilityRevocationState,
+    capability_invocation_contexts: BTreeMap<String, CapabilityInvocationContext>,
+    capability_budget_accounts: BTreeMap<String, CapabilityBudgetAccount>,
+    capability_authorization_root: String,
+}
+
+impl PreparedCapabilityAuthorizationEvent {
+    pub(super) fn matches_event(&self, event: &CapabilityAuthorizationEvent) -> bool {
+        &self.event == event
+    }
+
+    pub(super) fn install(self, world: &mut World) {
+        world.capability_grants_v2 = self.capability_grants_v2;
+        world.capability_revocation_state = self.capability_revocation_state;
+        world.capability_invocation_contexts = self.capability_invocation_contexts;
+        world.capability_budget_accounts = self.capability_budget_accounts;
+        world.capability_authorization_root = self.capability_authorization_root;
+    }
+}
+
 impl World {
+    pub(super) fn prepare_raw_capability_authorization_event(
+        &self,
+        event: &CapabilityAuthorizationEvent,
+    ) -> Result<PreparedCapabilityAuthorizationEvent, WorldError> {
+        let mut capability_grants_v2 = self.capability_grants_v2.clone();
+        let mut capability_revocation_state = self.capability_revocation_state.clone();
+        let mut capability_invocation_contexts = self.capability_invocation_contexts.clone();
+        let mut capability_budget_accounts = self.capability_budget_accounts.clone();
+        self.validate_and_project_capability_authorization_event(
+            event,
+            &mut capability_grants_v2,
+            &mut capability_revocation_state,
+            &mut capability_invocation_contexts,
+            &mut capability_budget_accounts,
+        )?;
+        let capability_authorization_root = self
+            .compute_capability_authorization_root_with_projection(
+                &capability_grants_v2,
+                &capability_revocation_state,
+                &capability_invocation_contexts,
+                &capability_budget_accounts,
+            )?;
+        Ok(PreparedCapabilityAuthorizationEvent {
+            event: event.clone(),
+            capability_grants_v2,
+            capability_revocation_state,
+            capability_invocation_contexts,
+            capability_budget_accounts,
+            capability_authorization_root,
+        })
+    }
+
     pub(super) fn append_capability_authorization_event_batch(
         &mut self,
         events: Vec<CapabilityAuthorizationEvent>,
@@ -254,16 +309,12 @@ impl World {
                 Ok(())
             }
             CapabilityAuthorizationEvent::GrantRegistered { grant } => {
-                let encoded = serde_json::to_value(grant)?;
-                if let Some(existing) = capability_grants_v2.get(&grant.grant_id)
-                    && existing != &encoded
-                {
-                    return Err(super::capability_authorization::deny(
-                        "immutable grant body changed",
-                    ));
-                }
-                capability_grants_v2.insert(grant.grant_id.clone(), encoded);
-                Ok(())
+                super::capability_authorization_events::validate_and_project_registered_grant(
+                    self,
+                    capability_grants_v2,
+                    grant,
+                    self.state.time,
+                )
             }
             CapabilityAuthorizationEvent::SystemIdentityInstalled { system_id, epoch } => {
                 if system_id.trim().is_empty() || *epoch > self.state.time {

@@ -810,6 +810,20 @@ impl World {
     }
 
     #[cfg(test)]
+    pub(crate) fn append_event_for_test(
+        &mut self,
+        body: crate::runtime::WorldEventBody,
+        caused_by: Option<crate::runtime::CausedBy>,
+    ) -> Result<WorldEventId, WorldError> {
+        self.append_event(body, caused_by)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn seed_capability_grant_for_test(&mut self, grant_id: String, encoded: JsonValue) {
+        self.capability_grants_v2.insert(grant_id, encoded);
+    }
+
+    #[cfg(test)]
     fn take_fail_next_append_after_publication_prepare_for_test(&mut self) -> bool {
         if std::mem::take(&mut self.fail_next_append_after_publication_prepare) {
             return true;

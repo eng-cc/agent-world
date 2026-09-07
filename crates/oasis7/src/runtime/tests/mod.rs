@@ -74,6 +74,7 @@ mod basic;
 mod body;
 mod builtin_wasm_identity;
 mod builtin_wasm_materializer;
+mod capability_authorization_raw_publication_transaction_regressions;
 mod capability_authorization_transaction_regressions;
 mod capability_grant_v2;
 mod capability_grant_v2_lifecycle;

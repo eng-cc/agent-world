@@ -10,7 +10,7 @@ use oasis7_wasm_abi::{
     canonical_hash, capability_scope_hash,
 };
 use serde::Serialize;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::super::capability_authorization::{
     CapabilityAgentIdentity, CapabilityAuthorityFinalityBinding, CapabilityAuthorityFinalityProof,
@@ -485,19 +485,29 @@ fn apply_registered_grant(
     grant: &CapabilityGrantV2,
     time: WorldTime,
 ) -> Result<(), WorldError> {
+    let mut projected = world.capability_grants_v2.clone();
+    validate_and_project_registered_grant(world, &mut projected, grant, time)?;
+    world.capability_grants_v2 = projected;
+    Ok(())
+}
+
+pub(super) fn validate_and_project_registered_grant(
+    world: &World,
+    capability_grants_v2: &mut BTreeMap<String, serde_json::Value>,
+    grant: &CapabilityGrantV2,
+    time: WorldTime,
+) -> Result<(), WorldError> {
     validate_grant_body(grant, time)?;
     world.verify_issuer(grant)?;
     world.verify_live_revocation(grant)?;
     world.verify_parent_chain(grant)?;
     let encoded = serde_json::to_value(grant)?;
-    if let Some(existing) = world.capability_grants_v2.get(&grant.grant_id)
+    if let Some(existing) = capability_grants_v2.get(&grant.grant_id)
         && existing != &encoded
     {
         return Err(deny("immutable grant body changed"));
     }
-    world
-        .capability_grants_v2
-        .insert(grant.grant_id.clone(), encoded);
+    capability_grants_v2.insert(grant.grant_id.clone(), encoded);
     Ok(())
 }
 

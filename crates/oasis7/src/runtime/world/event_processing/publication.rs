@@ -1,6 +1,7 @@
 use super::*;
 use crate::runtime::{
-    EffectIntent, EffectReceipt, Manifest, ManifestUpdate, ModuleEvent, ModuleRegistry,
+    CapabilityAuthorizationEvent, EffectIntent, EffectReceipt, Manifest, ManifestUpdate,
+    ModuleEvent, ModuleRegistry,
 };
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
@@ -41,6 +42,9 @@ pub(super) enum PreparedEventStateDelta {
     },
     GovernanceRegistry(
         super::super::governance_registry_publication::PreparedGovernanceRegistryEvent,
+    ),
+    CapabilityAuthorization(
+        super::super::capability_authorization_publication::PreparedCapabilityAuthorizationEvent,
     ),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
@@ -151,6 +155,10 @@ impl PreparedEventStateDelta {
             Self::GovernanceRegistry(prepared) => {
                 matches!(body, WorldEventBody::Governance(event) if prepared.matches_event(event))
             }
+            Self::CapabilityAuthorization(prepared) => matches!(
+                body,
+                WorldEventBody::CapabilityAuthorization(event) if prepared.matches_event(event)
+            ),
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -249,6 +257,9 @@ impl PreparedEventStateDelta {
             Self::GovernanceRegistry(_) => {
                 unreachable!("governance registry uses a state projection")
             }
+            Self::CapabilityAuthorization(_) => {
+                unreachable!("capability authorization uses sidecar state")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -335,6 +346,7 @@ impl PreparedEventStateDelta {
             }
             Self::ManifestUpdated { manifest, .. } => world.manifest = manifest,
             Self::GovernanceRegistry(prepared) => prepared.install(world),
+            Self::CapabilityAuthorization(prepared) => prepared.install(world),
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -496,6 +508,16 @@ impl World {
                 | GovernanceEvent::ValidatorAdmissionRevoked { .. }),
             ) => Some(PreparedEventStateDelta::GovernanceRegistry(
                 self.prepare_governance_registry_event(event)?,
+            )),
+            WorldEventBody::CapabilityAuthorization(
+                event @ (CapabilityAuthorizationEvent::AuthorityInstalledWithProof { .. }
+                | CapabilityAuthorizationEvent::AgentIdentityInstalled { .. }
+                | CapabilityAuthorizationEvent::SystemIdentityInstalled { .. }
+                | CapabilityAuthorizationEvent::InvocationContextInstalled { .. }
+                | CapabilityAuthorizationEvent::BudgetAccountInstalled { .. }
+                | CapabilityAuthorizationEvent::GrantRegistered { .. }),
+            ) => Some(PreparedEventStateDelta::CapabilityAuthorization(
+                self.prepare_raw_capability_authorization_event(event)?,
             )),
             _ => prepared_governance_events::prepare(self, &body)?
                 .or_else(|| PreparedEventStateDelta::for_body(&body)),
@@ -869,6 +891,9 @@ impl World {
             }
             PreparedEventStateDelta::GovernanceRegistry(prepared) => {
                 self.state_root_hash_with_governance_registry_overlay(prepared)?
+            }
+            PreparedEventStateDelta::CapabilityAuthorization(_) => {
+                self.current_state_root_hash()?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {
