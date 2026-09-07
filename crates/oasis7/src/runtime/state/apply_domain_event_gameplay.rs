@@ -40,6 +40,21 @@ impl WorldState {
             .install_infallible(self);
             return Ok(());
         }
+        if matches!(
+            event,
+            DomainEvent::AllianceFormed { .. }
+                | DomainEvent::AllianceJoined { .. }
+                | DomainEvent::AllianceLeft { .. }
+                | DomainEvent::AllianceDissolved { .. }
+                | DomainEvent::WarDeclared { .. }
+                | DomainEvent::WarConcluded { .. }
+        ) {
+            crate::runtime::world::alliance_war_publication::PreparedAllianceWarEvent::prepare(
+                self, event, now,
+            )?
+            .install_infallible(self);
+            return Ok(());
+        }
         match event {
             DomainEvent::StarterOcClaimed { .. } => unreachable!("handled by starter projector"),
             DomainEvent::GameplayPolicyUpdated {

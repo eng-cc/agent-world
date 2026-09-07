@@ -170,6 +170,22 @@ impl World {
         }
         if matches!(
             event,
+            DomainEvent::AllianceFormed { .. }
+                | DomainEvent::AllianceJoined { .. }
+                | DomainEvent::AllianceLeft { .. }
+                | DomainEvent::AllianceDissolved { .. }
+                | DomainEvent::WarDeclared { .. }
+                | DomainEvent::WarConcluded { .. }
+        ) {
+            super::alliance_war_publication::PreparedAllianceWarEvent::prepare(
+                &self.state,
+                event,
+                self.state.time,
+            )?;
+            return Ok(());
+        }
+        if matches!(
+            event,
             DomainEvent::EconomicContractOpened { .. }
                 | DomainEvent::EconomicContractAccepted { .. }
                 | DomainEvent::EconomicContractSettled { .. }

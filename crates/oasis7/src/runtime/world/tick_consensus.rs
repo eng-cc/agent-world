@@ -1004,6 +1004,19 @@ impl World {
         })
     }
 
+    pub(super) fn state_root_hash_with_alliance_war_overlay(
+        &self,
+        prepared: &super::alliance_war_publication::PreparedAllianceWarEvent,
+    ) -> Result<String, WorldError> {
+        let projection =
+            WorldStateProjection::borrowed(&self.state).with_alliance_war_overlay(prepared);
+        hash_json(&StateRootProjection {
+            state: &projection,
+            manifest_hash: &self.current_manifest_hash()?,
+            policy_hash: &hash_json(&self.policies)?,
+        })
+    }
+
     pub(super) fn state_root_hash_with_power_redemption_overlay(
         &self,
         prepared: &super::power_redemption_publication::PreparedPowerRedemptionEvent,

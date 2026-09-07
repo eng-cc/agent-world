@@ -634,6 +634,11 @@ design.
 - M1 (2026-03-09): 在 ROUND-006 中补齐模块级 `design.md` 标准入口。
 - M2: 按专题继续补齐高复杂度主题的 `*.design.md`。
 
+Alliance/war raw publication uses a full-body-bound sparse projector. It prepares touched
+alliances, wars, participants, reputation, and compatibility materials, derives the canonical
+root through borrowed untouched state plus the existing route, and installs only after the
+publication failure boundary. Replay and action preflight reuse the same reducer semantics.
+
 ## 设计风险
 - 若专题级设计未及时补齐，模块级 `design.md` 可能承载过多导航职责。
 - 若 legacy redirect 未明确标注为兼容跳转，读者可能误判历史入口为当前执行入口。

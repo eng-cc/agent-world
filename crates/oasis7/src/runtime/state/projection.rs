@@ -64,13 +64,7 @@ impl BodyOverlay {
     }
 }
 
-/// A serialization projection over borrowed canonical state.
-///
-/// `WorldStateProjection` is the reusable state-root preparation seam for
-/// transition execution.  It owns no world state and applies only typed
-/// overlays at serialization time.  The canonical state serializer below is
-/// shared by both this projection and `WorldState`, so a projection without an
-/// overlay is byte-identical to direct state serialization.
+/// Borrowed typed overlays preserving canonical serialization.
 #[derive(Debug)]
 pub struct WorldStateProjection<'a> {
     state: &'a WorldState,
@@ -91,6 +85,7 @@ pub struct WorldStateProjection<'a> {
     economic_contract_overlay: Option<
         &'a crate::runtime::world::economic_contract_publication::PreparedEconomicContractEvent,
     >,
+    alliance_war_overlay: Option<&'a crate::runtime::world::alliance_war_publication::PreparedAllianceWarEvent>,
     power_redemption_overlay: Option<
         &'a crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
     >,
@@ -130,6 +125,7 @@ impl<'a> WorldStateProjection<'a> {
             agent_intent_overlay: None,
             economy_data_overlay: None,
             economic_contract_overlay: None,
+            alliance_war_overlay: None,
             power_redemption_overlay: None,
             node_points_settlement_overlay: None,
             main_token_monetary_overlay: None,
@@ -171,6 +167,14 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a crate::runtime::world::economic_contract_publication::PreparedEconomicContractEvent,
     ) -> Self {
         self.economic_contract_overlay = Some(overlay);
+        self
+    }
+
+    pub(crate) fn with_alliance_war_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::alliance_war_publication::PreparedAllianceWarEvent,
+    ) -> Self {
+        self.alliance_war_overlay = Some(overlay);
         self
     }
 
@@ -312,7 +316,7 @@ impl Serialize for WorldState {
     {
         serialize_world_state(
             self, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, serializer,
+            None, None, None, None, None, None, None, serializer,
         )
     }
 }
@@ -343,6 +347,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.agent_intent_overlay,
             self.economy_data_overlay,
             self.economic_contract_overlay,
+            self.alliance_war_overlay,
             self.power_redemption_overlay,
             self.node_points_settlement_overlay,
             self.main_token_monetary_overlay,
@@ -543,6 +548,9 @@ fn serialize_world_state<S>(
     economic_contract_overlay: Option<
         &crate::runtime::world::economic_contract_publication::PreparedEconomicContractEvent,
     >,
+    alliance_war_overlay: Option<
+        &crate::runtime::world::alliance_war_publication::PreparedAllianceWarEvent,
+    >,
     power_redemption_overlay: Option<
         &crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
     >,
@@ -575,8 +583,6 @@ fn serialize_world_state<S>(
 where
     S: serde::Serializer,
 {
-    // Keep this destructuring exhaustive.  Adding a persisted field without
-    // adding its canonical serialization below must fail at compile time.
     let WorldState {
         time: _,
         agents: _,
@@ -690,6 +696,8 @@ where
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = economy_data_overlay {
         overlay.serialize_agents(state, &mut output)?;
+    } else if let Some(overlay) = alliance_war_overlay {
+        overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = economic_contract_overlay {
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(command_overlay) = command_overlay {
@@ -761,6 +769,8 @@ where
         overlay.serialize_material_fields(state, &mut output)?;
     } else if let Some(overlay) = module_marketplace_overlay {
         overlay.serialize_material_fields(state, &mut output)?;
+    } else if let Some(overlay) = alliance_war_overlay {
+        overlay.serialize_materials(state, &mut output)?;
     } else if let Some(overlay) = economic_contract_overlay {
         overlay.serialize_materials(state, &mut output)?;
     } else {
@@ -839,7 +849,11 @@ where
         &state.pending_material_transits,
     )?;
     output.serialize_field("industry_progress", &state.industry_progress)?;
-    output.serialize_field("alliances", &state.alliances)?;
+    if let Some(overlay) = alliance_war_overlay {
+        overlay.serialize_alliances(state, &mut output)?;
+    } else {
+        output.serialize_field("alliances", &state.alliances)?;
+    }
     output.serialize_field("gameplay_policy", &state.gameplay_policy)?;
     if let Some(overlay) = economy_data_overlay {
         overlay.serialize_permissions(state, &mut output)?;
@@ -900,9 +914,17 @@ where
             "reputation_reward_window_accumulated",
             &state.reputation_reward_window_accumulated,
         )?;
-        output.serialize_field("reputation_scores", &state.reputation_scores)?;
+        if let Some(overlay) = alliance_war_overlay {
+            overlay.serialize_reputation(state, &mut output)?;
+        } else {
+            output.serialize_field("reputation_scores", &state.reputation_scores)?;
+        }
     }
-    output.serialize_field("wars", &state.wars)?;
+    if let Some(overlay) = alliance_war_overlay {
+        overlay.serialize_wars(state, &mut output)?;
+    } else {
+        output.serialize_field("wars", &state.wars)?;
+    }
     output.serialize_field("governance_votes", &state.governance_votes)?;
     output.serialize_field("governance_proposals", &state.governance_proposals)?;
     if let Some(overlay) = governance_identity_profile_overlay {

@@ -50,6 +50,7 @@ pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
     AgentIntent(super::super::super::agent_intent_publication::PreparedAgentIntent),
     EconomyData(super::super::super::economy_data_publication::PreparedEconomyDataEvent),
     EconomicContract(super::super::super::economic_contract_publication::PreparedEconomicContractEvent),
+    AllianceWar(super::super::super::alliance_war_publication::PreparedAllianceWarEvent),
     PowerRedemption(super::super::super::power_redemption_publication::PreparedPowerRedemptionEvent),
     NodePointsSettlement(
         super::super::super::node_points_settlement_publication::PreparedNodePointsSettlement,
@@ -197,6 +198,9 @@ impl PreparedEventStateDelta {
             Self::EconomicContract(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
+            Self::AllianceWar(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::PowerRedemption(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
@@ -341,6 +345,7 @@ impl PreparedEventStateDelta {
             Self::EconomicContract(_) => {
                 unreachable!("economic contract uses a sparse state projection")
             }
+            Self::AllianceWar(_) => unreachable!("alliance/war uses a sparse state projection"),
             Self::PowerRedemption(_) => {
                 unreachable!("power redemption uses a sparse state projection")
             }
@@ -456,6 +461,7 @@ impl PreparedEventStateDelta {
             Self::AgentIntent(prepared) => prepared.install_infallible(&mut world.state),
             Self::EconomyData(prepared) => prepared.install_infallible(&mut world.state),
             Self::EconomicContract(prepared) => prepared.install_infallible(&mut world.state),
+            Self::AllianceWar(prepared) => prepared.install_infallible(&mut world.state),
             Self::PowerRedemption(prepared) => prepared.install_infallible(&mut world.state),
             Self::NodePointsSettlement(prepared) => prepared.install_infallible(&mut world.state),
             Self::MainTokenMonetary(prepared) => prepared.install_infallible(&mut world.state),

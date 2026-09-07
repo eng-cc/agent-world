@@ -8,6 +8,7 @@ mod agent_claims;
 mod agent_intent;
 pub(crate) mod agent_intent_publication;
 mod agent_intent_terminal;
+pub(crate) mod alliance_war_publication;
 pub use agent_intent::{AgentIntentProviderFailureDisposition, AgentIntentRecordOutcome};
 mod audit;
 mod base_layer;
