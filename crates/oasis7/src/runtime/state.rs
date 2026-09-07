@@ -14,11 +14,10 @@ use super::error::WorldError;
 use super::events::ModuleProfileChanges;
 use super::events::{DomainEvent, IndustryStage, MaterialMarketQuote, MaterialTransitPriority};
 use super::gameplay_state::{
-    AgentClaimState, AllianceState, CrisisState, CrisisStatus, EconomicContractState,
-    EconomicContractStatus, GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT, GameplayPolicyState,
+    AgentClaimState, AllianceState, CrisisState, EconomicContractState,
+    GOVERNANCE_IDENTITY_DEFAULT_MAX_VOTE_WEIGHT, GameplayPolicyState,
     GovernanceIdentityProfileState, GovernanceIdentityStatus, GovernanceProposalState,
-    GovernanceProposalStatus, GovernanceVoteBallotState, GovernanceVoteState,
-    GovernanceVoteWeightSnapshotState, MetaProgressState, StarterOcClaimState,
+    GovernanceVoteState, GovernanceVoteWeightSnapshotState, MetaProgressState, StarterOcClaimState,
     WarParticipantOutcome, WarState,
 };
 use super::governance::{
@@ -110,8 +109,6 @@ fn default_factory_production_state() -> FactoryProductionState {
 fn default_module_release_required_roles() -> Vec<String> {
     state_defaults::default_module_release_required_roles()
 }
-
-const ALLIANCE_MIN_MEMBER_COUNT: usize = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
