@@ -1,6 +1,7 @@
 //! The World struct - core runtime implementation.
 
 mod actions;
+pub(crate) mod agent_claim_light_lifecycle_publication;
 mod agent_claims;
 mod agent_intent;
 pub(crate) mod agent_intent_publication;

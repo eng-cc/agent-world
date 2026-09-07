@@ -681,4 +681,5 @@ proposer 可以提交候选 receipt；active validator 必须从同一 committed
 - Raw main-token policy scheduling 与 treasury distribution 必须以完整事件绑定的 governance-monetary delta 发布，原子覆盖 scheduled policy 或 treasury、账户、supply、distribution record 及 compatibility materials；两者均不路由 mailbox，action preview 与 replay 复用 pure preparation。
 - Restricted starter-claim 的 pool top-up、grant issue、expiry 与 revoke 必须以完整事件绑定的 sparse delta 发布，原子覆盖 treasury、beneficiary balance、supply、grant/top-up record、compatibility materials 与既有 controller/issuer mailbox；expiry 不路由，缺失路由 Agent 时保持 no-op。
 - Raw `StarterOcClaimed` 必须以完整事件绑定的独立 sparse delta 发布，原子覆盖 starter claim、目标账户与 activity、token supply、可选 treasury bucket 和 compatibility materials；prospective root 包含 raw agent 的单次既有路由。Raw 路径保留 treasury 与 mint 两种 funding 语义，不引入 action-only 的玩家、公钥或全局唯一性限制。
+- Raw claim release request、grace entry 与 idle warning 必须以完整事件绑定的轻量 lifecycle delta 发布，只替换目标 claim 与 compatibility materials；仅 release request 更新 claimer activity，三者均只向 raw claimer 路由一次，且不得修改 target activity、货币字段或全局 claim epoch cursor。
 - 本节吸收已完成 README gap 专题中的仍有效 runtime 合同；历史里程碑、旧路径与完成状态从 Git history 和 GitHub task evidence 追溯。

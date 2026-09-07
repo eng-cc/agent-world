@@ -1,3 +1,5 @@
+use super::super::agent_claim_light_lifecycle_publication::PreparedAgentClaimLightLifecycle;
+use super::super::starter_oc_claim_publication::PreparedStarterOcClaimed;
 use super::*;
 use crate::runtime::{
     CapabilityAuthorizationEvent, EffectIntent, EffectReceipt, Manifest, ManifestUpdate,
@@ -67,7 +69,8 @@ pub(super) enum PreparedEventStateDelta {
     MainTokenRestrictedClaim(
         super::super::main_token_restricted_claim_publication::PreparedMainTokenRestrictedClaimEvent,
     ),
-    StarterOcClaimed(super::super::starter_oc_claim_publication::PreparedStarterOcClaimed),
+    StarterOcClaimed(PreparedStarterOcClaimed),
+    AgentClaimLightLifecycle(PreparedAgentClaimLightLifecycle),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -213,6 +216,9 @@ impl PreparedEventStateDelta {
             Self::StarterOcClaimed(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
+            Self::AgentClaimLightLifecycle(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -342,6 +348,9 @@ impl PreparedEventStateDelta {
             Self::StarterOcClaimed(_) => {
                 unreachable!("starter OC claims use a sparse state projection")
             }
+            Self::AgentClaimLightLifecycle(_) => {
+                unreachable!("light claim lifecycle uses a sparse state projection")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -443,6 +452,9 @@ impl PreparedEventStateDelta {
                 prepared.install_infallible(&mut world.state)
             }
             Self::StarterOcClaimed(prepared) => prepared.install_infallible(&mut world.state),
+            Self::AgentClaimLightLifecycle(prepared) => {
+                prepared.install_infallible(&mut world.state)
+            }
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -638,13 +650,16 @@ impl World {
             }
             WorldEventBody::Domain(event @ DomainEvent::StarterOcClaimed { .. }) => {
                 Some(PreparedEventStateDelta::StarterOcClaimed(
-                    super::super::starter_oc_claim_publication::PreparedStarterOcClaimed::prepare(
-                        &self.state,
-                        event,
-                        self.state.time,
-                    )?,
+                    PreparedStarterOcClaimed::prepare(&self.state, event, self.state.time)?,
                 ))
             }
+            WorldEventBody::Domain(
+                event @ (DomainEvent::AgentClaimReleaseRequested { .. }
+                | DomainEvent::AgentClaimEnteredGrace { .. }
+                | DomainEvent::AgentClaimIdleWarning { .. }),
+            ) => Some(PreparedEventStateDelta::AgentClaimLightLifecycle(
+                PreparedAgentClaimLightLifecycle::prepare(&self.state, event, self.state.time)?,
+            )),
             WorldEventBody::ModuleStateUpdated(update) => {
                 Some(PreparedEventStateDelta::ModuleStateUpdated {
                     module_states: BTreeMap::from([(
@@ -1062,8 +1077,7 @@ impl World {
                 )?,
             PreparedEventStateDelta::EffectQueued { .. }
             | PreparedEventStateDelta::ReceiptAppended { .. } => {
-                // Effect queues are persisted World sidecars outside the
-                // canonical WorldState root schema.
+                // Effect queues are World sidecars outside the canonical WorldState root schema.
                 self.current_state_root_hash()?
             }
             PreparedEventStateDelta::ModuleEvent { .. } => self.current_state_root_hash()?,
@@ -1101,6 +1115,9 @@ impl World {
             }
             PreparedEventStateDelta::StarterOcClaimed(prepared) => {
                 self.state_root_hash_with_starter_oc_claim_overlay(prepared)?
+            }
+            PreparedEventStateDelta::AgentClaimLightLifecycle(prepared) => {
+                self.state_root_hash_with_agent_claim_light_lifecycle_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {

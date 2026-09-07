@@ -8,6 +8,18 @@ impl WorldState {
         event: &DomainEvent,
         now: WorldTime,
     ) -> Result<(), WorldError> {
+        if matches!(
+            event,
+            DomainEvent::AgentClaimReleaseRequested { .. }
+                | DomainEvent::AgentClaimEnteredGrace { .. }
+                | DomainEvent::AgentClaimIdleWarning { .. }
+        ) {
+            crate::runtime::world::agent_claim_light_lifecycle_publication::PreparedAgentClaimLightLifecycle::prepare(
+                self, event, now,
+            )?
+            .install_infallible(self);
+            return Ok(());
+        }
         match event {
             DomainEvent::AgentClaimed {
                 claimer_agent_id,
