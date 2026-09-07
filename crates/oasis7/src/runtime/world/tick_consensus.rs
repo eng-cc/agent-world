@@ -956,6 +956,28 @@ impl World {
         })
     }
 
+    pub(super) fn state_root_hash_with_agent_intent_overlay(
+        &self,
+        prepared: &super::agent_intent_publication::PreparedAgentIntent,
+    ) -> Result<String, WorldError> {
+        let policy_hash = hash_json(&self.policies)?;
+        let agents = prepared.routed_agents();
+        let empty_resources = std::collections::BTreeMap::new();
+        let empty_module_states = std::collections::BTreeMap::new();
+        let projection = WorldStateProjection::borrowed(&self.state)
+            .with_command_overlay(CommandStateOverlay {
+                module_states: &empty_module_states,
+                resources: &empty_resources,
+                agents: &agents,
+            })
+            .with_agent_intent_overlay(prepared);
+        hash_json(&StateRootProjection {
+            state: &projection,
+            manifest_hash: &self.current_manifest_hash()?,
+            policy_hash: &policy_hash,
+        })
+    }
+
     pub(super) fn state_root_hash_with_module_marketplace_overlay(
         &self,
         market: &super::super::state::module_marketplace_transition::PreparedModuleMarketplace,

@@ -673,4 +673,5 @@ proposer 可以提交候选 receipt；active validator 必须从同一 committed
 - 模块调用计费由确定性输入/输出/effect/emit 计量产生审计事件；余额不足时在输出、状态与 emit 应用前结构化拒绝。费用只在成功路径生效，replay 应用已提交的计费事件，不重新推导价格。
 - 模块 artifact 的 listing、bid、purchase、delist、destroy 与 fee 是 runtime 权威动作/事件/状态：只允许当前 owner 操作，结算需资源充足，成交转移 ownership 并清理相关挂单，仍被 active instance 使用的 artifact 不得销毁。价格、玩家价值与恢复提示由 game 专业权威拥有。
 - live/viewer 只回放共识已提交的有序动作；空轮询不构成逻辑世界推进。共识 action root、payload 完整性与提交验证由 P2P 专业权威拥有，LLM/provider 只提交意图，不成为第二执行权威。
+- 五类 raw agent-intent lifecycle event 必须以完整 event body 绑定 sparse prepared delta：只拥有受影响 AgentCell 与至多一个 ledger replacement，completed transition 在 state projection 前绑定 prospective event id 与已提交 receipt witness；canonical root 必须包含 candidate intent/ledger 和恰好一次 mailbox route。失败不得消费 event id 或修改 ledger、slot、mailbox、journal、retention、consensus；provider advisory、historical no-op 与 public 多事件 chat workflow 的既有边界不变。
 - 本节吸收已完成 README gap 专题中的仍有效 runtime 合同；历史里程碑、旧路径与完成状态从 Git history 和 GitHub task evidence 追溯。

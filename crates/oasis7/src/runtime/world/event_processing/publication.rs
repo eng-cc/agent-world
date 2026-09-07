@@ -52,6 +52,7 @@ pub(super) enum PreparedEventStateDelta {
     CapabilityEffectReceipt(
         super::super::capability_effect_receipt_projection::PreparedCapabilityEffectReceipt,
     ),
+    AgentIntent(super::super::agent_intent_publication::PreparedAgentIntent),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -173,6 +174,9 @@ impl PreparedEventStateDelta {
                 body,
                 WorldEventBody::CapabilityAuthorization(event) if prepared.matches_event(event)
             ),
+            Self::AgentIntent(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -280,6 +284,7 @@ impl PreparedEventStateDelta {
             Self::CapabilityEffectReceipt(_) => {
                 unreachable!("capability effect receipt uses sidecar state")
             }
+            Self::AgentIntent(_) => unreachable!("agent intent uses a sparse state projection"),
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -369,6 +374,7 @@ impl PreparedEventStateDelta {
             Self::CapabilityAuthorization(prepared) => prepared.install(world),
             Self::CapabilityCommandCommit(prepared) => prepared.install(world),
             Self::CapabilityEffectReceipt(prepared) => prepared.install(world),
+            Self::AgentIntent(prepared) => prepared.install_infallible(&mut world.state),
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -461,6 +467,15 @@ impl World {
         caused_by: Option<CausedBy>,
     ) -> Result<WorldEventId, WorldError> {
         let state_delta = match &body {
+            WorldEventBody::Domain(
+                event @ (DomainEvent::AgentIntentProposed { .. }
+                | DomainEvent::AgentIntentSubmitted { .. }
+                | DomainEvent::AgentIntentAccepted { .. }
+                | DomainEvent::AgentIntentReplaced { .. }
+                | DomainEvent::AgentIntentTransitioned { .. }),
+            ) => Some(PreparedEventStateDelta::AgentIntent(
+                self.prepare_raw_agent_intent_event(event)?,
+            )),
             WorldEventBody::Domain(
                 event @ (DomainEvent::ModuleArtifactDeployed { .. }
                 | DomainEvent::ModuleArtifactListed { .. }
@@ -931,6 +946,9 @@ impl World {
             | PreparedEventStateDelta::CapabilityCommandCommit(_)
             | PreparedEventStateDelta::CapabilityEffectReceipt(_) => {
                 self.current_state_root_hash()?
+            }
+            PreparedEventStateDelta::AgentIntent(prepared) => {
+                self.state_root_hash_with_agent_intent_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {

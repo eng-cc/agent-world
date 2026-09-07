@@ -84,6 +84,8 @@ pub struct WorldStateProjection<'a> {
     governance_registry_overlay: Option<
         &'a crate::runtime::world::governance_registry_publication::PreparedGovernanceRegistryEvent,
     >,
+    agent_intent_overlay:
+        Option<&'a crate::runtime::world::agent_intent_publication::PreparedAgentIntent>,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -97,6 +99,7 @@ impl<'a> WorldStateProjection<'a> {
             module_marketplace_overlay: None,
             governance_identity_profile_overlay: None,
             governance_registry_overlay: None,
+            agent_intent_overlay: None,
         }
     }
 
@@ -105,6 +108,14 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a crate::runtime::world::governance_registry_publication::PreparedGovernanceRegistryEvent,
     ) -> Self {
         self.governance_registry_overlay = Some(overlay);
+        self
+    }
+
+    pub(crate) fn with_agent_intent_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::agent_intent_publication::PreparedAgentIntent,
+    ) -> Self {
+        self.agent_intent_overlay = Some(overlay);
         self
     }
 
@@ -174,7 +185,9 @@ impl Serialize for WorldState {
     where
         S: serde::Serializer,
     {
-        serialize_world_state(self, None, None, None, None, None, None, None, serializer)
+        serialize_world_state(
+            self, None, None, None, None, None, None, None, None, serializer,
+        )
     }
 }
 
@@ -201,6 +214,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.module_marketplace_overlay,
             self.governance_identity_profile_overlay.as_ref(),
             self.governance_registry_overlay,
+            self.agent_intent_overlay,
             serializer,
         )
     }
@@ -383,6 +397,9 @@ fn serialize_world_state<S>(
     governance_registry_overlay: Option<
         &crate::runtime::world::governance_registry_publication::PreparedGovernanceRegistryEvent,
     >,
+    agent_intent_overlay: Option<
+        &crate::runtime::world::agent_intent_publication::PreparedAgentIntent,
+    >,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -474,11 +491,13 @@ where
         reward_signature_governance_policy: _,
     } = state;
 
-    let field_count = 81
-        - usize::from(state.agent_intent_ledger.is_empty())
-        - usize::from(state.latest_product_validation.is_none())
-        - usize::from(state.starter_oc_claims.is_empty())
-        - usize::from(state.authenticated_collect_data_last_nonces.is_empty());
+    let field_count =
+        81 - usize::from(
+            state.agent_intent_ledger.is_empty()
+                && agent_intent_overlay.is_none_or(|overlay| overlay.ledger_updates.is_empty()),
+        ) - usize::from(state.latest_product_validation.is_none())
+            - usize::from(state.starter_oc_claims.is_empty())
+            - usize::from(state.authenticated_collect_data_last_nonces.is_empty());
     let mut output = serializer.serialize_struct("WorldState", field_count)?;
     output.serialize_field("time", &state.time)?;
     if let Some(command_overlay) = command_overlay {
@@ -498,7 +517,17 @@ where
             },
         )?;
     }
-    if !state.agent_intent_ledger.is_empty() {
+    if let Some(overlay) = agent_intent_overlay
+        && (!state.agent_intent_ledger.is_empty() || !overlay.ledger_updates.is_empty())
+    {
+        output.serialize_field(
+            "agent_intent_ledger",
+            &ReleaseMapProjection {
+                base: &state.agent_intent_ledger,
+                updates: &overlay.ledger_updates,
+            },
+        )?;
+    } else if !state.agent_intent_ledger.is_empty() {
         output.serialize_field("agent_intent_ledger", &state.agent_intent_ledger)?;
     }
     if let Some(command_overlay) = command_overlay {

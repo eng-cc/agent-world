@@ -865,7 +865,7 @@ impl World {
         Ok(())
     }
 
-    fn validate_agent_intent_receipt_reference(
+    pub(super) fn validate_agent_intent_receipt_reference(
         &self,
         event: &DomainEvent,
         envelope_event_seq: Option<WorldEventId>,

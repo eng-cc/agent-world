@@ -434,6 +434,16 @@ allocator, journal, consensus, root, or deterministic metric state. Identical
 installation remains a no-op, and committed events retain the existing replay
 reducers and event order.
 
+Raw agent-intent lifecycle publication uses a full-event-bound sparse
+projection shared with replay. It clones only the affected agent cell and at
+most one intent-ledger entry; completed transitions first bind their receipt to
+the prospective event id and existing journal witness. The projected root
+combines the candidate intent/ledger state with exactly one routed mailbox
+event before allocator, journal, retention, consensus, and the post-prepare
+failpoint are installed. Provider-advisory and historical no-op reducer
+semantics remain intact, while the public multi-event chat workflows retain
+their existing outer sequencing boundary.
+
 Raw `CommandCommitted` replay-equivalent publication uses a separate,
 full-event-bound prepared delta. It validates against the current state,
 manifest, journal head, invocation context, authority state, and durable effect

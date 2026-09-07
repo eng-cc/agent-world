@@ -3,6 +3,7 @@
 mod actions;
 mod agent_claims;
 mod agent_intent;
+pub(crate) mod agent_intent_publication;
 mod agent_intent_terminal;
 pub use agent_intent::{AgentIntentProviderFailureDisposition, AgentIntentRecordOutcome};
 mod audit;
