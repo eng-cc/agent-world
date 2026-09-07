@@ -113,7 +113,10 @@ Verification has two disjoint modes: `historical_audit` and `current_admission`.
 Historical acceptance emits `historical_only=true, apply_authorized=false` and
 cannot be consumed by destructive apply. Current admission rechecks the trusted
 current effective signer status and rejects retired or revoked keys even when
-they were active at issuance. Unknown or stale revocation state is a blocker.
+they were active at issuance. It also requires the envelope, context, provider
+attestation, and pinned trust config to carry the same current `rotation_epoch`;
+an unknown or stale epoch is a blocker. Historical mode remains forensic-only
+and requires separate historical-ledger proof at its consuming boundary.
 Mode, evaluation time, trust-config digest and authorization result are bound
 into the verifier receipt; apply independently revalidates current authority.
 
@@ -319,6 +322,10 @@ canonical output pair returned by the pinned registry verifier is promoted to
 the requested paths. The sidecar's `--verifier-tool` is an assertion of this
 registry-selected path, never an alternate verifier choice.
 
+The handwritten Ed25519 verifier decodes both public-key and `R` points only
+when they are canonical, non-identity points in the prime-order subgroup;
+small-order keys or forged `R=identity,S=0` signatures are rejected.
+
 All trust-config, provider-registry, public-key, custody-adapter, and
 independent-verifier files are deployment-owned regular non-symlink artifacts.
 The operator-local owner must be the account running admission, and neither
@@ -329,6 +336,11 @@ require owner execute. Authority reads use an `O_NOFOLLOW` descriptor with
 pre/post `fstat` identity checks; the adapter/verifier digest is rechecked
 around its subprocess before outputs are promoted. Thus the contract closes
 replacement/TOCTOU without imposing unsupported `0600` modes on public files.
+
+Before any derived-output preflight, each output path is rejected if it aliases
+an input, authority artifact, another output, or a code-owned deployment path.
+Existing derived outputs are retained on validation failure and replaced only
+by the final atomic write after the command succeeds.
 
 `assemble` opens the payload as a regular non-symlink file and requires its
 exact bytes, size and SHA-256 to match the prepare manifest, canonical payload

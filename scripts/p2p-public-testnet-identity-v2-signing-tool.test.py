@@ -765,6 +765,68 @@ class IdentityV2SigningToolContractTests(unittest.TestCase):
                 result = self._run(*self._prepare_args(payload, manifest))
                 self._assert_rejected_no_output(result, payload, manifest)
 
+    def test_verify_rejects_small_order_identity_key_forgery(self) -> None:
+        """A small-order public point must not validate R=identity,S=0."""
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("identity_v2_tool_small_order", TOOL)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        identity_point = b"\x01" + b"\x00" * 31
+        forged_signature = identity_point + b"\x00" * 32
+        self.assertFalse(module.verify_ed25519(identity_point, b"arbitrary message", forged_signature))
+
+    def test_prepare_rejects_output_alias_to_input_without_deleting_it(self) -> None:
+        """A derived output cannot replace a caller input before validation."""
+        original = self.raw.read_bytes()
+        manifest = self.root / "aliased-input.prepare.json"
+        result = self._run(*self._prepare_args(self.raw, manifest))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(self.raw.is_file())
+        self.assertEqual(self.raw.read_bytes(), original)
+        self.assertFalse(manifest.exists())
+
+    def test_prepare_preserves_existing_derived_outputs_on_validation_failure(self) -> None:
+        """Failed retries retain the last complete derived evidence pair."""
+        payload, manifest = self._prepare("preserve-existing")
+        payload_before = payload.read_bytes()
+        manifest_before = manifest.read_bytes()
+        context = json.loads(self.context.read_text(encoding="utf-8"))
+        context["network_id"] = "attacker-network"
+        write_json(self.context, context)
+        result = self._run(*self._prepare_args(payload, manifest))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(payload.read_bytes(), payload_before)
+        self.assertEqual(manifest.read_bytes(), manifest_before)
+
+    def test_current_admission_rejects_envelope_epoch_not_matching_trust(self) -> None:
+        """Current admission must use the trust config's current rotation epoch."""
+        _, _, _, attestation, envelope = self._prepare_sign_assemble("stale-rotation")
+        trust = json.loads(self.trust.read_text(encoding="utf-8"))
+        trust["rotation_epoch"] = "identity-v2-rotation-0002"
+        write_json(self.trust, trust)
+        registry = json.loads(self.registry.read_text(encoding="utf-8"))
+        registry["trust_config_sha256"] = digest_file(self.trust)
+        write_json(self.registry, registry)
+        verified = self.root / "stale-rotation.verified.json"
+        receipt = self.root / "stale-rotation.verification.json"
+        result = self._run(
+            "verify",
+            "--mode", "current_admission",
+            "--envelope", str(envelope),
+            "--attestation", str(attestation),
+            "--raw-v1", str(self.raw),
+            "--context", str(self.context),
+            "--plan-intent", str(self.intent),
+            "--trust-config", str(self.trust),
+            "--provider-registry", str(self.registry),
+            "--out", str(verified),
+            "--verification-out", str(receipt),
+        )
+        self._assert_rejected_no_output(result, verified, receipt)
+
     def test_authority_descriptor_reader_rejects_writable_ancestor(self) -> None:
         """Authority reads must bind metadata and the opened descriptor."""
         import importlib.util
@@ -983,6 +1045,7 @@ class IdentityV2SigningToolContractTests(unittest.TestCase):
         value = json.loads(attestation.read_text(encoding="utf-8"))
         value["schema_version"] = "oasis7.identity_v2_provider_attestation.v1"
         envelope = self.root / "v1-reject.envelope.json"
+        existing_envelope = envelope.read_bytes()
         write_json(attestation, value)
         result = self._run(
             "assemble",
@@ -993,7 +1056,8 @@ class IdentityV2SigningToolContractTests(unittest.TestCase):
             "--provider-registry", str(self.registry),
             "--out", str(envelope),
         )
-        self._assert_rejected_no_output(result, envelope)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(envelope.read_bytes(), existing_envelope)
 
     def _openssl_verify(self, payload: Path, signature_bytes: bytes) -> None:
         signature = self.root / "independent-check.signature"
@@ -1136,6 +1200,8 @@ class IdentityV2SigningToolContractTests(unittest.TestCase):
         self.provider.write_bytes(original + b"\n# tampered adapter\n")
         signature = self.root / "pins.signature.hex"
         attestation = self.root / "pins.attestation.json"
+        existing_signature = signature.read_bytes()
+        existing_attestation = attestation.read_bytes()
         result = self._run(
             "sign",
             "--payload",
@@ -1151,7 +1217,9 @@ class IdentityV2SigningToolContractTests(unittest.TestCase):
             "--attestation-out",
             str(attestation),
         )
-        self._assert_rejected_no_output(result, signature, attestation)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(signature.read_bytes(), existing_signature)
+        self.assertEqual(attestation.read_bytes(), existing_attestation)
 
         self.provider.write_bytes(original)
         self.verifier.write_bytes(self.verifier.read_bytes() + b"tamper\n")

@@ -751,14 +751,73 @@ def _atomic_write(path_value: str | Path, value: bytes, label: str) -> None:
         fail(f"cannot write {label}: {error.__class__.__name__}")
 
 
-def _clear_derived_output(path_value: str | Path, label: str) -> None:
-    """Remove only a caller-named derived artifact before a new transaction.
+def _code_owned_paths() -> tuple[Path, ...]:
+    return (
+        DEPLOYED_TRUST_CONFIG,
+        DEPLOYED_PROVIDER_REGISTRY,
+        DEPLOYED_GOVERNANCE_ROOT,
+        Path(__file__),
+        ADAPTER_PATH,
+        Path(__file__).with_name("p2p-public-testnet-identity-receipt-v2.py"),
+        Path(__file__).with_name("p2p-public-testnet-full-network-clean-room.py"),
+        Path(__file__).with_name("p2p-public-testnet-full-network-clean-room-adapter.py"),
+    )
 
-    Signature, attestation, envelope, and verification files are disposable
-    transaction outputs rather than authority inputs.  Clearing an old
-    regular file prevents a failed retry from being mistaken for fresh
-    evidence.  Symlinks and non-regular files are rejected, never followed or
-    removed.
+
+def _registry_artifact_paths(registry: dict[str, Any]) -> list[Path]:
+    """Extract registry-referenced authority paths for output alias checks."""
+
+    paths: list[Path] = []
+    trust_path = registry.get("trust_config_path")
+    if isinstance(trust_path, str):
+        paths.append(Path(trust_path))
+    providers = registry.get("providers")
+    if isinstance(providers, list):
+        for provider in providers:
+            if not isinstance(provider, dict):
+                continue
+            for field in ("adapter_path", "public_key_ref"):
+                value = provider.get(field)
+                if isinstance(value, str):
+                    paths.append(Path(value))
+    verifier = registry.get("verifier")
+    if isinstance(verifier, dict) and isinstance(verifier.get("executable_path"), str):
+        paths.append(Path(verifier["executable_path"]))
+    return paths
+
+
+def _reject_output_aliases(
+    outputs: list[tuple[str | Path, str]], protected: list[tuple[str | Path, str]]
+) -> None:
+    """Reject output aliases before any transaction cleanup or validation."""
+
+    protected_paths = [(Path(path), label) for path, label in protected]
+    protected_paths.extend((path, "code-owned path") for path in _code_owned_paths())
+    seen: dict[Path, str] = {}
+    for output_value, output_label in outputs:
+        output = Path(output_value)
+        if output.is_symlink():
+            fail(f"{output_label} must not be a symlink")
+        resolved = output.resolve()
+        if resolved in seen:
+            fail(f"{output_label} aliases {seen[resolved]}")
+        seen[resolved] = output_label
+        for protected_path, protected_label in protected_paths:
+            same_file = False
+            try:
+                same_file = output.exists() and protected_path.exists() and os.path.samefile(output, protected_path)
+            except OSError:
+                pass
+            if resolved == protected_path.resolve() or same_file:
+                fail(f"{output_label} aliases protected {protected_label}")
+
+
+def _clear_derived_output(path_value: str | Path, label: str) -> None:
+    """Validate a derived output without deleting prior evidence.
+
+    Successful commands atomically replace their derived outputs.  Keeping an
+    existing regular output until that point preserves prior evidence when a
+    retry fails validation; aliases are rejected by _reject_output_aliases.
     """
 
     path = Path(path_value)
@@ -766,10 +825,8 @@ def _clear_derived_output(path_value: str | Path, label: str) -> None:
         return
     if path.is_symlink() or not path.is_file():
         fail(f"{label} must be an absent regular output or a regular file")
-    try:
-        path.unlink()
-    except OSError as error:
-        fail(f"cannot clear stale {label}: {error.__class__.__name__}")
+    # Leave prior evidence in place until the complete command succeeds and
+    # _atomic_write can replace it atomically.
 
 
 # RFC 8032 Ed25519 verifier.  It is used only for independent verification;
@@ -835,13 +892,27 @@ def _decodepoint(encoded: bytes) -> tuple[int, int]:
     return x, y
 
 
+def _decode_prime_order_point(encoded: bytes) -> tuple[int, int]:
+    """Decode an Ed25519 point and require the prime-order subgroup."""
+
+    decoded = _decodepoint(encoded)
+    point = (decoded[0] % Q, decoded[1] % Q)
+    if _encodepoint(point) != encoded:
+        fail("Ed25519 point encoding is not canonical")
+    if _scalarmult(point, L) != (0, 1):
+        fail("Ed25519 point is not in the prime-order subgroup")
+    if point == (0, 1):
+        fail("Ed25519 point has small order")
+    return point
+
+
 def verify_ed25519(public_key: bytes, message: bytes, signature: bytes) -> bool:
     if len(public_key) != 32 or len(signature) != 64:
         return False
     try:
-        public_point = _decodepoint(public_key)
+        public_point = _decode_prime_order_point(public_key)
         r_bytes = signature[:32]
-        r_point = _decodepoint(r_bytes)
+        r_point = _decode_prime_order_point(r_bytes)
         scalar = int.from_bytes(signature[32:], "little")
         if scalar >= L:
             return False
@@ -966,6 +1037,16 @@ def _provider_attestation(
 
 
 def command_prepare(args: argparse.Namespace) -> None:
+    outputs = [(args.payload_out, "payload output"), (args.manifest_out, "prepare manifest output")]
+    protected = [
+        (args.raw_v1, "raw-v1"),
+        (args.template, "template"),
+        (args.context, "context"),
+        (args.plan_intent, "plan-intent"),
+        (args.trust_config, "trust-config"),
+        (args.provider_registry, "provider-registry"),
+    ]
+    _reject_output_aliases(outputs, protected)
     _clear_derived_output(args.payload_out, "payload output")
     _clear_derived_output(args.manifest_out, "prepare manifest output")
     raw_bytes = read_bytes(args.raw_v1, "raw-v1")
@@ -974,7 +1055,9 @@ def command_prepare(args: argparse.Namespace) -> None:
     intent = validate_intent(read_json(args.plan_intent, "plan-intent"), context)
     trust_path = _regular(args.trust_config, "trust-config")
     registry_path = _regular(args.provider_registry, "provider-registry")
-    trust, registry = validate_registry(read_json(registry_path, "provider-registry", authority=True), registry_path, trust_path)
+    registry_value = read_json(registry_path, "provider-registry", authority=True)
+    _reject_output_aliases(outputs, protected + [(path, "registry authority artifact") for path in _registry_artifact_paths(registry_value)])
+    trust, registry = validate_registry(registry_value, registry_path, trust_path)
     _authority_scope(trust_path, registry_path, registry)
     template = validate_template(read_json(args.template, "template"), raw, context, sha256_bytes(canonical(intent)), trust)
     if template["signed_payload_sha256"] != sha256_bytes(raw_bytes):
@@ -1021,15 +1104,27 @@ def command_prepare(args: argparse.Namespace) -> None:
 
 
 def command_sign(args: argparse.Namespace) -> None:
+    outputs = [(args.signature_out, "signature output"), (args.attestation_out, "provider attestation output")]
+    protected = [
+        (args.payload, "payload"),
+        (args.manifest, "prepare manifest"),
+        (args.provider_registry, "provider-registry"),
+    ]
+    _reject_output_aliases(outputs, protected)
     _clear_derived_output(args.signature_out, "signature output")
     _clear_derived_output(args.attestation_out, "attestation output")
     payload_path = _regular(args.payload, "payload")
     manifest_path = _regular(args.manifest, "prepare manifest")
     manifest = read_json(manifest_path, "prepare manifest")
     registry_path = _regular(args.provider_registry, "provider-registry")
+    registry_value = read_json(registry_path, "provider-registry", authority=True)
+    manifest_trust_path = manifest.get("trust_config_path")
+    if isinstance(manifest_trust_path, str):
+        protected.append((manifest_trust_path, "trust-config"))
+    _reject_output_aliases(outputs, protected + [(path, "registry authority artifact") for path in _registry_artifact_paths(registry_value)])
     _manifest_check(manifest, payload_path, registry_path)
     trust_path = _regular(manifest["trust_config_path"], "trust-config")
-    _, registry = validate_registry(read_json(registry_path, "provider-registry", authority=True), registry_path, trust_path)
+    _, registry = validate_registry(registry_value, registry_path, trust_path)
     _authority_scope(trust_path, registry_path, registry)
     provider = find_provider(registry, args.provider_ref)
     trust_digest_before = authority_digest(trust_path, "trust-config")
@@ -1111,13 +1206,27 @@ def _payload_from_file(payload_path: Path, manifest: dict[str, Any]) -> dict[str
 
 
 def command_assemble(args: argparse.Namespace) -> None:
+    outputs = [(args.out, "envelope output")]
+    protected = [
+        (args.payload, "payload"),
+        (args.manifest, "prepare manifest"),
+        (args.signature, "signature"),
+        (args.attestation, "provider attestation"),
+        (args.provider_registry, "provider-registry"),
+    ]
+    _reject_output_aliases(outputs, protected)
     _clear_derived_output(args.out, "envelope output")
     payload_path = _regular(args.payload, "payload")
     manifest = read_json(args.manifest, "prepare manifest")
     registry_path = _regular(args.provider_registry, "provider-registry")
+    registry_value = read_json(registry_path, "provider-registry", authority=True)
+    trust_value = manifest.get("trust_config_path")
+    if isinstance(trust_value, str):
+        protected.append((trust_value, "trust-config"))
+    _reject_output_aliases(outputs, protected + [(path, "registry authority artifact") for path in _registry_artifact_paths(registry_value)])
     _manifest_check(manifest, payload_path, registry_path)
     trust_path = _regular(manifest["trust_config_path"], "trust-config")
-    trust, registry = validate_registry(read_json(registry_path, "provider-registry", authority=True), registry_path, trust_path)
+    trust, registry = validate_registry(registry_value, registry_path, trust_path)
     authority_scope = _authority_scope(trust_path, registry_path, registry)
     payload = read_bytes(payload_path, "payload")
     fields = _payload_from_file(payload_path, manifest)
@@ -1305,6 +1414,17 @@ def _assert_registry_verification(
 def command_verify(args: argparse.Namespace) -> None:
     if args.mode not in {"current_admission", "historical_audit"}:
         fail("verification mode is unsupported")
+    outputs = [(args.out, "verified-envelope output"), (args.verification_out, "verification receipt output")]
+    protected = [
+        (args.envelope, "identity envelope"),
+        (args.raw_v1, "raw-v1"),
+        (args.context, "context"),
+        (args.plan_intent, "plan-intent"),
+        (args.attestation, "provider attestation"),
+        (args.trust_config, "trust-config"),
+        (args.provider_registry, "provider-registry"),
+    ]
+    _reject_output_aliases(outputs, protected)
     _clear_derived_output(args.out, "verified-envelope output")
     _clear_derived_output(args.verification_out, "verification receipt output")
     envelope_path = _regular(args.envelope, "identity envelope")
@@ -1316,7 +1436,9 @@ def command_verify(args: argparse.Namespace) -> None:
     attestation = read_json(args.attestation, "provider attestation")
     trust_path = _regular(args.trust_config, "trust-config")
     registry_path = _regular(args.provider_registry, "provider-registry")
-    trust, registry = validate_registry(read_json(registry_path, "provider-registry", authority=True), registry_path, trust_path)
+    registry_value = read_json(registry_path, "provider-registry", authority=True)
+    _reject_output_aliases(outputs, protected + [(path, "registry authority artifact") for path in _registry_artifact_paths(registry_value)])
+    trust, registry = validate_registry(registry_value, registry_path, trust_path)
     verifier_path = _regular(registry["verifier"]["executable_path"], "provider-registry.verifier.executable_path").resolve()
     authority_scope = _authority_scope(trust_path, registry_path, registry)
     signer, exact_payload, signed = _validate_bindings(envelope, raw, raw_bytes, context, intent, trust)
@@ -1359,6 +1481,8 @@ def command_verify(args: argparse.Namespace) -> None:
     historical_only = args.mode == "historical_audit"
     if not historical_only and current_status != "active":
         fail("current admission rejects retired or revoked signer")
+    if not historical_only and envelope["rotation_epoch"] != trust["rotation_epoch"]:
+        fail("current admission rejects an envelope outside the pinned trust rotation epoch")
     if not historical_only:
         for revocation in trust["revocations"]:
             if revocation["signer_id"] == signer["signer_id"] and parse_timestamp(revocation["effective_at"], "revocation.effective_at") <= now:

@@ -73,6 +73,12 @@ and replacement metadata, where required by the governance ledger, must be
 recorded outside the caller-supplied input. Unknown or stale revocation state
 blocks current admission.
 
+Current admission additionally requires the envelope, context, provider
+attestation, and this pinned trust config to share the exact current
+`rotation_epoch`. A non-current epoch is not current authority; historical
+audit remains forensic-only and must be justified by the separate historical
+trust ledger at its consuming boundary.
+
 The provider registry must bind each approved provider ID to its signer,
 public-key digest, Ed25519 algorithm, authenticated custody adapter, adapter
 SHA-256, and the verifier executable/digest. The registry's trust-config digest
