@@ -23,6 +23,7 @@ mod capability_authorization_state;
 mod capability_authorization_validation;
 mod capability_effect_receipt_projection;
 mod economy;
+pub(crate) mod economy_data_publication;
 mod effect_publication;
 #[cfg(test)]
 mod effect_publication_transaction_regressions;

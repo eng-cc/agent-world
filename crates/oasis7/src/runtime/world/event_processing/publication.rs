@@ -53,6 +53,7 @@ pub(super) enum PreparedEventStateDelta {
         super::super::capability_effect_receipt_projection::PreparedCapabilityEffectReceipt,
     ),
     AgentIntent(super::super::agent_intent_publication::PreparedAgentIntent),
+    EconomyData(super::super::economy_data_publication::PreparedEconomyDataEvent),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -177,6 +178,9 @@ impl PreparedEventStateDelta {
             Self::AgentIntent(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
+            Self::EconomyData(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -285,6 +289,9 @@ impl PreparedEventStateDelta {
                 unreachable!("capability effect receipt uses sidecar state")
             }
             Self::AgentIntent(_) => unreachable!("agent intent uses a sparse state projection"),
+            Self::EconomyData(_) => {
+                unreachable!("economy/data events use a sparse state projection")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -375,6 +382,7 @@ impl PreparedEventStateDelta {
             Self::CapabilityCommandCommit(prepared) => prepared.install(world),
             Self::CapabilityEffectReceipt(prepared) => prepared.install(world),
             Self::AgentIntent(prepared) => prepared.install_infallible(&mut world.state),
+            Self::EconomyData(prepared) => prepared.install_infallible(&mut world.state),
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -514,6 +522,19 @@ impl World {
                 let schedule = self.prepare_module_instance_schedule(event, self.state.time)?;
                 Some(PreparedEventStateDelta::ModuleInstance { prepared, schedule })
             }
+            WorldEventBody::Domain(
+                event @ (DomainEvent::ResourceTransferred { .. }
+                | DomainEvent::DataCollected { .. }
+                | DomainEvent::DataCollectedAuthenticated { .. }
+                | DomainEvent::DataAccessGranted { .. }
+                | DomainEvent::DataAccessRevoked { .. }),
+            ) => Some(PreparedEventStateDelta::EconomyData(
+                super::super::economy_data_publication::PreparedEconomyDataEvent::prepare(
+                    &self.state,
+                    event,
+                    self.state.time,
+                )?,
+            )),
             WorldEventBody::ModuleStateUpdated(update) => {
                 Some(PreparedEventStateDelta::ModuleStateUpdated {
                     module_states: BTreeMap::from([(
@@ -949,6 +970,9 @@ impl World {
             }
             PreparedEventStateDelta::AgentIntent(prepared) => {
                 self.state_root_hash_with_agent_intent_overlay(prepared)?
+            }
+            PreparedEventStateDelta::EconomyData(prepared) => {
+                self.state_root_hash_with_economy_data_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {

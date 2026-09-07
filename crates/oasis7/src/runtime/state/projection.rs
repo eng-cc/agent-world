@@ -86,6 +86,8 @@ pub struct WorldStateProjection<'a> {
     >,
     agent_intent_overlay:
         Option<&'a crate::runtime::world::agent_intent_publication::PreparedAgentIntent>,
+    economy_data_overlay:
+        Option<&'a crate::runtime::world::economy_data_publication::PreparedEconomyDataEvent>,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -100,6 +102,7 @@ impl<'a> WorldStateProjection<'a> {
             governance_identity_profile_overlay: None,
             governance_registry_overlay: None,
             agent_intent_overlay: None,
+            economy_data_overlay: None,
         }
     }
 
@@ -116,6 +119,14 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a crate::runtime::world::agent_intent_publication::PreparedAgentIntent,
     ) -> Self {
         self.agent_intent_overlay = Some(overlay);
+        self
+    }
+
+    pub(crate) fn with_economy_data_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::economy_data_publication::PreparedEconomyDataEvent,
+    ) -> Self {
+        self.economy_data_overlay = Some(overlay);
         self
     }
 
@@ -186,7 +197,7 @@ impl Serialize for WorldState {
         S: serde::Serializer,
     {
         serialize_world_state(
-            self, None, None, None, None, None, None, None, None, serializer,
+            self, None, None, None, None, None, None, None, None, None, serializer,
         )
     }
 }
@@ -215,6 +226,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.governance_identity_profile_overlay.as_ref(),
             self.governance_registry_overlay,
             self.agent_intent_overlay,
+            self.economy_data_overlay,
             serializer,
         )
     }
@@ -400,6 +412,9 @@ fn serialize_world_state<S>(
     agent_intent_overlay: Option<
         &crate::runtime::world::agent_intent_publication::PreparedAgentIntent,
     >,
+    economy_data_overlay: Option<
+        &crate::runtime::world::economy_data_publication::PreparedEconomyDataEvent,
+    >,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -491,16 +506,22 @@ where
         reward_signature_governance_policy: _,
     } = state;
 
-    let field_count =
-        81 - usize::from(
+    let field_count = 81
+        - usize::from(
             state.agent_intent_ledger.is_empty()
                 && agent_intent_overlay.is_none_or(|overlay| overlay.ledger_updates.is_empty()),
-        ) - usize::from(state.latest_product_validation.is_none())
-            - usize::from(state.starter_oc_claims.is_empty())
-            - usize::from(state.authenticated_collect_data_last_nonces.is_empty());
+        )
+        - usize::from(state.latest_product_validation.is_none())
+        - usize::from(state.starter_oc_claims.is_empty())
+        - usize::from(
+            state.authenticated_collect_data_last_nonces.is_empty()
+                && economy_data_overlay.is_none_or(|overlay| !overlay.has_projected_nonces(state)),
+        );
     let mut output = serializer.serialize_struct("WorldState", field_count)?;
     output.serialize_field("time", &state.time)?;
-    if let Some(command_overlay) = command_overlay {
+    if let Some(overlay) = economy_data_overlay {
+        overlay.serialize_agents(state, &mut output)?;
+    } else if let Some(command_overlay) = command_overlay {
         output.serialize_field(
             "agents",
             &CommandAgentMapProjection {
@@ -541,7 +562,9 @@ where
     } else {
         output.serialize_field("resources", &state.resources)?;
     }
-    if let Some(overlay) = module_instance_overlay {
+    if let Some(overlay) = economy_data_overlay {
+        overlay.serialize_material_fields(state, &mut output)?;
+    } else if let Some(overlay) = module_instance_overlay {
         overlay.serialize_material_fields(state, &mut output)?;
     } else if let Some(overlay) = module_release_overlay {
         overlay.serialize_material_fields(state, &mut output)?;
@@ -625,13 +648,21 @@ where
     output.serialize_field("industry_progress", &state.industry_progress)?;
     output.serialize_field("alliances", &state.alliances)?;
     output.serialize_field("gameplay_policy", &state.gameplay_policy)?;
-    output.serialize_field("data_access_permissions", &state.data_access_permissions)?;
+    if let Some(overlay) = economy_data_overlay {
+        overlay.serialize_permissions(state, &mut output)?;
+    } else {
+        output.serialize_field("data_access_permissions", &state.data_access_permissions)?;
+    }
     output.serialize_field("economic_contracts", &state.economic_contracts)?;
     output.serialize_field("agent_claims", &state.agent_claims)?;
     if !state.starter_oc_claims.is_empty() {
         output.serialize_field("starter_oc_claims", &state.starter_oc_claims)?;
     }
-    if !state.authenticated_collect_data_last_nonces.is_empty() {
+    if let Some(overlay) = economy_data_overlay
+        && overlay.has_projected_nonces(state)
+    {
+        overlay.serialize_nonces(state, &mut output)?;
+    } else if !state.authenticated_collect_data_last_nonces.is_empty() {
         output.serialize_field(
             "authenticated_collect_data_last_nonces",
             &state.authenticated_collect_data_last_nonces,
