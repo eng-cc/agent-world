@@ -145,6 +145,7 @@ impl World {
             WorldEventBody::Domain(event @ (DomainEvent::AgentClaimReleased { .. } | DomainEvent::AgentClaimReclaimed { .. })) => Some(PreparedEventStateDelta::AgentClaimTerminal(super::super::agent_claim_terminal_publication::PreparedAgentClaimTerminal::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::Domain(event @ (DomainEvent::EconomicContractOpened { .. } | DomainEvent::EconomicContractAccepted { .. } | DomainEvent::EconomicContractSettled { .. } | DomainEvent::EconomicContractExpired { .. })) => Some(PreparedEventStateDelta::EconomicContract(super::super::economic_contract_publication::PreparedEconomicContractEvent::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::Domain(event @ (DomainEvent::AllianceFormed { .. } | DomainEvent::AllianceJoined { .. } | DomainEvent::AllianceLeft { .. } | DomainEvent::AllianceDissolved { .. } | DomainEvent::WarDeclared { .. } | DomainEvent::WarConcluded { .. })) => Some(PreparedEventStateDelta::AllianceWar(super::super::alliance_war_publication::PreparedAllianceWarEvent::prepare(&self.state,event,self.state.time)?)),
+            WorldEventBody::Domain(event @ (DomainEvent::GovernanceProposalOpened { .. } | DomainEvent::GovernanceVoteCast { .. } | DomainEvent::GovernanceProposalFinalized { .. } | DomainEvent::CrisisSpawned { .. } | DomainEvent::CrisisResolved { .. } | DomainEvent::CrisisTimedOut { .. } | DomainEvent::MetaProgressGranted { .. } | DomainEvent::ProductValidated { .. })) => Some(PreparedEventStateDelta::GovernanceMeta(super::super::governance_meta_publication::PreparedGovernanceMetaEvent::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::ModuleStateUpdated(update) => {
                 Some(PreparedEventStateDelta::ModuleStateUpdated {
                     module_states: BTreeMap::from([(
@@ -588,6 +589,9 @@ impl World {
             }
             PreparedEventStateDelta::AllianceWar(prepared) => {
                 self.state_root_hash_with_alliance_war_overlay(prepared)?
+            }
+            PreparedEventStateDelta::GovernanceMeta(prepared) => {
+                self.state_root_hash_with_governance_meta_overlay(prepared)?
             }
             PreparedEventStateDelta::PowerRedemption(prepared) => {
                 self.state_root_hash_with_power_redemption_overlay(prepared)?

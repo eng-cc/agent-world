@@ -639,6 +639,11 @@ alliances, wars, participants, reputation, and compatibility materials, derives 
 root through borrowed untouched state plus the existing route, and installs only after the
 publication failure boundary. Replay and action preflight reuse the same reducer semantics.
 
+Governance proposal, crisis, meta-progress, and product-validation events use four narrow
+prepared projections behind one publication dispatch type. Each stages only its touched records
+and AgentCells; borrowed canonical serialization adds the existing route before the failure seam,
+while installation remains unrouted and replay shares the same raw reducer semantics.
+
 ## 设计风险
 - 若专题级设计未及时补齐，模块级 `design.md` 可能承载过多导航职责。
 - 若 legacy redirect 未明确标注为兼容跳转，读者可能误判历史入口为当前执行入口。

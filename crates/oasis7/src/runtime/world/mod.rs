@@ -38,6 +38,7 @@ mod gameplay_layer;
 mod gameplay_loop;
 mod governance;
 mod governance_identity_penalty;
+pub(crate) mod governance_meta_publication;
 #[cfg(test)]
 mod governance_proposal_status_publication_transaction_regressions;
 mod governance_publication;

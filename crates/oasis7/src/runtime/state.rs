@@ -50,6 +50,7 @@ mod apply_domain_event_industry_helpers;
 mod apply_domain_event_intent;
 pub(crate) mod apply_domain_event_main_token;
 mod command_projection;
+mod governance_identity_projection;
 mod logistics_path_authority;
 pub(crate) mod module_instance_transition;
 pub(crate) mod module_marketplace_transition;

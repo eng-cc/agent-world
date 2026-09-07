@@ -6,6 +6,20 @@ impl WorldState {
         event: &DomainEvent,
         now: WorldTime,
     ) -> Result<(), WorldError> {
+        if matches!(
+            event,
+            DomainEvent::GovernanceProposalOpened { .. }
+                | DomainEvent::GovernanceVoteCast { .. }
+                | DomainEvent::GovernanceProposalFinalized { .. }
+                | DomainEvent::CrisisSpawned { .. }
+                | DomainEvent::CrisisResolved { .. }
+                | DomainEvent::CrisisTimedOut { .. }
+                | DomainEvent::MetaProgressGranted { .. }
+                | DomainEvent::ProductValidated { .. }
+        ) {
+            crate::runtime::world::governance_meta_publication::PreparedGovernanceMetaEvent::prepare(self, event, now)?.install_infallible(self);
+            return Ok(());
+        }
         match event {
             DomainEvent::GovernanceProposalOpened {
                 proposer_agent_id,

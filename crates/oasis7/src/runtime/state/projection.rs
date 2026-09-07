@@ -1,3 +1,4 @@
+use super::governance_identity_projection::GovernanceIdentityProfileMapProjection;
 use super::module_release_transition::ReleaseMapProjection;
 use super::*;
 use serde::Serialize;
@@ -25,9 +26,9 @@ pub struct BodyOverlay {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct GovernanceIdentityProfileOverlay {
-    target_agent_id: String,
-    next_profile: GovernanceIdentityProfileState,
-    allow_insert: bool,
+    pub(super) target_agent_id: String,
+    pub(super) next_profile: GovernanceIdentityProfileState,
+    pub(super) allow_insert: bool,
 }
 
 impl BodyOverlay {
@@ -86,6 +87,7 @@ pub struct WorldStateProjection<'a> {
         &'a crate::runtime::world::economic_contract_publication::PreparedEconomicContractEvent,
     >,
     alliance_war_overlay: Option<&'a crate::runtime::world::alliance_war_publication::PreparedAllianceWarEvent>,
+    governance_meta_overlay: Option<&'a crate::runtime::world::governance_meta_publication::PreparedGovernanceMetaEvent>,
     power_redemption_overlay: Option<
         &'a crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
     >,
@@ -126,6 +128,7 @@ impl<'a> WorldStateProjection<'a> {
             economy_data_overlay: None,
             economic_contract_overlay: None,
             alliance_war_overlay: None,
+            governance_meta_overlay: None,
             power_redemption_overlay: None,
             node_points_settlement_overlay: None,
             main_token_monetary_overlay: None,
@@ -175,6 +178,13 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a crate::runtime::world::alliance_war_publication::PreparedAllianceWarEvent,
     ) -> Self {
         self.alliance_war_overlay = Some(overlay);
+        self
+    }
+    pub(crate) fn with_governance_meta_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::governance_meta_publication::PreparedGovernanceMetaEvent,
+    ) -> Self {
+        self.governance_meta_overlay = Some(overlay);
         self
     }
 
@@ -316,7 +326,7 @@ impl Serialize for WorldState {
     {
         serialize_world_state(
             self, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, serializer,
+            None, None, None, None, None, None, None, None, serializer,
         )
     }
 }
@@ -348,6 +358,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.economy_data_overlay,
             self.economic_contract_overlay,
             self.alliance_war_overlay,
+            self.governance_meta_overlay,
             self.power_redemption_overlay,
             self.node_points_settlement_overlay,
             self.main_token_monetary_overlay,
@@ -359,52 +370,6 @@ impl Serialize for WorldStateProjection<'_> {
             self.agent_claim_terminal_overlay,
             serializer,
         )
-    }
-}
-
-struct GovernanceIdentityProfileMapProjection<'a> {
-    profiles: &'a BTreeMap<String, GovernanceIdentityProfileState>,
-    overlay: &'a GovernanceIdentityProfileOverlay,
-}
-
-impl Serialize for GovernanceIdentityProfileMapProjection<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let target_exists = self
-            .profiles
-            .contains_key(self.overlay.target_agent_id.as_str());
-        let map_len =
-            self.profiles.len() + usize::from(!target_exists && self.overlay.allow_insert);
-        let mut map = serializer.serialize_map(Some(map_len))?;
-        let mut inserted = false;
-        for (agent_id, profile) in self.profiles {
-            if agent_id == &self.overlay.target_agent_id {
-                map.serialize_entry(agent_id, &self.overlay.next_profile)?;
-                inserted = true;
-            } else if self.overlay.allow_insert
-                && !target_exists
-                && !inserted
-                && self.overlay.target_agent_id.as_str() < agent_id.as_str()
-            {
-                map.serialize_entry(
-                    self.overlay.target_agent_id.as_str(),
-                    &self.overlay.next_profile,
-                )?;
-                map.serialize_entry(agent_id, profile)?;
-                inserted = true;
-            } else {
-                map.serialize_entry(agent_id, profile)?;
-            }
-        }
-        if self.overlay.allow_insert && !inserted {
-            map.serialize_entry(
-                self.overlay.target_agent_id.as_str(),
-                &self.overlay.next_profile,
-            )?;
-        }
-        map.end()
     }
 }
 
@@ -551,6 +516,9 @@ fn serialize_world_state<S>(
     alliance_war_overlay: Option<
         &crate::runtime::world::alliance_war_publication::PreparedAllianceWarEvent,
     >,
+    governance_meta_overlay: Option<
+        &crate::runtime::world::governance_meta_publication::PreparedGovernanceMetaEvent,
+    >,
     power_redemption_overlay: Option<
         &crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
     >,
@@ -672,7 +640,7 @@ where
             state.agent_intent_ledger.is_empty()
                 && agent_intent_overlay.is_none_or(|overlay| overlay.ledger_updates.is_empty()),
         )
-        - usize::from(state.latest_product_validation.is_none())
+        - usize::from(state.latest_product_validation.is_none() && governance_meta_overlay.is_none_or(|v| !matches!(v, crate::runtime::world::governance_meta_publication::PreparedGovernanceMetaEvent::Product(_))))
         - usize::from(state.starter_oc_claims.is_empty() && starter_oc_claim_overlay.is_none())
         - usize::from(
             state.authenticated_collect_data_last_nonces.is_empty()
@@ -695,6 +663,8 @@ where
     } else if let Some(overlay) = power_redemption_overlay {
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = economy_data_overlay {
+        overlay.serialize_agents(state, &mut output)?;
+    } else if let Some(overlay) = governance_meta_overlay {
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = alliance_war_overlay {
         overlay.serialize_agents(state, &mut output)?;
@@ -810,7 +780,9 @@ where
     } else {
         output.serialize_field("product_profiles", &state.product_profiles)?;
     }
-    if state.latest_product_validation.is_some() {
+    if let Some(overlay) = governance_meta_overlay {
+        overlay.serialize_product(state, &mut output)?;
+    } else if state.latest_product_validation.is_some() {
         output.serialize_field(
             "latest_product_validation",
             &state.latest_product_validation,
@@ -925,8 +897,12 @@ where
     } else {
         output.serialize_field("wars", &state.wars)?;
     }
-    output.serialize_field("governance_votes", &state.governance_votes)?;
-    output.serialize_field("governance_proposals", &state.governance_proposals)?;
+    if let Some(overlay) = governance_meta_overlay {
+        overlay.serialize_governance(state, &mut output)?;
+    } else {
+        output.serialize_field("governance_votes", &state.governance_votes)?;
+        output.serialize_field("governance_proposals", &state.governance_proposals)?;
+    }
     if let Some(overlay) = governance_identity_profile_overlay {
         if !overlay.allow_insert
             && !state
@@ -951,8 +927,13 @@ where
             &state.governance_identity_profiles,
         )?;
     }
-    output.serialize_field("crises", &state.crises)?;
-    output.serialize_field("meta_progress", &state.meta_progress)?;
+    if let Some(overlay) = governance_meta_overlay {
+        overlay.serialize_crises(state, &mut output)?;
+        overlay.serialize_meta(state, &mut output)?;
+    } else {
+        output.serialize_field("crises", &state.crises)?;
+        output.serialize_field("meta_progress", &state.meta_progress)?;
+    }
     if let Some(command_overlay) = command_overlay {
         output.serialize_field(
             "module_states",

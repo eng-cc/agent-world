@@ -170,6 +170,24 @@ impl World {
         }
         if matches!(
             event,
+            DomainEvent::GovernanceProposalOpened { .. }
+                | DomainEvent::GovernanceVoteCast { .. }
+                | DomainEvent::GovernanceProposalFinalized { .. }
+                | DomainEvent::CrisisSpawned { .. }
+                | DomainEvent::CrisisResolved { .. }
+                | DomainEvent::CrisisTimedOut { .. }
+                | DomainEvent::MetaProgressGranted { .. }
+                | DomainEvent::ProductValidated { .. }
+        ) {
+            super::governance_meta_publication::PreparedGovernanceMetaEvent::prepare(
+                &self.state,
+                event,
+                self.state.time,
+            )?;
+            return Ok(());
+        }
+        if matches!(
+            event,
             DomainEvent::AllianceFormed { .. }
                 | DomainEvent::AllianceJoined { .. }
                 | DomainEvent::AllianceLeft { .. }
