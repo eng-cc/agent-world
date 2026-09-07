@@ -54,6 +54,7 @@ pub(super) enum PreparedEventStateDelta {
     ),
     AgentIntent(super::super::agent_intent_publication::PreparedAgentIntent),
     EconomyData(super::super::economy_data_publication::PreparedEconomyDataEvent),
+    PowerRedemption(super::super::power_redemption_publication::PreparedPowerRedemptionEvent),
     Body(PreparedBodyAttributesUpdate),
     RouteOnly {
         agent_id: String,
@@ -181,6 +182,9 @@ impl PreparedEventStateDelta {
             Self::EconomyData(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
+            Self::PowerRedemption(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
+            }
             Self::NoState => matches!(Self::for_body(body), Some(Self::NoState)),
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -292,6 +296,9 @@ impl PreparedEventStateDelta {
             Self::EconomyData(_) => {
                 unreachable!("economy/data events use a sparse state projection")
             }
+            Self::PowerRedemption(_) => {
+                unreachable!("power redemption uses a sparse state projection")
+            }
             Self::NoState => unreachable!("NoState does not have a state overlay"),
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::RouteOnly { agent_id } => {
@@ -383,6 +390,7 @@ impl PreparedEventStateDelta {
             Self::CapabilityEffectReceipt(prepared) => prepared.install(world),
             Self::AgentIntent(prepared) => prepared.install_infallible(&mut world.state),
             Self::EconomyData(prepared) => prepared.install_infallible(&mut world.state),
+            Self::PowerRedemption(prepared) => prepared.install_infallible(&mut world.state),
             Self::Body(prepared) => prepared.install_infallible(world),
             Self::GovernanceEmergencyBrake { next_until_tick } => {
                 let next_until_tick = next_until_tick.map(|next| {
@@ -530,6 +538,16 @@ impl World {
                 | DomainEvent::DataAccessRevoked { .. }),
             ) => Some(PreparedEventStateDelta::EconomyData(
                 super::super::economy_data_publication::PreparedEconomyDataEvent::prepare(
+                    &self.state,
+                    event,
+                    self.state.time,
+                )?,
+            )),
+            WorldEventBody::Domain(
+                event @ (DomainEvent::PowerRedeemed { .. }
+                | DomainEvent::PowerRedeemRejected { .. }),
+            ) => Some(PreparedEventStateDelta::PowerRedemption(
+                super::super::power_redemption_publication::PreparedPowerRedemptionEvent::prepare(
                     &self.state,
                     event,
                     self.state.time,
@@ -973,6 +991,9 @@ impl World {
             }
             PreparedEventStateDelta::EconomyData(prepared) => {
                 self.state_root_hash_with_economy_data_overlay(prepared)?
+            }
+            PreparedEventStateDelta::PowerRedemption(prepared) => {
+                self.state_root_hash_with_power_redemption_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState => self.current_state_root_hash()?,
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::RouteOnly { .. } => {

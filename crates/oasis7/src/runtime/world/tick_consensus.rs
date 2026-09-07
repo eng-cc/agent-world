@@ -991,6 +991,19 @@ impl World {
         })
     }
 
+    pub(super) fn state_root_hash_with_power_redemption_overlay(
+        &self,
+        prepared: &super::power_redemption_publication::PreparedPowerRedemptionEvent,
+    ) -> Result<String, WorldError> {
+        let projection =
+            WorldStateProjection::borrowed(&self.state).with_power_redemption_overlay(prepared);
+        hash_json(&StateRootProjection {
+            state: &projection,
+            manifest_hash: &self.current_manifest_hash()?,
+            policy_hash: &hash_json(&self.policies)?,
+        })
+    }
+
     pub(super) fn state_root_hash_with_module_marketplace_overlay(
         &self,
         market: &super::super::state::module_marketplace_transition::PreparedModuleMarketplace,

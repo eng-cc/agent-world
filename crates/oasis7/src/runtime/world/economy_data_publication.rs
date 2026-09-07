@@ -401,10 +401,10 @@ fn route_two(
     }
 }
 
-struct SparseMapProjection<'a, K, V> {
-    base: &'a BTreeMap<K, V>,
-    updates: &'a BTreeMap<K, V>,
-    deletion: Option<&'a K>,
+pub(crate) struct SparseMapProjection<'a, K, V> {
+    pub(crate) base: &'a BTreeMap<K, V>,
+    pub(crate) updates: &'a BTreeMap<K, V>,
+    pub(crate) deletion: Option<&'a K>,
 }
 
 impl<K, V> Serialize for SparseMapProjection<'_, K, V>

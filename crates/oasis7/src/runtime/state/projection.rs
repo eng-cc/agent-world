@@ -88,6 +88,9 @@ pub struct WorldStateProjection<'a> {
         Option<&'a crate::runtime::world::agent_intent_publication::PreparedAgentIntent>,
     economy_data_overlay:
         Option<&'a crate::runtime::world::economy_data_publication::PreparedEconomyDataEvent>,
+    power_redemption_overlay: Option<
+        &'a crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
+    >,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -103,6 +106,7 @@ impl<'a> WorldStateProjection<'a> {
             governance_registry_overlay: None,
             agent_intent_overlay: None,
             economy_data_overlay: None,
+            power_redemption_overlay: None,
         }
     }
 
@@ -127,6 +131,14 @@ impl<'a> WorldStateProjection<'a> {
         overlay: &'a crate::runtime::world::economy_data_publication::PreparedEconomyDataEvent,
     ) -> Self {
         self.economy_data_overlay = Some(overlay);
+        self
+    }
+
+    pub(crate) fn with_power_redemption_overlay(
+        mut self,
+        overlay: &'a crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
+    ) -> Self {
+        self.power_redemption_overlay = Some(overlay);
         self
     }
 
@@ -197,7 +209,7 @@ impl Serialize for WorldState {
         S: serde::Serializer,
     {
         serialize_world_state(
-            self, None, None, None, None, None, None, None, None, None, serializer,
+            self, None, None, None, None, None, None, None, None, None, None, serializer,
         )
     }
 }
@@ -227,6 +239,7 @@ impl Serialize for WorldStateProjection<'_> {
             self.governance_registry_overlay,
             self.agent_intent_overlay,
             self.economy_data_overlay,
+            self.power_redemption_overlay,
             serializer,
         )
     }
@@ -415,6 +428,9 @@ fn serialize_world_state<S>(
     economy_data_overlay: Option<
         &crate::runtime::world::economy_data_publication::PreparedEconomyDataEvent,
     >,
+    power_redemption_overlay: Option<
+        &crate::runtime::world::power_redemption_publication::PreparedPowerRedemptionEvent,
+    >,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -519,7 +535,9 @@ where
         );
     let mut output = serializer.serialize_struct("WorldState", field_count)?;
     output.serialize_field("time", &state.time)?;
-    if let Some(overlay) = economy_data_overlay {
+    if let Some(overlay) = power_redemption_overlay {
+        overlay.serialize_agents(state, &mut output)?;
+    } else if let Some(overlay) = economy_data_overlay {
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(command_overlay) = command_overlay {
         output.serialize_field(
@@ -562,7 +580,9 @@ where
     } else {
         output.serialize_field("resources", &state.resources)?;
     }
-    if let Some(overlay) = economy_data_overlay {
+    if let Some(overlay) = power_redemption_overlay {
+        overlay.serialize_materials(state, &mut output)?;
+    } else if let Some(overlay) = economy_data_overlay {
         overlay.serialize_material_fields(state, &mut output)?;
     } else if let Some(overlay) = module_instance_overlay {
         overlay.serialize_material_fields(state, &mut output)?;
@@ -838,10 +858,19 @@ where
         &state.restricted_starter_claim_liveops_pool_top_up_records,
     )?;
     output.serialize_field("reward_asset_config", &state.reward_asset_config)?;
-    output.serialize_field("node_asset_balances", &state.node_asset_balances)?;
-    output.serialize_field("protocol_power_reserve", &state.protocol_power_reserve)?;
+    if let Some(overlay) = power_redemption_overlay {
+        overlay.serialize_node_balances(state, &mut output)?;
+        overlay.serialize_reserve(state, &mut output)?;
+    } else {
+        output.serialize_field("node_asset_balances", &state.node_asset_balances)?;
+        output.serialize_field("protocol_power_reserve", &state.protocol_power_reserve)?;
+    }
     output.serialize_field("reward_mint_records", &state.reward_mint_records)?;
-    output.serialize_field("node_redeem_nonces", &state.node_redeem_nonces)?;
+    if let Some(overlay) = power_redemption_overlay {
+        overlay.serialize_nonces(state, &mut output)?;
+    } else {
+        output.serialize_field("node_redeem_nonces", &state.node_redeem_nonces)?;
+    }
     output.serialize_field(
         "system_order_pool_budgets",
         &state.system_order_pool_budgets,
