@@ -61,6 +61,12 @@ impl RuntimeLlmSidecar {
                 _ => None,
             };
             if let Some(agent_id) = selected_agent {
+                if self.provider_transport_exhausted.contains(&agent_id) {
+                    // Let the control-plane exhaustion path terminalize this
+                    // identity before the WASM runner can redispatch it.
+                    self.shadow_kernel = Some(kernel);
+                    return None;
+                }
                 if let Some(context) = self.provider_contexts.get(&agent_id).cloned() {
                     if let Err(error) = async_support::runtime_provider_prefix(world, &context) {
                         let _ = async_support::runtime_provider_failure(

@@ -276,6 +276,11 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 system_prompt: prompt_output.system_prompt.clone(),
                 user_prompt,
                 debug_mode: self.config.llm_debug_mode,
+                max_model_calls: self
+                    .continuous_context
+                    .request_context
+                    .as_ref()
+                    .map(|context| context.budget_contract.max_model_calls),
             };
             let input_summary = format!(
                 "turn={turn}; module_calls={}/{}; repair_rounds={}/{}; force_replan={}; prompt_profile={}",

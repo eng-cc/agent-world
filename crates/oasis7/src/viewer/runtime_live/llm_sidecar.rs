@@ -278,6 +278,10 @@ pub(in crate::viewer::runtime_live) struct RuntimeLlmSidecar {
     provider_lineage_binding: Option<RuntimeBindingV1>,
     provider_lineage_restored: bool,
     provider_lineage_hydrated: bool,
+    /// A lineage checkpoint that cannot be decoded is a recovery fence.  The
+    /// sidecar must not rebuild fresh contexts while its durable identity
+    /// evidence is unavailable.
+    provider_lineage_recovery_pending: Option<String>,
     pending_runtime_wakes: BTreeMap<String, SchedulerWakeV1>,
 }
 pub(in crate::viewer::runtime_live) struct RuntimePlayerBindingPlan {
@@ -353,6 +357,7 @@ impl RuntimeLlmSidecar {
             provider_lineage_binding: None,
             provider_lineage_restored: false,
             provider_lineage_hydrated: false,
+            provider_lineage_recovery_pending: None,
             pending_runtime_wakes: BTreeMap::new(),
         }
     }

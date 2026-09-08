@@ -169,7 +169,8 @@ impl RuntimeLlmSidecar {
         let now = world.state().time;
         let candidates = self.provider_agent_ids.iter().cloned().collect::<Vec<_>>();
         for agent_id in candidates {
-            if self.provider_recovery_pending.contains_key(&agent_id)
+            if self.provider_transport_exhausted.contains(&agent_id)
+                || self.provider_recovery_pending.contains_key(&agent_id)
                 || self
                     .provider_continuation_recovery_pending
                     .contains_key(&agent_id)
@@ -210,6 +211,22 @@ impl RuntimeLlmSidecar {
                     format!("Runtime cognition prefix rejected provider I/O: {error}"),
                 ));
             }
+            // The Runtime prefix above is durable evidence that this exact
+            // logical request was admitted.  Persist the matching sidecar
+            // active marker before handing the request to the actor: a crash
+            // after actor start but before its outcome is observed must fence
+            // the identity on restart instead of redispatching it.
+            self.provider_active_turns
+                .insert(agent_id.clone(), context.clone());
+            if let Err(error) = self.persist_provider_lineage() {
+                self.provider_active_turns.remove(agent_id.as_str());
+                let _ = runtime_provider_failure(world, &context, "persistence_failure");
+                return Some(RuntimeLlmDecision::from_agent_error(
+                    world,
+                    agent_id,
+                    format!("provider dispatch marker persistence failed: {error}"),
+                ));
+            }
             let Some(runner) = self
                 .runner
                 .as_mut()
@@ -227,6 +244,11 @@ impl RuntimeLlmSidecar {
                 context.request_context.clone(),
             );
             if let Err(error) = start_result {
+                self.provider_active_turns.remove(agent_id.as_str());
+                // If this cleanup cannot be persisted, retaining the durable
+                // marker is the safe outcome: restart recovery will fence the
+                // identity rather than risk a duplicate provider call.
+                self.persist_provider_lineage_best_effort();
                 let _ = runtime_provider_failure(world, &context, "provider_failure");
                 return Some(RuntimeLlmDecision::from_agent_error(
                     world,

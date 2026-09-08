@@ -4,10 +4,17 @@ use super::agent_cognition_identity::{
     production_observation, production_request_fixture, production_turn_context, request_fixture,
     request_from_value,
 };
-use crate::simulator::{AgentBehavior, AgentCognitionStore, AsyncAgentRunner};
+use crate::simulator::{
+    AgentBehavior, AgentCognitionStore, AsyncAgentRunner, LlmAgentBehavior,
+    OpenAiChatCompletionClient,
+};
 use serde_json::json;
+use std::io::{Read, Write};
+use std::net::TcpListener;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread;
+use std::time::{Duration, Instant};
 
 #[test]
 fn cognition_budget_fields_are_wire_data_bound_to_request_identity() {
@@ -38,6 +45,24 @@ fn cognition_budget_fields_are_wire_data_bound_to_request_identity() {
         .begin_request(changed_context)
         .expect_err("changing budget on the same request key must fail closed");
     assert_eq!(error.code(), "request_identity_collision");
+}
+
+#[test]
+fn cognition_budget_wire_rejects_missing_model_or_tool_limits() {
+    for field in ["max_model_calls", "max_tool_calls"] {
+        let mut fixture = request_fixture(0, 60_000);
+        fixture["budget_contract"]
+            .as_object_mut()
+            .expect("budget contract object")
+            .remove(field);
+        let error =
+            serde_json::from_value::<crate::simulator::ContinuousAgentRequestContextV1>(fixture)
+                .expect_err("missing budget limit must be rejected at wire decode");
+        assert!(
+            error.to_string().contains(field),
+            "wire decode error must identify missing field {field}: {error}"
+        );
+    }
 }
 
 #[derive(Clone)]
@@ -211,6 +236,116 @@ fn transport_retry_keeps_request_model_budget_consumed() {
             .and_then(|trace| trace.llm_error)
             .is_some_and(|error| error.starts_with("budget_exhausted:"))
     );
+}
+
+#[test]
+fn native_model_budget_caps_openai_internal_concurrency_retry() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind budgeted openai server");
+    listener
+        .set_nonblocking(true)
+        .expect("set nonblocking listener");
+    let bind = listener.local_addr().expect("listener addr");
+    let calls = Arc::new(AtomicUsize::new(0));
+    let server_calls = Arc::clone(&calls);
+    let server = thread::spawn(move || {
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < deadline {
+            let Ok((mut stream, _)) = listener.accept() else {
+                thread::sleep(Duration::from_millis(5));
+                continue;
+            };
+            let attempt = server_calls.fetch_add(1, Ordering::SeqCst);
+            let _ = stream.set_read_timeout(Some(Duration::from_millis(200)));
+            let mut buffer = [0_u8; 4096];
+            let _ = stream.read(&mut buffer);
+            let event_payload = if attempt == 0 {
+                serde_json::json!({
+                    "error": {
+                        "type": "rate_limit_error",
+                        "message": "Concurrency limit exceeded for account, please retry later"
+                    }
+                })
+                .to_string()
+            } else {
+                serde_json::json!({
+                    "type": "response.completed",
+                    "sequence_number": 1,
+                    "response": {
+                        "id": "resp_budget_retry_ok",
+                        "object": "response",
+                        "created_at": 1,
+                        "completed_at": 2,
+                        "model": "gpt-budget-test",
+                        "output": [{
+                            "type": "function_call",
+                            "call_id": "call_decision",
+                            "name": "agent_submit_decision",
+                            "arguments": "{\"decision\":\"wait\"}"
+                        }],
+                        "status": "completed",
+                        "parallel_tool_calls": false
+                    }
+                })
+                .to_string()
+            };
+            let body = format!("data: {event_payload}\n\n");
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            let _ = stream.write_all(response.as_bytes());
+            if attempt >= 1 {
+                break;
+            }
+        }
+    });
+
+    let mut config = retry_budget_llm_config();
+    config.base_url = format!("http://{bind}/v1");
+    let client = OpenAiChatCompletionClient::from_config(&config).expect("client");
+    let mut fixture = production_request_fixture(1, 60_000);
+    fixture["retry_seq"] = json!(1);
+    fixture["budget_contract"]["max_model_calls"] = json!(1);
+    let request_context = request_from_value(fixture);
+    let turn_context = production_turn_context(&request_context);
+    let behavior = LlmAgentBehavior::new("agent-1", config, client);
+    let mut runner = AsyncAgentRunner::new(16).expect("create target actor runner");
+    runner.register(behavior).expect("register native actor");
+    let turn_id = runner
+        .start_turn_with_request_context_and_observation(
+            "agent-1",
+            production_observation("agent-1", 42),
+            turn_context,
+            request_context,
+        )
+        .expect("open budgeted native turn");
+    let outcome = loop {
+        if let Some(outcome) = runner
+            .poll_completed()
+            .expect("poll budgeted native turn")
+            .into_iter()
+            .find(|outcome| outcome.turn_id == turn_id)
+        {
+            break outcome;
+        }
+        thread::yield_now();
+    };
+
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "one native model admission must allow one physical provider request"
+    );
+    assert!(
+        outcome
+            .decision_trace
+            .as_ref()
+            .and_then(|trace| trace.llm_error.as_ref())
+            .is_some_and(|error| error.contains("responses sdk decode failed")),
+        "the budgeted request must retain the first provider failure instead of consuming an unadmitted retry: {outcome:?}"
+    );
+    server.join().expect("join budgeted openai server");
 }
 
 #[test]

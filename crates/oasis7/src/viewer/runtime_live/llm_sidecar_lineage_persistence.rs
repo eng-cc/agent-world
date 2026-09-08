@@ -3,11 +3,13 @@ use crate::runtime::World as RuntimeWorld;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::simulator::AsyncAgentTurnOutcome;
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 use std::fs;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const PROVIDER_LINEAGE_SCHEMA_VERSION: u16 = 1;
+const LEGACY_PROVIDER_LINEAGE_SCHEMA_VERSION: u16 = 1;
+const PROVIDER_LINEAGE_SCHEMA_VERSION: u16 = 2;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(super) struct ProviderTerminalState {
@@ -77,6 +79,75 @@ struct PersistedProviderLineageV1 {
     pending_runtime_wakes: BTreeMap<String, crate::runtime::SchedulerWakeV1>,
 }
 
+fn decode_provider_lineage_checkpoint(
+    bytes: &[u8],
+) -> Result<(PersistedProviderLineageV1, bool), String> {
+    let mut value: Value = serde_json::from_slice(bytes)
+        .map_err(|error| format!("provider lineage checkpoint decode failed: {error}"))?;
+    let schema_version = value
+        .get("schema_version")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| {
+            "provider lineage checkpoint decode failed: missing schema_version".to_string()
+        })?;
+    let migrated = match u16::try_from(schema_version).unwrap_or(u16::MAX) {
+        PROVIDER_LINEAGE_SCHEMA_VERSION => false,
+        LEGACY_PROVIDER_LINEAGE_SCHEMA_VERSION => {
+            migrate_legacy_budget_contracts(&mut value)?;
+            value["schema_version"] = json!(PROVIDER_LINEAGE_SCHEMA_VERSION);
+            true
+        }
+        other => {
+            return Err(format!(
+                "unsupported provider lineage checkpoint schema {other}"
+            ));
+        }
+    };
+    let checkpoint = serde_json::from_value(value)
+        .map_err(|error| format!("provider lineage checkpoint decode failed: {error}"))?;
+    Ok((checkpoint, migrated))
+}
+
+/// V1 checkpoints predate the explicit provider/tool budget limits.  A
+/// missing limit is an explicit zero deny after migration; treating it as an
+/// unlimited/default budget could spend credits that the checkpoint cannot
+/// account for. Only nested budget objects are changed, preserving all saved
+/// session, turn, request, and recovery identities.
+fn migrate_legacy_budget_contracts(value: &mut Value) -> Result<(), String> {
+    fn visit(value: &mut Value, migrated: &mut usize) {
+        match value {
+            Value::Object(fields) => {
+                if let Some(Value::Object(budget)) = fields.get_mut("budget_contract") {
+                    if !budget.contains_key("max_model_calls") {
+                        budget.insert("max_model_calls".to_string(), json!(0));
+                        *migrated = migrated.saturating_add(1);
+                    }
+                    if !budget.contains_key("max_tool_calls") {
+                        budget.insert("max_tool_calls".to_string(), json!(0));
+                        *migrated = migrated.saturating_add(1);
+                    }
+                }
+                for child in fields.values_mut() {
+                    visit(child, migrated);
+                }
+            }
+            Value::Array(values) => {
+                for child in values {
+                    visit(child, migrated);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let mut migrated = 0;
+    visit(value, &mut migrated);
+    // An empty V1 checkpoint is valid and needs only a schema bump. Any
+    // non-empty budget object still receives explicit zero-deny limits above;
+    // malformed objects fail closed during the typed decode below.
+    Ok(())
+}
+
 impl RuntimeLlmSidecar {
     /// Configure a Viewer-owned durable checkpoint for provider transport and
     /// response lineage. Runtime remains the authority for world state and
@@ -105,14 +176,13 @@ impl RuntimeLlmSidecar {
                 ));
             }
         };
-        let checkpoint: PersistedProviderLineageV1 = serde_json::from_slice(&bytes)
-            .map_err(|error| format!("provider lineage checkpoint decode failed: {error}"))?;
-        if checkpoint.schema_version != PROVIDER_LINEAGE_SCHEMA_VERSION {
-            return Err(format!(
-                "unsupported provider lineage checkpoint schema {}",
-                checkpoint.schema_version
-            ));
-        }
+        let (checkpoint, checkpoint_migrated) = match decode_provider_lineage_checkpoint(&bytes) {
+            Ok(checkpoint) => checkpoint,
+            Err(error) => {
+                self.provider_lineage_recovery_pending = Some(error.clone());
+                return Err(error);
+            }
+        };
         for (proposal_id, proposal) in &checkpoint.provider_continuation_proposals {
             if proposal_id != &proposal.continuation_proposal_id {
                 return Err(format!(
@@ -155,6 +225,21 @@ impl RuntimeLlmSidecar {
         self.provider_memory_store = checkpoint.provider_memory_store;
         self.provider_completed_decisions = checkpoint.provider_completed_decisions;
         self.provider_transport_exhausted = checkpoint.provider_transport_exhausted;
+        // A retry context is an interrupted logical request whose actor-local
+        // budget ledger is absent after restart.  Do not carry it into the
+        // normal retry selector: fence the identity for terminal feedback and
+        // remove the stale retry projection so clearing the fence cannot
+        // redispatch it a second time.
+        let persisted_retry_agents = self
+            .provider_retry_contexts
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>();
+        let recovered_retry = !persisted_retry_agents.is_empty();
+        for agent_id in persisted_retry_agents {
+            self.provider_retry_contexts.remove(agent_id.as_str());
+            self.provider_transport_exhausted.insert(agent_id);
+        }
         for (agent_id, decision) in checkpoint.provider_held_decisions {
             if decision.cognition.is_none()
                 && decision
@@ -164,24 +249,14 @@ impl RuntimeLlmSidecar {
             {
                 // A held retryable error is a control-plane delivery detail,
                 // not a durable provider response. Its in-memory async actor
-                // cannot survive process restart, so replaying the stale error
-                // would strand the logical turn. Requeue the saved context so
-                // the next prepare pass dispatches exactly the next transport
-                // attempt with the same identity.
+                // cannot survive process restart, and the process-local budget
+                // ledger cannot prove whether the provider already charged the
+                // request. Terminalize the uncertain identity instead of
+                // redispatching it.
                 if self.provider_transport_exhausted.contains(&agent_id) {
                     continue;
                 }
-                if let Some(context) = self.provider_contexts.get(&agent_id).cloned() {
-                    if context.request_context.transport_attempt < MAX_PROVIDER_TRANSPORT_ATTEMPTS {
-                        self.provider_retry_contexts.insert(agent_id, context);
-                    } else {
-                        self.provider_transport_exhausted.insert(agent_id);
-                    }
-                } else {
-                    // Without a correlated request context there is no safe
-                    // way to retry or replay this outcome after restart.
-                    self.provider_transport_exhausted.insert(agent_id);
-                }
+                self.provider_transport_exhausted.insert(agent_id);
                 continue;
             }
             if !self
@@ -207,6 +282,7 @@ impl RuntimeLlmSidecar {
             .collect();
         self.provider_lineage_binding = current_binding.or(checkpoint.runtime_binding);
         self.provider_lineage_restored = true;
+        self.provider_lineage_recovery_pending = None;
 
         // A response that was already accepted or is waiting for its
         // scheduled terminal feedback must stay occupied. An orphaned active
@@ -287,16 +363,13 @@ impl RuntimeLlmSidecar {
                 continue;
             }
             self.provider_active_turns.remove(agent_id.as_str());
-            if let Some(context) = context {
-                if context.request_context.transport_attempt < MAX_PROVIDER_TRANSPORT_ATTEMPTS {
-                    // The active marker is the interrupted dispatch record. Use
-                    // its matching context rather than retaining an older retry
-                    // entry that could belong to another identity.
-                    self.provider_retry_contexts.insert(agent_id, context);
-                } else {
-                    self.provider_transport_exhausted.insert(agent_id);
-                }
-            }
+            // The active marker proves that the logical request was in flight,
+            // but does not carry the actor's process-local budget counters.
+            // Keep the correlated context for terminal feedback and fence the
+            // Agent so a restart cannot spend the same credits twice.
+            let _ = context;
+            self.provider_retry_contexts.remove(agent_id.as_str());
+            self.provider_transport_exhausted.insert(agent_id);
             recovered_orphan = true;
         }
         if binding_changed {
@@ -360,10 +433,12 @@ impl RuntimeLlmSidecar {
             self.provider_continuation_recovery_pending
                 .remove(agent_id.as_str());
         }
-        if recovered_orphan {
+        if recovered_orphan || recovered_retry || checkpoint_migrated {
             // Persist the active-marker removal and retry/exhaustion decision
             // before the next Runtime tick, so a restart cannot strand the
-            // same identity again.
+            // same identity again. Persist an explicit schema upgrade too,
+            // so a legacy zero-deny migration is durable before the next
+            // process restart.
             self.persist_provider_lineage_best_effort();
         }
         Ok(())

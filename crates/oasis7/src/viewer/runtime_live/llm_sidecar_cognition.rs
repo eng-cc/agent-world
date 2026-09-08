@@ -68,6 +68,11 @@ impl RuntimeLlmSidecar {
         // keep durable provider notifications retryable on both lanes.
         self.flush_pending_provider_world_events();
         self.hydrate_provider_lineage(world);
+        if let Some(error) = self.provider_lineage_recovery_pending.as_deref() {
+            return Err(format!(
+                "provider lineage recovery fenced; durable checkpoint must be repaired before dispatch: {error}"
+            ));
+        }
         let provider_settings = provider_settings_from_env()?;
         let runtime_binding = world.current_runtime_binding(world_id)?;
         self.provider_lineage_binding = Some(runtime_binding.clone());
@@ -84,6 +89,7 @@ impl RuntimeLlmSidecar {
                     && !self
                         .provider_continuation_recovery_pending
                         .contains_key(*agent_id)
+                    && !self.provider_transport_exhausted.contains(*agent_id)
                     && !self.provider_active_turns.contains_key(*agent_id)
                     && (self.has_pending_runtime_wake_for_agent(agent_id.as_str())
                         || !self.provider_contexts.contains_key(*agent_id)

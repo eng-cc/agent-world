@@ -15,8 +15,17 @@ impl RuntimeLlmSidecar {
         }
         if self.provider_lineage_store.is_some() && !self.provider_lineage_restored {
             if let Err(error) = self.restore_provider_lineage(world) {
+                self.provider_lineage_recovery_pending = Some(error.clone());
                 tracing::warn!(error, "provider lineage checkpoint restore failed");
             }
+        }
+        if self.provider_lineage_recovery_pending.is_some() {
+            // Do not rebuild fresh provider contexts from Runtime projections
+            // while the durable sidecar checkpoint is undecodable. That would
+            // erase active identity/recovery fences and permit a duplicate
+            // provider invocation after restart.
+            self.provider_lineage_hydrated = true;
+            return;
         }
         if let Err(error) = self.sync_runtime_wakes(world) {
             tracing::warn!(error, "Runtime cognition wake projection unavailable");
