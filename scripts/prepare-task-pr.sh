@@ -1551,13 +1551,35 @@ print('true' if r.get('status')=='ready' and r.get('workflow_phase')=='pre_pr_re
 PY
 )"
   [[ "$TASK_READY" == true ]] || die "promote_draft requires task truth at ready/pre_pr_ready"
+  CANONICAL_DEFAULT_BRANCH="$(python3 - "$SOURCE_WORKTREE/.pm/github-project-sync/tasks.json" "$RT" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+task_uid = sys.argv[2]
+try:
+    mapping = json.loads(path.read_text(encoding="utf-8"))
+except (OSError, json.JSONDecodeError) as exc:
+    raise SystemExit(f"cannot read canonical task mapping: {exc}")
+record = (mapping.get("tasks") or {}).get(task_uid) or {}
+default_branch = str(record.get("default_branch") or "").strip()
+if not default_branch:
+    raise SystemExit(f"canonical task default_branch is missing for {task_uid}")
+print(default_branch)
+PY
+)" || die "promote_draft could not read canonical task default_branch"
   command -v gh >/dev/null 2>&1 || die '`gh` not found in PATH'
+  CURRENT_DEFAULT_BRANCH="$(gh api "repos/$RR" --jq '.default_branch')" || die "promote_draft could not read live repository default_branch"
+  [[ -n "$CURRENT_DEFAULT_BRANCH" ]] || die "promote_draft live repository default_branch is missing"
+  [[ "$CANONICAL_DEFAULT_BRANCH" == "$CURRENT_DEFAULT_BRANCH" ]] || die "promote_draft canonical task default_branch $CANONICAL_DEFAULT_BRANCH differs from live repository default_branch $CURRENT_DEFAULT_BRANCH"
+  [[ "$BASE_BRANCH" == "$CANONICAL_DEFAULT_BRANCH" ]] || die "promote_draft --base $BASE_BRANCH differs from canonical task default_branch $CANONICAL_DEFAULT_BRANCH"
   PR_STATE_FIELDS="$(gh pr view "$PR_TO_PROMOTE" -R "$RR" --json isDraft,state,mergedAt --jq '[.isDraft,.state,(.mergedAt // "")] | @tsv')" || die "promote_draft could not read PR state"
   IFS=$'\t' read -r PR_IS_DRAFT PR_STATE PR_MERGED_AT <<<"$PR_STATE_FIELDS"
   [[ "$PR_STATE" == OPEN && -z "$PR_MERGED_AT" ]] || die "promote_draft requires an open, unmerged PR"
   case "$PR_IS_DRAFT" in true|false) ;; *) die "promote_draft received uncertain PR draft state: $PR_IS_DRAFT" ;; esac
   CI_READY_RECEIPT_HELPER="${PREPARE_TASK_PR_CI_READY_RECEIPT_PATH:-$ROOT_DIR/scripts/pm/ci-ready-receipt.py}"
-  RECEIPT_VERIFY_CMD=(python3 "$CI_READY_RECEIPT_HELPER" --repository "$RR" --task-uid "$RT" --task-issue-number "$RI" --pr-number "$RP" --check-name "$RC" --check-app-id "$RA" --planner-digest "$RD" --receipt "$PROMOTE_DRAFT_RECEIPT" --refresh-same-identity --base-ref "$BASE_BRANCH")
+  RECEIPT_VERIFY_CMD=(python3 "$CI_READY_RECEIPT_HELPER" --repository "$RR" --task-uid "$RT" --task-issue-number "$RI" --pr-number "$RP" --check-name "$RC" --check-app-id "$RA" --planner-digest "$RD" --receipt "$PROMOTE_DRAFT_RECEIPT" --refresh-same-identity --base-ref "$CANONICAL_DEFAULT_BRANCH")
   [[ "$PR_IS_DRAFT" == false ]] && RECEIPT_VERIFY_CMD+=(--allow-ready-pr)
   "${RECEIPT_VERIFY_CMD[@]}" >/dev/null \
     || die "promote_draft ci_ready_receipt live validation failed"

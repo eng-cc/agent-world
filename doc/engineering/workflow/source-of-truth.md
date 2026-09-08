@@ -97,6 +97,9 @@ to the fresh receipt/plan base OID; the packet's symbolic `Comparison Ref` is
 audit context and may have moved since freeze. A moved symbolic ref alone
 must not invalidate the frozen review range, while a receipt base/head or PR
 base identity mismatch is rejected.
+Promotion also requires a fresh live repository default-branch read to match
+the task mapping's recorded `default_branch` and the caller-selected base;
+missing or drifted authority is rejected safely and never redefines the task base.
 The draft candidate remains PM status `committed` while its workflow phase is
 `verification`; selected-task audit projects that explicit pair as Project
 workflow phase `verification`. Other `committed` task states project as

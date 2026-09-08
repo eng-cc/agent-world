@@ -88,6 +88,11 @@ set -euo pipefail
 LOG_FILE="${TEST_GH_LOG:?}"
 printf '%s\n' "$*" >> "$LOG_FILE"
 
+if [[ "${1:-}" == "api" && "${2:-}" == repos/* && "$*" == *"--jq .default_branch"* ]]; then
+  printf '%s\n' "${TEST_GH_DEFAULT_BRANCH-main}"
+  exit 0
+fi
+
 if [[ "${1:-}" == "pr" && "${2:-}" == "create" ]]; then
   printf 'https://github.com/example/oasis7/pull/999\n'
   exit 0
@@ -440,6 +445,7 @@ run_prepare() {
     TEST_GH_ISSUE_VIEW_JSON="${TEST_GH_ISSUE_VIEW_JSON:-}" \
     TEST_PR_STATE_TSV="${TEST_PR_STATE_TSV:-}" \
     TEST_PR_BASE_REF="${TEST_PR_BASE_REF:-}" \
+    TEST_GH_DEFAULT_BRANCH="${TEST_GH_DEFAULT_BRANCH-main}" \
     "$ROOT_DIR/scripts/prepare-task-pr.sh" "$SMOKE_BRANCH" "$@"
 }
 
@@ -1589,6 +1595,83 @@ if ! grep -Eq 'base branch|base ref' "$retargeted_base_err"; then
 fi
 if grep -Eq '^receipt |^record-pr ordinary$|^pr ready ' "$retargeted_base_log"; then
   echo "retargeted-base promotion reached receipt, ready, or record: $(cat "$retargeted_base_log")" >&2
+  exit 1
+fi
+
+# A caller-supplied --base override must not redefine the task's canonical
+# target branch. Keep the alternate ref at the same immutable OID so only the
+# task default-branch authority distinguishes this attempt.
+"$REAL_GIT" -C "$ROOT_DIR" update-ref refs/remotes/origin/release "$COMPARISON_OID"
+set_promotion_ready_truth
+caller_override_log="$TMPDIR/gh-promotion-caller-base-override.log"
+caller_override_err="$TMPDIR/promotion-caller-base-override.err"
+if PREPARE_TASK_PR_CI_READY_RECEIPT_PATH="$promotion_receipt_helper" \
+  PREPARE_TASK_PR_PROJECT_TASK_PATH="$promotion_project_helper" TEST_PR_STATE_TSV=$'true\tOPEN\t' TEST_PR_BASE_REF=release \
+    run_prepare "$caller_override_log" "$TMPDIR/git-promotion-caller-base-override.log" --base release --promote-draft "$promotion_receipt" >/dev/null 2>"$caller_override_err"; then
+  echo "promotion must reject a caller base override that differs from task default_branch" >&2
+  exit 1
+fi
+if ! grep -Eq 'canonical task default branch|canonical task default_branch|default branch' "$caller_override_err"; then
+  echo "caller base override failed for an unrelated reason: $(cat "$caller_override_err")" >&2
+  exit 1
+fi
+if grep -Eq '^receipt |^record-pr ordinary$|^pr ready ' "$caller_override_log"; then
+  echo "caller base override reached receipt, ready, or record: $(cat "$caller_override_log")" >&2
+  exit 1
+fi
+"$REAL_GIT" -C "$ROOT_DIR" update-ref -d refs/remotes/origin/release
+
+# A stale local task mapping and drifted origin/HEAD must not authorize
+# promotion when the fresh repository default branch has changed. Keep the
+# recorded task base at main and the alternate branch at the same OID so this
+# exercises authority freshness rather than review-range resolution.
+"$REAL_GIT" -C "$ROOT_DIR" update-ref refs/remotes/origin/release "$COMPARISON_OID"
+"$REAL_GIT" -C "$ROOT_DIR" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/release
+set_promotion_ready_truth
+stale_default_log="$TMPDIR/gh-promotion-stale-default.log"
+stale_default_err="$TMPDIR/promotion-stale-default.err"
+if PREPARE_TASK_PR_CI_READY_RECEIPT_PATH="$promotion_receipt_helper" \
+  PREPARE_TASK_PR_PROJECT_TASK_PATH="$promotion_project_helper" TEST_PR_STATE_TSV=$'true\tOPEN\t' TEST_PR_BASE_REF=main TEST_GH_DEFAULT_BRANCH=release \
+    run_prepare "$stale_default_log" "$TMPDIR/git-promotion-stale-default.log" --promote-draft "$promotion_receipt" >/dev/null 2>"$stale_default_err"; then
+  echo "promotion must reject stale task default_branch after repository default drift" >&2
+  exit 1
+fi
+if ! grep -Eq 'live repository default_branch|repository default' "$stale_default_err"; then
+  echo "stale-default promotion failed for an unrelated reason: $(cat "$stale_default_err")" >&2
+  exit 1
+fi
+if ! grep -Fq 'api repos/example/oasis7 --jq .default_branch' "$stale_default_log"; then
+  echo "stale-default promotion did not perform the fresh repository default read: $(cat "$stale_default_log")" >&2
+  exit 1
+fi
+if grep -Eq '^receipt |^record-pr ordinary$|^pr ready ' "$stale_default_log"; then
+  echo "stale-default promotion reached receipt, ready, or record: $(cat "$stale_default_log")" >&2
+  exit 1
+fi
+"$REAL_GIT" -C "$ROOT_DIR" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
+"$REAL_GIT" -C "$ROOT_DIR" update-ref -d refs/remotes/origin/release
+
+# Missing fresh repository default authority must also fail closed; the
+# recorded task base is not a substitute for a live readback.
+set_promotion_ready_truth
+missing_default_log="$TMPDIR/gh-promotion-missing-default.log"
+missing_default_err="$TMPDIR/promotion-missing-default.err"
+if PREPARE_TASK_PR_CI_READY_RECEIPT_PATH="$promotion_receipt_helper" \
+  PREPARE_TASK_PR_PROJECT_TASK_PATH="$promotion_project_helper" TEST_PR_STATE_TSV=$'true\tOPEN\t' TEST_PR_BASE_REF=main TEST_GH_DEFAULT_BRANCH= \
+    run_prepare "$missing_default_log" "$TMPDIR/git-promotion-missing-default.log" --promote-draft "$promotion_receipt" >/dev/null 2>"$missing_default_err"; then
+  echo "promotion must reject missing live repository default_branch authority" >&2
+  exit 1
+fi
+if ! grep -Eq 'live repository default_branch' "$missing_default_err"; then
+  echo "missing-default promotion failed for an unrelated reason: $(cat "$missing_default_err")" >&2
+  exit 1
+fi
+if ! grep -Fq 'api repos/example/oasis7 --jq .default_branch' "$missing_default_log"; then
+  echo "missing-default promotion did not perform the fresh repository default read: $(cat "$missing_default_log")" >&2
+  exit 1
+fi
+if grep -Eq '^receipt |^record-pr ordinary$|^pr ready ' "$missing_default_log"; then
+  echo "missing-default promotion reached receipt, ready, or record: $(cat "$missing_default_log")" >&2
   exit 1
 fi
 
