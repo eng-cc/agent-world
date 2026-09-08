@@ -158,6 +158,14 @@ impl World {
             ) => Some(PreparedEventStateDelta::AgentClaimLightLifecycle(
                 PreparedAgentClaimLightLifecycle::prepare(&self.state, event, self.state.time)?,
             )),
+            WorldEventBody::Domain(event @ (DomainEvent::AgentLocationAuthorityUpdated { .. }
+                | DomainEvent::LocationAnchorUpdated { .. }
+                | DomainEvent::FactorySiteAuthorityUpdated { .. }
+                | DomainEvent::FactoryConstructionPowerProfileUpdated { .. }
+                | DomainEvent::ProductValidationRecorded { .. }
+                | DomainEvent::ProductValidationAttemptStarted { .. })) => Some(PreparedEventStateDelta::IndustryHistory(
+                    crate::runtime::state::industry_history_transition::PreparedIndustryHistoryEvent::prepare(&self.state, event, self.state.time)?,
+                )),
             WorldEventBody::Domain(event @ (DomainEvent::AgentClaimed { .. } | DomainEvent::AgentClaimUpkeepSettled { .. })) => Some(PreparedEventStateDelta::AgentClaimEconomic(super::super::agent_claim_economic_publication::PreparedAgentClaimEconomic::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::Domain(event @ (DomainEvent::AgentClaimReleased { .. } | DomainEvent::AgentClaimReclaimed { .. })) => Some(PreparedEventStateDelta::AgentClaimTerminal(super::super::agent_claim_terminal_publication::PreparedAgentClaimTerminal::prepare(&self.state,event,self.state.time)?)),
             WorldEventBody::Domain(event @ (DomainEvent::EconomicContractOpened { .. } | DomainEvent::EconomicContractAccepted { .. } | DomainEvent::EconomicContractSettled { .. } | DomainEvent::EconomicContractExpired { .. })) => Some(PreparedEventStateDelta::EconomicContract(super::super::economic_contract_publication::PreparedEconomicContractEvent::prepare(&self.state,event,self.state.time)?)),
@@ -648,6 +656,9 @@ impl World {
             PreparedEventStateDelta::Industry(prepared) => {
                 self.state_root_hash_with_industry_overlay(prepared)?
             }
+            PreparedEventStateDelta::IndustryHistory(prepared) => {
+                self.state_root_hash_with_industry_history_overlay(prepared)?
+            }
             PreparedEventStateDelta::PowerRedemption(prepared) => {
                 self.state_root_hash_with_power_redemption_overlay(prepared)?
             }
@@ -676,6 +687,9 @@ impl World {
                 self.state_root_hash_with_agent_claim_terminal_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState(_) => self.current_state_root_hash()?,
+            PreparedEventStateDelta::ProductValidationDeliveryCursorUpdated(cursor) => {
+                self.state_root_hash_with_product_validation_delivery_cursor(cursor)?
+            }
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::DomainRouteOnly { .. } => {
                 let Some(domain_event) = domain_event.as_ref() else {
                     return Err(WorldError::ResourceBalanceInvalid {

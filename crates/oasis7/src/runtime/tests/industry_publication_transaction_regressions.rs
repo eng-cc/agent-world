@@ -53,6 +53,11 @@ fn built_world() -> World {
             spec: spec(),
             consume_ledger: MaterialLedgerId::world(),
             ready_at,
+            contract_version: Some(0),
+            site_authority_revision: None,
+            site_location_id: None,
+            location_anchor_revision: None,
+            construction_power_obligation: None,
         },
     );
     let mut world = with_time(&world, world.state().time + 1);
@@ -169,6 +174,11 @@ fn fixtures() -> Vec<(&'static str, World, DomainEvent)> {
         spec: spec(),
         consume_ledger: MaterialLedgerId::world(),
         ready_at: build_base.state().time + 1,
+        contract_version: Some(0),
+        site_authority_revision: None,
+        site_location_id: None,
+        location_anchor_revision: None,
+        construction_power_obligation: None,
     };
     let mut built_base = build_base.clone();
     append(&mut built_base, build.clone());

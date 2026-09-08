@@ -6,6 +6,7 @@ pub(crate) mod agent_claim_light_lifecycle_publication;
 pub(crate) mod agent_claim_terminal_publication;
 mod agent_claims;
 mod agent_intent;
+pub(crate) use agent_intent::derive_agent_chat_request_digest;
 pub(crate) mod agent_intent_publication;
 mod agent_intent_terminal;
 pub(crate) mod alliance_war_publication;
@@ -24,16 +25,28 @@ mod capability_authorization_command_stage;
 mod capability_authorization_events;
 mod capability_authorization_publication;
 mod capability_authorization_state;
+mod capability_authorization_transaction;
 mod capability_authorization_validation;
+mod capability_catalog;
 mod capability_effect_receipt_projection;
+#[cfg(test)]
+mod capability_test_fixture;
+mod cognition_command;
+mod cognition_feedback;
+mod cognition_gpd;
+mod cognition_orchestration;
+mod cognition_persistence;
+mod cognition_persistence_validation;
 pub(crate) mod economic_contract_publication;
 mod economy;
 pub(crate) mod economy_data_publication;
+mod economy_product_validation;
 mod effect_publication;
 #[cfg(test)]
 mod effect_publication_transaction_regressions;
 mod effects;
 mod event_processing;
+mod factory_authority;
 mod gameplay_layer;
 mod gameplay_loop;
 mod governance;
@@ -117,6 +130,7 @@ mod scheduling;
 mod snapshot;
 mod step;
 mod tick_consensus;
+mod tick_consensus_state_root;
 mod transition;
 
 pub use transition::{
@@ -136,7 +150,9 @@ pub use module_tick_runtime::{
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use oasis7_wasm_router::PreparedSubscription;
@@ -147,6 +163,7 @@ use super::capability_authorization::{
     CapabilityBudgetAccount, CapabilityEffectReceiptLink, CapabilityInvocationContext,
     CapabilityRevocationState,
 };
+use super::cognition_recovery::default_cognition_persistence_projection;
 use super::consensus::{TickConsensusRecord, TickConsensusRejectionAuditEvent};
 use super::effect::{CapabilityGrant, EffectIntent};
 use super::error::WorldError;
@@ -369,6 +386,8 @@ fn default_allow_runtime_source_compile() -> bool {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct World {
     manifest: Manifest,
+    #[serde(default = "super::cognition_recovery::default_cognition_persistence_projection")]
+    cognition: JsonValue,
     module_registry: ModuleRegistry,
     module_artifacts: BTreeSet<String>,
     #[serde(skip)]
@@ -431,6 +450,8 @@ pub struct World {
     scheduler_cursor: Option<String>,
     #[serde(skip)]
     receipt_signer: Option<ReceiptSigner>,
+    #[serde(skip, default)]
+    persistence_dir: RefCell<Option<PathBuf>>,
     #[serde(default)]
     runtime_memory_limits: WorldRuntimeMemoryLimits,
     #[serde(default)]
@@ -485,6 +506,26 @@ impl World {
         Self::new_with_release_security_policy(ReleaseSecurityPolicy::production_hardened())
     }
 
+    pub fn new_production_hardened_with_cognition_binding(
+        world_id: impl Into<String>,
+        branch_id: impl Into<String>,
+        finality_epoch: u64,
+        finality_block_hash: Option<String>,
+        finality_status: impl Into<String>,
+        reorg_epoch: u64,
+    ) -> Result<Self, WorldError> {
+        let mut world = Self::new_production_hardened();
+        world.bind_cognition_runtime(
+            world_id,
+            branch_id,
+            finality_epoch,
+            finality_block_hash,
+            finality_status,
+            reorg_epoch,
+        )?;
+        Ok(world)
+    }
+
     pub fn new_with_state(mut state: WorldState) -> Self {
         state.migrate_compat_material_ledgers();
         state
@@ -535,6 +576,7 @@ impl World {
         }
         let mut world = Self {
             manifest: Manifest::default(),
+            cognition: default_cognition_persistence_projection(),
             module_registry: ModuleRegistry::default(),
             module_artifacts: BTreeSet::new(),
             module_artifact_bytes: BTreeMap::new(),
@@ -572,6 +614,7 @@ impl World {
             proposals: BTreeMap::new(),
             scheduler_cursor: None,
             receipt_signer: None,
+            persistence_dir: RefCell::new(None),
             runtime_memory_limits: WorldRuntimeMemoryLimits::default(),
             runtime_backpressure_stats: WorldRuntimeBackpressureStats::default(),
             logistics_sla_metrics: LogisticsSlaMetrics::default(),
@@ -653,6 +696,10 @@ impl World {
 
     pub fn capability_revocation_state(&self) -> &CapabilityRevocationState {
         &self.capability_revocation_state
+    }
+
+    pub fn chain_resource_manifest(&self) -> &ChainResourceManifest {
+        &self.chain_resource_manifest
     }
 
     pub fn capability_nonce_records(
@@ -899,6 +946,13 @@ impl World {
 
     pub(super) fn allocate_next_intent_seq(&mut self) -> IntentSeq {
         Self::allocate_rolling_sequence_id(&mut self.next_intent_id, &mut self.next_intent_id_era)
+    }
+
+    pub(super) fn allocate_next_proposal_id(&mut self) -> ProposalId {
+        Self::allocate_rolling_sequence_id(
+            &mut self.next_proposal_id,
+            &mut self.next_proposal_id_era,
+        )
     }
 
     pub(super) fn preview_next_intent_seq(

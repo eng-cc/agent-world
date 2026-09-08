@@ -4,6 +4,40 @@ use serde::Serialize;
 use serde::ser::{SerializeMap, SerializeSeq, SerializeStruct};
 use std::collections::{BTreeMap, VecDeque};
 
+impl BodyOverlay {
+    pub fn new(
+        agent_id: impl Into<String>,
+        body_view: crate::models::BodyKernelView,
+        last_active: super::WorldTime,
+    ) -> Self {
+        Self {
+            agent_id: agent_id.into(),
+            mutation: BodyOverlayMutation::Body {
+                body_view,
+                last_active,
+            },
+            routed_domain_event: None,
+        }
+    }
+
+    pub(crate) fn route_only(agent_id: impl Into<String>) -> Self {
+        Self {
+            agent_id: agent_id.into(),
+            mutation: BodyOverlayMutation::RouteOnly,
+            routed_domain_event: None,
+        }
+    }
+
+    pub(crate) fn with_routed_domain_event(mut self, event: DomainEvent) -> Self {
+        self.routed_domain_event = Some(event);
+        self
+    }
+
+    pub(super) fn requires_body_target(&self) -> bool {
+        matches!(self.mutation, BodyOverlayMutation::Body { .. })
+    }
+}
+
 pub(super) struct AgentMapProjection<'a> {
     pub(super) agents: &'a BTreeMap<String, AgentCell>,
     pub(super) body_overlay: Option<&'a BodyOverlay>,

@@ -32,40 +32,6 @@ pub(crate) struct GovernanceIdentityProfileOverlay {
     pub(super) allow_insert: bool,
 }
 
-impl BodyOverlay {
-    pub fn new(
-        agent_id: impl Into<String>,
-        body_view: crate::models::BodyKernelView,
-        last_active: WorldTime,
-    ) -> Self {
-        Self {
-            agent_id: agent_id.into(),
-            mutation: BodyOverlayMutation::Body {
-                body_view,
-                last_active,
-            },
-            routed_domain_event: None,
-        }
-    }
-
-    pub(crate) fn route_only(agent_id: impl Into<String>) -> Self {
-        Self {
-            agent_id: agent_id.into(),
-            mutation: BodyOverlayMutation::RouteOnly,
-            routed_domain_event: None,
-        }
-    }
-
-    pub(crate) fn with_routed_domain_event(mut self, event: DomainEvent) -> Self {
-        self.routed_domain_event = Some(event);
-        self
-    }
-
-    fn requires_body_target(&self) -> bool {
-        matches!(self.mutation, BodyOverlayMutation::Body { .. })
-    }
-}
-
 /// Borrowed typed overlays preserving canonical serialization.
 #[derive(Debug)]
 pub struct WorldStateProjection<'a> {
@@ -114,6 +80,8 @@ pub struct WorldStateProjection<'a> {
     >,
     agent_claim_economic_overlay: Option<&'a crate::runtime::world::agent_claim_economic_publication::PreparedAgentClaimEconomic>,
     agent_claim_terminal_overlay: Option<&'a crate::runtime::world::agent_claim_terminal_publication::PreparedAgentClaimTerminal>,
+    product_validation_delivery_cursor: Option<&'a ProductValidationDeliveryCursor>,
+    industry_history_overlay: Option<&'a super::industry_history_transition::PreparedIndustryHistoryEvent>,
 }
 
 impl<'a> WorldStateProjection<'a> {
@@ -143,7 +111,17 @@ impl<'a> WorldStateProjection<'a> {
             agent_claim_light_lifecycle_overlay: None,
             agent_claim_economic_overlay: None,
             agent_claim_terminal_overlay: None,
+            product_validation_delivery_cursor: None,
+            industry_history_overlay: None,
         }
+    }
+
+    pub(crate) fn with_industry_history_overlay(
+        mut self,
+        overlay: &'a super::industry_history_transition::PreparedIndustryHistoryEvent,
+    ) -> Self {
+        self.industry_history_overlay = Some(overlay);
+        self
     }
 
     pub(crate) fn with_governance_registry_overlay(
@@ -274,6 +252,14 @@ impl<'a> WorldStateProjection<'a> {
         self
     }
 
+    pub(crate) fn with_product_validation_delivery_cursor(
+        mut self,
+        cursor: &'a ProductValidationDeliveryCursor,
+    ) -> Self {
+        self.product_validation_delivery_cursor = Some(cursor);
+        self
+    }
+
     pub(crate) fn with_module_instance_overlay(
         mut self,
         overlay: &'a module_instance_transition::PreparedModuleInstance,
@@ -337,7 +323,7 @@ impl Serialize for WorldState {
     {
         serialize_world_state(
             self, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None, None, None, None, None, None, None, None, None, None, serializer,
+            None, None, None, None, None, None, None, None, None, None, None, None, serializer,
         )
     }
 }
@@ -381,6 +367,8 @@ impl Serialize for WorldStateProjection<'_> {
             self.agent_claim_light_lifecycle_overlay,
             self.agent_claim_economic_overlay,
             self.agent_claim_terminal_overlay,
+            self.product_validation_delivery_cursor,
+            self.industry_history_overlay,
             serializer,
         )
     }
@@ -441,6 +429,10 @@ fn serialize_world_state<S>(
     agent_claim_terminal_overlay: Option<
         &crate::runtime::world::agent_claim_terminal_publication::PreparedAgentClaimTerminal,
     >,
+    product_validation_delivery_cursor: Option<&ProductValidationDeliveryCursor>,
+    industry_history_overlay: Option<
+        &super::industry_history_transition::PreparedIndustryHistoryEvent,
+    >,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -459,17 +451,30 @@ where
         completed_logistics_paths: _,
         settled_logistics_transit_ids: _,
         logistics_settlement_receipts: _,
+        factory_production_failure_dispositions: _,
         direct_material_transfer_receipts: _,
+        product_validation_receipts: _,
         product_profiles: _,
         latest_product_validation: _,
         recipe_profiles: _,
         factory_profiles: _,
+        agent_location_authorities: _,
+        location_anchors: _,
+        factory_site_authorities: _,
+        factory_construction_power_profiles: _,
         factories: _,
         retired_factory_ids: _,
         settled_factory_build_ids: _,
+        factory_construction_receipts: _,
+        product_validation_attempts: _,
+        product_validation_delivery_cursor: _,
         pending_factory_builds: _,
         pending_recipe_jobs: _,
         settled_recipe_job_ids: _,
+        next_industry_settlement_order: _,
+        industry_settlement_orders: _,
+        recipe_completion_receipts: _,
+        factory_recycle_receipts: _,
         pending_material_transits: _,
         industry_progress: _,
         alliances: _,
@@ -528,9 +533,10 @@ where
         governance_validator_admissions: _,
         governance_main_token_controller_registry: _,
         reward_signature_governance_policy: _,
+        ..
     } = state;
 
-    let field_count = 81
+    let field_count = 94
         - usize::from(
             state.agent_intent_ledger.is_empty()
                 && agent_intent_overlay.is_none_or(|overlay| overlay.ledger_updates.is_empty()),
@@ -540,7 +546,12 @@ where
         - usize::from(
             state.authenticated_collect_data_last_nonces.is_empty()
                 && economy_data_overlay.is_none_or(|overlay| !overlay.has_projected_nonces(state)),
-        );
+        )
+        - usize::from(state.product_validation_receipts.is_empty() && industry_history_overlay.is_none())
+        - usize::from(state.factory_construction_receipts.is_empty() && industry_overlay.is_none_or(|v| !v.has_construction_receipt()))
+        - usize::from(state.product_validation_attempts.is_empty() && industry_history_overlay.is_none())
+        - usize::from(state.recipe_completion_receipts.is_empty())
+        - usize::from(state.factory_recycle_receipts.is_empty());
     let mut output = serializer.serialize_struct("WorldState", field_count)?;
     output.serialize_field("time", &state.time)?;
     if let Some(overlay) = agent_claim_terminal_overlay {
@@ -562,6 +573,8 @@ where
     } else if let Some(overlay) = core_policy_overlay {
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = industry_overlay {
+        overlay.serialize_agents(state, &mut output)?;
+    } else if let Some(overlay) = industry_history_overlay {
         overlay.serialize_agents(state, &mut output)?;
     } else if let Some(overlay) = governance_meta_overlay {
         overlay.serialize_agents(state, &mut output)?;
@@ -680,6 +693,22 @@ where
             &state.direct_material_transfer_receipts,
         )?;
     }
+    if let Some(overlay) = industry_overlay {
+        overlay.serialize_failure_dispositions(state, &mut output)?;
+    } else {
+        output.serialize_field(
+            "factory_production_failure_dispositions",
+            &state.factory_production_failure_dispositions,
+        )?;
+    }
+    if let Some(overlay) = industry_history_overlay {
+        overlay.serialize_receipts(state, &mut output)?;
+    } else if !state.product_validation_receipts.is_empty() {
+        output.serialize_field(
+            "product_validation_receipts",
+            &state.product_validation_receipts,
+        )?;
+    }
     if let Some(overlay) = module_release_overlay {
         output.serialize_field(
             "product_profiles",
@@ -693,6 +722,8 @@ where
     }
     if let Some(overlay) = governance_meta_overlay {
         overlay.serialize_product(state, &mut output)?;
+    } else if let Some(overlay) = industry_history_overlay {
+        overlay.serialize_latest(state, &mut output)?;
     } else if state.latest_product_validation.is_some() {
         output.serialize_field(
             "latest_product_validation",
@@ -718,6 +749,20 @@ where
         output.serialize_field("recipe_profiles", &state.recipe_profiles)?;
         output.serialize_field("factory_profiles", &state.factory_profiles)?;
     }
+    if let Some(overlay) = industry_history_overlay {
+        overlay.serialize_authorities(state, &mut output)?;
+    } else {
+        output.serialize_field(
+            "agent_location_authorities",
+            &state.agent_location_authorities,
+        )?;
+        output.serialize_field("location_anchors", &state.location_anchors)?;
+        output.serialize_field("factory_site_authorities", &state.factory_site_authorities)?;
+        output.serialize_field(
+            "factory_construction_power_profiles",
+            &state.factory_construction_power_profiles,
+        )?;
+    }
     if let Some(overlay) = industry_overlay {
         overlay.serialize_factory_fields(state, &mut output)?;
     } else {
@@ -730,6 +775,47 @@ where
         output.serialize_field("pending_factory_builds", &state.pending_factory_builds)?;
         output.serialize_field("pending_recipe_jobs", &state.pending_recipe_jobs)?;
         output.serialize_field("settled_recipe_job_ids", &state.settled_recipe_job_ids)?;
+    }
+    if let Some(overlay) = industry_overlay {
+        overlay.serialize_construction_receipts(state, &mut output)?;
+    } else if !state.factory_construction_receipts.is_empty() {
+        output.serialize_field(
+            "factory_construction_receipts",
+            &state.factory_construction_receipts,
+        )?;
+    }
+    if let Some(overlay) = industry_history_overlay {
+        overlay.serialize_attempts(state, &mut output)?;
+    } else if !state.product_validation_attempts.is_empty() {
+        output.serialize_field(
+            "product_validation_attempts",
+            &state.product_validation_attempts,
+        )?;
+    }
+    output.serialize_field(
+        "product_validation_delivery_cursor",
+        &product_validation_delivery_cursor.unwrap_or(&state.product_validation_delivery_cursor),
+    )?;
+    if let Some(overlay) = industry_overlay {
+        overlay.serialize_settlement_history(state, &mut output)?;
+    } else {
+        output.serialize_field(
+            "next_industry_settlement_order",
+            &state.next_industry_settlement_order,
+        )?;
+        output.serialize_field(
+            "industry_settlement_orders",
+            &state.industry_settlement_orders,
+        )?;
+    }
+    if !state.recipe_completion_receipts.is_empty() {
+        output.serialize_field(
+            "recipe_completion_receipts",
+            &state.recipe_completion_receipts,
+        )?;
+    }
+    if !state.factory_recycle_receipts.is_empty() {
+        output.serialize_field("factory_recycle_receipts", &state.factory_recycle_receipts)?;
     }
     if let Some(overlay) = industry_overlay {
         overlay.serialize_pending_and_progress(state, &mut output)?;

@@ -68,6 +68,7 @@ pub(crate) struct PreparedFactoryLifecycle {
     materials: BTreeMap<String, i64>,
     agent: Option<(String, AgentCell)>,
     progress: Option<IndustryProgressState>,
+    construction_receipt: Option<(String, FactoryBuildPowerObligationV1)>,
 }
 
 #[derive(Debug)]
@@ -81,9 +82,15 @@ pub(crate) struct PreparedRecipeLifecycle {
     paths: BTreeMap<String, LogisticsPathAuthorityV1>,
     agent: Option<(String, AgentCell)>,
     progress: Option<IndustryProgressState>,
+    failure_disposition: Option<(ActionId, FactoryProductionFailureDispositionV1)>,
+    settlement_order: Option<(ActionId, u64)>,
+    next_settlement_order: Option<u64>,
 }
 
 impl PreparedIndustryEvent {
+    pub(crate) fn has_construction_receipt(&self) -> bool {
+        matches!(self, Self::FactoryLifecycle(value) if value.construction_receipt.is_some())
+    }
     pub(crate) fn prepare(
         state: &WorldState,
         event: &DomainEvent,
@@ -169,6 +176,40 @@ impl PreparedIndustryEvent {
         }
     }
 
+    pub(crate) fn serialize_failure_dispositions<S: SerializeStruct>(
+        &self,
+        state: &WorldState,
+        out: &mut S,
+    ) -> Result<(), S::Error> {
+        match self {
+            Self::RecipeLifecycle(value) => value.serialize_failure_dispositions(state, out),
+            _ => out.serialize_field(
+                "factory_production_failure_dispositions",
+                &state.factory_production_failure_dispositions,
+            ),
+        }
+    }
+
+    pub(crate) fn serialize_settlement_history<S: SerializeStruct>(
+        &self,
+        state: &WorldState,
+        out: &mut S,
+    ) -> Result<(), S::Error> {
+        match self {
+            Self::RecipeLifecycle(value) => value.serialize_settlement_history(state, out),
+            _ => {
+                out.serialize_field(
+                    "next_industry_settlement_order",
+                    &state.next_industry_settlement_order,
+                )?;
+                out.serialize_field(
+                    "industry_settlement_orders",
+                    &state.industry_settlement_orders,
+                )
+            }
+        }
+    }
+
     pub(crate) fn serialize_logistics<S: SerializeStruct>(
         &self,
         state: &WorldState,
@@ -230,6 +271,21 @@ impl PreparedIndustryEvent {
             Self::FactoryLifecycle(value) => value.serialize_factory_fields(state, out),
             Self::RecipeLifecycle(value) => value.serialize_factory_fields(state, out),
             _ => serialize_unchanged_factory_fields(state, out),
+        }
+    }
+
+    pub(crate) fn serialize_construction_receipts<S: SerializeStruct>(
+        &self,
+        state: &WorldState,
+        out: &mut S,
+    ) -> Result<(), S::Error> {
+        match self {
+            Self::FactoryLifecycle(value) => value.serialize_construction_receipts(state, out),
+            _ if !state.factory_construction_receipts.is_empty() => out.serialize_field(
+                "factory_construction_receipts",
+                &state.factory_construction_receipts,
+            ),
+            _ => Ok(()),
         }
     }
 }

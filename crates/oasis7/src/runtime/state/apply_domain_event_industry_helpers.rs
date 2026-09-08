@@ -1,5 +1,59 @@
 use super::*;
 
+const SETTLED_INDUSTRY_HISTORY_LIMIT: usize = 64;
+
+impl WorldState {
+    fn is_current_factory_failure_disposition(&self, job_id: ActionId) -> bool {
+        let Some(disposition) = self.factory_production_failure_dispositions.get(&job_id) else {
+            return false;
+        };
+        let Some(factory) = self.factories.get(&disposition.factory_id) else {
+            return false;
+        };
+        let production = &factory.production;
+        production.current_job_id.is_none()
+            && production.current_recipe_id.is_none()
+            && production
+                .current_blocker_action_id
+                .is_none_or(|id| id == job_id)
+            && production.current_blocker_kind.as_deref() == Some(&disposition.blocker_kind)
+            && production.current_blocker_detail.as_deref() == Some(&disposition.blocker_detail)
+            && !self.pending_recipe_jobs.contains_key(&job_id)
+    }
+
+    pub(super) fn compact_settled_industry_history(&mut self) {
+        let mut protected = BTreeSet::new();
+        let mut ordered = BTreeSet::new();
+        for job_id in self
+            .product_validation_attempts
+            .keys()
+            .chain(self.product_validation_receipts.keys())
+            .chain(self.recipe_completion_receipts.keys())
+            .chain(self.factory_production_failure_dispositions.keys())
+        {
+            if self.settled_recipe_job_ids.contains(job_id)
+                && !self.pending_recipe_jobs.contains_key(job_id)
+            {
+                if self.is_current_factory_failure_disposition(*job_id) {
+                    protected.insert(*job_id);
+                } else if let Some(order) = self.industry_settlement_orders.get(job_id) {
+                    ordered.insert((*order, *job_id));
+                }
+            }
+        }
+        let excess = ordered
+            .len()
+            .saturating_sub(SETTLED_INDUSTRY_HISTORY_LIMIT.saturating_sub(protected.len()));
+        for (_, job_id) in ordered.into_iter().take(excess) {
+            self.product_validation_attempts.remove(&job_id);
+            self.product_validation_receipts.remove(&job_id);
+            self.recipe_completion_receipts.remove(&job_id);
+            self.factory_production_failure_dispositions.remove(&job_id);
+            self.industry_settlement_orders.remove(&job_id);
+        }
+    }
+}
+
 pub(super) fn validate_recipe_material_stacks(
     label: &str,
     stacks: &[MaterialStack],

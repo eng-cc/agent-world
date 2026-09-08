@@ -51,6 +51,11 @@ impl PreparedFactoryLifecycle {
                 spec,
                 consume_ledger,
                 ready_at,
+                contract_version,
+                site_authority_revision,
+                site_location_id,
+                location_anchor_revision,
+                construction_power_obligation,
             } => Self::prepare_started(
                 state,
                 event,
@@ -61,6 +66,11 @@ impl PreparedFactoryLifecycle {
                 spec,
                 consume_ledger,
                 *ready_at,
+                *contract_version,
+                *site_authority_revision,
+                site_location_id,
+                *location_anchor_revision,
+                construction_power_obligation,
             ),
             DomainEvent::FactoryBuilt {
                 job_id,
@@ -89,6 +99,7 @@ impl PreparedFactoryLifecycle {
                     materials,
                     agent: None,
                     progress: None,
+                    construction_receipt: None,
                 })
             }
             DomainEvent::FactoryMaintained {
@@ -139,6 +150,11 @@ impl PreparedFactoryLifecycle {
         spec: &FactoryModuleSpec,
         ledger_id: &MaterialLedgerId,
         ready_at: WorldTime,
+        contract_version: Option<u8>,
+        site_authority_revision: Option<u64>,
+        site_location_id: &Option<String>,
+        location_anchor_revision: Option<u64>,
+        construction_power_obligation: &Option<FactoryBuildPowerObligationV1>,
     ) -> Result<Self, WorldError> {
         if state.pending_factory_builds.contains_key(&job_id)
             || state.settled_factory_build_ids.contains(&job_id)
@@ -179,6 +195,130 @@ impl PreparedFactoryLifecycle {
                 "factory build identity is already active: factory_id={}",
                 spec.factory_id
             )));
+        }
+        let has_modern_facts = site_authority_revision.is_some()
+            || site_location_id.is_some()
+            || location_anchor_revision.is_some()
+            || construction_power_obligation.is_some();
+        let modern = match contract_version {
+            None if has_modern_facts => {
+                return Err(invalid(format!(
+                    "modern factory build event is missing its contract discriminator: factory_id={}",
+                    spec.factory_id
+                )));
+            }
+            None | Some(0) => false,
+            Some(FACTORY_BUILD_STARTED_MODERN_VERSION) => true,
+            Some(version) => {
+                return Err(invalid(format!(
+                    "unsupported factory build event contract version: {version}"
+                )));
+            }
+        };
+        if modern
+            && (site_authority_revision.is_none()
+                || site_location_id.is_none()
+                || location_anchor_revision.is_none()
+                || construction_power_obligation.is_none())
+        {
+            return Err(invalid(format!(
+                "modern factory build event is missing authority or construction facts: factory_id={}",
+                spec.factory_id
+            )));
+        }
+        if let Some(obligation) = construction_power_obligation {
+            let site_revision = site_authority_revision.ok_or_else(|| {
+                invalid("factory build power obligation requires site authority revision")
+            })?;
+            let site_location = site_location_id
+                .as_deref()
+                .ok_or_else(|| invalid("factory build power obligation requires site location"))?;
+            let site = state.factory_site_authorities.get(site_id).ok_or_else(|| {
+                invalid(format!(
+                    "factory build site authority missing: site_id={site_id}"
+                ))
+            })?;
+            let location = state.agent_location_authorities.get(builder).ok_or_else(|| invalid(format!("factory build builder location authority missing: builder_agent_id={builder}")))?;
+            let anchor_matches = location_anchor_revision.map_or(!modern, |revision| {
+                state
+                    .location_anchors
+                    .get(site_location)
+                    .is_some_and(|anchor| {
+                        anchor.location_id == site_location
+                            && anchor.authority_revision == revision
+                            && anchor.active
+                            && anchor.effective_at <= now
+                    })
+            });
+            if site.site_id != site_id
+                || location.agent_id != builder
+                || site_revision != site.authority_revision
+                || site_location != site.location_id
+                || !site.active
+                || !site.chunk_ready
+                || !location.active
+                || location.location_id != site.location_id
+                || location.effective_at > now
+                || !anchor_matches
+                || (site.owner_agent_id != builder
+                    && !site.authorized_agent_ids.iter().any(|id| id == builder))
+            {
+                return Err(invalid(format!(
+                    "factory build authority changed or is unavailable: site_id={site_id} builder_agent_id={builder}"
+                )));
+            }
+            if obligation.payer_agent_id != builder
+                || obligation.profile_key != spec.factory_id
+                || obligation.profile_revision == 0
+                || obligation.electricity_amount < 0
+                || obligation.mode != FactoryConstructionPowerMode::StartOnlySink
+            {
+                return Err(invalid(format!(
+                    "factory build power obligation is invalid: factory_id={} builder_agent_id={builder}",
+                    spec.factory_id
+                )));
+            }
+            if modern && obligation.material_ledger.as_ref() != Some(ledger_id) {
+                return Err(invalid(format!(
+                    "modern factory build construction ledger does not match consume ledger: factory_id={}",
+                    spec.factory_id
+                )));
+            }
+            if modern {
+                let profile = state
+                    .factory_profiles
+                    .get(&spec.factory_id)
+                    .ok_or_else(|| {
+                        invalid(format!(
+                            "modern factory build canonical profile missing: factory_id={}",
+                            spec.factory_id
+                        ))
+                    })?;
+                super::super::factory_authority::canonical_factory_profile_matches_spec(
+                    profile, spec,
+                )
+                .map_err(invalid)?;
+            }
+            let profile = state
+                .factory_construction_power_profiles
+                .get(&spec.factory_id)
+                .ok_or_else(|| {
+                    invalid(format!(
+                        "factory build construction power profile missing: factory_id={}",
+                        spec.factory_id
+                    ))
+                })?;
+            if !profile.active
+                || profile.authority_revision != obligation.profile_revision
+                || profile.factory_id != spec.factory_id
+                || profile.electricity_amount != obligation.electricity_amount
+                || profile.mode != obligation.mode
+            {
+                return Err(invalid(format!(
+                    "factory build construction power profile changed: factory_id={}",
+                    spec.factory_id
+                )));
+            }
         }
         let mut required = BTreeMap::<String, i64>::new();
         for stack in &spec.build_cost {
@@ -234,6 +374,13 @@ impl PreparedFactoryLifecycle {
             .get(builder)
             .cloned()
             .expect("validated builder");
+        if let Some(obligation) = construction_power_obligation {
+            agent
+                .state
+                .resources
+                .remove(ResourceKind::Electricity, obligation.electricity_amount)
+                .map_err(|error| invalid(format!("factory build consume failed: {error:?}")))?;
+        }
         agent.last_active = now;
         Ok(Self {
             event: event.clone(),
@@ -246,6 +393,11 @@ impl PreparedFactoryLifecycle {
                     spec: spec.clone(),
                     consume_ledger: ledger_id.clone(),
                     ready_at,
+                    contract_version: contract_version.unwrap_or_default(),
+                    site_authority_revision,
+                    site_location_id: site_location_id.clone(),
+                    location_anchor_revision,
+                    construction_power_obligation: construction_power_obligation.clone(),
                 }),
             )),
             factory: None,
@@ -256,6 +408,7 @@ impl PreparedFactoryLifecycle {
             materials,
             agent: Some((builder.into(), agent)),
             progress: None,
+            construction_receipt: None,
         })
     }
 
@@ -326,6 +479,17 @@ impl PreparedFactoryLifecycle {
             output_ledger: site_ledger,
             durability_ppm: 1_000_000,
             production: FactoryProductionState::default(),
+            site_authority_revision: pending.site_authority_revision,
+            site_location_id: pending.site_location_id.clone(),
+            location_anchor_revision: pending.location_anchor_revision,
+            construction_power_profile_key: pending
+                .construction_power_obligation
+                .as_ref()
+                .map(|value| value.profile_key.clone()),
+            construction_power_profile_revision: pending
+                .construction_power_obligation
+                .as_ref()
+                .map(|value| value.profile_revision),
             built_at: now,
         };
         let agent = state.agents.get(builder).cloned().map(|mut cell| {
@@ -345,6 +509,10 @@ impl PreparedFactoryLifecycle {
             materials,
             agent,
             progress: Some(progress),
+            construction_receipt: pending
+                .construction_power_obligation
+                .clone()
+                .map(|value| (spec.factory_id.clone(), value)),
         })
     }
 
@@ -370,6 +538,7 @@ impl PreparedFactoryLifecycle {
                 .cloned()
                 .map(|cell| (builder.to_string(), cell)),
             progress: None,
+            construction_receipt: None,
         }
     }
 
@@ -455,6 +624,7 @@ impl PreparedFactoryLifecycle {
             materials,
             agent,
             progress: None,
+            construction_receipt: None,
         })
     }
 
@@ -484,6 +654,7 @@ impl PreparedFactoryLifecycle {
                     .cloned()
                     .map(|cell| (operator.to_string(), cell)),
                 progress: None,
+                construction_receipt: None,
             });
         }
         let factory = state.factories.get(factory_id).ok_or_else(|| {
@@ -556,6 +727,7 @@ impl PreparedFactoryLifecycle {
             materials,
             agent,
             progress: Some(progress),
+            construction_receipt: None,
         })
     }
 
@@ -600,6 +772,9 @@ impl PreparedFactoryLifecycle {
         }
         if let Some(progress) = self.progress {
             state.industry_progress = progress;
+        }
+        if let Some((id, receipt)) = self.construction_receipt {
+            state.factory_construction_receipts.insert(id, receipt);
         }
     }
 
@@ -689,5 +864,28 @@ impl PreparedFactoryLifecycle {
             "industry_progress",
             self.progress.as_ref().unwrap_or(&state.industry_progress),
         )
+    }
+
+    pub(super) fn serialize_construction_receipts<S: SerializeStruct>(
+        &self,
+        state: &WorldState,
+        out: &mut S,
+    ) -> Result<(), S::Error> {
+        if let Some((id, receipt)) = &self.construction_receipt {
+            out.serialize_field(
+                "factory_construction_receipts",
+                &SparseOverlay {
+                    base: &state.factory_construction_receipts,
+                    updates: &BTreeMap::from([(id.clone(), receipt.clone())]),
+                },
+            )
+        } else if !state.factory_construction_receipts.is_empty() {
+            out.serialize_field(
+                "factory_construction_receipts",
+                &state.factory_construction_receipts,
+            )
+        } else {
+            Ok(())
+        }
     }
 }

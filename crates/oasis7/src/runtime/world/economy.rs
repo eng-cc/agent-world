@@ -14,7 +14,8 @@ use super::super::{
     M4_PRODUCT_CONTROL_CHIP_MODULE_ID, M4_PRODUCT_FACTORY_CORE_MODULE_ID,
     M4_PRODUCT_IRON_INGOT_MODULE_ID, M4_PRODUCT_LOGISTICS_DRONE_MODULE_ID,
     M4_PRODUCT_MODULE_RACK_MODULE_ID, M4_PRODUCT_MOTOR_MODULE_ID, M4_PRODUCT_SENSOR_PACK_MODULE_ID,
-    MaterialLedgerId, RejectReason, WorldError, WorldEvent, WorldEventBody, WorldTime,
+    MaterialLedgerId, ProductValidationReceiptV1, RejectReason, WorldError, WorldEvent,
+    WorldEventBody, WorldTime,
 };
 use super::World;
 use crate::simulator::ResourceKind;
@@ -133,18 +134,17 @@ impl World {
                 module_id,
                 spec,
             } => {
-                if module_id.trim().is_empty() {
-                    return Ok(EconomyActionResolution::Rejected(
-                        RejectReason::RuleDenied {
-                            notes: vec!["factory module_id cannot be empty".to_string()],
-                        },
-                    ));
+                if let Some(reason) = self.validate_module_backed_factory_admission(
+                    envelope.id,
+                    builder_agent_id,
+                    site_id,
+                    module_id,
+                    spec,
+                )? {
+                    return Ok(EconomyActionResolution::Rejected(reason));
                 }
                 let preferred_ledger = MaterialLedgerId::agent(builder_agent_id.clone());
-                let request_ledger = self.select_material_consume_ledger_for_module_request(
-                    preferred_ledger,
-                    &spec.build_cost,
-                );
+                let request_ledger = preferred_ledger;
                 let request = FactoryBuildRequest {
                     factory_id: spec.factory_id.clone(),
                     site_id: site_id.clone(),
@@ -160,9 +160,12 @@ impl World {
                         })
                         .collect(),
                     available_inputs_by_ledger: Some(self.material_stacks_by_ledger()),
-                    available_power: self.resource_balance(ResourceKind::Electricity),
+                    available_power: self
+                        .agent_resource_balance(builder_agent_id, ResourceKind::Electricity)
+                        .unwrap_or(0),
                 };
-                let decision = self.evaluate_factory_build_with_module(
+                let mut module_staged = self.clone();
+                let decision = module_staged.evaluate_factory_build_with_module(
                     module_id.as_str(),
                     envelope.id,
                     &request,
@@ -189,6 +192,19 @@ impl World {
                 if decision.duration_ticks > 0 {
                     resolved_spec.build_time_ticks = decision.duration_ticks;
                 }
+
+                if let WorldEventBody::Domain(DomainEvent::ActionRejected { reason, .. }) =
+                    module_staged.build_factory_to_event(
+                        envelope.id,
+                        builder_agent_id,
+                        site_id,
+                        &resolved_spec,
+                        true,
+                    )?
+                {
+                    return Ok(EconomyActionResolution::Rejected(reason));
+                }
+                *self = module_staged;
 
                 Ok(EconomyActionResolution::Resolved(Action::BuildFactory {
                     builder_agent_id: builder_agent_id.clone(),
@@ -429,10 +445,10 @@ impl World {
     pub(super) fn process_due_economy_jobs_with_modules(
         &mut self,
         sandbox: &mut dyn ModuleSandbox,
+        product_validation_checkpoint: &mut dyn FnMut(&World) -> Result<(), WorldError>,
     ) -> Result<Vec<WorldEvent>, WorldError> {
         let now = self.state.time;
         let mut emitted = Vec::new();
-
         let mut due_builds: Vec<_> = self
             .state
             .pending_factory_builds
@@ -480,10 +496,36 @@ impl World {
 
         for job in due_recipes {
             let mut validation_rejected = false;
-
             let outputs = job.produce.iter().chain(job.byproducts.iter());
             for (output_index, stack) in outputs.enumerate() {
-                let Some(module_id) = self.resolve_product_module_for_stack(stack.kind.as_str())
+                let validation_index = Some(output_index as u32);
+                if let Some(rejected) = self.resume_product_validation_receipt(
+                    job.job_id,
+                    validation_index,
+                    job.requester_agent_id.as_str(),
+                    job.factory_id.as_str(),
+                    job.recipe_id.as_str(),
+                    stack,
+                    sandbox,
+                    &mut emitted,
+                )? {
+                    validation_rejected = rejected;
+                    if rejected {
+                        break;
+                    }
+                    continue;
+                }
+                let prior_attempt = self.product_validation_attempt_for_output(
+                    job.job_id,
+                    validation_index,
+                    job.requester_agent_id.as_str(),
+                    stack,
+                    None,
+                )?;
+                let Some(module_id) = prior_attempt
+                    .as_ref()
+                    .map(|attempt| attempt.module_id.clone())
+                    .or_else(|| self.resolve_product_module_for_stack(stack.kind.as_str()))
                 else {
                     continue;
                 };
@@ -496,18 +538,78 @@ impl World {
                         .wrapping_add(output_index as u64)
                         .wrapping_add(self.state.time),
                 };
-                let decision = self.evaluate_product_with_module(
-                    module_id.as_str(),
+                let mut failure_detail = None;
+                let decision = if let Some(cached) = self.cached_product_validation_decision(
                     job.job_id,
-                    Some(output_index),
-                    &request,
-                    sandbox,
-                )?;
+                    validation_index,
+                    job.requester_agent_id.as_str(),
+                    module_id.as_str(),
+                    stack,
+                )? {
+                    cached
+                } else if let Some(attempt) = prior_attempt {
+                    if attempt.requester_agent_id != job.requester_agent_id
+                        || attempt.module_id != module_id
+                        || attempt.stack != *stack
+                    {
+                        return Err(WorldError::ResourceBalanceInvalid {
+                            reason: format!(
+                                "product validation retry conflicts with persisted attempt: job_id={} index={validation_index:?}",
+                                job.job_id
+                            ),
+                        });
+                    }
+                    let (decision, detail) = Self::fail_closed_product_validation(
+                        module_id.as_str(),
+                        stack,
+                        "attempt had no committed decision; module call was not retried",
+                    );
+                    failure_detail = Some(detail);
+                    decision
+                } else {
+                    self.record_product_validation_attempt(
+                        job.job_id,
+                        validation_index,
+                        job.requester_agent_id.as_str(),
+                        module_id.as_str(),
+                        stack,
+                        sandbox,
+                        &mut emitted,
+                    )?;
+                    product_validation_checkpoint(self)?;
+                    match self.evaluate_product_with_module(
+                        module_id.as_str(),
+                        job.job_id,
+                        Some(output_index),
+                        &request,
+                        sandbox,
+                    ) {
+                        Ok(decision) => decision,
+                        Err(error) => {
+                            let (decision, detail) = Self::fail_closed_product_validation(
+                                module_id.as_str(),
+                                stack,
+                                format!("{error:?}"),
+                            );
+                            failure_detail = Some(detail);
+                            decision
+                        }
+                    }
+                };
+                let validation_receipt = ProductValidationReceiptV1 {
+                    job_id: job.job_id,
+                    validation_index,
+                    requester_agent_id: job.requester_agent_id.clone(),
+                    module_id: module_id.clone(),
+                    stack: stack.clone(),
+                    decision: decision.clone(),
+                    failure_detail: failure_detail.clone(),
+                };
                 let validation_event = self.action_to_event(&ActionEnvelope {
                     id: job.job_id,
                     action: Action::ValidateProduct {
                         requester_agent_id: job.requester_agent_id.clone(),
-                        module_id,
+                        module_id: module_id.clone(),
                         stack: stack.clone(),
                         decision,
                     },
@@ -516,11 +618,34 @@ impl World {
                     validation_event,
                     WorldEventBody::Domain(DomainEvent::ActionRejected { .. })
                 );
-                self.append_event(validation_event, None)?;
-                if let Some(event) = self.journal.events.last() {
-                    emitted.push(event.clone());
+                let recorded_event_id = self.append_event(
+                    WorldEventBody::Domain(DomainEvent::ProductValidationRecorded {
+                        receipt: validation_receipt,
+                    }),
+                    None,
+                )?;
+                let recorded_event_id_era =
+                    self.product_validation_event_id_era_after_append(recorded_event_id);
+                if let Some(event) = self.journal.events.last().cloned() {
+                    self.route_product_validation_event_at(&event, recorded_event_id_era, sandbox)?;
+                }
+                let validation_event_id = self.append_event(validation_event, None)?;
+                let validation_event_id_era =
+                    self.product_validation_event_id_era_after_append(validation_event_id);
+                if let Some(event) = self.journal.events.last().cloned() {
+                    self.route_product_validation_event_at(
+                        &event,
+                        validation_event_id_era,
+                        sandbox,
+                    )?;
                 }
                 if rejected {
+                    let blocker_detail = failure_detail.unwrap_or_else(|| {
+                        format!(
+                            "product validation rejected for {} before production settlement",
+                            stack.kind
+                        )
+                    });
                     self.append_event(
                         WorldEventBody::Domain(DomainEvent::FactoryProductionBlocked {
                             action_id: job.job_id,
@@ -528,10 +653,7 @@ impl World {
                             factory_id: job.factory_id.clone(),
                             recipe_id: job.recipe_id.clone(),
                             blocker_kind: "product_validation".to_string(),
-                            blocker_detail: format!(
-                                "product validation rejected for {} before production settlement",
-                                stack.kind
-                            ),
+                            blocker_detail,
                         }),
                         None,
                     )?;
@@ -548,7 +670,6 @@ impl World {
             if validation_rejected {
                 continue;
             }
-
             self.append_event(
                 WorldEventBody::Domain(DomainEvent::RecipeCompleted {
                     job_id: job.job_id,

@@ -861,6 +861,9 @@ impl World {
                 self.manifest = update.manifest.clone();
             }
             WorldEventBody::RollbackApplied(_) => {}
+            WorldEventBody::ProductValidationDeliveryCursorUpdated(cursor) => {
+                self.state.product_validation_delivery_cursor = cursor.clone();
+            }
         }
         self.state.time = time;
         Ok(())

@@ -348,6 +348,7 @@ impl World {
         Snapshot {
             snapshot_catalog: self.snapshot_catalog.clone(),
             manifest: self.manifest.clone(),
+            cognition: self.cognition.clone(),
             chain_resource_manifest,
             latest_chain_resource_delta,
             module_registry: self.module_registry.clone(),
@@ -511,14 +512,16 @@ impl World {
                 );
                 let journal = Journal::load_json(dir.join(JOURNAL_FILE))?;
                 hydrate_tick_consensus_snapshot_from_archive(dir, &mut json_snapshot)?;
-                let mut world = Self::from_snapshot(json_snapshot, journal)?;
+                let world = Self::from_snapshot(json_snapshot, journal)?;
+                let mut world = Self::recover_loaded_runtime_world(world, dir)?;
                 world.load_module_store_from_dir(dir)?;
                 return Ok(world);
             }
             if !has_indexed_generation {
                 hydrate_tick_consensus_snapshot_from_archive(dir, &mut snapshot)?;
             }
-            let mut world = Self::from_snapshot(snapshot, journal)?;
+            let world = Self::from_snapshot(snapshot, journal)?;
+            let mut world = Self::recover_loaded_runtime_world(world, dir)?;
             if has_indexed_generation {
                 world.load_selected_generation_module_artifacts_from_dir(dir)?;
             } else {
@@ -531,7 +534,8 @@ impl World {
         let journal = Journal::load_json(journal_path)?;
         let mut snapshot = Snapshot::load_json(snapshot_path)?;
         hydrate_tick_consensus_snapshot_from_archive(dir, &mut snapshot)?;
-        let mut world = Self::from_snapshot(snapshot, journal)?;
+        let world = Self::from_snapshot(snapshot, journal)?;
+        let mut world = Self::recover_loaded_runtime_world(world, dir)?;
         world.load_module_store_from_dir(dir)?;
         Ok(world)
     }
@@ -540,30 +544,14 @@ impl World {
         Self::load_from_dir(dir)
     }
 
-    pub fn load_tick_consensus_records_from_dir(
-        dir: impl AsRef<Path>,
-        tick_from: Option<WorldTime>,
-        tick_to: Option<WorldTime>,
-    ) -> Result<Vec<TickConsensusRecord>, WorldError> {
-        let snapshot = load_persisted_tick_consensus_snapshot_from_dir(dir.as_ref())?;
-        Ok(snapshot
-            .tick_consensus_records
-            .into_iter()
-            .filter(|record| {
-                tick_from
-                    .map(|from_tick| record.block.header.tick >= from_tick)
-                    .unwrap_or(true)
-                    && tick_to
-                        .map(|to_tick| record.block.header.tick <= to_tick)
-                        .unwrap_or(true)
-            })
-            .collect())
-    }
-
-    pub fn verify_tick_consensus_archive_from_dir(dir: impl AsRef<Path>) -> Result<(), WorldError> {
-        let dir = dir.as_ref();
-        let snapshot = load_persisted_tick_consensus_snapshot_from_dir(dir)?;
-        verify_tick_consensus_record_slice(snapshot.tick_consensus_records.as_slice())
+    fn recover_loaded_runtime_world(mut world: Self, dir: &Path) -> Result<Self, WorldError> {
+        *world.persistence_dir.borrow_mut() = Some(dir.to_path_buf());
+        let cognition_before = world.cognition.clone();
+        world.recover_cognition()?;
+        if world.cognition != cognition_before {
+            world.persist_runtime_transaction_if_configured()?;
+        }
+        Ok(world)
     }
 
     pub fn load_module_store_from_dir(&mut self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
@@ -659,6 +647,7 @@ impl World {
         world.rollback_nonce_outcomes = snapshot.rollback_nonce_outcomes;
         world.journal = journal;
         world.manifest = snapshot.manifest;
+        world.cognition = snapshot.cognition;
         world.module_registry = snapshot.module_registry;
         world.module_artifacts = snapshot.module_artifacts;
         world.module_artifact_bytes = BTreeMap::new();

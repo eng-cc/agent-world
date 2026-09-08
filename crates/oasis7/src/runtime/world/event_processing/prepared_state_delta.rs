@@ -2,6 +2,7 @@ use super::*;
 
 pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
     NoState(WorldEventBody),
+    ProductValidationDeliveryCursorUpdated(crate::runtime::ProductValidationDeliveryCursor),
     ModuleMarketplace(
         super::super::super::super::state::module_marketplace_transition::PreparedModuleMarketplace,
     ),
@@ -54,6 +55,7 @@ pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
     GovernanceMeta(super::super::super::governance_meta_publication::PreparedGovernanceMetaEvent),
     CorePolicy(super::super::super::super::state::core_policy_transition::PreparedCorePolicyEvent),
     Industry(super::super::super::super::state::industry_transition::PreparedIndustryEvent),
+    IndustryHistory(super::super::super::super::state::industry_history_transition::PreparedIndustryHistoryEvent),
     PowerRedemption(super::super::super::power_redemption_publication::PreparedPowerRedemptionEvent),
     NodePointsSettlement(
         super::super::super::node_points_settlement_publication::PreparedNodePointsSettlement,
@@ -134,6 +136,9 @@ impl PreparedEventStateDelta {
             | WorldEventBody::RollbackApplied(_)
             | WorldEventBody::Domain(DomainEvent::ActionRejected { .. }) => {
                 Some(Self::NoState(body.clone()))
+            }
+            WorldEventBody::ProductValidationDeliveryCursorUpdated(cursor) => {
+                Some(Self::ProductValidationDeliveryCursorUpdated(cursor.clone()))
             }
             WorldEventBody::Governance(GovernanceEvent::EmergencyBrakeActivated {
                 active_until_tick,
@@ -217,6 +222,9 @@ impl PreparedEventStateDelta {
             Self::Industry(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches(event))
             }
+            Self::IndustryHistory(prepared) => {
+                matches!(body, WorldEventBody::Domain(event) if prepared.matches(event))
+            }
             Self::PowerRedemption(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
@@ -245,6 +253,9 @@ impl PreparedEventStateDelta {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
             Self::NoState(prepared_body) => prepared_body == body,
+            Self::ProductValidationDeliveryCursorUpdated(prepared) => {
+                matches!(body, WorldEventBody::ProductValidationDeliveryCursorUpdated(cursor) if cursor == prepared)
+            }
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
@@ -363,6 +374,9 @@ impl PreparedEventStateDelta {
             }
             Self::CorePolicy(_) => unreachable!("core/policy uses a sparse state projection"),
             Self::Industry(_) => unreachable!("industry uses a sparse state projection"),
+            Self::IndustryHistory(_) => {
+                unreachable!("industry history uses a sparse state projection")
+            }
             Self::PowerRedemption(_) => {
                 unreachable!("power redemption uses a sparse state projection")
             }
@@ -387,6 +401,9 @@ impl PreparedEventStateDelta {
             Self::AgentClaimEconomic(_) => unreachable!("claim economic uses sparse projection"),
             Self::AgentClaimTerminal(_) => unreachable!("claim terminal uses sparse projection"),
             Self::NoState(_) => unreachable!("NoState does not have a state overlay"),
+            Self::ProductValidationDeliveryCursorUpdated(_) => {
+                unreachable!("delivery cursor uses a sparse state projection")
+            }
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
             Self::DomainRouteOnly { agent_id, .. } => {
                 { super::super::super::super::BodyOverlay::route_only(agent_id.clone()) }
@@ -482,6 +499,7 @@ impl PreparedEventStateDelta {
             Self::GovernanceMeta(prepared) => prepared.install_infallible(&mut world.state),
             Self::CorePolicy(prepared) => prepared.install_infallible(&mut world.state),
             Self::Industry(prepared) => prepared.install(&mut world.state),
+            Self::IndustryHistory(prepared) => prepared.install(&mut world.state),
             Self::PowerRedemption(prepared) => prepared.install_infallible(&mut world.state),
             Self::NodePointsSettlement(prepared) => prepared.install_infallible(&mut world.state),
             Self::MainTokenMonetary(prepared) => prepared.install_infallible(&mut world.state),
@@ -566,6 +584,9 @@ impl PreparedEventStateDelta {
                     .state
                     .governance_identity_profiles
                     .insert(target_agent_id, next_profile);
+            }
+            Self::ProductValidationDeliveryCursorUpdated(cursor) => {
+                world.state.product_validation_delivery_cursor = cursor;
             }
             Self::NoState(_) | Self::DomainRouteOnly { .. } => {}
         }

@@ -9,6 +9,13 @@ impl WorldState {
         event: &DomainEvent,
         now: WorldTime,
     ) -> Result<(), WorldError> {
+        if crate::runtime::state::core_policy_transition::PreparedCorePolicyEvent::supports(event) {
+            crate::runtime::state::core_policy_transition::PreparedCorePolicyEvent::prepare(
+                self, event, now,
+            )?
+            .install_infallible(self);
+            return Ok(());
+        }
         match event {
             DomainEvent::AgentIntentProposed { .. }
             | DomainEvent::AgentIntentSubmitted { .. }

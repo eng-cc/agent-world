@@ -636,8 +636,21 @@ impl PreparedModuleRelease {
                         profile.factory_id
                     )));
                 }
-                self.factories
-                    .insert(profile.factory_id.clone(), profile.clone());
+                if let Some(existing) = self
+                    .factories
+                    .get(&profile.factory_id)
+                    .or_else(|| state.factory_profiles.get(&profile.factory_id))
+                {
+                    if existing != profile {
+                        return Err(invalid(format!(
+                            "factory profile id is immutable and conflicts with persisted profile: factory_id={}",
+                            profile.factory_id
+                        )));
+                    }
+                } else {
+                    self.factories
+                        .insert(profile.factory_id.clone(), profile.clone());
+                }
             }
             DomainEvent::ModuleReleaseApplied {
                 request_id,

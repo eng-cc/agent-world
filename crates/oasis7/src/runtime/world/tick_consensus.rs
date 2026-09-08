@@ -1,11 +1,11 @@
 use super::super::state::CommandStateOverlay;
 use super::super::util::{hash_json, sha256_hex};
 use super::super::{
-    BodyOverlay, CausedBy, GovernanceIdentityProfileState, RuntimeCommittedTickContext,
+    BodyOverlay, CausedBy, ProductValidationDeliveryCursor, RuntimeCommittedTickContext,
     TICK_BLOCK_HEADER_SCHEMA_V1, TICK_BLOCK_HEADER_SCHEMA_V2, TickBlock, TickBlockHeader,
     TickCertificate, TickConsensusDriftReport, TickConsensusRecord,
     TickConsensusRejectionAuditEvent, TickConsensusSubmissionRole, TickExecutionDigest, WorldError,
-    WorldEvent, WorldEventBody, WorldEventId, WorldState, WorldStateProjection, WorldTime,
+    WorldEvent, WorldEventBody, WorldEventId, WorldStateProjection, WorldTime,
 };
 use super::World;
 use serde::Serialize;
@@ -24,10 +24,10 @@ struct TickEventHashInput<'a> {
 }
 
 #[derive(Serialize)]
-struct StateRootProjection<'a, T: ?Sized> {
-    state: &'a T,
-    manifest_hash: &'a str,
-    policy_hash: &'a str,
+pub(super) struct StateRootProjection<'a, T: ?Sized> {
+    pub(super) state: &'a T,
+    pub(super) manifest_hash: &'a str,
+    pub(super) policy_hash: &'a str,
 }
 
 impl World {
@@ -809,62 +809,6 @@ impl World {
         ordered
     }
 
-    pub(crate) fn current_state_root_hash(&self) -> Result<String, WorldError> {
-        self.state_root_hash_for_state(&self.state)
-    }
-
-    pub(super) fn state_root_hash_with_governance_identity_profile_overlay(
-        &self,
-        target_agent_id: &str,
-        next_profile: &GovernanceIdentityProfileState,
-        allow_insert: bool,
-    ) -> Result<String, WorldError> {
-        let manifest_hash = self.current_manifest_hash()?;
-        let policy_hash = hash_json(&self.policies)?;
-        let state_projection = WorldStateProjection::borrowed(&self.state);
-        let state_projection = if allow_insert {
-            state_projection.with_governance_identity_profile_insert_overlay(
-                target_agent_id,
-                next_profile.clone(),
-            )
-        } else {
-            state_projection
-                .with_governance_identity_profile_overlay(target_agent_id, next_profile.clone())
-        };
-        let projection = StateRootProjection {
-            state: &state_projection,
-            manifest_hash: manifest_hash.as_str(),
-            policy_hash: policy_hash.as_str(),
-        };
-        hash_json(&projection)
-    }
-
-    pub(super) fn state_root_hash_with_governance_registry_overlay(
-        &self,
-        overlay: &super::governance_registry_publication::PreparedGovernanceRegistryEvent,
-    ) -> Result<String, WorldError> {
-        let manifest_hash = self.current_manifest_hash()?;
-        let policy_hash = hash_json(&self.policies)?;
-        let state =
-            WorldStateProjection::borrowed(&self.state).with_governance_registry_overlay(overlay);
-        hash_json(&StateRootProjection {
-            state: &state,
-            manifest_hash: manifest_hash.as_str(),
-            policy_hash: policy_hash.as_str(),
-        })
-    }
-
-    fn state_root_hash_for_state(&self, state: &WorldState) -> Result<String, WorldError> {
-        let manifest_hash = self.current_manifest_hash()?;
-        let policy_hash = hash_json(&self.policies)?;
-        let projection = StateRootProjection {
-            state,
-            manifest_hash: manifest_hash.as_str(),
-            policy_hash: policy_hash.as_str(),
-        };
-        hash_json(&projection)
-    }
-
     pub(super) fn state_root_hash_with_body_overlay(
         &self,
         body_overlay: &BodyOverlay,
@@ -879,6 +823,21 @@ impl World {
             policy_hash: policy_hash.as_str(),
         };
         hash_json(&projection)
+    }
+
+    pub(super) fn state_root_hash_with_product_validation_delivery_cursor(
+        &self,
+        cursor: &ProductValidationDeliveryCursor,
+    ) -> Result<String, WorldError> {
+        let manifest_hash = self.current_manifest_hash()?;
+        let policy_hash = hash_json(&self.policies)?;
+        let state_projection = WorldStateProjection::borrowed(&self.state)
+            .with_product_validation_delivery_cursor(cursor);
+        hash_json(&StateRootProjection {
+            state: &state_projection,
+            manifest_hash: manifest_hash.as_str(),
+            policy_hash: policy_hash.as_str(),
+        })
     }
 
     pub(super) fn state_root_hash_with_command_overlay(

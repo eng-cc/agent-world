@@ -98,6 +98,9 @@ impl PreparedRecipeLifecycle {
             paths: BTreeMap::new(),
             agent,
             progress,
+            failure_disposition: None,
+            settlement_order: None,
+            next_settlement_order: None,
         }
     }
 
@@ -345,6 +348,9 @@ impl PreparedRecipeLifecycle {
             paths,
             agent: Some((requester_agent_id.clone(), agent)),
             progress: Some(progress),
+            failure_disposition: None,
+            settlement_order: None,
+            next_settlement_order: None,
         })
     }
 
@@ -487,6 +493,17 @@ impl PreparedRecipeLifecycle {
             paths: BTreeMap::new(),
             agent,
             progress: Some(progress),
+            failure_disposition: None,
+            settlement_order: Some((
+                *job_id,
+                state
+                    .industry_settlement_orders
+                    .get(job_id)
+                    .copied()
+                    .unwrap_or(state.next_industry_settlement_order),
+            )),
+            next_settlement_order: (!state.industry_settlement_orders.contains_key(job_id))
+                .then(|| state.next_industry_settlement_order.saturating_add(1)),
         })
     }
 
@@ -509,6 +526,28 @@ impl PreparedRecipeLifecycle {
         };
         let terminal = blocker_kind == "product_validation";
         let pending = state.pending_recipe_jobs.get(action_id).cloned();
+        if terminal
+            && let Some(existing) = state.factory_production_failure_dispositions.get(action_id)
+        {
+            if existing.requester_agent_id == *requester_agent_id
+                && existing.factory_id == *factory_id
+                && existing.recipe_id == *recipe_id
+                && existing.blocker_kind == *blocker_kind
+                && existing.blocker_detail == *blocker_detail
+            {
+                let (materials, world) = normalized_materials(state);
+                return Ok(Self::idempotent(
+                    state,
+                    event,
+                    requester_agent_id,
+                    materials,
+                    world,
+                ));
+            }
+            return Err(invalid(format!(
+                "product-validation blocker conflicts with persisted disposition: job_id={action_id}"
+            )));
+        }
         if terminal && pending.is_none() {
             let (materials, world) = normalized_materials(state);
             return Ok(Self::idempotent(
@@ -540,11 +579,9 @@ impl PreparedRecipeLifecycle {
             value.production.current_blocker_detail = Some(blocker_detail.clone());
             value.production.current_job_id = None;
             value.production.current_recipe_id = None;
-            if !terminal {
-                value.production.last_completed_recipe_id = None;
-                value.production.same_recipe_repeat_count = 0;
-                value.production.last_completed_canonical_snapshot = None;
-            }
+            value.production.last_completed_recipe_id = None;
+            value.production.same_recipe_repeat_count = 0;
+            value.production.last_completed_canonical_snapshot = None;
         }
         let factory = factory.map(|value| (factory_id.clone(), value));
         let mut progress = state.industry_progress.clone();
@@ -564,6 +601,40 @@ impl PreparedRecipeLifecycle {
             cell.last_active = now;
         }
         let (materials, world) = normalized_materials(state);
+        let failure_disposition = terminal.then(|| {
+            let pending = pending.as_ref().expect("terminal pending validated");
+            (
+                *action_id,
+                FactoryProductionFailureDispositionV1 {
+                    action_id: *action_id,
+                    requester_agent_id: pending.requester_agent_id.clone(),
+                    factory_id: pending.factory_id.clone(),
+                    recipe_id: pending.recipe_id.clone(),
+                    blocker_kind: blocker_kind.clone(),
+                    blocker_detail: blocker_detail.clone(),
+                    disposition_kind: "consumed_lost".into(),
+                    consumed_inputs: pending.consume.clone(),
+                    lost_inputs: pending.consume.clone(),
+                    consumed_power: pending.power_required,
+                    lost_power: pending.power_required,
+                    next_action: "inspect_product_validation_and_reschedule".into(),
+                    next_recheck: None,
+                },
+            )
+        });
+        let settlement_order = terminal.then(|| {
+            (
+                *action_id,
+                state
+                    .industry_settlement_orders
+                    .get(action_id)
+                    .copied()
+                    .unwrap_or(state.next_industry_settlement_order),
+            )
+        });
+        let next_settlement_order = (terminal
+            && !state.industry_settlement_orders.contains_key(action_id))
+        .then(|| state.next_industry_settlement_order.saturating_add(1));
         Ok(Self {
             event: event.clone(),
             pending: terminal.then_some((*action_id, None)),
@@ -574,6 +645,9 @@ impl PreparedRecipeLifecycle {
             paths: BTreeMap::new(),
             agent: agent.map(|cell| (requester_agent_id.clone(), cell)),
             progress: (!terminal).then_some(progress),
+            failure_disposition,
+            settlement_order,
+            next_settlement_order,
         })
     }
 
@@ -598,6 +672,9 @@ impl PreparedRecipeLifecycle {
                 .cloned()
                 .map(|cell| (requester.to_string(), cell)),
             progress: None,
+            failure_disposition: None,
+            settlement_order: None,
+            next_settlement_order: None,
         }
     }
 
@@ -631,6 +708,17 @@ impl PreparedRecipeLifecycle {
         if let Some(progress) = self.progress {
             state.industry_progress = progress;
         }
+        if let Some((id, disposition)) = self.failure_disposition {
+            state
+                .factory_production_failure_dispositions
+                .insert(id, disposition);
+        }
+        if let Some((id, order)) = self.settlement_order {
+            state.industry_settlement_orders.insert(id, order);
+        }
+        if let Some(next) = self.next_settlement_order {
+            state.next_industry_settlement_order = next;
+        }
     }
 
     pub(super) fn serialize_agents<S: SerializeStruct>(
@@ -654,6 +742,54 @@ impl PreparedRecipeLifecycle {
                 updates: &self.ledgers,
             },
         )
+    }
+
+    pub(super) fn serialize_failure_dispositions<S: SerializeStruct>(
+        &self,
+        state: &WorldState,
+        out: &mut S,
+    ) -> Result<(), S::Error> {
+        if let Some((id, value)) = &self.failure_disposition {
+            out.serialize_field(
+                "factory_production_failure_dispositions",
+                &SparseOverlay {
+                    base: &state.factory_production_failure_dispositions,
+                    updates: &BTreeMap::from([(*id, value.clone())]),
+                },
+            )
+        } else {
+            out.serialize_field(
+                "factory_production_failure_dispositions",
+                &state.factory_production_failure_dispositions,
+            )
+        }
+    }
+
+    pub(super) fn serialize_settlement_history<S: SerializeStruct>(
+        &self,
+        state: &WorldState,
+        out: &mut S,
+    ) -> Result<(), S::Error> {
+        out.serialize_field(
+            "next_industry_settlement_order",
+            &self
+                .next_settlement_order
+                .unwrap_or(state.next_industry_settlement_order),
+        )?;
+        if let Some((id, order)) = self.settlement_order {
+            out.serialize_field(
+                "industry_settlement_orders",
+                &SparseOverlay {
+                    base: &state.industry_settlement_orders,
+                    updates: &BTreeMap::from([(id, order)]),
+                },
+            )
+        } else {
+            out.serialize_field(
+                "industry_settlement_orders",
+                &state.industry_settlement_orders,
+            )
+        }
     }
 
     pub(super) fn serialize_logistics<S: SerializeStruct>(
