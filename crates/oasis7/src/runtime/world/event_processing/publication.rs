@@ -273,7 +273,7 @@ impl World {
                 self.prepare_raw_effect_receipt_commit(event)?,
             )),
             _ => prepared_governance_events::prepare(self, &body)?
-                .or_else(|| PreparedEventStateDelta::for_body(&body)),
+                .or_else(|| PreparedEventStateDelta::for_body(self, &body)),
         };
         let state_delta = state_delta.ok_or_else(|| WorldError::ResourceBalanceInvalid {
             reason: format!("unclassified world event body cannot be published: {body:?}"),
@@ -687,8 +687,8 @@ impl World {
                 self.state_root_hash_with_agent_claim_terminal_overlay(prepared)?
             }
             PreparedEventStateDelta::NoState(_) => self.current_state_root_hash()?,
-            PreparedEventStateDelta::ProductValidationDeliveryCursorUpdated(cursor) => {
-                self.state_root_hash_with_product_validation_delivery_cursor(cursor)?
+            PreparedEventStateDelta::ProductValidationDeliveryCursorUpdated { next, .. } => {
+                self.state_root_hash_with_product_validation_delivery_cursor(next)?
             }
             PreparedEventStateDelta::Body(_) | PreparedEventStateDelta::DomainRouteOnly { .. } => {
                 let Some(domain_event) = domain_event.as_ref() else {

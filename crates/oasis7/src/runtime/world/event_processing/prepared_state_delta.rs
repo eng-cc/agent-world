@@ -2,7 +2,10 @@ use super::*;
 
 pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
     NoState(WorldEventBody),
-    ProductValidationDeliveryCursorUpdated(crate::runtime::ProductValidationDeliveryCursor),
+    ProductValidationDeliveryCursorUpdated {
+        event: crate::runtime::ProductValidationDeliveryCursor,
+        next: crate::runtime::ProductValidationDeliveryCursor,
+    },
     ModuleMarketplace(
         super::super::super::super::state::module_marketplace_transition::PreparedModuleMarketplace,
     ),
@@ -125,7 +128,7 @@ pub(in crate::runtime::world::event_processing) enum PreparedEventStateDelta {
 }
 
 impl PreparedEventStateDelta {
-    pub(super) fn for_body(body: &WorldEventBody) -> Option<Self> {
+    pub(super) fn for_body(world: &World, body: &WorldEventBody) -> Option<Self> {
         match body {
             WorldEventBody::PolicyDecisionRecorded(_)
             | WorldEventBody::RuleDecisionRecorded(_)
@@ -138,7 +141,12 @@ impl PreparedEventStateDelta {
                 Some(Self::NoState(body.clone()))
             }
             WorldEventBody::ProductValidationDeliveryCursorUpdated(cursor) => {
-                Some(Self::ProductValidationDeliveryCursorUpdated(cursor.clone()))
+                let mut next = world.state.product_validation_delivery_cursor.clone();
+                next.advance_to(cursor.event_id_era, cursor.routed_through_event_id);
+                Some(Self::ProductValidationDeliveryCursorUpdated {
+                    event: cursor.clone(),
+                    next,
+                })
             }
             WorldEventBody::Governance(GovernanceEvent::EmergencyBrakeActivated {
                 active_until_tick,
@@ -253,8 +261,8 @@ impl PreparedEventStateDelta {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
             }
             Self::NoState(prepared_body) => prepared_body == body,
-            Self::ProductValidationDeliveryCursorUpdated(prepared) => {
-                matches!(body, WorldEventBody::ProductValidationDeliveryCursorUpdated(cursor) if cursor == prepared)
+            Self::ProductValidationDeliveryCursorUpdated { event, .. } => {
+                matches!(body, WorldEventBody::ProductValidationDeliveryCursorUpdated(cursor) if cursor == event)
             }
             Self::Body(prepared) => {
                 matches!(body, WorldEventBody::Domain(event) if prepared.matches_event(event))
@@ -401,7 +409,7 @@ impl PreparedEventStateDelta {
             Self::AgentClaimEconomic(_) => unreachable!("claim economic uses sparse projection"),
             Self::AgentClaimTerminal(_) => unreachable!("claim terminal uses sparse projection"),
             Self::NoState(_) => unreachable!("NoState does not have a state overlay"),
-            Self::ProductValidationDeliveryCursorUpdated(_) => {
+            Self::ProductValidationDeliveryCursorUpdated { .. } => {
                 unreachable!("delivery cursor uses a sparse state projection")
             }
             Self::Body(prepared) => prepared.body_overlay().with_routed_domain_event(event),
@@ -585,8 +593,8 @@ impl PreparedEventStateDelta {
                     .governance_identity_profiles
                     .insert(target_agent_id, next_profile);
             }
-            Self::ProductValidationDeliveryCursorUpdated(cursor) => {
-                world.state.product_validation_delivery_cursor = cursor;
+            Self::ProductValidationDeliveryCursorUpdated { next, .. } => {
+                world.state.product_validation_delivery_cursor = next;
             }
             Self::NoState(_) | Self::DomainRouteOnly { .. } => {}
         }

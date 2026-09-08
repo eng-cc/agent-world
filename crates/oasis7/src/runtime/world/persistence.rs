@@ -670,7 +670,7 @@ impl World {
             // empty-journal fixture behavior (first allocation is MAX), but
             // make a real rollover tail replayable and deterministic.
             world.next_event_id = 1;
-            world.next_event_id_era = snapshot.event_id_era.saturating_add(1);
+            world.next_event_id_era = snapshot.event_id_era;
         } else {
             world.next_event_id = snapshot.last_event_id.saturating_add(1).max(1);
             world.next_event_id_era = snapshot.event_id_era;

@@ -862,7 +862,9 @@ impl World {
             }
             WorldEventBody::RollbackApplied(_) => {}
             WorldEventBody::ProductValidationDeliveryCursorUpdated(cursor) => {
-                self.state.product_validation_delivery_cursor = cursor.clone();
+                self.state
+                    .product_validation_delivery_cursor
+                    .advance_to(cursor.event_id_era, cursor.routed_through_event_id);
             }
         }
         self.state.time = time;
