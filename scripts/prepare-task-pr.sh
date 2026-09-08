@@ -1335,7 +1335,7 @@ COMPARISON_HEAD="$(git rev-parse "$COMPARISON_COMMIT_REF")"
 # The live receipt validator below remains authoritative for the PR/check
 # identity; this early read only prevents a moving local symbolic ref from
 # shadowing the frozen review range during local role-review selection.
-REVIEW_COMPARISON_OID="$COMPARISON_HEAD"
+REVIEW_COMPARISON_OID=""
 if [[ -n "$PROMOTE_DRAFT_RECEIPT" ]]; then
   [[ -f "$PROMOTE_DRAFT_RECEIPT" ]] || die "promote_draft requires an existing ci_ready_receipt"
   PROMOTE_DRAFT_RECEIPT_BASE_OID="$(python3 - "$PROMOTE_DRAFT_RECEIPT" <<'PY'

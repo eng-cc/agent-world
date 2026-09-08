@@ -1136,6 +1136,49 @@ if not expected.issubset(missing):
     raise SystemExit(f"expected exact field mismatch markers {expected}, got: {missing}")
 PY
 
+# Ordinary review validation must bind the packet's symbolic Comparison Ref.
+# The immutable receipt OID override is promotion-only; a non-promotion JSON
+# preflight must reject a packet whose ref does not match the active base ref.
+reset_smoke_branch_to_base
+write_task_binding
+write_project_trace
+printf '\n// prepare-task-pr comparison ref regression fixture\n' >> "$SMOKE_WORKTREE/scripts/prepare-task-pr.sh"
+"$REAL_GIT" -C "$SMOKE_WORKTREE" add scripts/prepare-task-pr.sh .pm/tasks/"$TASK_UID.yaml" doc/engineering/project.md
+"$REAL_GIT" -C "$SMOKE_WORKTREE" \
+  -c user.name="oasis7 smoke" \
+  -c user.email="smoke@example.invalid" \
+  -c commit.gpgsign=false \
+  commit --no-verify -m "test: comparison ref regression fixture" >/dev/null
+SOURCE_HEAD="$("$REAL_GIT" -C "$SMOKE_WORKTREE" rev-parse HEAD)"
+write_role_review_packet "$SOURCE_HEAD" "no_findings"
+commit_fixture_evidence
+python3 - "$SMOKE_WORKTREE/.pm/tasks/$TASK_UID.execution.md" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+body = path.read_text(encoding="utf-8")
+body = body.replace(
+    "- Comparison Ref: refs/remotes/origin/main",
+    "- Comparison Ref: refs/remotes/origin/not-main",
+)
+path.write_text(body, encoding="utf-8")
+PY
+commit_fixture_evidence
+comparison_ref_mismatch_json="$TMPDIR/comparison-ref-mismatch.json"
+run_prepare "$TMPDIR/gh-comparison-ref-mismatch.log" "$TMPDIR/git-comparison-ref-mismatch.log" --json >"$comparison_ref_mismatch_json"
+python3 - "$comparison_ref_mismatch_json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+review = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))["pre_pr_local_role_review"]
+if review["status"] != "missing":
+    raise SystemExit(f"ordinary review must reject mismatched Comparison Ref, got: {review}")
+if "Comparison Ref: refs/remotes/origin/main" not in review["missing_markers"]:
+    raise SystemExit(f"expected exact Comparison Ref mismatch marker, got: {review}")
+PY
+
 # Promotion review identity is bound to the immutable receipt/plan base OID,
 # not to a symbolic base ref that may move after the review was frozen.
 reset_smoke_branch_to_base
