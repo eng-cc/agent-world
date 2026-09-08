@@ -92,6 +92,11 @@ never satisfy a live task.
 **Draft candidate and promotion gate.**
 
 A draft candidate opens or resumes its frozen-head draft PR before exact-head CI. Before any push or PR write, the repo-owned helper derives the bound task identity from canonical mapping, writes a marked `<!-- oasis7-pm-evidence -->` comment binding task UID, canonical worktree/branch, source head, and comparison ref/OID, then reads that exact identity back from the task issue; write/readback failure or mismatch rejects the operation. Its receipt binds repository, task, PR, base/head OIDs, check/app/run, planner, conclusion, and observation time. Review identity uses the receipt's canonical CI-authority digest over every one of those authority fields except observation time; `observed_at` is liveness evidence, not review scope. A same-authority live refresh may renew only `observed_at` without creating another review epoch. Any authority change, including head/base, check app/run, conclusion, or planner identity, invalidates CI evidence and review. Promotion requires a fresh live receipt whose CI-authority digest equals the recorded review evidence digest.
+Promotion-side review revalidation binds the packet's immutable `Comparison OID`
+to the fresh receipt/plan base OID; the packet's symbolic `Comparison Ref` is
+audit context and may have moved since freeze. A moved symbolic ref alone
+must not invalidate the frozen review range, while a receipt base/head or PR
+base identity mismatch is rejected.
 The draft candidate remains PM status `committed` while its workflow phase is
 `verification`; selected-task audit projects that explicit pair as Project
 workflow phase `verification`. Other `committed` task states project as

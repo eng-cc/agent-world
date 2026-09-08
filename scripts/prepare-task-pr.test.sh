@@ -1128,7 +1128,6 @@ missing = set(review["missing_markers"])
 expected = {
     "Source Worktree: " + Path(expected_worktree).name + " or repo-relative worktree hint",
     f"Source Branch: {expected_branch}",
-    "Comparison Ref: refs/remotes/origin/main",
     "Comparison OID available as commit: 0000000000000000000000000000000000000000",
 }
 if review["status"] != "missing":
@@ -1136,6 +1135,42 @@ if review["status"] != "missing":
 if not expected.issubset(missing):
     raise SystemExit(f"expected exact field mismatch markers {expected}, got: {missing}")
 PY
+
+# Promotion review identity is bound to the immutable receipt/plan base OID,
+# not to a symbolic base ref that may move after the review was frozen.
+reset_smoke_branch_to_base
+write_changed_path_fixture "scripts/prepare-task-pr.sh"
+python3 - "$SMOKE_WORKTREE/.pm/tasks/$TASK_UID.execution.md" "$COMPARISON_OID" <<'PY'
+from pathlib import Path
+import sys
+
+path, comparison_oid = sys.argv[1:]
+body = Path(path).read_text(encoding="utf-8")
+body = body.replace(
+    "- Comparison Ref: refs/remotes/origin/main",
+    f"- Comparison Ref: {comparison_oid}",
+)
+Path(path).write_text(body, encoding="utf-8")
+PY
+moved_main_oid="$("$REAL_GIT" -C "$ROOT_DIR" commit-tree "$COMPARISON_OID^{tree}" -p "$COMPARISON_OID" -m "test: move symbolic base after review freeze")"
+"$REAL_GIT" -C "$ROOT_DIR" update-ref refs/remotes/origin/main "$moved_main_oid"
+moved_main_review="$TMPDIR/moved-main-immutable-review.env"
+PREPARE_TASK_PR_ALLOW_RETIRED_PM_TASKS=1 \
+  local_role_review_status "$SMOKE_WORKTREE" "$SMOKE_BRANCH" "$SOURCE_HEAD" refs/remotes/origin/main "$COMPARISON_OID" >"$moved_main_review"
+python3 - "$moved_main_review" "$COMPARISON_OID" <<'PY'
+from pathlib import Path
+import sys
+
+fields = {}
+for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    key, _, value = line.partition("=")
+    fields[key] = value
+if fields.get("status") != "passed":
+    raise SystemExit(f"immutable comparison OID must survive moved symbolic ref, got: {fields}")
+if fields.get("comparison_oid") != sys.argv[2]:
+    raise SystemExit(f"review must retain immutable comparison OID, got: {fields}")
+PY
+"$REAL_GIT" -C "$ROOT_DIR" update-ref refs/remotes/origin/main "$COMPARISON_OID"
 
 reset_smoke_branch_to_base
 rm -f "$SMOKE_WORKTREE/.pm/github-project-sync/tasks.json"
@@ -1413,9 +1448,25 @@ if record.get("pr_url"):
 PY
 
 promotion_receipt="$TMPDIR/promotion-receipt.json"
+python3 - "$SMOKE_WORKTREE/.pm/tasks/$TASK_UID.execution.md" "$COMPARISON_OID" <<'PY'
+from pathlib import Path
+import sys
+
+path, comparison_oid = sys.argv[1:]
+body = Path(path).read_text(encoding="utf-8")
+body = body.replace(
+    "- Comparison Ref: refs/remotes/origin/main",
+    f"- Comparison Ref: {comparison_oid}",
+)
+Path(path).write_text(body, encoding="utf-8")
+PY
+commit_fixture_evidence
+refresh_current_issue_identity_fixture "$TMPDIR/current-issue-comments.json"
+moved_promotion_base_oid="$("$REAL_GIT" -C "$ROOT_DIR" commit-tree "$COMPARISON_OID^{tree}" -p "$COMPARISON_OID" -m "test: move promotion base after review freeze")"
+"$REAL_GIT" -C "$ROOT_DIR" update-ref refs/remotes/origin/main "$moved_promotion_base_oid"
 PROMOTION_HEAD="$("$REAL_GIT" -C "$SMOKE_WORKTREE" rev-parse HEAD)"
 cat >"$promotion_receipt" <<EOF
-{"receipt_type":"oasis7_ci_ready_receipt","issuer":"github_live_query","repository":"example/oasis7","task_uid":"$TASK_UID","task_issue_number":123,"pr_number":999,"base_oid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","head_oid":"$PROMOTION_HEAD","check_name":"required-gate","check_app_id":42,"check_run_id":9,"planner_digest":"fixture","planner_config_sha256":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","run_rust_baseline":true,"conclusion":"success","observed_at":"2000-01-01T00:00:00+00:00","review_evidence_digest":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+{"receipt_type":"oasis7_ci_ready_receipt","issuer":"github_live_query","repository":"example/oasis7","task_uid":"$TASK_UID","task_issue_number":123,"pr_number":999,"base_oid":"$COMPARISON_OID","head_oid":"$PROMOTION_HEAD","check_name":"required-gate","check_app_id":42,"check_run_id":9,"planner_digest":"fixture","planner_config_sha256":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","run_rust_baseline":true,"conclusion":"success","observed_at":"2000-01-01T00:00:00+00:00","review_evidence_digest":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
 EOF
 promotion_receipt_helper="$TMPDIR/promotion-receipt-helper.py"
 cat >"$promotion_receipt_helper" <<'PY'
@@ -1467,6 +1518,55 @@ receipt=next(x for x in lines if x.startswith("receipt "))
 assert "--allow-ready-pr" not in receipt,lines
 PY
 assert_promoted_truth
+"$REAL_GIT" -C "$ROOT_DIR" update-ref refs/remotes/origin/main "$COMPARISON_OID"
+
+# A receipt with a different base OID must fail before any promotion helper or
+# GitHub mutation, even when the local packet is otherwise complete.
+python3 - "$promotion_receipt" <<'PY'
+import json,sys
+p=sys.argv[1]; r=json.load(open(p)); r["base_oid"]="b"*40
+open(p,"w").write(json.dumps(r)+"\n")
+PY
+set_promotion_ready_truth
+wrong_base_promotion_log="$TMPDIR/gh-promotion-wrong-base.log"
+if PREPARE_TASK_PR_CI_READY_RECEIPT_PATH="$promotion_receipt_helper" \
+  PREPARE_TASK_PR_PROJECT_TASK_PATH="$promotion_project_helper" TEST_PR_STATE_TSV=$'true\tOPEN\t' \
+    run_prepare "$wrong_base_promotion_log" "$TMPDIR/git-promotion-wrong-base.log" --promote-draft "$promotion_receipt" >/dev/null 2>&1; then
+  echo "promotion must reject a receipt whose base OID differs from the reviewed packet" >&2
+  exit 1
+fi
+if grep -Eq '^receipt |^record-pr ordinary$|^pr ready ' "$wrong_base_promotion_log"; then
+  echo "wrong-base promotion reached receipt, ready, or record: $(cat "$wrong_base_promotion_log")" >&2
+  exit 1
+fi
+
+# Restore the valid base, then reject a receipt bound to another source head
+# before receipt validation or any promotion mutation.
+python3 - "$promotion_receipt" "$COMPARISON_OID" "$PROMOTION_HEAD" <<'PY'
+import json,sys
+p,base,head=sys.argv[1:]
+r=json.load(open(p)); r["base_oid"]=base; r["head_oid"]="0"*40
+open(p,"w").write(json.dumps(r)+"\n")
+PY
+set_promotion_ready_truth
+wrong_head_promotion_log="$TMPDIR/gh-promotion-wrong-head.log"
+if PREPARE_TASK_PR_CI_READY_RECEIPT_PATH="$promotion_receipt_helper" \
+  PREPARE_TASK_PR_PROJECT_TASK_PATH="$promotion_project_helper" TEST_PR_STATE_TSV=$'true\tOPEN\t' \
+    run_prepare "$wrong_head_promotion_log" "$TMPDIR/git-promotion-wrong-head.log" --promote-draft "$promotion_receipt" >/dev/null 2>&1; then
+  echo "promotion must reject a receipt bound to a different source head" >&2
+  exit 1
+fi
+if grep -Eq '^receipt |^record-pr ordinary$|^pr ready ' "$wrong_head_promotion_log"; then
+  echo "wrong-head promotion reached receipt, ready, or record: $(cat "$wrong_head_promotion_log")" >&2
+  exit 1
+fi
+
+python3 - "$promotion_receipt" "$COMPARISON_OID" "$PROMOTION_HEAD" <<'PY'
+import json,sys
+p,base,head=sys.argv[1:]
+r=json.load(open(p)); r["base_oid"]=base; r["head_oid"]=head
+open(p,"w").write(json.dumps(r)+"\n")
+PY
 
 python3 - "$promotion_receipt" <<'PY'
 import json,sys
