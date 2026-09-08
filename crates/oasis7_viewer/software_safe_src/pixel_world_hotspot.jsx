@@ -2,6 +2,7 @@ import { createSignal, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import { installHotspotTooltipPlacement } from "./pixel_world_tooltip_placement.js";
 import { moveFocusFromHotspotTooltip } from "./pixel_world_hotspot_focus.js";
+import { pixelWorldHotspotIntersectsStage } from "./pixel_world_hotspot_projection.js";
 
 function isZhLocale(locale) {
   return String(locale || "").trim().toLowerCase().startsWith("zh");
@@ -73,6 +74,7 @@ export function PixelWorldHotspot(props) {
     return point - Math.max(22, Math.min(size - 22, point));
   };
   const hotspot = () => props.hotspot;
+  const visible = () => pixelWorldHotspotIntersectsStage(props.style, stageSize(), Number(props.glyphSize) || 20);
   const selection = () => ({ kind: "hotspot", id: hotspot().id });
   const inspect = () => {
     delete buttonRef.dataset.dismissedHover;
@@ -86,8 +88,12 @@ export function PixelWorldHotspot(props) {
       class="pixel-world-hotspot"
       data-hotspot-kind={hotspot().kind}
       data-hotspot-hit-target="44"
+      disabled={!visible()}
+      tabIndex={visible() ? 0 : -1}
+      aria-hidden={!visible()}
       ref={buttonRef}
       style={{ ...props.style,
+        display: visible() ? undefined : "none",
         "--hotspot-projected-x": props.style?.left,
         "--hotspot-projected-y": props.style?.top,
         left: `clamp(22px, ${props.style?.left || "50%"}, calc(100% - 22px))`,

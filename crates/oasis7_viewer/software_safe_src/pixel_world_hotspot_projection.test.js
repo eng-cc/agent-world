@@ -4,11 +4,20 @@ import {
   pixelWorldHotspotGlyphSize,
   pixelWorldHotspotStyle,
   toCanvasPoint,
+  pixelWorldHotspotIntersectsStage,
 } from "./pixel_world_hotspot_projection.js";
 
 const worldBounds = { width_cm: 10_000_000, depth_cm: 5_000_000 };
 
 describe("pixel world hotspot projection", () => {
+  it.each([
+    ["-1%", "50%", false], ["-0.9%", "50%", true],
+    ["101%", "50%", false], ["100.9%", "50%", true],
+    ["50%", "-2%", false], ["50%", "-1.9%", true],
+    ["50%", "102%", false], ["50%", "101.9%", true],
+  ])("distinguishes full clipping from partial glyph visibility at %s,%s", (left, top, expected) => {
+    expect(pixelWorldHotspotIntersectsStage({ left, top }, { width: 1000, height: 500 }, 20)).toBe(expected);
+  });
   it("matches the bridge 20px inset and camera transform", () => {
     const style = pixelWorldHotspotStyle(
       { pos: { x_cm: 2_500_000, y_cm: 3_750_000 } },

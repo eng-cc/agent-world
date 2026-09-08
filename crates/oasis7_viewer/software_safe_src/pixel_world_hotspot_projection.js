@@ -2,6 +2,14 @@ const PIXEL_WORLD_CANVAS_WIDTH = 960;
 const PIXEL_WORLD_CANVAS_HEIGHT = 540;
 export const PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX = 44;
 
+export function pixelWorldHotspotIntersectsStage(style, stageSize, glyphSize = 20) {
+  const x = parseFloat(style?.left || "50") * stageSize.width / 100;
+  const y = parseFloat(style?.top || "50") * stageSize.height / 100;
+  const radius = glyphSize / 2;
+  return x + radius > 0 && y + radius > 0
+    && x - radius < stageSize.width && y - radius < stageSize.height;
+}
+
 function safeNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;

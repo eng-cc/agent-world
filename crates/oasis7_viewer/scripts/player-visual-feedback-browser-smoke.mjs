@@ -19,6 +19,7 @@ const session = `player-visual-feedback-${process.pid}`;
 const browserBin = process.env.AGENT_BROWSER_BIN || "agent-browser";
 const skipBuild = process.argv.includes("--skip-build");
 const onlyProduction = process.argv.includes("--only-production");
+const onlyOffscreen = process.argv.includes("--only-offscreen");
 const onlyCamera = process.argv.includes("--only-camera");
 const onlyTouch = process.argv.includes("--only-touch");
 const onlyTooltipFeed = process.argv.includes("--only-tooltip-feed");
@@ -41,7 +42,7 @@ const summary = {
   inputMode: "visible-ui-controls-plus-dom-readback",
   mockDisabled: false,
   fixtureBoundary: "deterministic QA bridge and fake world_feed; no runtime/provider/playability claim",
-  phase: onlyThirdReview ? "third-review-only" : onlyProduction ? "production-hotspot-only"
+  phase: onlyOffscreen ? "offscreen-only" : onlyThirdReview ? "third-review-only" : onlyProduction ? "production-hotspot-only"
     : onlyCamera ? "camera-regression-only"
       : onlyTouch ? "touch-regression-only"
         : onlyTooltipFeed ? "tooltip-feed-regression-only"
@@ -605,6 +606,60 @@ function assertHotspotTooltipPainted(result, label) {
     `${label}: tooltip close control is not visible`, tooltip);
   assert(stackHasClass(tooltip.close.stack, "pixel-world-canvas__hotspot-tooltip-close"),
     `${label}: tooltip close control is obscured at its painted center`, tooltip.close);
+}
+
+async function runOffscreenRegression(port) {
+  summary.offscreen = [];
+  for (const visualFixture of [true, false]) {
+    await openFixture(port, { visualFixture, width: 768, height: 1024 });
+    await dispatchCanvasZoom(-100);
+    for (const edge of ["left", "right", "top", "bottom"]) {
+      for (const partial of [false, true]) {
+        const before = await evalJson(probe);
+        const projected = projectedCanvasPoint(before.canvas, cameraHotspotWorld("info"), cameraState(before));
+        const stage = before.canvas.rect;
+        const outside = partial ? -3 : -80;
+        const x = edge === "left" ? outside : edge === "right" ? stage.width - outside : stage.width / 2;
+        const y = edge === "top" ? outside : edge === "bottom" ? stage.height - outside : stage.height / 2;
+        await dispatchCanvasPan((stage.x + x - projected.x) * before.canvas.width / stage.width,
+          (stage.y + y - projected.y) * before.canvas.height / stage.height);
+        const state = await evalJson(`(() => {
+          const node = document.querySelector('[data-hotspot-kind="info"]');
+          window.__qaOffscreenNode ||= node;
+          const stage = node.parentElement.getBoundingClientRect();
+          const r = node.getBoundingClientRect();
+          const glyph = node.querySelector('.pixel-world-hotspot__glyph').getBoundingClientRect();
+          const rect = (r) => ({ x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height });
+          const x = Math.max(stage.left + 22, Math.min(stage.right - 22, stage.left + ${x}));
+          const y = Math.max(stage.top + 22, Math.min(stage.bottom - 22, stage.top + ${y}));
+          document.querySelector('.mobile-rail__link').focus();
+          node.focus();
+          return JSON.stringify({ sameNode: node === window.__qaOffscreenNode, disabled:node.disabled, tabIndex:node.tabIndex,
+            display:getComputedStyle(node).display, focused:document.activeElement === node,
+            hitPresent:document.elementsFromPoint(x,y).some((hit) => hit === node || node.contains(hit)),
+            rect:rect(r),glyph:rect(glyph),stage:rect(stage),x,y });
+        })()`);
+        assert(state.sameNode, "offscreen recovery replaced original control", state);
+        if (partial) {
+          assert(!state.disabled && state.tabIndex >= 0 && state.focused && state.rect.width >= 44 && state.rect.height >= 44,
+            "partial glyph did not restore44px focusable target", { edge, state });
+          assert(state.glyph.right > state.stage.x && state.glyph.x < state.stage.right && state.glyph.bottom > state.stage.y && state.glyph.y < state.stage.bottom,
+            "partial-return glyph does not intersect stage", { edge, state });
+          assert(state.rect.x >= state.stage.x && state.rect.y >= state.stage.y && state.rect.right <= state.stage.right + 1 && state.rect.bottom <= state.stage.bottom + 1,
+            "partial target escapes stage", { edge, state });
+          await browserRaw(["press", "Escape"]);
+        } else {
+          assert(state.disabled && state.tabIndex === -1 && !state.focused && !state.hitPresent && state.display === "none",
+            "fully offscreen hotspot remains hit/focusable", { edge, state });
+          await browserJson(["mouse", "move", String(Math.round(state.x)), String(Math.round(state.y))]);
+          await browserJson(["mouse", "down"]); await browserJson(["mouse", "up"]);
+          const clicked = await evalJson("JSON.stringify({ infoTooltip: Boolean(document.querySelector('[data-hotspot-tooltip][id$=info]')) })");
+          assert(!clicked.infoTooltip, "offscreen edge click reopened invisible hotspot", { edge, clicked });
+        }
+        summary.offscreen.push({ visualFixture, edge, partial, state });
+      }
+    }
+  }
 }
 
 async function runCameraProjectionRegression(port, { visualFixture, label }) {
@@ -1172,7 +1227,9 @@ async function main() {
   const port = address.port;
   try {
     closeBrowser();
-    if (onlyThirdReview) {
+    if (onlyOffscreen) {
+      await runOffscreenRegression(port);
+    } else if (onlyThirdReview) {
       await runThirdReview(port);
     } else if (onlyProduction) {
       await runProductionHotspotRegression(port);
@@ -1186,6 +1243,7 @@ async function main() {
     } else if (onlyFocus) {
       await runFocusRestorationRegression(port);
     } else {
+      await runOffscreenRegression(port);
       await runThirdReview(port);
       await runStatusMatrix(port);
       await runViewportMatrix(port);

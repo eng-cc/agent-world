@@ -10481,6 +10481,61 @@ function moveFocusFromHotspotTooltip(tooltip, backwards) {
   next.focus();
   return document.activeElement === next;
 }
+const PIXEL_WORLD_CANVAS_WIDTH = 960;
+const PIXEL_WORLD_CANVAS_HEIGHT = 540;
+const PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX = 44;
+function pixelWorldHotspotIntersectsStage(style2, stageSize, glyphSize = 20) {
+  const x = parseFloat(style2?.left || "50") * stageSize.width / 100;
+  const y = parseFloat(style2?.top || "50") * stageSize.height / 100;
+  const radius = glyphSize / 2;
+  return x + radius > 0 && y + radius > 0 && x - radius < stageSize.width && y - radius < stageSize.height;
+}
+function safeNumber$1(value2, fallback = 0) {
+  const number = Number(value2);
+  return Number.isFinite(number) ? number : fallback;
+}
+function clampRatio$1(value2) {
+  return Math.min(1, Math.max(0, safeNumber$1(value2)));
+}
+function toCanvasPoint(position, worldBounds, width, height, cameraState) {
+  if (!position || !worldBounds) return null;
+  const x = clampRatio$1(safeNumber$1(position.x_cm ?? position.xCm) / Math.max(1, safeNumber$1(worldBounds.width_cm ?? worldBounds.widthCm, 1)));
+  const y = clampRatio$1(safeNumber$1(position.y_cm ?? position.yCm) / Math.max(1, safeNumber$1(worldBounds.depth_cm ?? worldBounds.depthCm, 1)));
+  const zoom = Math.max(0.5, Number(cameraState?.zoom) || 1);
+  return {
+    x: width / 2 + (20 + x * Math.max(1, width - 40) - width / 2) * zoom + (Number(cameraState?.pan_x_px ?? cameraState?.panX) || 0),
+    y: height / 2 + (20 + y * Math.max(1, height - 40) - height / 2) * zoom + (Number(cameraState?.pan_y_px ?? cameraState?.panY) || 0)
+  };
+}
+function pixelWorldHotspotGlyphSize(hotspot) {
+  return Math.max(
+    14,
+    Math.min(32, safeNumber$1(hotspot?.size_hint_px ?? hotspot?.sizeHintPx, 16))
+  );
+}
+function pixelWorldHotspotStyle(hotspot, worldBounds, index = 0, cameraState) {
+  const fallback = {
+    left: `${20 + index % 4 * 16}%`,
+    top: `${22 + Math.floor(index / 4) * 16}%`
+  };
+  const position = hotspot?.pos;
+  if (!position || !worldBounds) {
+    return {
+      ...fallback,
+      width: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
+      height: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
+      transform: "translate(-50%, -50%)"
+    };
+  }
+  const point = toCanvasPoint(position, worldBounds, PIXEL_WORLD_CANVAS_WIDTH, PIXEL_WORLD_CANVAS_HEIGHT, cameraState);
+  return {
+    left: `${point.x / PIXEL_WORLD_CANVAS_WIDTH * 100}%`,
+    top: `${point.y / PIXEL_WORLD_CANVAS_HEIGHT * 100}%`,
+    width: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
+    height: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
+    transform: "translate(-50%, -50%)"
+  };
+}
 var _tmpl$$q = /* @__PURE__ */ template(`<button type=button class=pixel-world-hotspot data-hotspot-hit-target=44><span class=pixel-world-hotspot__glyph aria-hidden=true style=pointer-events:none>`), _tmpl$2$q = /* @__PURE__ */ template(`<div class=pixel-world-canvas__hotspot-tooltip data-hotspot-tooltip role=status><span data-hotspot-tooltip-body></span><button type=button class=pixel-world-canvas__hotspot-tooltip-close>×`);
 function isZhLocale$1(locale) {
   return String(locale || "").trim().toLowerCase().startsWith("zh");
@@ -10544,6 +10599,7 @@ function PixelWorldHotspot(props) {
     return point - Math.max(22, Math.min(size - 22, point));
   };
   const hotspot = () => props.hotspot;
+  const visible = () => pixelWorldHotspotIntersectsStage(props.style, stageSize(), Number(props.glyphSize) || 20);
   const selection = () => ({
     kind: "hotspot",
     id: hotspot().id
@@ -10604,21 +10660,25 @@ function PixelWorldHotspot(props) {
       return () => _c$() ? "!" : hotspot().kind === "goal" ? "G" : "i";
     })());
     createRenderEffect((_p$) => {
-      var _v$ = hotspot().kind, _v$2 = {
+      var _v$ = hotspot().kind, _v$2 = !visible(), _v$3 = visible() ? 0 : -1, _v$4 = !visible(), _v$5 = {
         ...props.style,
+        display: visible() ? void 0 : "none",
         "--hotspot-projected-x": props.style?.left,
         "--hotspot-projected-y": props.style?.top,
         left: `clamp(22px, ${props.style?.left || "50%"}, calc(100% - 22px))`,
         top: `clamp(22px, ${props.style?.top || "50%"}, calc(100% - 22px))`
-      }, _v$3 = `${hotspot().kind}:${hotspot().label}`, _v$4 = pixelWorldHotspotAccessibleLabel(props.locale, hotspot()), _v$5 = pixelWorldHotspotTooltipId(hotspot()), _v$6 = `${Number(props.glyphSize) || 20}px`, _v$7 = `${Number(props.glyphSize) || 20}px`, _v$8 = `translate(${glyphOffset("left", "width")}px, ${glyphOffset("top", "height")}px)`;
+      }, _v$6 = `${hotspot().kind}:${hotspot().label}`, _v$7 = pixelWorldHotspotAccessibleLabel(props.locale, hotspot()), _v$8 = pixelWorldHotspotTooltipId(hotspot()), _v$9 = `${Number(props.glyphSize) || 20}px`, _v$0 = `${Number(props.glyphSize) || 20}px`, _v$1 = `translate(${glyphOffset("left", "width")}px, ${glyphOffset("top", "height")}px)`;
       _v$ !== _p$.e && setAttribute(_el$, "data-hotspot-kind", _p$.e = _v$);
-      _p$.t = style(_el$, _v$2, _p$.t);
-      _v$3 !== _p$.a && setAttribute(_el$, "title", _p$.a = _v$3);
-      _v$4 !== _p$.o && setAttribute(_el$, "aria-label", _p$.o = _v$4);
-      _v$5 !== _p$.i && setAttribute(_el$, "aria-describedby", _p$.i = _v$5);
-      _v$6 !== _p$.n && setStyleProperty(_el$2, "width", _p$.n = _v$6);
-      _v$7 !== _p$.s && setStyleProperty(_el$2, "height", _p$.s = _v$7);
-      _v$8 !== _p$.h && setStyleProperty(_el$2, "transform", _p$.h = _v$8);
+      _v$2 !== _p$.t && (_el$.disabled = _p$.t = _v$2);
+      _v$3 !== _p$.a && setAttribute(_el$, "tabindex", _p$.a = _v$3);
+      _v$4 !== _p$.o && setAttribute(_el$, "aria-hidden", _p$.o = _v$4);
+      _p$.i = style(_el$, _v$5, _p$.i);
+      _v$6 !== _p$.n && setAttribute(_el$, "title", _p$.n = _v$6);
+      _v$7 !== _p$.s && setAttribute(_el$, "aria-label", _p$.s = _v$7);
+      _v$8 !== _p$.h && setAttribute(_el$, "aria-describedby", _p$.h = _v$8);
+      _v$9 !== _p$.r && setStyleProperty(_el$2, "width", _p$.r = _v$9);
+      _v$0 !== _p$.d && setStyleProperty(_el$2, "height", _p$.d = _v$0);
+      _v$1 !== _p$.l && setStyleProperty(_el$2, "transform", _p$.l = _v$1);
       return _p$;
     }, {
       e: void 0,
@@ -10628,7 +10688,10 @@ function PixelWorldHotspot(props) {
       i: void 0,
       n: void 0,
       s: void 0,
-      h: void 0
+      h: void 0,
+      r: void 0,
+      d: void 0,
+      l: void 0
     });
     return _el$;
   })();
@@ -10661,9 +10724,9 @@ function PixelWorldHotspotTooltip(props) {
         }
       };
       createRenderEffect((_p$) => {
-        var _v$9 = pixelWorldHotspotTooltipId(hotspot()), _v$0 = tr$3(props.locale, "关闭热点说明", "Close hotspot explanation");
-        _v$9 !== _p$.e && setAttribute(_el$3, "id", _p$.e = _v$9);
-        _v$0 !== _p$.t && setAttribute(_el$5, "aria-label", _p$.t = _v$0);
+        var _v$10 = pixelWorldHotspotTooltipId(hotspot()), _v$11 = tr$3(props.locale, "关闭热点说明", "Close hotspot explanation");
+        _v$10 !== _p$.e && setAttribute(_el$3, "id", _p$.e = _v$10);
+        _v$11 !== _p$.t && setAttribute(_el$5, "aria-label", _p$.t = _v$11);
         return _p$;
       }, {
         e: void 0,
@@ -10697,55 +10760,6 @@ function resolvePixelWorldReadoutStatus(locale, connectionStatus, worldFeed = {}
   if (status === "connecting" || status === "reconnecting") return warn(tr$2(locale, "正在重连", "RECONNECTING"), "reconnecting");
   if (status !== "connected") return warn(tr$2(locale, "离线", "OFFLINE"), "offline");
   return feedStatus === "ready" ? { label: tr$2(locale, "实时", "LIVE"), className: "badge badge--good pixel-world-readout__status pixel-world-readout__status--ready" } : warn(tr$2(locale, "同步中", "SYNCING"), "syncing");
-}
-const PIXEL_WORLD_CANVAS_WIDTH = 960;
-const PIXEL_WORLD_CANVAS_HEIGHT = 540;
-const PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX = 44;
-function safeNumber$1(value2, fallback = 0) {
-  const number = Number(value2);
-  return Number.isFinite(number) ? number : fallback;
-}
-function clampRatio$1(value2) {
-  return Math.min(1, Math.max(0, safeNumber$1(value2)));
-}
-function toCanvasPoint(position, worldBounds, width, height, cameraState) {
-  if (!position || !worldBounds) return null;
-  const x = clampRatio$1(safeNumber$1(position.x_cm ?? position.xCm) / Math.max(1, safeNumber$1(worldBounds.width_cm ?? worldBounds.widthCm, 1)));
-  const y = clampRatio$1(safeNumber$1(position.y_cm ?? position.yCm) / Math.max(1, safeNumber$1(worldBounds.depth_cm ?? worldBounds.depthCm, 1)));
-  const zoom = Math.max(0.5, Number(cameraState?.zoom) || 1);
-  return {
-    x: width / 2 + (20 + x * Math.max(1, width - 40) - width / 2) * zoom + (Number(cameraState?.pan_x_px ?? cameraState?.panX) || 0),
-    y: height / 2 + (20 + y * Math.max(1, height - 40) - height / 2) * zoom + (Number(cameraState?.pan_y_px ?? cameraState?.panY) || 0)
-  };
-}
-function pixelWorldHotspotGlyphSize(hotspot) {
-  return Math.max(
-    14,
-    Math.min(32, safeNumber$1(hotspot?.size_hint_px ?? hotspot?.sizeHintPx, 16))
-  );
-}
-function pixelWorldHotspotStyle(hotspot, worldBounds, index = 0, cameraState) {
-  const fallback = {
-    left: `${20 + index % 4 * 16}%`,
-    top: `${22 + Math.floor(index / 4) * 16}%`
-  };
-  const position = hotspot?.pos;
-  if (!position || !worldBounds) {
-    return {
-      ...fallback,
-      width: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
-      height: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
-      transform: "translate(-50%, -50%)"
-    };
-  }
-  const point = toCanvasPoint(position, worldBounds, PIXEL_WORLD_CANVAS_WIDTH, PIXEL_WORLD_CANVAS_HEIGHT, cameraState);
-  return {
-    left: `${point.x / PIXEL_WORLD_CANVAS_WIDTH * 100}%`,
-    top: `${point.y / PIXEL_WORLD_CANVAS_HEIGHT * 100}%`,
-    width: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
-    height: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
-    transform: "translate(-50%, -50%)"
-  };
 }
 var _tmpl$$p = /* @__PURE__ */ template(`<div class=pixel-world-canvas__grid>`), _tmpl$2$p = /* @__PURE__ */ template(`<div class="pixel-world-canvas__terrain-band pixel-world-canvas__terrain-band--one">`), _tmpl$3$m = /* @__PURE__ */ template(`<div class="pixel-world-canvas__terrain-band pixel-world-canvas__terrain-band--two">`), _tmpl$4$j = /* @__PURE__ */ template(`<div class=pixel-world-fragment-terrain>`), _tmpl$5$i = /* @__PURE__ */ template(`<div class=pixel-world-route>`), _tmpl$6$c = /* @__PURE__ */ template(`<div class="pixel-world-route-waypoint pixel-world-route-waypoint--mid">`), _tmpl$7$8 = /* @__PURE__ */ template(`<div class="pixel-world-route-waypoint pixel-world-route-waypoint--target">`), _tmpl$8$5 = /* @__PURE__ */ template(`<button class="pixel-world-entity pixel-world-entity--location"data-pixel-world-location-marker=true><span>`), _tmpl$9$4 = /* @__PURE__ */ template(`<button class="pixel-world-entity pixel-world-entity--agent"data-pixel-world-agent-marker=true><span>`), _tmpl$0$4 = /* @__PURE__ */ template(`<button type=button class="pixel-world-entity pixel-world-entity--agent pixel-world-entity--canvas-hit-target"data-pixel-world-agent-marker=true><span>`), _tmpl$1$1 = /* @__PURE__ */ template(`<div class="pixel-world-canvas__callout pixel-world-canvas__callout--goal">`), _tmpl$10$1 = /* @__PURE__ */ template(`<div class="pixel-world-canvas__callout pixel-world-canvas__callout--blocker">`), _tmpl$11$1 = /* @__PURE__ */ template(`<div class=pixel-world-canvas__selection>`), _tmpl$12$1 = /* @__PURE__ */ template(`<div class="pixel-world-canvas pixel-world-canvas--rendered"><canvas id=pixel-world-embedded-runtime-canvas class=pixel-world-canvas__surface tabindex=0 role=img aria-describedby=pixel-world-canvas-accessible-summary width=960 height=540></canvas><div id=pixel-world-canvas-accessible-summary class=sr-only></div><div class=pixel-world-canvas__overlay>`), _tmpl$13$1 = /* @__PURE__ */ template(`<div class=pixel-world-action-receipt__detail>`), _tmpl$14$1 = /* @__PURE__ */ template(`<span>`), _tmpl$15$1 = /* @__PURE__ */ template(`<div class=pixel-world-action-receipt__meta><span>`), _tmpl$16$1 = /* @__PURE__ */ template(`<div data-viewer-overlay=receipt><div class=pixel-world-action-receipt__label></div><div class=pixel-world-action-receipt__body><div class=pixel-world-action-receipt__title></div><div class=pixel-world-action-receipt__summary>`), _tmpl$17$1 = /* @__PURE__ */ template(`<span class=pixel-world-command-cell__blocker-chip>`), _tmpl$18$1 = /* @__PURE__ */ template(`<div class=pixel-world-command-cell__detail>`), _tmpl$19$1 = /* @__PURE__ */ template(`<div class=pixel-world-command-strip data-viewer-overlay=next-move><div class="pixel-world-command-cell pixel-world-command-cell--next pixel-world-shell-region pixel-world-shell-region--primary"data-shell-region=next-move-primary><div class=pixel-world-command-cell__header><div class=pixel-world-command-cell__label></div></div><div class=pixel-world-command-cell__value></div><a class=pixel-world-command-cell__action></a></div><div class="pixel-world-command-cell pixel-world-shell-region pixel-world-shell-region--supporting"data-shell-region=supporting-context><div class="pixel-world-shell-context-group pixel-world-shell-context-group--objective"><div class=pixel-world-command-cell__label></div><div class=pixel-world-command-cell__value></div><div class=pixel-world-command-cell__detail></div></div><div class="pixel-world-shell-context-group pixel-world-shell-context-group--leverage"><div class=pixel-world-command-cell__label></div><div class=pixel-world-command-cell__value></div><div class=pixel-world-command-cell__detail></div><div class=pixel-world-shell-context-group__agent><span class=pixel-world-command-cell__label></span><strong>`), _tmpl$20$1 = /* @__PURE__ */ template(`<span class="badge badge--accent">`), _tmpl$21$1 = /* @__PURE__ */ template(`<div class="pixel-world-readout badge-row"><span></span><span class="badge badge--accent">`), _tmpl$22$1 = /* @__PURE__ */ template(`<div class="pixel-world-focus-hud__cell pixel-world-focus-hud__cell--tick"data-hud-priority=telemetry><span></span><strong></strong><em>`), _tmpl$23$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-hud data-focus-hud=true><div class=pixel-world-focus-hud__identity><div class=pixel-world-focus-hud__eyebrow></div><div class=pixel-world-focus-hud__title></div></div><div class="pixel-world-focus-hud__cell pixel-world-focus-hud__cell--prompt"><span></span><strong></strong><em></em></div><div class="pixel-world-focus-hud__cell pixel-world-focus-hud__cell--mission"><span></span><strong></strong><em></em></div><div class="pixel-world-focus-hud__cell pixel-world-focus-hud__cell--blocker"><span></span><strong></strong></div><div class=pixel-world-focus-controls><button type=button class="pixel-world-focus-control pixel-world-focus-control--primary"></button><button id=viewer-focus-exit type=button class="pixel-world-focus-control pixel-world-focus-control--quiet"></button><details class=pixel-world-focus-more-controls><summary></summary><button type=button class="pixel-world-focus-control pixel-world-focus-control--secondary"></button><button type=button class="pixel-world-focus-control pixel-world-focus-control--secondary">`), _tmpl$24$1 = /* @__PURE__ */ template(`<span class="badge badge--warn">`), _tmpl$25$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-cinematic data-focus-cinematic=true><div class=pixel-world-focus-cinematic__eyebrow></div><div class=pixel-world-focus-cinematic__title></div><div class=pixel-world-focus-cinematic__body></div><div class=badge-row><span class="badge badge--accent">`), _tmpl$26$1 = /* @__PURE__ */ template(`<div class="pixel-world-focus-rail__item pixel-world-focus-rail__item--blocker"data-focus-priority=blocker><span></span><strong>`), _tmpl$27$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-rail__item><span></span><strong>`), _tmpl$28$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-rail data-focus-rail=true><div class=pixel-world-focus-rail__label>`), _tmpl$29$1 = /* @__PURE__ */ template(`<span class=sr-only>`), _tmpl$30$1 = /* @__PURE__ */ template(`<div class="pixel-world-focus-minimap__node pixel-world-focus-minimap__node--selected"data-selected=true><span></span><strong>`), _tmpl$31$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-minimap data-focus-minimap=true><div class=pixel-world-focus-minimap__label></div><div class=pixel-world-focus-minimap__grid></div><div class=pixel-world-focus-minimap__route></div><div class="pixel-world-focus-minimap__node pixel-world-focus-minimap__node--target"><span></span><strong></strong></div><div class="pixel-world-focus-minimap__node pixel-world-focus-minimap__node--agent"><span></span><strong></strong></div><div class=pixel-world-focus-minimap__meta><span></span><span></span><span></span><span>`), _tmpl$32$1 = /* @__PURE__ */ template(`<pre class=json>`), _tmpl$33$1 = /* @__PURE__ */ template(`<details class=diagnostic><summary>`), _tmpl$34$1 = /* @__PURE__ */ template(`<span class=badge>`), _tmpl$35$1 = /* @__PURE__ */ template(`<div class=badge-row><span class="badge badge--accent"></span><span class=badge></span><span>`), _tmpl$36$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-command-tray><div class="pixel-world-focus-command-chip pixel-world-focus-command-chip--target"><span></span><strong></strong><em></em></div><div class="pixel-world-focus-command-chip pixel-world-focus-command-chip--blocker"><span></span><strong></strong></div><div class="pixel-world-focus-command-chip pixel-world-focus-command-chip--receipt"><span></span><strong></strong></div><button type=button class="pixel-world-focus-command-chip pixel-world-focus-command-chip--primary"data-chat-send=1>`), _tmpl$37$1 = /* @__PURE__ */ template(`<div class=empty>`), _tmpl$38$1 = /* @__PURE__ */ template(`<div class="panel panel--nested"><div class=panel__header><div class="stack stack--compact"><div class=panel__eyebrow></div><div class=panel__title></div><div class=panel__meta-copy></div></div></div><div class="panel__body stack"><div class=field><label for=agent-chat-message></label><textarea id=agent-chat-message rows=2></textarea></div><div class=toolbar><button type=button data-chat-send=1></button></div><div><div class="panel__title panel__title--spaced"></div><div class=event-list>`), _tmpl$39$1 = /* @__PURE__ */ template(`<div id=viewer-command-console class="pixel-world-focus-command-surface stack">`), _tmpl$40$1 = /* @__PURE__ */ template(`<div class=feedback-detail>`), _tmpl$41$1 = /* @__PURE__ */ template(`<div class=feedback-card><div class=badge-row><span></span></div><div class=feedback-summary>`), _tmpl$42$1 = /* @__PURE__ */ template(`<div><div class=event-card__title><span></span></div><div class=event-card__meta></div><div class=feedback-summary>`), _tmpl$43$1 = /* @__PURE__ */ template(`<div class=pixel-world-host__summary><div class=pixel-world-host__summary-copy><div class=pixel-world-host__headline></div><div class=feedback-detail>`), _tmpl$44$1 = /* @__PURE__ */ template(`<div class="empty pixel-world-render-unavailable"data-viewer-overlay=renderer-unavailable>`), _tmpl$45$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-receipt>`), _tmpl$46$1 = /* @__PURE__ */ template(`<details id=viewer-focus-command-drawer class="pixel-world-focus-drawer pixel-world-focus-drawer--command"><summary></summary><div class=pixel-world-focus-drawer__body>`), _tmpl$47$1 = /* @__PURE__ */ template(`<div class=feedback-detail data-renderer-fatal>`), _tmpl$48$1 = /* @__PURE__ */ template(`<details class="diagnostic pixel-world-render-diagnostics"><summary></summary><div class="pixel-world-host__toolbar badge-row"><span class="badge badge--accent"></span><span class="badge badge--accent"></span><span class="badge badge--accent"></span><span class=badge></span><span class=badge></span><span class=badge></span><span class=badge></span><span class=badge></span><span class=badge></span><button type=button></button><button type=button></button><div class=feedback-detail>`), _tmpl$49$1 = /* @__PURE__ */ template(`<details id=viewer-focus-diagnostics-drawer class="pixel-world-focus-drawer pixel-world-focus-drawer--diagnostics"><summary></summary><div class=pixel-world-focus-drawer__body><div class=badge-row><span class=badge></span><span class=badge></span><span class=badge></span></div><div class="toolbar toolbar--spaced"><button type=button>`), _tmpl$50$1 = /* @__PURE__ */ template(`<div class="stack flow-top"><pre class=json>`), _tmpl$51$1 = /* @__PURE__ */ template(`<div data-viewer-overlay=world-hud><div class=pixel-world-focus-entry data-viewer-overlay=cinematic-entry><div id=pixel-world-focus-entry-hint class=pixel-world-focus-entry__hint></div><button type=button class=pixel-world-focus-entry__button aria-pressed=false></button></div><details class=diagnostic><summary>`), _tmpl$52$1 = /* @__PURE__ */ template(`<div>`), _tmpl$53$1 = /* @__PURE__ */ template(`<button type=button class=pixel-world-render-unavailable__retry>`);
 function tr$1(locale, zh, en) {
