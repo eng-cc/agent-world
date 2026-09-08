@@ -134,6 +134,7 @@ mod governance_proposal_transaction_regressions;
 mod governance_validator_admission;
 mod governance_vote_quote;
 mod industry_history_publication_transaction_regressions;
+mod industry_material_normalization_regressions;
 mod industry_publication_transaction_regressions;
 mod logistics_transfer_quote;
 mod main_token;

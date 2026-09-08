@@ -233,13 +233,17 @@ impl PreparedRecipeLifecycle {
                 consume,
             )
             .map_err(|r| invalid(format!("recipe logistics path authority failed: {r}")))?;
+        let (mut materials, world) = normalized_materials(state);
+        let world_id = MaterialLedgerId::world();
         for (kind, amount) in required {
-            let available = state
-                .material_ledgers
-                .get(consume_ledger)
-                .and_then(|ledger| ledger.get(&kind))
-                .copied()
-                .unwrap_or(0);
+            let available = (if consume_ledger == &world_id {
+                Some(&world)
+            } else {
+                state.material_ledgers.get(consume_ledger)
+            })
+            .and_then(|ledger| ledger.get(&kind))
+            .copied()
+            .unwrap_or(0);
             if available < amount {
                 return Err(invalid(format!(
                     "recipe consume failed: insufficient material {kind}: requested={amount} available={available}"
@@ -257,8 +261,6 @@ impl PreparedRecipeLifecycle {
                 "recipe power consume failed: insufficient electricity: payer={power_owner} requested={power_required} available={available}"
             )));
         }
-        let (mut materials, world) = normalized_materials(state);
-        let world_id = MaterialLedgerId::world();
         let mut ledgers = BTreeMap::from([(world_id.clone(), world)]);
         if consume_ledger != &world_id {
             ledgers.insert(

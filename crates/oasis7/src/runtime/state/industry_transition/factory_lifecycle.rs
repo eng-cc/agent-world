@@ -359,21 +359,23 @@ impl PreparedFactoryLifecycle {
                 ))
             })?;
         }
+        let (mut materials, world) = normalized_materials(state);
+        let world_id = MaterialLedgerId::world();
         for (kind, amount) in &required {
-            let available = state
-                .material_ledgers
-                .get(ledger_id)
-                .and_then(|ledger| ledger.get(kind))
-                .copied()
-                .unwrap_or(0);
+            let available = (if ledger_id == &world_id {
+                Some(&world)
+            } else {
+                state.material_ledgers.get(ledger_id)
+            })
+            .and_then(|ledger| ledger.get(kind))
+            .copied()
+            .unwrap_or(0);
             if available < *amount {
                 return Err(invalid(format!(
                     "factory build consume failed: insufficient material {kind}: requested={amount} available={available}"
                 )));
             }
         }
-        let (mut materials, world) = normalized_materials(state);
-        let world_id = MaterialLedgerId::world();
         let mut ledgers = BTreeMap::from([(world_id.clone(), world)]);
         if ledger_id != &world_id {
             ledgers.insert(
