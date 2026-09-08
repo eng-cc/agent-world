@@ -626,6 +626,8 @@ fn build_provider_context(
         budget_contract: BudgetContractV1 {
             max_latency_ms: settings.decision_timeout_ms,
             max_repair_attempts: 0,
+            max_model_calls: 4,
+            max_tool_calls: 3,
         },
         request_digest: Digest32::default(),
     };

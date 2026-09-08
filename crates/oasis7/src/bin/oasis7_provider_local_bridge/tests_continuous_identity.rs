@@ -571,6 +571,8 @@ fn continuous_context(
         budget_contract: oasis7::simulator::BudgetContractV1 {
             max_latency_ms: 7_000,
             max_repair_attempts: 1,
+            max_model_calls: 4,
+            max_tool_calls: 3,
         },
         request_digest: Digest32::default(),
     };

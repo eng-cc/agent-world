@@ -114,6 +114,8 @@ fn test_provider_context(
         budget_contract: crate::simulator::BudgetContractV1 {
             max_latency_ms: 100,
             max_repair_attempts: 0,
+            max_model_calls: 4,
+            max_tool_calls: 3,
         },
         request_digest: crate::simulator::Digest32::default(),
     };
@@ -558,6 +560,8 @@ fn provider_lineage_persists_and_restores_pending_lifecycle_markers() {
         budget_contract: crate::simulator::BudgetContractV1 {
             max_latency_ms: 100,
             max_repair_attempts: 0,
+            max_model_calls: 4,
+            max_tool_calls: 3,
         },
         request_digest: crate::simulator::Digest32::default(),
     };

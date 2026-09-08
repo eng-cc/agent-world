@@ -219,11 +219,7 @@ impl RuntimeBindingV1 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BudgetContractV1 {
-    pub max_latency_ms: u64,
-    pub max_repair_attempts: u32,
-}
+pub use super::continuous_agent_budget::BudgetContractV1;
 
 /// The additive outer request wrapper.  `transport_attempt` is intentionally
 /// retained for observability but excluded from identity bytes.  The legacy

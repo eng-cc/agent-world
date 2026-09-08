@@ -19,6 +19,7 @@ mod async_agent_pilot;
 mod async_agent_runner;
 mod chunking;
 mod cognition_policy;
+mod continuous_agent_budget;
 mod continuous_agent_harness;
 mod decision_provider;
 mod frag_spawn;
@@ -81,8 +82,9 @@ pub use cognition_policy::{
     MemoryWritePolicyOutcome, MemoryWriteStore, NormalizedMemoryWriteIntentV1,
     RuntimeContinuationStatusV1, WakeConditionSubjectV1, WakeConditionV1,
 };
+pub use continuous_agent_budget::BudgetContractV1;
 pub use continuous_agent_harness::{
-    AgentCognitionStore, BudgetContractV1, COGNITION_CAPABILITY_CATALOG_DOMAIN,
+    AgentCognitionStore, COGNITION_CAPABILITY_CATALOG_DOMAIN,
     COGNITION_CAPABILITY_INVOCATION_CONTEXT_DOMAIN, COGNITION_PROVIDER_INVOCATION_DOMAIN,
     COGNITION_REQUEST_DIGEST_DOMAIN, COGNITION_RESPONSE_ARTIFACT_IDENTITY_DOMAIN,
     COGNITION_RESPONSE_DIGEST_DOMAIN, CONTINUOUS_AGENT_CONTEXT_DISCRIMINATOR,
