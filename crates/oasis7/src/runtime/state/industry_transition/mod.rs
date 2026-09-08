@@ -16,8 +16,8 @@ pub(crate) fn factory_has_canonical_stable_line(factory: &FactoryState) -> bool 
             .as_ref()
             .zip(factory.production.last_completed_recipe_id.as_ref())
             .is_some_and(|(snapshot, recipe_id)| {
-                !snapshot.recipe_id.is_empty()
-                    && !recipe_id.is_empty()
+                !snapshot.recipe_id.trim().is_empty()
+                    && !recipe_id.trim().is_empty()
                     && snapshot.recipe_id == *recipe_id
             })
 }

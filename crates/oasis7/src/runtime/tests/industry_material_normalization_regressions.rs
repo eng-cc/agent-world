@@ -196,7 +196,7 @@ fn factory_maintained_cost_preflight_reads_legacy_world_materials() {
 }
 
 #[test]
-fn empty_recipe_identity_does_not_form_a_canonical_stable_line() {
+fn three_whitespace_only_recipe_identities_do_not_form_a_canonical_stable_line() {
     let mut world = World::new();
     register(&mut world);
     world.set_material_balance("steel", 2).unwrap();
@@ -213,8 +213,11 @@ fn empty_recipe_identity_does_not_form_a_canonical_stable_line() {
             durability_ppm: 1_000_000,
             production: FactoryProductionState {
                 same_recipe_repeat_count: 3,
-                last_completed_recipe_id: Some(String::new()),
-                last_completed_canonical_snapshot: Some(FactoryProductionSnapshot::default()),
+                last_completed_recipe_id: Some(" \t ".into()),
+                last_completed_canonical_snapshot: Some(FactoryProductionSnapshot {
+                    recipe_id: " \t ".into(),
+                    ..FactoryProductionSnapshot::default()
+                }),
                 ..FactoryProductionState::default()
             },
             location_anchor_revision: None,
