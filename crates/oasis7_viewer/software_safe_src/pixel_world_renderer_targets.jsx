@@ -1,4 +1,4 @@
-import { For } from 'solid-js';
+import { createMemo, For } from 'solid-js';
 import { toCanvasPoint } from './pixel_world_hotspot_projection.js';
 import { pixelWorldVisualState } from './pixel_world_visual_clarity.jsx';
 import { pixelWorldReadableAgentLabel } from './pixel_world_identity.js';
@@ -16,22 +16,32 @@ export function rendererEntityTargetStyle(entity, worldBounds, size, camera) {
 }
 
 export function PixelWorldRendererTargets(props) {
-  const state = () => pixelWorldVisualState(props.renderState());
+  const state = createMemo(() => pixelWorldVisualState(props.renderState()));
   const isZh = () => isLocaleZh(props.locale());
-  const entities = () => [...state().agents.map(entity => ({entity,kind:'agent'})), ...(state().worldBounds ? state().locations.filter(entity => entity.pos) : []).map(entity => ({entity,kind:'location'}))];
-  return <For each={entities()}>{({entity,kind}) => <button type="button"
+  // Solid's For retains nodes by key; snapshot objects are replaced routinely.
+  // Keep kind/id keys stable while reading labels and positions from the latest map.
+  const entities = createMemo(() => new Map([
+    ...state().agents.map(entity => [JSON.stringify(['agent', entity.id]), entity]),
+    ...(state().worldBounds ? state().locations.filter(entity => entity.pos) : [])
+      .map(entity => [JSON.stringify(['location', entity.id]), entity]),
+  ]));
+  const keys = createMemo(() => [...entities().keys()]);
+  return <For each={keys()}>{key => {
+    const [kind] = JSON.parse(key);
+    const entity = createMemo(previous => entities().get(key) || previous);
+    return <button type="button"
     class="pixel-world-entity pixel-world-renderer-target"
-    data-agent-id={kind === 'agent' ? entity.id : undefined}
-    data-location-id={kind === 'location' ? entity.id : undefined}
+    data-agent-id={kind === 'agent' ? entity().id : undefined}
+    data-location-id={kind === 'location' ? entity().id : undefined}
     data-pixel-world-agent-marker={kind === 'agent' ? 'true' : undefined}
     data-pixel-world-location-marker={kind === 'location' ? 'true' : undefined}
     data-renderer-target="true"
-    data-selected={props.selection()?.kind === kind && props.selection()?.id === entity.id ? 'true' : 'false'}
-    aria-pressed={props.selection()?.kind === kind && props.selection()?.id === entity.id}
-    aria-label={`${isZh() ? '选择' : 'Select'} ${kind === 'agent' ? pixelWorldReadableAgentLabel(entity, entity.id, isZh()) : entity.label || entity.id}`}
-    style={rendererEntityTargetStyle(entity,state().worldBounds,props.stageSize(),props.cameraState?.())}
-    onClick={() => props.onSelect({kind,id:entity.id})}
+    data-selected={props.selection()?.kind === kind && props.selection()?.id === entity().id ? 'true' : 'false'}
+    aria-pressed={props.selection()?.kind === kind && props.selection()?.id === entity().id}
+    aria-label={`${isZh() ? '选择' : 'Select'} ${kind === 'agent' ? pixelWorldReadableAgentLabel(entity(), entity().id, isZh()) : entity().label || entity().id}`}
+    style={rendererEntityTargetStyle(entity(),state().worldBounds,props.stageSize(),props.cameraState?.())}
+    onClick={() => props.onSelect({kind,id:entity().id})}
     onPointerDown={forwardRendererTargetPointer}
-    onMouseEnter={() => props.onHover({kind,id:entity.id})}
-    onMouseLeave={() => props.onHover(null)} />}</For>;
+    onMouseEnter={() => props.onHover({kind,id:entity().id})}
+    onMouseLeave={() => props.onHover(null)} />; }}</For>;
 }

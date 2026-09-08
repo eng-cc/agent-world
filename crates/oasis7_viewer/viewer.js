@@ -11506,55 +11506,51 @@ function rendererEntityTargetStyle(entity, worldBounds, size, camera) {
   };
 }
 function PixelWorldRendererTargets(props) {
-  const state2 = () => pixelWorldVisualState(props.renderState());
+  const state2 = createMemo(() => pixelWorldVisualState(props.renderState()));
   const isZh = () => isLocaleZh(props.locale());
-  const entities = () => [...state2().agents.map((entity) => ({
-    entity,
-    kind: "agent"
-  })), ...(state2().worldBounds ? state2().locations.filter((entity) => entity.pos) : []).map((entity) => ({
-    entity,
-    kind: "location"
-  }))];
+  const entities = createMemo(() => new Map([...state2().agents.map((entity) => [JSON.stringify(["agent", entity.id]), entity]), ...(state2().worldBounds ? state2().locations.filter((entity) => entity.pos) : []).map((entity) => [JSON.stringify(["location", entity.id]), entity])]));
+  const keys = createMemo(() => [...entities().keys()]);
   return createComponent(For, {
     get each() {
-      return entities();
+      return keys();
     },
-    children: ({
-      entity,
-      kind
-    }) => (() => {
-      var _el$ = _tmpl$$q();
-      _el$.addEventListener("mouseleave", () => props.onHover(null));
-      _el$.addEventListener("mouseenter", () => props.onHover({
-        kind,
-        id: entity.id
-      }));
-      addEventListener(_el$, "pointerdown", forwardRendererTargetPointer);
-      _el$.$$click = () => props.onSelect({
-        kind,
-        id: entity.id
-      });
-      setAttribute(_el$, "data-pixel-world-agent-marker", kind === "agent" ? "true" : void 0);
-      setAttribute(_el$, "data-pixel-world-location-marker", kind === "location" ? "true" : void 0);
-      createRenderEffect((_p$) => {
-        var _v$ = kind === "agent" ? entity.id : void 0, _v$2 = kind === "location" ? entity.id : void 0, _v$3 = props.selection()?.kind === kind && props.selection()?.id === entity.id ? "true" : "false", _v$4 = props.selection()?.kind === kind && props.selection()?.id === entity.id, _v$5 = `${isZh() ? "选择" : "Select"} ${kind === "agent" ? pixelWorldReadableAgentLabel(entity, entity.id, isZh()) : entity.label || entity.id}`, _v$6 = rendererEntityTargetStyle(entity, state2().worldBounds, props.stageSize(), props.cameraState?.());
-        _v$ !== _p$.e && setAttribute(_el$, "data-agent-id", _p$.e = _v$);
-        _v$2 !== _p$.t && setAttribute(_el$, "data-location-id", _p$.t = _v$2);
-        _v$3 !== _p$.a && setAttribute(_el$, "data-selected", _p$.a = _v$3);
-        _v$4 !== _p$.o && setAttribute(_el$, "aria-pressed", _p$.o = _v$4);
-        _v$5 !== _p$.i && setAttribute(_el$, "aria-label", _p$.i = _v$5);
-        _p$.n = style(_el$, _v$6, _p$.n);
-        return _p$;
-      }, {
-        e: void 0,
-        t: void 0,
-        a: void 0,
-        o: void 0,
-        i: void 0,
-        n: void 0
-      });
-      return _el$;
-    })()
+    children: (key) => {
+      const [kind] = JSON.parse(key);
+      const entity = createMemo((previous) => entities().get(key) || previous);
+      return (() => {
+        var _el$ = _tmpl$$q();
+        _el$.addEventListener("mouseleave", () => props.onHover(null));
+        _el$.addEventListener("mouseenter", () => props.onHover({
+          kind,
+          id: entity().id
+        }));
+        addEventListener(_el$, "pointerdown", forwardRendererTargetPointer);
+        _el$.$$click = () => props.onSelect({
+          kind,
+          id: entity().id
+        });
+        setAttribute(_el$, "data-pixel-world-agent-marker", kind === "agent" ? "true" : void 0);
+        setAttribute(_el$, "data-pixel-world-location-marker", kind === "location" ? "true" : void 0);
+        createRenderEffect((_p$) => {
+          var _v$ = kind === "agent" ? entity().id : void 0, _v$2 = kind === "location" ? entity().id : void 0, _v$3 = props.selection()?.kind === kind && props.selection()?.id === entity().id ? "true" : "false", _v$4 = props.selection()?.kind === kind && props.selection()?.id === entity().id, _v$5 = `${isZh() ? "选择" : "Select"} ${kind === "agent" ? pixelWorldReadableAgentLabel(entity(), entity().id, isZh()) : entity().label || entity().id}`, _v$6 = rendererEntityTargetStyle(entity(), state2().worldBounds, props.stageSize(), props.cameraState?.());
+          _v$ !== _p$.e && setAttribute(_el$, "data-agent-id", _p$.e = _v$);
+          _v$2 !== _p$.t && setAttribute(_el$, "data-location-id", _p$.t = _v$2);
+          _v$3 !== _p$.a && setAttribute(_el$, "data-selected", _p$.a = _v$3);
+          _v$4 !== _p$.o && setAttribute(_el$, "aria-pressed", _p$.o = _v$4);
+          _v$5 !== _p$.i && setAttribute(_el$, "aria-label", _p$.i = _v$5);
+          _p$.n = style(_el$, _v$6, _p$.n);
+          return _p$;
+        }, {
+          e: void 0,
+          t: void 0,
+          a: void 0,
+          o: void 0,
+          i: void 0,
+          n: void 0
+        });
+        return _el$;
+      })();
+    }
   });
 }
 delegateEvents(["click", "pointerdown"]);
