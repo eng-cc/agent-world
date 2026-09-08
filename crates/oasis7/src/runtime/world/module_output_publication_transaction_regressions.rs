@@ -324,9 +324,11 @@ fn charge_append_retry_publishes_once_and_replays_to_same_root() {
     let next_id = world.next_event_id;
     let charge = charge_for("payer", 2, 3);
     world.fail_next_append_after_publication_prepare_for_test();
-    assert!(world
-        .append_event(WorldEventBody::ModuleRuntimeCharged(charge.clone()), None)
-        .is_err());
+    assert!(
+        world
+            .append_event(WorldEventBody::ModuleRuntimeCharged(charge.clone()), None)
+            .is_err()
+    );
     let id = world
         .append_event(WorldEventBody::ModuleRuntimeCharged(charge), None)
         .unwrap();

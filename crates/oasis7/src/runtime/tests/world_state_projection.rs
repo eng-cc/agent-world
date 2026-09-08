@@ -151,8 +151,8 @@ fn registered_world_state_round_trips_through_cbor_with_omitted_agent_optionals(
 fn no_overlay_projection_round_trips_through_cbor_as_world_state() {
     let world = registered_agent_world();
     let projection = WorldStateProjection::borrowed(world.state());
-    let bytes = serde_cbor::to_vec(&projection)
-        .expect("serialize no-overlay WorldStateProjection as CBOR");
+    let bytes =
+        serde_cbor::to_vec(&projection).expect("serialize no-overlay WorldStateProjection as CBOR");
     let decoded: WorldState = serde_cbor::from_slice(&bytes)
         .expect("no-overlay WorldStateProjection must decode from CBOR");
 

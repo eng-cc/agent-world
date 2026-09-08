@@ -189,9 +189,7 @@ fn direct_action_route_without_matching_subscription_is_noop_and_preserves_failp
     let snapshot_before = world.snapshot();
     let journal_before = world.journal().clone();
     let consensus_before = world.tick_consensus_records().to_vec();
-    let root_before = world
-        .current_state_root_hash()
-        .expect("initial route root");
+    let root_before = world.current_state_root_hash().expect("initial route root");
     let backpressure_before = world.runtime_backpressure_stats().clone();
     let cache_before = world.module_cache_len();
     world.fail_next_append_after_publication_prepare_for_test();
@@ -240,9 +238,7 @@ fn direct_action_route_commits_sorted_staged_context_state_and_cache() {
     let mut world = world_with_route_modules();
     let action = route_action();
     let snapshot_before = world.snapshot();
-    let root_before = world
-        .current_state_root_hash()
-        .expect("initial route root");
+    let root_before = world.current_state_root_hash().expect("initial route root");
     let journal_before = world.journal().clone();
     let initial_journal_len = journal_before.events.len();
     let initial_time = world.state().time;
@@ -277,12 +273,7 @@ fn direct_action_route_commits_sorted_staged_context_state_and_cache() {
     assert_eq!(world.module_cache_len(), 1);
     assert_eq!(sandbox.requests.len(), 4);
 
-    let expected_modules = [
-        "m.route.a",
-        "m.route.b",
-        "m.route.a",
-        "m.route.b",
-    ];
+    let expected_modules = ["m.route.a", "m.route.b", "m.route.a", "m.route.b"];
     let expected_states = [
         Some(Vec::new()),
         Some(Vec::new()),
@@ -344,7 +335,10 @@ fn direct_action_route_commits_sorted_staged_context_state_and_cache() {
         ("m.route.b", "action-71-m.route.b", 0xd4),
     ];
     let events = &world.journal().events;
-    assert_eq!(events.len(), journal_before.events.len() + expected_events.len());
+    assert_eq!(
+        events.len(),
+        journal_before.events.len() + expected_events.len()
+    );
     assert_eq!(
         &events[..journal_before.events.len()],
         journal_before.events.as_slice()

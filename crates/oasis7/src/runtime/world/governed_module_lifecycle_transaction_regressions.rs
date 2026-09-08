@@ -240,9 +240,11 @@ fn governed_success_keeps_event_order_roots_replay_and_rollback_schedule() {
             .iter()
             .position(|event| matches!(event.body, WorldEventBody::ManifestUpdated(_)))
             .unwrap();
-        assert!(events[..manifest_index]
-            .iter()
-            .any(|event| matches!(event.body, WorldEventBody::ModuleEvent(_))));
+        assert!(
+            events[..manifest_index]
+                .iter()
+                .any(|event| matches!(event.body, WorldEventBody::ModuleEvent(_)))
+        );
         assert!(matches!(
             events[manifest_index + 1].body,
             WorldEventBody::Governance(GovernanceEvent::Applied { .. })
