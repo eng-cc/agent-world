@@ -836,16 +836,21 @@ async function runFocusRestorationRegression(port) {
 
 async function runThirdReview(port) {
   for (const visualFixture of [true, false]) {
-    for (const kind of ["blocker", "goal"]) {
+    for (const { kind, feedOpen } of [{ kind: "blocker" }, { kind: "goal" }, { kind: "info" }, { kind: "info", feedOpen: true }]) {
       await openFixture(port, { visualFixture, width: 390, height: 844 });
+      if (feedOpen) await clickVisibleInPlace(".world-feed__summary");
       const start = await focusHotspotAndActivate(kind);
       const successor = await evalJson(`(() => {
         const origin = window.__qaOriginalTrigger;
-        const controls = [...document.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex]')].filter((node) => node.tabIndex >= 0 && !node.disabled && !node.closest('[data-hotspot-tooltip]') && node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden');
+        const controls = [...document.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex]')].filter((node) =>
+          node.tabIndex >= 0 && !node.disabled && !node.closest('[data-hotspot-tooltip]')
+          && node.checkVisibility({ visibilityProperty: true }) && node.getClientRects().length);
         window.__qaNextControl = controls[controls.indexOf(origin) + 1];
-        return JSON.stringify({ exists: Boolean(window.__qaNextControl), kind: window.__qaNextControl?.dataset?.hotspotKind, label: window.__qaNextControl?.getAttribute('aria-label') });
+        return JSON.stringify({ exists: Boolean(window.__qaNextControl), kind: window.__qaNextControl?.dataset?.hotspotKind, label: window.__qaNextControl?.getAttribute('aria-label'), tag: window.__qaNextControl?.tagName, className: window.__qaNextControl?.className, closedDetailsHiddenButtons: [...document.querySelectorAll('details:not([open]) button')].filter((node) => !node.checkVisibility({ visibilityProperty: true })).length });
       })()`);
       assert(successor.exists, "T2 keyboard: no native successor found", successor);
+      if (kind === "info") assert(successor.tag === "SUMMARY" && successor.className.includes("world-feed__summary"), "F2 keyboard: last hotspot native successor must be visible Feed summary", successor);
+      if (kind === "info" && !feedOpen) assert(successor.closedDetailsHiddenButtons > 0, "F2 keyboard: real DOM must contain hidden closed-details controls", successor);
       await browserRaw(["press", "Tab"]);
       let state = await evalJson(probe);
       assert(state.activeElement?.className?.includes("hotspot-tooltip-close"), "T2 keyboard: first Tab did not reach close", state.activeElement);
@@ -860,7 +865,7 @@ async function runThirdReview(port) {
       assert(forward.next, "T2 keyboard: forward Tab restarted document or trapped focus", { successor, forward });
       const after = await evalJson(probe);
       assert(runtimeStable(start.opened.runtime, after.runtime), "T2 keyboard traversal changed runtime", after.runtime);
-      summary.thirdReview.keyboard.push({ visualFixture, kind, successor, backward, forward });
+      summary.thirdReview.keyboard.push({ visualFixture, kind, feedOpen: Boolean(feedOpen), successor, backward, forward });
     }
   }
   for (const viewport of [viewports[0], ...shortLandscapeViewports]) {
