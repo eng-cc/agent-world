@@ -1,10 +1,16 @@
+import { applyPixelWorldMarkerClearance, observePixelWorldMarkerPanels } from './pixel_world_marker_clearance.js';
 const MOBILE_SHELL_MAX_WIDTH = 640;
 const SAFE_AREA_GAP_PX = 8;
 
 export function pixelWorldMobileSelectionOffset({ markerTop, markerBottom, commandTop, feedBottom = 0 }) {
   const clearCommandOffset = Math.min(0, commandTop - SAFE_AREA_GAP_PX - markerBottom);
   const clearFeedOffset = feedBottom + SAFE_AREA_GAP_PX - markerTop;
-  return Math.max(clearCommandOffset, clearFeedOffset);
+  // The marker must satisfy both edges: above the bottom decision band and
+  // below the top Feed band. When the bands leave no room for its hit box,
+  // prioritize the command edge so the selected target remains reachable.
+  if (clearCommandOffset < 0) return clearCommandOffset;
+  if (clearFeedOffset > 0) return clearFeedOffset;
+  return 0;
 }
 
 export function pixelWorldMobileSelectionChipOffset({ chipTop, feedBottom = 0, feedOpen = false }) {
@@ -16,7 +22,7 @@ export function pixelWorldMobileFocusSelectionOffset({ markerLeft, hudRight }) {
   return hudRight + SAFE_AREA_GAP_PX - markerLeft;
 }
 
-export function applyPixelWorldMobileSelectionSafeArea(canvasRoot) {
+function applyMobileSelectionSafeArea(canvasRoot) {
   const marker = canvasRoot?.querySelector(".pixel-world-entity--canvas-hit-target[data-selected='true']");
   const selectionChip = canvasRoot?.querySelector(".pixel-world-canvas__selection");
   const feed = document.querySelector('[data-viewer-overlay="feed"]');
@@ -58,6 +64,11 @@ export function applyPixelWorldMobileSelectionSafeArea(canvasRoot) {
   marker.style.translate = `0 ${Math.floor(offset)}px`;
 }
 
+export function applyPixelWorldMobileSelectionSafeArea(canvasRoot) {
+  applyMobileSelectionSafeArea(canvasRoot);
+  applyPixelWorldMarkerClearance(canvasRoot);
+}
+
 export function installPixelWorldMobileSelectionSafeArea(canvasRoot) {
   const sync = () => applyPixelWorldMobileSelectionSafeArea(canvasRoot());
   window.addEventListener("resize", sync);
@@ -66,7 +77,9 @@ export function installPixelWorldMobileSelectionSafeArea(canvasRoot) {
   const feed = document.querySelector('[data-viewer-overlay="feed"]');
   feed?.addEventListener("toggle", sync, true);
   requestAnimationFrame(sync);
+  const stopObservingPanels = observePixelWorldMarkerPanels(() => requestAnimationFrame(sync));
   return () => {
+    stopObservingPanels();
     window.removeEventListener("resize", sync);
     focusStateObserver.disconnect();
     feed?.removeEventListener("toggle", sync, true);

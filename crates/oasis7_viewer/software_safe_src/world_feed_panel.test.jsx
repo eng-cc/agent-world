@@ -257,6 +257,9 @@ describe("WorldFeedPanel", () => {
     expect(event).toHaveAttribute("data-major-event-category", "crisis");
     expect(event).toHaveAttribute("data-major-event-lifecycle", "active");
     expect(event).toHaveAttribute("data-major-event-severity", "4");
+    expect(event).toHaveClass("world-feed__event--severity-4");
+    expect(event).toHaveClass("world-feed__event--lifecycle-active");
+    expect(event).toHaveTextContent("Crisis active · severity 4");
     expect(event.querySelector("[data-major-event-stage-marker]")).toBeNull();
     expect(event.querySelector("[data-major-event-highlight]")).toBeNull();
     expect(event.querySelector("[data-world-feed-receipt-ref]")).toBeNull();
@@ -288,6 +291,7 @@ describe("WorldFeedPanel", () => {
     expect(document.querySelector('[data-world-feed-major-event="7"]')).toBeInTheDocument();
     expect(document.querySelector('[data-world-feed-major-event-toast="7"]')).toBeNull();
     expect(document.querySelector('[data-world-feed-major-event="7"] [role="status"]')).toBeNull();
+    expect(document.querySelector('[data-world-feed-major-event="7"]')).toHaveTextContent("Crisis active · severity 4");
   });
 
   it("provides a CJK-readable polite status for current crisis context without leaking raw protocol enums", () => {

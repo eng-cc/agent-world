@@ -6,10 +6,11 @@ import { applyPixelWorldRendererRoute, createPixelWorldRendererRouteSignals, res
 import { installPixelWorldRenderDtoProbe, installPixelWorldVisualFixtureHook, pixelWorldTestApiEnabled } from "./pixel_world_visual_fixture.js";
 import { pixelWorldSelectedBlockerVisualFixture } from "./pixel_world_visual_fixture_data.js";
 import { pixelWorldReadableAgentLabel, pixelWorldReadableEntityText, pixelWorldSelectedEntityLabel } from "./pixel_world_identity.js";
-import { PixelWorldCanvasAgentHitTargets, PixelWorldCanvasLegend, PixelWorldHostVisualLayer, arrayField, fieldValue, pixelWorldVisualState } from "./pixel_world_visual_clarity.jsx";
+import { PixelWorldCanvasAgentHitTargets, PixelWorldCanvasLegend, PixelWorldHostVisualLayer, PixelWorldSparseSceneGuidance, arrayField, fieldValue, pixelWorldVisualState } from "./pixel_world_visual_clarity.jsx";
 import { applyPixelWorldMobileSelectionSafeArea, installPixelWorldMobileSelectionSafeArea } from "./pixel_world_mobile_safe_area.js";
 import { createHotspotFocusRestoration, PixelWorldHotspot, PixelWorldHotspotTooltip } from "./pixel_world_hotspot.jsx";
 import { resolvePixelWorldReadoutStatus } from "./pixel_world_readout.js";
+import { pixelWorldBlockerPresentation, pixelWorldConnectionPresentation, pixelWorldFeedFreshnessPresentation } from "./pixel_world_presentation.js";
 import { pixelWorldHotspotGlyphSize, pixelWorldHotspotStyle } from "./pixel_world_hotspot_projection.js";
 export { pixelWorldSelectedBlockerVisualFixture };
 function tr(locale, zh, en) { return core.isLocaleZh(locale) ? zh : en; }
@@ -315,7 +316,7 @@ function PixelWorldCanvasRenderer(props) {
         </Show>
         <Show when={visualState().blockerHighlight}>
           <div class="pixel-world-canvas__callout pixel-world-canvas__callout--blocker">
-            {`${tr(props.locale(), "阻塞", "Blocker")}: ${visualState().blockerHighlight.label || visualState().blockerHighlight.kind}`}
+            {`${tr(props.locale(), "阻塞", "Blocker")}: ${pixelWorldBlockerPresentation(visualState().blockerHighlight.kind, props.locale()).label}`}
           </div>
         </Show>
         <Show when={activeHotspot()}>
@@ -426,6 +427,14 @@ export function resolvePixelWorldDirectNextMoveAction(gameplay, executeKind) {
 function PixelWorldCommercialHud(props) {
   const surface = () => props.renderState().commercial_surface; const readoutStatus = () => worldReadoutStatus(props.locale(), props.renderState);
   const readoutFeedStatus = () => String(core.state.worldFeed?.status || "loading").trim().toLowerCase() || "loading";
+  const worldConnection = () => pixelWorldConnectionPresentation(core.state.connectionStatus, props.locale());
+  const feedFreshness = () => pixelWorldFeedFreshnessPresentation(readoutFeedStatus(), core.state.worldFeed?.stale, props.locale());
+  const playerBlockerLabel = () => {
+    const candidate = String(surface().blocker?.label || "").trim();
+    const kind = String(gameplay()?.blockerKind || "").trim();
+    if (kind) return pixelWorldBlockerPresentation(kind, props.locale()).label;
+    return candidate || null;
+  };
   const activeAgentId = () => String(surface()?.active_agent_id || "").trim(); const activeAgent = () => props.renderState().agents.find((agent) => agent.id === activeAgentId()); const activeAgentLabel = () => pixelWorldReadableAgentLabel(activeAgent(), activeAgentId(), core.isLocaleZh(props.locale())) || tr(props.locale(), "未选择 Agent", "No Agent selected");
   const executableNextMoveKinds = new Set([
     "gameplay_action",
@@ -487,15 +496,15 @@ function PixelWorldCommercialHud(props) {
           data-shell-region="next-move-primary"
           data-next-move-route={nextMoveRoute()}
           data-execute-kind={surface().next_action.execute_kind || "none"}
-          data-blocker-present={surface().blocker.label ? "true" : "false"}
+          data-blocker-present={playerBlockerLabel() ? "true" : "false"}
         >
           <div class="pixel-world-command-cell__header">
             <div class="pixel-world-command-cell__label">
               {tr(props.locale(), "下一步", "Next Move")}
             </div>
-            <Show when={surface().blocker.label}>
+            <Show when={playerBlockerLabel()}>
               <span class="pixel-world-command-cell__blocker-chip">
-                {`${tr(props.locale(), "阻塞", "Blocker")}: ${surface().blocker.label}`}
+                {`${tr(props.locale(), "阻塞", "Blocker")}: ${playerBlockerLabel()}`}
               </span>
             </Show>
           </div>
@@ -541,13 +550,15 @@ function PixelWorldCommercialHud(props) {
         </div>
         </div>
         <Show when={!props.focusMode?.()}><PixelWorldActionReceipt id="viewer-action-receipt" locale={props.locale} surface={surface} /></Show>
-        <div class="pixel-world-readout badge-row">
-          <span class={readoutStatus().className} data-world-feed-readout-status={readoutFeedStatus()}>{readoutStatus().label}</span>
+        <div class="pixel-world-readout badge-row" aria-label={tr(props.locale(), "世界连接与动态新鲜度", "World connection and feed freshness")}>
+          <span class={worldConnection().className} data-world-connection-status={worldConnection().state}>{worldConnection().label}</span>
+          <span class={feedFreshness().className} data-world-feed-readout-status={readoutFeedStatus()}>{feedFreshness().label}</span>
           <Show when={surface().world_read.tick !== null && surface().world_read.tick !== undefined}>
             <span class="badge badge--accent" data-world-tick={String(surface().world_read.tick)}>{`tick=${surface().world_read.tick}`}</span>
           </Show>
           <span class="badge badge--accent">{`agents=${surface().world_read.agents}`}</span>
         </div>
+        <PixelWorldSparseSceneGuidance locale={props.locale} renderState={props.renderState} />
         <PixelWorldCanvasLegend locale={props.locale} />
       </div>
     </Show>
@@ -802,8 +813,11 @@ function PixelWorldFocusCommandSurface(props) {
   const chatFeedbackDisplay = () => core.describeSemanticFeedback(chatFeedback(), locale());
   const chatControlsEnabled = () => chatCapability().enabled && !core.isAgentChatInFlight();
   const gameplaySummary = () => core.buildGameplaySummary(locale());
-  const blockerLabel = () =>
-    gameplaySummary()?.blockerLabel || gameplaySummary()?.blockerKind || tr(locale(), "无阻塞", "No blocker");
+  const blockerLabel = () => {
+    const kind = gameplaySummary()?.blockerKind;
+    if (!kind) return tr(locale(), "无阻塞", "No blocker");
+    return pixelWorldBlockerPresentation(kind, locale()).label;
+  };
   const receiptLabel = () =>
     gameplaySummary()?.executionStateLabel
       || gameplaySummary()?.recentFeedback?.stage

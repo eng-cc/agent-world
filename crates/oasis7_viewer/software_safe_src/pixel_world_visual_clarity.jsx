@@ -1,6 +1,7 @@
 import { For, Index, Show } from "solid-js";
 import * as core from "./legacy_core.js";
 import { pixelWorldEntityMarkerCode, pixelWorldReadableAgentLabel } from "./pixel_world_identity.js";
+import { pixelWorldSparseScenePresentation } from "./pixel_world_presentation.js";
 
 const FRAGMENT_TERRAIN_PALETTE = {
   silicate_matrix: [126, 144, 99], iron_nickel_alloy: [176, 184, 196], water_ice: [125, 211, 252],
@@ -154,4 +155,30 @@ export function PixelWorldCanvasLegend(props) {
     <div class="pixel-world-canvas__legend-item pixel-world-canvas__legend-item--blocker"><span class="pixel-world-canvas__legend-swatch" aria-hidden="true">!</span><span>{tr(props.locale(), "阻塞", "Blocker")}</span></div>
     <div class="pixel-world-canvas__legend-item pixel-world-canvas__legend-item--resource"><span class="pixel-world-canvas__legend-swatch" aria-hidden="true">▪</span><span>{tr(props.locale(), "资源地形", "Resource terrain")}</span></div>
   </div>;
+}
+
+export function PixelWorldSparseSceneGuidance(props) {
+  const visualState = () => pixelWorldVisualState(typeof props.renderState === "function" ? props.renderState() : props.renderState);
+  const presentation = () => pixelWorldSparseScenePresentation({
+    routeCount: visualState().links.length,
+    terrainCount: visualState().fragmentTerrain.length,
+    locationCount: visualState().locations.length,
+    agentCount: visualState().agents.length,
+    worldBounds: visualState().worldBounds,
+  }, typeof props.locale === "function" ? props.locale() : props.locale);
+  return (
+    <Show when={presentation().hasSparseTopology}>
+      <div
+        class="pixel-world-canvas__sparse-guidance"
+        data-pixel-world-sparse-guidance="true"
+        aria-label={tr(typeof props.locale === "function" ? props.locale() : props.locale, "当前世界的已发布数据范围", "Published data coverage for this world")}
+      >
+        <div class="pixel-world-canvas__sparse-title">{tr(typeof props.locale === "function" ? props.locale() : props.locale, "已发布数据范围", "Published data coverage")}</div>
+        <div data-sparse-field="entities">{presentation().entities}</div>
+        <div data-sparse-field="routes">{presentation().routes}</div>
+        <div data-sparse-field="terrain">{presentation().terrain}</div>
+        <div data-sparse-field="bounds">{presentation().bounds}</div>
+      </div>
+    </Show>
+  );
 }

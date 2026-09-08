@@ -598,6 +598,8 @@ describe("pixel world host", () => {
     expect(screen.getByText("Rust leverage summary")).toBeInTheDocument();
     expect(document.querySelector(".pixel-world-readout")).toHaveTextContent("tick=12");
     expect(document.querySelector(".pixel-world-readout [data-world-tick='12']")).toHaveTextContent("tick=12");
+    expect(document.querySelector(".pixel-world-readout [data-world-connection-status]")).toHaveTextContent(/World connection:/i);
+    expect(document.querySelector(".pixel-world-readout [data-world-feed-readout-status]")).toHaveTextContent(/Feed freshness:/i);
     await waitFor(() => {
       expect(document.querySelector(".pixel-world-canvas--rendered")).toBeInTheDocument();
     });
@@ -617,6 +619,53 @@ describe("pixel world host", () => {
     expect(canvas.querySelector(".pixel-world-route")).toBeNull();
     expect(canvas.querySelector(".pixel-world-canvas__selection")).toHaveTextContent("Selected: Agent 0");
     expect(runtimeMock.deriveRenderState).toHaveBeenCalled();
+  }, HEAVY_UI_TEST_TIMEOUT_MS);
+
+  it("keeps sparse-scene guidance honest and read-only", async () => {
+    runtimeMock.deriveRenderState = vi.fn((input) => ({
+      ...buildTestRustRenderState(input),
+      links: [],
+      fragmentTerrain: [],
+      fragment_terrain: [],
+      locations: [{ id: "loc-0", label: "Origin", pos: { x_cm: 1, y_cm: 2, z_cm: 0 } }],
+      agents: [{ id: "agent-0", label: "Agent 0", pos: { x_cm: 3, y_cm: 4, z_cm: 0 } }],
+    }));
+    await renderPixelWorldHost(sampleSnapshot(), "?test_api=1&connect=0&locale=en");
+    await waitFor(() => expect(document.querySelector("[data-pixel-world-sparse-guidance='true']")).toBeInTheDocument());
+    const guidance = document.querySelector("[data-pixel-world-sparse-guidance='true']");
+    expect(guidance).toHaveTextContent("No published routes in this snapshot");
+    expect(guidance).toHaveTextContent("No published terrain in this snapshot");
+    expect(guidance).toHaveTextContent("Published bounds:");
+    expect(guidance.querySelectorAll("button, a")).toHaveLength(0);
+  }, HEAVY_UI_TEST_TIMEOUT_MS);
+
+  it("uses a safe generic label when an unknown blocker reaches the host", async () => {
+    useTestRustRenderState();
+    const snapshot = sampleSnapshot();
+    snapshot.player_gameplay.blocker_kind = "unknown_internal_code";
+    snapshot.player_gameplay.blocker_detail = "diagnostic only";
+    await renderPixelWorldHost(snapshot, "?test_api=1&connect=0&locale=en");
+    await waitFor(() => expect(document.querySelector("[data-shell-region='next-move-primary']")).toBeInTheDocument());
+    const primary = document.querySelector("[data-shell-region='next-move-primary']");
+    expect(primary).toHaveTextContent("Current blocker");
+    expect(primary).not.toHaveTextContent("unknown_internal_code");
+  }, HEAVY_UI_TEST_TIMEOUT_MS);
+
+  it("keeps unknown blocker codes out of the Cinematic command chip", async () => {
+    useTestRustRenderState();
+    const snapshot = sampleSnapshot();
+    snapshot.player_gameplay.blocker_kind = "unknown_internal_code";
+    snapshot.player_gameplay.blocker_detail = "diagnostic only";
+    await renderPixelWorldHost(snapshot, "?test_api=1&connect=0&locale=en");
+
+    await waitFor(() => expect(screen.getByText("Recover sustainable capability")).toBeInTheDocument());
+    screen.getByRole("button", { name: "Cinematic View" }).click();
+    await waitFor(() => expect(document.querySelector(".pixel-world-host")).toHaveAttribute("data-world-focus", "true"));
+    screen.getByRole("button", { name: "Command & Target" }).click();
+
+    const commandChip = document.querySelector(".pixel-world-focus-command-chip--blocker");
+    expect(commandChip).toHaveTextContent("Current blocker");
+    expect(commandChip).not.toHaveTextContent("unknown_internal_code");
   }, HEAVY_UI_TEST_TIMEOUT_MS);
 
   it("keeps read-only hotspot controls available in production and resolves tooltip locale", async () => {

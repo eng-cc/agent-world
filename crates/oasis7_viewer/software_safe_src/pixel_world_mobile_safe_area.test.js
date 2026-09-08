@@ -5,6 +5,7 @@ describe("pixel world mobile selection safe area", () => {
   it("clears the command band while preserving the Feed gap", () => {
     expect(pixelWorldMobileSelectionOffset({ markerTop: 520, markerBottom: 566, commandTop: 420, feedBottom: 146 })).toBe(-154);
     expect(pixelWorldMobileSelectionOffset({ markerTop: 267, markerBottom: 313, commandTop: 208, feedBottom: 146 })).toBe(-113);
+    expect(pixelWorldMobileSelectionOffset({ markerTop: 319, markerBottom: 363, commandTop: 266, feedBottom: 260 })).toBe(-105);
   });
 
   it("moves the selected marker beside an expanded Focus HUD", () => {
