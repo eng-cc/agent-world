@@ -521,7 +521,7 @@ conflicting receipts cannot consume a queue item before commit.
 
 #### 6.2.4 Incremental delivery and proof levels
 
-Implementation proceeds in five reviewable phases: (0) transaction/delta types,
+Implementation proceeds with Phase 0 plus five reviewable migration phases: (0) transaction/delta types,
 savepoints, deterministic projection, failure injection, and a test-only
 clone-backed oracle; (1) `append_event`, reducer, sequence, journal, schedule,
 queue, commitment, consensus, and deterministic-metric staging; (2) step,
