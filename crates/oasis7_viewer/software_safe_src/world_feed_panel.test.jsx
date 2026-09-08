@@ -41,7 +41,8 @@ describe("WorldFeedPanel", () => {
       />
     ));
     expect(container.querySelector("#viewer-world-feed")).toBeTruthy();
-    expect(screen.getByText("World activity is stale")).toBeInTheDocument();
+    expect(container.querySelector('[data-world-feed-summary-status="gap"]')).toHaveTextContent("GAP");
+    expect(screen.getByText("GAP", { selector: '[data-world-feed-summary-status]' })).toBeInTheDocument();
     const reloadButton = screen.getByRole("button", { name: /reload authoritative snapshot/i });
     expect(reloadButton).toBeInTheDocument();
     fireEvent.click(reloadButton);
@@ -69,7 +70,7 @@ describe("WorldFeedPanel", () => {
         onRetryFeed={onRetryFeed}
       />
     ));
-    expect(screen.getByText("World activity unavailable")).toBeInTheDocument();
+    expect(screen.getByText("UNAVAILABLE", { selector: '[data-world-feed-summary-status]' })).toBeInTheDocument();
     const retryButton = screen.getByRole("button", { name: /retry world feed/i });
     expect(retryButton).toBeInTheDocument();
     fireEvent.click(retryButton);
@@ -114,7 +115,7 @@ describe("WorldFeedPanel", () => {
       />
     ));
 
-    expect(screen.getByText("No world activity yet")).toBeInTheDocument();
+    expect(screen.getByText("NO EVENTS", { selector: '[data-world-feed-summary-status]' })).toBeInTheDocument();
     expect(screen.getByText(
       "No authoritative world update has published events yet. This feed is context only—continue your Player goal; the feed will update after the next authoritative world update.",
     )).toBeInTheDocument();
@@ -309,7 +310,7 @@ describe("WorldFeedPanel", () => {
       />
     ));
 
-    expect(screen.getByText("World activity unavailable")).toBeInTheDocument();
+    expect(screen.getByText("UNAVAILABLE", { selector: '[data-world-feed-summary-status]' })).toBeInTheDocument();
     expect(document.querySelector("[data-world-feed-major-event]")).toBeNull();
     expect(document.querySelector("[data-world-feed-major-event-toast]")).toBeNull();
   });

@@ -7,12 +7,12 @@ import { installPixelWorldRenderDtoProbe, installPixelWorldVisualFixtureHook, pi
 import { pixelWorldSelectedBlockerVisualFixture } from "./pixel_world_visual_fixture_data.js";
 import { pixelWorldReadableAgentLabel, pixelWorldReadableEntityText, pixelWorldSelectedEntityLabel } from "./pixel_world_identity.js";
 import { applyPixelWorldMobileSelectionSafeArea, installPixelWorldMobileSelectionSafeArea } from "./pixel_world_mobile_safe_area.js";
+import { createHotspotFocusRestoration, PixelWorldHotspot, PixelWorldHotspotTooltip } from "./pixel_world_hotspot.jsx";
+import { resolvePixelWorldReadoutStatus } from "./pixel_world_readout.js";
+import { pixelWorldHotspotGlyphSize, pixelWorldHotspotStyle } from "./pixel_world_hotspot_projection.js";
 export { pixelWorldSelectedBlockerVisualFixture };
-function tr(locale, zh, en) {
-  return core.isLocaleZh(locale) ? zh : en;
-}
-const PIXEL_WORLD_RUNTIME_CANVAS_ID = "pixel-world-embedded-runtime-canvas";
-const PIXEL_WORLD_RENDERER_UNAVAILABLE_MESSAGE_ID = "pixel-world-renderer-unavailable-message";
+function tr(locale, zh, en) { return core.isLocaleZh(locale) ? zh : en; }
+const PIXEL_WORLD_RUNTIME_CANVAS_ID = "pixel-world-embedded-runtime-canvas"; const PIXEL_WORLD_RENDERER_UNAVAILABLE_MESSAGE_ID = "pixel-world-renderer-unavailable-message";
 const pixelWorldFocusUiSessionState = {
   focusMode: false,
   commandDrawerOpen: false,
@@ -167,18 +167,6 @@ function routeWaypointStyle(link, worldBounds, index, stop) {
     top: `${(from.y + ((to.y - from.y) * ratio)).toFixed(1)}%`,
   };
 }
-function hotspotStyle(hotspot, worldBounds, index) {
-  const sizePx = Math.max(14, Math.min(32, safeNumber(hotspot.size_hint_px, 16)));
-  return {
-    ...toWorldPercentStyle(hotspot.pos, worldBounds, {
-      left: `${20 + ((index % 4) * 16)}%`,
-      top: `${22 + (Math.floor(index / 4) * 16)}%`,
-    }),
-    width: `${sizePx}px`,
-    height: `${sizePx}px`,
-    transform: "translate(-50%, -50%)",
-  };
-}
 function fieldValue(value, snakeName, camelName, fallback = undefined) {
   if (!value || typeof value !== "object") {
     return fallback;
@@ -223,6 +211,18 @@ function pixelWorldVisualState(renderState) {
     visualHotspots: arrayField(state, "visual_hotspots", "visualHotspots").map(normalizeVisualEntity),
   };
 }
+function PixelWorldHostHotspotLayer(props) {
+  const visualState = () => pixelWorldVisualState(props.renderState());
+  return <Index each={visualState().visualHotspots.slice(0, 8)}>{(hotspot, index) => (
+    <PixelWorldHotspot locale={props.locale()} hotspot={hotspot()}
+      style={pixelWorldHotspotStyle(hotspot(), visualState().worldBounds, index, props.cameraState?.())}
+      glyphSize={pixelWorldHotspotGlyphSize(hotspot())}
+      onHover={props.onHover}
+      onHotspotInspect={props.onHotspotInspect} onHotspotClear={props.onHotspotClear}
+      onHotspotHoverIntent={props.onHotspotHoverIntent}
+      onHotspotTrigger={props.onHotspotTrigger} onHotspotRestoreFocus={props.onHotspotRestoreFocus} />
+  )}</Index>;
+}
 function PixelWorldHostVisualLayer(props) {
   const visualState = () => pixelWorldVisualState(props.renderState());
   const selection = () => props.selection?.() || visualState().selection;
@@ -266,18 +266,6 @@ function PixelWorldHostVisualLayer(props) {
               title={`${link.kind}:target`}
             />
           </>
-        )}
-      </For>
-      <For each={visualState().visualHotspots.slice(0, 8)}>
-        {(hotspot, index) => (
-          <div
-            class="pixel-world-hotspot"
-            data-hotspot-kind={hotspot.kind}
-            style={hotspotStyle(hotspot, visualState().worldBounds, index())}
-            title={`${hotspot.kind}:${hotspot.label}`}
-          >
-            <span>{hotspot.kind === "blocker" ? "!" : hotspot.kind === "goal" ? "G" : "i"}</span>
-          </div>
         )}
       </For>
       <Index each={visualState().locations.slice(0, 8)}>
@@ -544,7 +532,17 @@ export function buildPixelWorldRenderInput(locale = core.state.uiLocale) {
 }
 function PixelWorldCanvasRenderer(props) {
   let canvasRef;
+  const hotspotFocus = createHotspotFocusRestoration();
   const visualState = () => pixelWorldVisualState(props.renderState());
+  const [inspectedHotspot, setInspectedHotspot] = createSignal(null);
+  const [hoverDismissed, setHoverDismissed] = createSignal(false);
+  const activeHotspot = () => {
+    const inspected = inspectedHotspot();
+    if (inspected?.kind === "hotspot") {
+      return visualState().visualHotspots.find((hotspot) => hotspot.id === inspected.id) || null;
+    }
+    return hoverDismissed() ? null : props.hoveredHotspot?.() || null;
+  };
   const selectedEntityLabel = () => pixelWorldSelectedEntityLabel(visualState(), visualState().selection, core.isLocaleZh(props.locale()));
   onMount(() => onCleanup(installPixelWorldMobileSelectionSafeArea(() => canvasRef?.closest(".pixel-world-canvas"))));
   createEffect(() => {
@@ -595,6 +593,11 @@ function PixelWorldCanvasRenderer(props) {
           onSelect={props.onSelect}
           onHover={props.onHover}
         />
+        <PixelWorldHostHotspotLayer locale={props.locale} renderState={props.renderState} cameraState={props.cameraState}
+          onHover={props.onHover} onHotspotInspect={(selection) => { setHoverDismissed(false); setInspectedHotspot(selection); }}
+          onHotspotHoverIntent={() => setHoverDismissed(false)}
+          onHotspotClear={() => { setHoverDismissed(true); setInspectedHotspot(null); }}
+          onHotspotTrigger={hotspotFocus.remember} onHotspotRestoreFocus={hotspotFocus.restore} />
         <Show when={visualState().goalHighlight}>
           <div class="pixel-world-canvas__callout pixel-world-canvas__callout--goal">
             {`${tr(props.locale(), "目标", "Goal")}: ${visualState().goalHighlight.title}`}
@@ -605,10 +608,18 @@ function PixelWorldCanvasRenderer(props) {
             {`${tr(props.locale(), "阻塞", "Blocker")}: ${visualState().blockerHighlight.label || visualState().blockerHighlight.kind}`}
           </div>
         </Show>
-        <Show when={props.hoveredHotspot?.()}>
-          <div class="pixel-world-canvas__hotspot-tooltip" data-hotspot-tooltip role="status">
-            {props.hoveredHotspot().label}
-          </div>
+        <Show when={activeHotspot()}>
+            <PixelWorldHotspotTooltip
+              locale={props.locale()}
+              hotspot={activeHotspot()}
+              onHoverLeave={() => props.onHover(null)}
+              onClose={() => {
+                setHoverDismissed(true);
+                setInspectedHotspot(null);
+                props.onHover(null);
+                hotspotFocus.restore();
+              }}
+            />
         </Show>
       </div>
       <Show when={visualState().selection}>
@@ -662,13 +673,8 @@ function receiptConfidenceLabel(confidence, locale, state) {
   return value === "world_delta" ? tr(locale, "世界变化已确认", "World change confirmed") : value === "accepted_intent" ? tr(locale, "行动已接受", "Action accepted") : value === "none" ? tr(locale, "等待确认", "Waiting for confirmation") : tr(locale, "状态已记录", "Status recorded");
 }
 function worldReadoutStatus(locale, renderState) {
-  renderState?.(); const status = String(core.state.connectionStatus || "").toLowerCase(); const feed = core.state.worldFeed || {};
-  const warn = (label) => ({ label, className: "badge badge--warn" });
-  if (String(feed.status || "").toLowerCase() === "unavailable") return warn(tr(locale, "不可用", "UNAVAILABLE"));
-  if (feed.stale) return warn(tr(locale, "陈旧", "STALE"));
-  if (status === "connecting" || status === "reconnecting") return warn(tr(locale, "正在重连", "RECONNECTING"));
-  if (status !== "connected") return warn(tr(locale, "离线", "OFFLINE"));
-  return ["ready", "replay", "empty"].includes(String(feed.status || "").toLowerCase()) ? { label: "LIVE", className: "badge badge--good" } : warn(tr(locale, "同步中", "SYNCING"));
+  renderState?.();
+  return resolvePixelWorldReadoutStatus(locale, core.state.connectionStatus, core.state.worldFeed);
 }
 const DIRECT_PIXEL_WORLD_NEXT_MOVE_KINDS = new Set(["claim_first_agent", "claim_starter_oc"]);
 const PIXEL_WORLD_PENDING_GAMEPLAY_STAGES = new Set(["accepted", "submitted", "queued", "ack", "registering", "signing", "sent"]);
@@ -699,6 +705,7 @@ export function resolvePixelWorldDirectNextMoveAction(gameplay, executeKind) {
 }
 function PixelWorldCommercialHud(props) {
   const surface = () => props.renderState().commercial_surface; const readoutStatus = () => worldReadoutStatus(props.locale(), props.renderState);
+  const readoutFeedStatus = () => String(core.state.worldFeed?.status || "loading").trim().toLowerCase() || "loading";
   const activeAgentId = () => String(surface()?.active_agent_id || "").trim(); const activeAgent = () => props.renderState().agents.find((agent) => agent.id === activeAgentId()); const activeAgentLabel = () => pixelWorldReadableAgentLabel(activeAgent(), activeAgentId(), core.isLocaleZh(props.locale())) || tr(props.locale(), "未选择 Agent", "No Agent selected");
   const executableNextMoveKinds = new Set([
     "gameplay_action",
@@ -805,7 +812,7 @@ function PixelWorldCommercialHud(props) {
       </div>
       <Show when={!props.focusMode?.()}><PixelWorldActionReceipt id="viewer-action-receipt" locale={props.locale} surface={surface} /></Show>
       <div class="pixel-world-readout badge-row">
-        <span class={readoutStatus().className}>{readoutStatus().label}</span>
+        <span class={readoutStatus().className} data-world-feed-readout-status={readoutFeedStatus()}>{readoutStatus().label}</span>
         <Show when={surface().world_read.tick !== null && surface().world_read.tick !== undefined}>
           <span class="badge badge--accent" data-world-tick={String(surface().world_read.tick)}>{`tick=${surface().world_read.tick}`}</span>
         </Show>
@@ -1514,6 +1521,7 @@ export function PixelWorldHost(props) {
         <PixelWorldCanvasRenderer
           locale={locale}
           rendererStatus={rendererStatus}
+          cameraState={cameraState}
           renderInput={renderInput}
           renderState={renderState}
           selection={selectedEntity}

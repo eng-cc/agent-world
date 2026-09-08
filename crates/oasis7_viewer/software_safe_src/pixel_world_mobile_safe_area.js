@@ -7,15 +7,34 @@ export function pixelWorldMobileSelectionOffset({ markerTop, markerBottom, comma
   return Math.max(clearCommandOffset, clearFeedOffset);
 }
 
+export function pixelWorldMobileSelectionChipOffset({ chipTop, feedBottom = 0, feedOpen = false }) {
+  if (feedOpen || !Number.isFinite(chipTop) || !Number.isFinite(feedBottom) || feedBottom <= 0) return 0;
+  return Math.max(0, feedBottom + SAFE_AREA_GAP_PX - chipTop);
+}
+
 export function pixelWorldMobileFocusSelectionOffset({ markerLeft, hudRight }) {
   return hudRight + SAFE_AREA_GAP_PX - markerLeft;
 }
 
 export function applyPixelWorldMobileSelectionSafeArea(canvasRoot) {
   const marker = canvasRoot?.querySelector(".pixel-world-entity--canvas-hit-target[data-selected='true']");
-  if (!marker) return;
-  marker.style.translate = "";
+  const selectionChip = canvasRoot?.querySelector(".pixel-world-canvas__selection");
+  const feed = document.querySelector('[data-viewer-overlay="feed"]');
+  const feedVisible = feed && getComputedStyle(feed).display !== "none";
+  const feedRect = feedVisible ? feed.getBoundingClientRect() : null;
+  selectionChip?.style.setProperty("translate", "");
+  marker?.style.setProperty("translate", "");
   if (window.innerWidth > MOBILE_SHELL_MAX_WIDTH) return;
+  if (selectionChip && feedRect && !feed.open) {
+    const chipRect = selectionChip.getBoundingClientRect();
+    const chipOffset = pixelWorldMobileSelectionChipOffset({
+      chipTop: chipRect.top,
+      feedBottom: feedRect.bottom,
+      feedOpen: feed.open,
+    });
+    selectionChip.style.translate = `0 ${Math.ceil(chipOffset)}px`;
+  }
+  if (!marker) return;
   const focusHost = canvasRoot.closest(".pixel-world-host--focus");
   if (focusHost) {
     const focusHud = focusHost.querySelector("[data-focus-hud='true']");
@@ -28,10 +47,8 @@ export function applyPixelWorldMobileSelectionSafeArea(canvasRoot) {
   }
   const command = document.querySelector('[data-viewer-overlay="next-move"]');
   if (!command || getComputedStyle(command).display === "none") return;
-  const feed = document.querySelector('[data-viewer-overlay="feed"]');
   const markerRect = marker.getBoundingClientRect();
   const commandRect = command.getBoundingClientRect();
-  const feedRect = feed && getComputedStyle(feed).display !== "none" ? feed.getBoundingClientRect() : null;
   const offset = pixelWorldMobileSelectionOffset({
     markerTop: markerRect.top,
     markerBottom: markerRect.bottom,

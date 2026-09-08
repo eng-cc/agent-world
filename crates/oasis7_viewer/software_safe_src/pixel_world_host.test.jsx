@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from "@solidjs/testing-library";
+import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { verifyHotspotCameraAndFocus } from "./pixel_world_hotspot_test_helpers.js";
 const runtimeMock = vi.hoisted(() => ({
   deriveRenderState: null,
   mountError: null,
@@ -393,7 +394,7 @@ function bindFirstSnapshotAgentForTest(core, snapshot) {
     boundAgentId: agentId,
   };
 }
-async function renderPixelWorldHost(snapshot = sampleSnapshot(), search = "?test_api=1&connect=0&locale=en") {
+async function renderPixelWorldHost(snapshot = sampleSnapshot(), search = "?test_api=1&connect=0&locale=en", locale = "en") {
   activeCleanup?.();
   activeCleanup = null;
   vi.resetModules();
@@ -402,10 +403,10 @@ async function renderPixelWorldHost(snapshot = sampleSnapshot(), search = "?test
   document.body.innerHTML = "";
   const core = await import("./legacy_core.js");
   const { PixelWorldHost } = await import("./pixel_world_host.jsx");
-  core.setViewerLocale("en");
+  core.setViewerLocale(locale);
   core.injectSnapshot(snapshot);
   bindFirstSnapshotAgentForTest(core, snapshot);
-  const view = render(() => <PixelWorldHost locale="en" />);
+  const view = render(() => <PixelWorldHost locale={locale} />);
   activeCleanup = view.unmount;
   return {
     core,
@@ -863,42 +864,41 @@ describe("pixel world host", () => {
     expect(runtimeMock.deriveRenderState).toHaveBeenCalled();
   }, HEAVY_UI_TEST_TIMEOUT_MS);
 
-  it("shows the exact hotspot label only while its hover identity remains in render state", async () => {
+  it("keeps read-only hotspot controls available in production and resolves tooltip locale", async () => {
     runtimeMock.deriveRenderState = vi.fn((input) => ({
       ...buildTestRustRenderState(input),
       visualHotspots: [{
         id: "hotspot-blocker",
-        label: "Blocked route",
         kind: "blocker",
-        pos: { x_cm: 5_000_000, y_cm: 2_500_000, z_cm: 0 },
-      }],
+        label: "缺料阻塞",
+        pos: { x_cm: 5_020_000, y_cm: 2_510_000, z_cm: 0 },
+        sizeHintPx: 20,
+      }, { id: "hotspot-goal", kind: "goal", label: "稳定生产", pos: { x_cm: 6_000_000, y_cm: 2_000_000, z_cm: 0 } }],
     }));
 
-    await renderPixelWorldHost();
-    await waitFor(() => {
-      expect(runtimeMock.onEvent).toEqual(expect.any(Function));
-    });
+    await renderPixelWorldHost(
+      sampleSnapshot(),
+      "?test_api=1&connect=0&locale=zh-CN",
+      "zh-CN",
+    );
 
-    runtimeMock.onEvent({
-      type: "hover_entity",
-      selection: { kind: "hotspot", id: "hotspot-blocker" },
-    });
-    await waitFor(() => {
-      expect(document.querySelector("[data-hotspot-tooltip]")).toHaveTextContent("Blocked route");
-    });
+    const marker = await screen.findByRole("button", { name: /阻塞热点：缺料阻塞/ });
+    expect(marker).toHaveProperty("tabIndex", 0);
+    await verifyHotspotCameraAndFocus(marker, runtimeMock.onEvent);
+  }, HEAVY_UI_TEST_TIMEOUT_MS);
 
-    runtimeMock.onEvent({ type: "hover_entity", selection: null });
-    await waitFor(() => {
-      expect(document.querySelector("[data-hotspot-tooltip]")).toBeNull();
-    });
+  it("keeps hotspot controls painted above decorative route waypoints", async () => {
+    runtimeMock.deriveRenderState = vi.fn((input) => ({
+      ...buildTestRustRenderState(input),
+      visualHotspots: [{ id: "hotspot-goal", kind: "goal", label: "stabilize the first production line", pos: { x_cm: 5_020_000, y_cm: 2_510_000, z_cm: 0 } }],
+    }));
 
-    runtimeMock.onEvent({
-      type: "hover_entity",
-      selection: { kind: "hotspot", id: "removed-hotspot" },
-    });
-    await waitFor(() => {
-      expect(document.querySelector("[data-hotspot-tooltip]")).toBeNull();
-    });
+    await renderPixelWorldHost(sampleSnapshot(), "?test_api=1&connect=0&locale=en&pixel_world_visual_fixture=selected_blocker");
+
+    const marker = await screen.findByRole("button", { name: /Goal hotspot/ });
+    const waypoint = document.querySelector(".pixel-world-route-waypoint--target");
+    expect(waypoint).not.toBeNull();
+    expect(Boolean(waypoint.compareDocumentPosition(marker) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
   }, HEAVY_UI_TEST_TIMEOUT_MS);
 
   it("makes the rendered canvas focusable with a read-only accessible world description", async () => {
