@@ -12,6 +12,7 @@ import { createHotspotFocusRestoration, PixelWorldHotspot, PixelWorldHotspotTool
 import { resolvePixelWorldReadoutStatus } from "./pixel_world_readout.js";
 import { pixelWorldBlockerPresentation, pixelWorldConnectionPresentation, pixelWorldFeedFreshnessPresentation } from "./pixel_world_presentation.js";
 import { pixelWorldHotspotGlyphSize, pixelWorldHotspotStyle } from "./pixel_world_hotspot_projection.js";
+import { PixelWorldRendererTargets } from './pixel_world_renderer_targets.jsx';
 export { pixelWorldSelectedBlockerVisualFixture };
 function tr(locale, zh, en) { return core.isLocaleZh(locale) ? zh : en; }
 async function waitForRuntimeCanvasAttachment(canvas) {
@@ -44,7 +45,8 @@ function PixelWorldHostHotspotLayer(props) {
   const visualState = () => pixelWorldVisualState(props.renderState());
   return <Index each={visualState().visualHotspots.slice(0, 8)}>{(hotspot, index) => (
     <PixelWorldHotspot locale={props.locale()} hotspot={hotspot()}
-      style={pixelWorldHotspotStyle(hotspot(), visualState().worldBounds, index, props.cameraState?.())}
+      style={pixelWorldHotspotStyle(hotspot(), visualState().worldBounds, index, props.cameraState?.(), props.stageSize?.())}
+      rendererProjection={props.rendererProjection?.()}
       glyphSize={pixelWorldHotspotGlyphSize(hotspot())}
       onHover={props.onHover}
       onHotspotInspect={props.onHotspotInspect} onHotspotClear={props.onHotspotClear}
@@ -241,6 +243,18 @@ export function buildPixelWorldRenderInput(locale = core.state.uiLocale) {
 }
 function PixelWorldCanvasRenderer(props) {
   let canvasRef;
+  const [stageSize, setStageSize] = createSignal({ width: 960, height: 540 });
+  onMount(() => {
+    const update = () => {
+      const rect = canvasRef?.getBoundingClientRect();
+      if (rect?.width && rect?.height) setStageSize({ width: rect.width, height: rect.height });
+    };
+    update();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(update);
+    observer.observe(canvasRef);
+    onCleanup(() => observer.disconnect());
+  });
   const hotspotFocus = createHotspotFocusRestoration();
   const visualState = () => pixelWorldVisualState(props.renderState());
   const [inspectedHotspot, setInspectedHotspot] = createSignal(null);
@@ -254,6 +268,11 @@ function PixelWorldCanvasRenderer(props) {
   };
   const selectedEntityLabel = () => pixelWorldSelectedEntityLabel(visualState(), visualState().selection, core.isLocaleZh(props.locale()));
   onMount(() => onCleanup(installPixelWorldMobileSelectionSafeArea(() => canvasRef?.closest(".pixel-world-canvas"))));
+  createEffect(() => {
+    props.cameraState?.();
+    stageSize();
+    requestAnimationFrame(() => applyPixelWorldMobileSelectionSafeArea(canvasRef?.closest('.pixel-world-canvas')));
+  });
   createEffect(() => {
     if (!canvasRef) {
       return;
@@ -269,7 +288,7 @@ function PixelWorldCanvasRenderer(props) {
     requestAnimationFrame(() => applyPixelWorldMobileSelectionSafeArea(canvasRef?.closest(".pixel-world-canvas")));
   });
   return (
-    <div class="pixel-world-canvas pixel-world-canvas--rendered" data-renderer-ready={props.rendererStatus?.() === "ready" ? "true" : undefined}>
+    <div class="pixel-world-canvas pixel-world-canvas--rendered" data-renderer-projection={props.rendererProjection?.() ? 'true' : undefined} data-renderer-ready={props.rendererStatus?.() === "ready" ? "true" : undefined}>
       <canvas
         ref={canvasRef}
         id={PIXEL_WORLD_RUNTIME_CANVAS_ID}
@@ -289,6 +308,7 @@ function PixelWorldCanvasRenderer(props) {
         )}
       </div>
       <div class="pixel-world-canvas__overlay">
+        <Show when={props.rendererProjection?.()} fallback={<>
         <PixelWorldCanvasAgentHitTargets
           locale={props.locale} renderState={props.renderState} selection={props.selection}
           hovered={props.hoveredEntity}
@@ -304,7 +324,11 @@ function PixelWorldCanvasRenderer(props) {
           onSelect={props.onSelect}
           onHover={props.onHover}
         />
+        </>}>
+          <PixelWorldRendererTargets locale={props.locale} renderState={props.renderState} selection={props.selection} cameraState={props.cameraState} stageSize={stageSize} onSelect={props.onSelect} onHover={props.onHover} />
+        </Show>
         <PixelWorldHostHotspotLayer locale={props.locale} renderState={props.renderState} cameraState={props.cameraState}
+          rendererProjection={props.rendererProjection} stageSize={() => props.rendererProjection?.() ? stageSize() : undefined}
           onHover={props.onHover} onHotspotInspect={(selection) => { setHoverDismissed(false); setInspectedHotspot(selection); }}
           onHotspotHoverIntent={() => setHoverDismissed(false)}
           onHotspotClear={() => { setHoverDismissed(true); setInspectedHotspot(null); }}
@@ -1267,6 +1291,7 @@ export function PixelWorldHost(props) {
         <PixelWorldCanvasRenderer
           locale={locale}
           rendererStatus={rendererStatus}
+          rendererProjection={() => runtimeSource() === 'wasm_bindgen_runtime' && cameraState() !== null}
           cameraState={cameraState}
           renderInput={renderInput}
           renderState={renderState}

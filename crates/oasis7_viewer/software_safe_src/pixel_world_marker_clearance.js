@@ -29,6 +29,7 @@ export function pixelWorldMarkerClearance(marker, panels, bounds) {
 
 export function applyPixelWorldMarkerClearance(canvasRoot) {
   if (!canvasRoot) return;
+  if (canvasRoot.dataset.rendererProjection === 'true') return;
   const markers = [...canvasRoot.querySelectorAll('button.pixel-world-entity, button.pixel-world-hotspot')];
   for (const marker of markers) marker.style.translate = '';
   const visibleRect = (node) => {

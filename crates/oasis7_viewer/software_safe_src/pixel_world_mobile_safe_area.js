@@ -1,4 +1,5 @@
 import { applyPixelWorldMarkerClearance, observePixelWorldMarkerPanels } from './pixel_world_marker_clearance.js';
+import { applyRendererDecisionClearance } from './pixel_world_renderer_decision_area.js';
 const MOBILE_SHELL_MAX_WIDTH = 640;
 const SAFE_AREA_GAP_PX = 8;
 
@@ -23,6 +24,7 @@ export function pixelWorldMobileFocusSelectionOffset({ markerLeft, hudRight }) {
 }
 
 function applyMobileSelectionSafeArea(canvasRoot) {
+  if (canvasRoot?.dataset.rendererProjection === 'true') return;
   const marker = canvasRoot?.querySelector(".pixel-world-entity--canvas-hit-target[data-selected='true']");
   const selectionChip = canvasRoot?.querySelector(".pixel-world-canvas__selection");
   const feed = document.querySelector('[data-viewer-overlay="feed"]');
@@ -65,6 +67,7 @@ function applyMobileSelectionSafeArea(canvasRoot) {
 }
 
 export function applyPixelWorldMobileSelectionSafeArea(canvasRoot) {
+  applyRendererDecisionClearance(canvasRoot);
   applyMobileSelectionSafeArea(canvasRoot);
   applyPixelWorldMarkerClearance(canvasRoot);
 }

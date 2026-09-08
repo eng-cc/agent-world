@@ -446,6 +446,18 @@ describe("pixel world wasm runtime bridge", () => {
     }
   });
 
+  it("clears DOM-origin hover on canvas leave even when the runtime has no hover transition", async () => {
+    animationHarness();
+    const { createPixelWorldBridge } = await import("./pixel_world_runtime_module_wasm.js");
+    const onEvent = vi.fn();
+    const bridge = await createPixelWorldBridge({ onEvent });
+    const canvas = document.createElement('canvas');
+    bridge.mount(canvas, {});
+    canvas.dispatchEvent(pointerEvent('pointerleave'));
+    expect(onEvent).toHaveBeenCalledWith({ type: 'hover_entity', selection: null });
+    bridge.unmount();
+  });
+
   it("caps WASM ambient ticks at 12Hz while leaving pointer input immediate", async () => {
     const animation = animationHarness();
     const { createPixelWorldBridge } = await import("./pixel_world_runtime_module_wasm.js");

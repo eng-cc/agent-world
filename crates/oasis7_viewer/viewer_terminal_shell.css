@@ -1207,6 +1207,30 @@ body {
   }
 }
 
+.pixel-world-host:has([data-renderer-projection="true"]) > .pixel-world-decision-area {
+  position: absolute;
+  left: 16px;
+  right: auto;
+  bottom: 16px;
+  width: min(760px, calc(100% - 32px));
+  max-height: var(--renderer-decision-max-height, calc(50dvh - 76px));
+  overflow-y: auto;
+  align-content: start;
+  pointer-events: auto;
+}
+.pixel-world-host:has([data-renderer-projection="true"]) > .pixel-world-decision-area > [data-viewer-overlay],
+.pixel-world-host:has([data-renderer-projection="true"]) > .pixel-world-decision-area > .pixel-world-readout,
+.pixel-world-host:has([data-renderer-projection="true"]) > .pixel-world-decision-area > .pixel-world-canvas__sparse-guidance,
+.pixel-world-host:has([data-renderer-projection="true"]) > .pixel-world-decision-area > .pixel-world-canvas__legend {
+  position: static;
+  inset: auto;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+
 @media (max-width: 640px) {
   #viewer-details-panel {
     --command-route-chrome-height: 118px;
@@ -1662,4 +1686,35 @@ body {
   min-width: 44px;
   min-height: 44px;
   box-sizing: border-box;
+}
+
+/* WASM owns visible entity and hotspot pixels. These transparent controls keep
+ * keyboard/touch access at the same camera-projected point. */
+[data-viewer-overlay="world-hud"] [data-renderer-projection="true"] .pixel-world-canvas__overlay {
+  pointer-events: none;
+}
+[data-renderer-projection="true"] [data-renderer-target="true"] {
+  pointer-events: auto;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  outline: none;
+}
+[data-renderer-projection="true"] [data-renderer-target="true"]:focus-visible {
+  outline: 2px solid #edf1e6;
+  outline-offset: 2px;
+}
+[data-renderer-projection="true"] .pixel-world-hotspot__glyph {
+  visibility: hidden;
+}
+
+@media (max-width: 640px) {
+  /* Keep the renderer's centered selection visible. The decision stack scrolls
+   * below the map instead of moving an accessible world target away from it. */
+  .pixel-world-host:has([data-renderer-projection="true"]) .pixel-world-decision-area {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+  }
 }

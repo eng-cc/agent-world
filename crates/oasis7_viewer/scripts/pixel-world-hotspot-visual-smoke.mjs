@@ -49,6 +49,24 @@ function pageStateScript() { return String.raw`(() => { const canvas = document.
 function bringCanvasIntoViewScript() { return String.raw`(async () => { const canvas = document.querySelector('#pixel-world-embedded-runtime-canvas'); const host = document.querySelector('.pixel-world-host'); if (!canvas || !host) throw new Error('canvas host unavailable'); canvas.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }); await new Promise((resolve) => requestAnimationFrame(() => resolve())); const rect = canvas.getBoundingClientRect(); return JSON.stringify({ scrollY: window.scrollY, viewport: { width: window.innerWidth, height: window.innerHeight }, canvas: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height } }); })()`; }
 function receiptScript(method, id) { return String.raw`(async () => { const probe = window.__OASIS7_PIXEL_WORLD_HOTSPOT_POINTER_PROBE__; if (!probe) throw new Error('test-only hotspot pointer probe unavailable'); const receipt = await probe.${method}(${id ? JSON.stringify(id) : ""}); const tooltip = document.querySelector('[data-hotspot-tooltip]'); const viewport = { width: window.innerWidth, height: window.innerHeight }; const rect = tooltip?.getBoundingClientRect(); return JSON.stringify({ receipt, viewport, tooltip: tooltip ? { text: tooltip.textContent.trim(), visible: getComputedStyle(tooltip).display !== 'none', rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height } } : null }); })()`; }
 function targetsScript() { return String.raw`(() => { const probe = window.__OASIS7_PIXEL_WORLD_HOTSPOT_POINTER_PROBE__; if (!probe) throw new Error('test-only hotspot pointer probe unavailable'); return JSON.stringify(probe.targets()); })()`; }
+function selectionGeometryScript() { return String.raw`(async () => {
+  await new Promise(resolve => setTimeout(resolve, 150));
+  const canvas = document.querySelector('#pixel-world-embedded-runtime-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const state = window.__AW_TEST__.getState();
+  const camera = state.pixelWorldCamera;
+  const dto = window.__OASIS7_PIXEL_WORLD_RENDER_DTO__();
+  const agent = dto.agents.find(agent => agent.id === 'agent-0');
+  const targets = [...document.querySelectorAll('[data-renderer-target="true"][data-agent-id="agent-0"]')];
+  const target = targets[0].getBoundingClientRect();
+  const bounds = dto.world_bounds;
+  const expected = {
+    x: rect.left + rect.width / 2 + (20 + agent.pos.x_cm / bounds.width_cm * (rect.width - 40) - rect.width / 2) * camera.zoom + camera.pan_x_px,
+    y: rect.top + rect.height / 2 + (20 + agent.pos.y_cm / bounds.depth_cm * (rect.height - 40) - rect.height / 2) * camera.zoom + camera.pan_y_px,
+  };
+  const actual = { x: target.left + target.width / 2, y: target.top + target.height / 2 };
+  return JSON.stringify({ camera, expected, actual, count: targets.length, width: target.width, height: target.height, error: Math.hypot(expected.x-actual.x,expected.y-actual.y), selection: dto.selection });
+})()`; }
 
 ensureBrowser();
 const server = createServer(serveFile);
@@ -59,6 +77,7 @@ try {
   summary.url = url; closeBrowser(); await browserJson(["open", url], { timeout: 45_000 });
   for (const [name, width, height] of [["desktop", 1440, 900], ["narrow", 390, 844]]) {
     await browserJson(["set", "viewport", String(width), String(height)]);
+    if (name !== 'desktop') await browserJson(['open',url]);
     const state = await evalJson(String.raw`(async()=>{const read=()=>(${pageStateScript()}); const deadline=Date.now()+15000; while(Date.now()<deadline){const s=read(); if(s.rendererReady && s.runtimeStatus==='ready') return JSON.stringify(s); await new Promise(r=>setTimeout(r,100));} throw new Error('renderer not ready');})()`);
     assert(state.fixture === "recent_event_glyphs" && state.rendererReady && state.runtimeStatus === "ready" && !state.fatal, "fixture renderer did not become ready", state);
     assert(state.renderDto?.agents?.some((agent) => agent.id === "agent-0"), "fixture Render DTO omits agent-0", state.renderDto);
@@ -73,16 +92,23 @@ try {
     const targets = await evalJson(targetsScript());
     const glyphTargets = Object.fromEntries(targets.filter((target) => ["recent:resource-transfer-fixture", "recent:build-queue-fixture"].includes(target.id)).map((target) => [target.id, target]));
     assert(glyphTargets["recent:resource-transfer-fixture"] && glyphTargets["recent:build-queue-fixture"], "real WASM hit-target readback omits one glyph", { targets });
+    const decisionClearance = await evalJson(`(() => { const panel=document.querySelector('.pixel-world-decision-area'); const r=panel.getBoundingClientRect(); return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,height:r.height,scrollHeight:panel.scrollHeight,overflowY:getComputedStyle(panel).overflowY}; })()`);
+    for (const target of Object.values(glyphTargets)) {
+      const x=canvasViewport.canvas.left + Number(target.canvas_x), y=canvasViewport.canvas.top + Number(target.canvas_y);
+      assert(x+22 <= decisionClearance.left || x-22 >= decisionClearance.right || y+22+7 <= decisionClearance.top, 'decision panel obscures event glyph', {target,decisionClearance});
+    }
+    assert(decisionClearance.height >= 160 && decisionClearance.overflowY === 'auto', 'decision controls lost scroll access', decisionClearance);
+    writeJson(`${name}-decision-clearance.json`,decisionClearance);
     const unhoveredPng = join(outDir, `${name}-unhovered-full.png`); await runBrowser(["screenshot", "--full", unhoveredPng]);
     const toFullPageCenter = (target) => ({ x: canvasViewport.canvas.left + Number(target.canvas_x), y: canvasViewport.scrollY + canvasViewport.canvas.top + Number(target.canvas_y) });
     const transferCrop = cropGlyph(unhoveredPng, join(outDir, `${name}-resource-transfer-glyph.png`), toFullPageCenter(glyphTargets["recent:resource-transfer-fixture"]));
     const buildQueueCrop = cropGlyph(unhoveredPng, join(outDir, `${name}-build-queue-glyph.png`), toFullPageCenter(glyphTargets["recent:build-queue-fixture"]));
     const transfer = await evalJson(receiptScript("hover", "recent:resource-transfer-fixture"));
-    assert(transfer.receipt.dispatched && transfer.receipt.visible && transfer.tooltip?.visible && transfer.tooltip.text === "Resource transfer completed", "resource transfer pointermove did not produce its authoritative tooltip", transfer);
+    assert(transfer.receipt.dispatched && transfer.receipt.visible && transfer.tooltip?.visible && transfer.tooltip.text.includes("Resource transfer completed"), "resource transfer pointermove did not produce its authoritative tooltip", transfer);
     assert(transfer.tooltip.rect.left >= 0 && transfer.tooltip.rect.top >= 0 && transfer.tooltip.rect.right <= transfer.viewport.width && transfer.tooltip.rect.bottom <= transfer.viewport.height, "resource transfer tooltip is not fully inside the screenshot viewport", transfer);
     const transferPng = join(outDir, `${name}-resource-transfer-full.png`); await runBrowser(["screenshot", "--full", transferPng]); const transferStats = screenshotStats(transferPng); assert(transferStats.nonBlackRatio > 0.01 && transferStats.meanBrightness > 3, "resource transfer screenshot is black", transferStats);
     const buildQueue = await evalJson(receiptScript("hover", "recent:build-queue-fixture"));
-    assert(buildQueue.receipt.dispatched && buildQueue.receipt.visible && buildQueue.tooltip?.visible && buildQueue.tooltip.text === "Build queue updated", "build queue pointermove did not produce its authoritative tooltip", buildQueue);
+    assert(buildQueue.receipt.dispatched && buildQueue.receipt.visible && buildQueue.tooltip?.visible && buildQueue.tooltip.text.includes("Build queue updated"), "build queue pointermove did not produce its authoritative tooltip", buildQueue);
     const buildQueuePng = join(outDir, `${name}-build-queue-full.png`); await runBrowser(["screenshot", "--full", buildQueuePng]); const buildQueueStats = screenshotStats(buildQueuePng); assert(buildQueueStats.nonBlackRatio > 0.01 && buildQueueStats.meanBrightness > 3, "build queue screenshot is black", buildQueueStats);
     const cleared = await evalJson(receiptScript("leave"));
     assert(cleared.receipt.dispatched && cleared.receipt.cleared && cleared.tooltip === null, "canvas pointerleave did not clear tooltip", cleared);
@@ -92,6 +118,19 @@ try {
     assert(!/\b(?:fatal|CONTEXT_LOST_WEBGL|webgl.*error)\b/i.test(consoleOutput), "browser console reports WebGL fatal", { consolePath, consoleOutput });
     const pointerPath = writeJson(`${name}-pointer-receipt.json`, { resourceTransfer: transfer.receipt, buildQueue: buildQueue.receipt, cleared: cleared.receipt });
     summary.viewports[name] = { width, height, statePath, envPath, stateDigest, canvasViewport, pointerPath, consolePath, unhoveredPng, transferPng, buildQueuePng, clearedPng, transferCrop, buildQueueCrop, transferStats, buildQueueStats, clearedStats, screenshotDiff };
+    const initialProjection = await evalJson(selectionGeometryScript());
+    await evalJson(`(() => { document.querySelector('#pixel-world-embedded-runtime-canvas').dispatchEvent(new WheelEvent('wheel', {deltaY:-100,bubbles:true,cancelable:true})); return true; })()`);
+    const zoomProjection = await evalJson(selectionGeometryScript());
+    await runBrowser(['mouse','move',String(width > 640 ? 850 : 100),'400']);
+    await runBrowser(['mouse','down']);
+    await runBrowser(['mouse','move',String(width > 640 ? 890 : 140),'420']);
+    await runBrowser(['mouse','up']);
+    const panProjection = await evalJson(selectionGeometryScript());
+    for (const projection of [initialProjection,zoomProjection,panProjection]) assert(projection.count === 1 && projection.width >= 44 && projection.height >= 44 && projection.error < 1.1, 'renderer selection projection diverged', projection);
+    assert(zoomProjection.camera.zoom !== initialProjection.camera.zoom, 'wheel did not change renderer camera', {initialProjection,zoomProjection});
+    assert(panProjection.camera.pan_x_px !== zoomProjection.camera.pan_x_px, 'drag did not change renderer camera', {zoomProjection,panProjection});
+    const projectionPath = writeJson(`${name}-selection-projection.json`, {initialProjection,zoomProjection,panProjection});
+    summary.viewports[name].projectionPath = projectionPath;
   }
   summary.status = "passed"; summary.completedAt = new Date().toISOString(); writeJson("summary.json", summary); console.log(`pixel-world hotspot visual smoke passed: ${join(outDir, "summary.json")}`);
 } catch (error) { summary.status = "failed"; summary.completedAt = new Date().toISOString(); summary.failure = { message: error instanceof Error ? error.message : String(error) }; writeJson("summary.json", summary); console.error(`pixel-world hotspot visual smoke failed: ${join(outDir, "summary.json")}`); throw error; }
