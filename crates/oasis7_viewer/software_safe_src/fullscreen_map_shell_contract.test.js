@@ -188,6 +188,8 @@ describe("fullscreen map shell contract", () => {
     const { viewerHtml, compatHtml } = await readViewerHtml();
     for (const html of [viewerHtml, compatHtml]) {
       const hotspot = findRule(html, /\.pixel-world-hotspot(?:\s|$)/);
+      expect(numericDeclaration(hotspot, "border-radius")).toBe(0);
+      expect(numericDeclaration(findRule(html, /\.pixel-world-hotspot__glyph(?:\s|$)/), "border-radius")).toBe(999);
       const selectedEntity = findRule(html, /\.pixel-world-entity\[data-selected="true"\],/);
       expect(numericDeclaration(hotspot, "z-index")).toBeGreaterThan(numericDeclaration(selectedEntity, "z-index"));
     }
@@ -490,6 +492,24 @@ describe("headed visual smoke serving contract", () => {
   it("serves viewer CSS with text/css so fullscreen geometry is applied in the browser", async () => {
     const smokeSource = await readFile("scripts/pixel-world-fragment-visual-smoke.mjs", "utf8");
     expect(/case\s+["']\.css["']\s*:\s*return\s+["']text\/css(?:;\s*charset=utf-8)?["']/i.test(smokeSource)).toBe(true);
+  });
+});
+
+describe("hotspot overlay contract", () => {
+  it("renders hotspot explanations in a top-level overlay above expanded Feed", async () => {
+    const [hotspotSource, hostSource, terminalShellCss] = await Promise.all([
+      readFile("software_safe_src/pixel_world_hotspot.jsx", "utf8"),
+      readFile("software_safe_src/pixel_world_host.jsx", "utf8"),
+      readFile("viewer_terminal_shell.css", "utf8"),
+    ]);
+    expect(hostSource).toMatch(/PixelWorldHotspotTooltip/);
+    expect(hotspotSource).toMatch(/<Portal>/);
+    expect(hotspotSource).toMatch(/data-hotspot-tooltip/);
+
+    const tooltipRule = findRule(terminalShellCss, /\.pixel-world-canvas__hotspot-tooltip/);
+    expect(tooltipRule).not.toBeNull();
+    expect(hasDeclaration(tooltipRule, "position", /fixed/)).toBe(true);
+    expect(numericDeclaration(tooltipRule, "z-index")).toBeGreaterThan(60);
   });
 });
 

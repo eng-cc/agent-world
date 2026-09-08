@@ -1,3 +1,7 @@
+import { createSignal, onCleanup, onMount } from "solid-js";
+import { Portal } from "solid-js/web";
+import { installHotspotTooltipPlacement } from "./pixel_world_tooltip_placement.js";
+
 function isZhLocale(locale) {
   return String(locale || "").trim().toLowerCase().startsWith("zh");
 }
@@ -31,10 +35,47 @@ export function pixelWorldHotspotTooltipId(hotspot) {
   return `pixel-world-hotspot-tooltip-${id || "hotspot"}`;
 }
 
+export function createHotspotFocusRestoration() {
+  let trigger;
+  return {
+    remember: (element) => { trigger = element; },
+    restore: () => {
+      if (trigger) trigger.dataset.dismissedHover = "true";
+      queueMicrotask(() => {
+      if (!trigger || !document.contains(trigger)) return;
+      trigger.dataset.restoringFocus = "true";
+      trigger.focus();
+      delete trigger.dataset.restoringFocus;
+      });
+    },
+  };
+}
+
 export function PixelWorldHotspot(props) {
+  let buttonRef;
+  const [stageSize, setStageSize] = createSignal({ width: 960, height: 540 });
+  onMount(() => {
+    const stage = buttonRef.parentElement;
+    const update = () => {
+      const rect = stage.getBoundingClientRect();
+      if (rect.width && rect.height) setStageSize(rect);
+    };
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(stage);
+    onCleanup(() => observer.disconnect());
+  });
+  const glyphOffset = (axis, dimension) => {
+    const size = stageSize()[dimension];
+    const point = parseFloat(props.style?.[axis] || "50") * size / 100;
+    return point - Math.max(22, Math.min(size - 22, point));
+  };
   const hotspot = () => props.hotspot;
   const selection = () => ({ kind: "hotspot", id: hotspot().id });
   const inspect = () => {
+    delete buttonRef.dataset.dismissedHover;
+    props.onHotspotTrigger?.(buttonRef);
     props.onHotspotInspect?.(selection());
     props.onHover?.(selection());
   };
@@ -43,20 +84,51 @@ export function PixelWorldHotspot(props) {
       type="button"
       class="pixel-world-hotspot"
       data-hotspot-kind={hotspot().kind}
-      style={props.style}
+      data-hotspot-hit-target="44"
+      ref={buttonRef}
+      style={{ ...props.style,
+        "--hotspot-projected-x": props.style?.left,
+        "--hotspot-projected-y": props.style?.top,
+        left: `clamp(22px, ${props.style?.left || "50%"}, calc(100% - 22px))`,
+        top: `clamp(22px, ${props.style?.top || "50%"}, calc(100% - 22px))`,
+      }}
       title={`${hotspot().kind}:${hotspot().label}`}
       aria-label={pixelWorldHotspotAccessibleLabel(props.locale, hotspot())}
       aria-describedby={pixelWorldHotspotTooltipId(hotspot())}
-      onFocus={inspect}
+      onFocus={() => {
+        if (buttonRef.dataset.restoringFocus) return;
+        inspect();
+      }}
       onBlur={() => props.onHover?.(null)}
-      onMouseEnter={() => props.onHover?.(selection())}
-      onMouseLeave={() => props.onHover?.(null)}
+      onMouseEnter={() => {
+        if (buttonRef.dataset.dismissedHover) return;
+        props.onHotspotTrigger?.(buttonRef);
+        props.onHover?.(selection());
+      }}
+      onMouseMove={() => {
+        delete buttonRef.dataset.dismissedHover;
+        props.onHotspotHoverIntent?.();
+        props.onHotspotTrigger?.(buttonRef);
+        props.onHover?.(selection());
+      }}
+      onMouseLeave={(event) => {
+        if (event.relatedTarget?.closest?.("[data-hotspot-tooltip]")?.id === pixelWorldHotspotTooltipId(hotspot())) return;
+        delete buttonRef.dataset.dismissedHover;
+        props.onHover?.(null);
+      }}
       onKeyDown={(event) => {
+        if (event.key === "Tab" && !event.shiftKey) {
+          const close = document.getElementById(pixelWorldHotspotTooltipId(hotspot()))?.querySelector("button");
+          if (close) {
+            event.preventDefault();
+            close.focus();
+          }
+        }
         if (event.key === "Escape") {
           event.preventDefault();
           props.onHotspotClear?.();
           props.onHover?.(null);
-          event.currentTarget.blur();
+          props.onHotspotRestoreFocus?.();
         }
       }}
       onClick={(event) => {
@@ -65,18 +137,35 @@ export function PixelWorldHotspot(props) {
         inspect();
       }}
     >
-      <span aria-hidden="true">{hotspot().kind === "blocker" ? "!" : hotspot().kind === "goal" ? "G" : "i"}</span>
+      <span
+        class="pixel-world-hotspot__glyph"
+        aria-hidden="true"
+        style={{
+          width: `${Number(props.glyphSize) || 20}px`,
+          height: `${Number(props.glyphSize) || 20}px`,
+          transform: `translate(${glyphOffset("left", "width")}px, ${glyphOffset("top", "height")}px)`,
+          "pointer-events": "none",
+        }}
+      >{hotspot().kind === "blocker" ? "!" : hotspot().kind === "goal" ? "G" : "i"}</span>
     </button>
   );
 }
 
 export function PixelWorldHotspotTooltip(props) {
+  let tooltipRef;
+  onMount(() => onCleanup(installHotspotTooltipPlacement(tooltipRef)));
   const hotspot = () => props.hotspot;
   return (
+    <Portal>
     <div
       id={pixelWorldHotspotTooltipId(hotspot())}
       class="pixel-world-canvas__hotspot-tooltip"
       data-hotspot-tooltip
+      ref={tooltipRef}
+      onMouseLeave={(event) => {
+        if (event.relatedTarget?.closest?.(".pixel-world-hotspot")?.getAttribute("aria-describedby") === pixelWorldHotspotTooltipId(hotspot())) return;
+        props.onHoverLeave?.();
+      }}
       role="status"
     >
       <span>{`${pixelWorldHotspotKindLabel(props.locale, hotspot().kind)}: ${hotspot().label}`}</span>
@@ -100,5 +189,6 @@ export function PixelWorldHotspotTooltip(props) {
         ×
       </button>
     </div>
+    </Portal>
   );
 }

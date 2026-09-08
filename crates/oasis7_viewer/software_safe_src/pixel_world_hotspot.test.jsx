@@ -9,6 +9,7 @@ describe("pixel world hotspot controls", () => {
     const onHover = vi.fn();
     const onHotspotInspect = vi.fn();
     const onHotspotClear = vi.fn();
+    const onHotspotRestoreFocus = vi.fn();
     render(() => (
       <PixelWorldHotspot
         locale="en"
@@ -17,17 +18,23 @@ describe("pixel world hotspot controls", () => {
         onHover={onHover}
         onHotspotInspect={onHotspotInspect}
         onHotspotClear={onHotspotClear}
+        onHotspotRestoreFocus={onHotspotRestoreFocus}
       />
     ));
     const marker = screen.getByRole("button", { name: /Blocker hotspot: Blocked route/i });
     expect(marker).toHaveAttribute("type", "button");
+    expect(marker).toHaveAttribute("data-hotspot-hit-target", "44");
+    expect(marker.querySelector(".pixel-world-hotspot__glyph")).not.toBeNull();
     fireEvent.focus(marker);
     fireEvent.click(marker);
     expect(onHotspotInspect).toHaveBeenCalledWith({ kind: "hotspot", id: hotspot.id });
     expect(onHover).toHaveBeenCalledWith({ kind: "hotspot", id: hotspot.id });
     expect(onHover).not.toHaveBeenCalledWith({ kind: "agent", id: hotspot.id });
+    marker.focus();
     fireEvent.keyDown(marker, { key: "Escape" });
     expect(onHotspotClear).toHaveBeenCalledTimes(1);
+    expect(onHotspotRestoreFocus).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(marker);
   });
 
   it("keeps the explanation close control keyboard reachable and read-only", () => {
@@ -46,4 +53,5 @@ describe("pixel world hotspot controls", () => {
     fireEvent.keyDown(close, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
 });

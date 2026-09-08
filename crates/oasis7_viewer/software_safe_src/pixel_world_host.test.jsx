@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { verifyHotspotCameraAndFocus } from "./pixel_world_hotspot_test_helpers.js";
 const runtimeMock = vi.hoisted(() => ({
   deriveRenderState: null,
   mountError: null,
@@ -872,7 +873,7 @@ describe("pixel world host", () => {
         label: "缺料阻塞",
         pos: { x_cm: 5_020_000, y_cm: 2_510_000, z_cm: 0 },
         sizeHintPx: 20,
-      }],
+      }, { id: "hotspot-goal", kind: "goal", label: "稳定生产", pos: { x_cm: 6_000_000, y_cm: 2_000_000, z_cm: 0 } }],
     }));
 
     await renderPixelWorldHost(
@@ -883,9 +884,7 @@ describe("pixel world host", () => {
 
     const marker = await screen.findByRole("button", { name: /阻塞热点：缺料阻塞/ });
     expect(marker).toHaveProperty("tabIndex", 0);
-    fireEvent.focus(marker);
-    expect(screen.getByRole("status")).toHaveTextContent("阻塞: 缺料阻塞");
-    expect(screen.getByRole("button", { name: "关闭热点说明" })).toBeInTheDocument();
+    await verifyHotspotCameraAndFocus(marker, runtimeMock.onEvent);
   }, HEAVY_UI_TEST_TIMEOUT_MS);
 
   it("keeps hotspot controls painted above decorative route waypoints", async () => {

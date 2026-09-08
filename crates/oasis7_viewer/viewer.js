@@ -61,7 +61,7 @@ function createRenderEffect(fn, value2, options) {
 function createEffect(fn, value2, options) {
   runEffects = runUserEffects;
   const c = createComputation(fn, value2, false, STALE);
-  c.user = true;
+  if (!options || !options.render) c.user = true;
   Effects ? Effects.push(c) : updateComputation(c);
 }
 function createMemo(fn, value2, options) {
@@ -99,6 +99,23 @@ function onCleanup(fn) {
 function getListener() {
   return Listener;
 }
+function getOwner() {
+  return Owner;
+}
+function runWithOwner(o, fn) {
+  const prev = Owner;
+  const prevListener = Listener;
+  Owner = o;
+  Listener = null;
+  try {
+    return runUpdates(fn, true);
+  } catch (err) {
+    handleError(err);
+  } finally {
+    Owner = prev;
+    Listener = prevListener;
+  }
+}
 const [transPending, setTransPending] = /* @__PURE__ */ createSignal(false);
 function readSignal() {
   if (this.sources && this.state) {
@@ -111,20 +128,23 @@ function readSignal() {
     }
   }
   if (Listener) {
-    const sSlot = this.observers ? this.observers.length : 0;
-    if (!Listener.sources) {
-      Listener.sources = [this];
-      Listener.sourceSlots = [sSlot];
-    } else {
-      Listener.sources.push(this);
-      Listener.sourceSlots.push(sSlot);
-    }
-    if (!this.observers) {
-      this.observers = [Listener];
-      this.observerSlots = [Listener.sources.length - 1];
-    } else {
-      this.observers.push(Listener);
-      this.observerSlots.push(Listener.sources.length - 1);
+    const observers = this.observers;
+    if (!observers || observers[observers.length - 1] !== Listener) {
+      const sSlot = observers ? observers.length : 0;
+      if (!Listener.sources) {
+        Listener.sources = [this];
+        Listener.sourceSlots = [sSlot];
+      } else {
+        Listener.sources.push(this);
+        Listener.sourceSlots.push(sSlot);
+      }
+      if (!observers) {
+        this.observers = [Listener];
+        this.observerSlots = [Listener.sources.length - 1];
+      } else {
+        observers.push(Listener);
+        this.observerSlots.push(Listener.sources.length - 1);
+      }
     }
   }
   return this.value;
@@ -633,6 +653,9 @@ function style(node, value2, prev) {
   }
   return prev;
 }
+function setStyleProperty(node, name, value2) {
+  value2 != null ? node.style.setProperty(name, value2) : node.style.removeProperty(name);
+}
 function use(fn, element, arg) {
   return untrack(() => fn(element, arg));
 }
@@ -790,6 +813,45 @@ function cleanChildren(parent, current, marker, replacement) {
     }
   } else parent.insertBefore(node, marker);
   return [node];
+}
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+function createElement(tagName, isSVG = false, is = void 0) {
+  return isSVG ? document.createElementNS(SVG_NAMESPACE, tagName) : document.createElement(tagName, {
+    is
+  });
+}
+function Portal(props) {
+  const {
+    useShadow
+  } = props, marker = document.createTextNode(""), mount = () => props.mount || document.body, owner = getOwner();
+  let content;
+  createEffect(() => {
+    content || (content = runWithOwner(owner, () => createMemo(() => props.children)));
+    const el = mount();
+    if (el instanceof HTMLHeadElement) {
+      const [clean, setClean] = createSignal(false);
+      const cleanup = () => setClean(true);
+      createRoot((dispose2) => insert(el, () => !clean() ? content() : dispose2(), null));
+      onCleanup(cleanup);
+    } else {
+      const container = createElement(props.isSVG ? "g" : "div", props.isSVG), renderRoot = useShadow && container.attachShadow ? container.attachShadow({
+        mode: "open"
+      }) : container;
+      Object.defineProperty(container, "_$host", {
+        get() {
+          return marker.parentNode;
+        },
+        configurable: true
+      });
+      insert(renderRoot, content);
+      el.appendChild(container);
+      props.ref && props.ref(container);
+      onCleanup(() => el.contains(container) && el.removeChild(container));
+    }
+  }, void 0, {
+    render: true
+  });
+  return marker;
 }
 const TEST_API_GLOBAL_NAME = "__AW_TEST__";
 const RENDER_META_GLOBAL_NAME = "__AW_VIEWER_RENDER_META__";
@@ -4497,6 +4559,9 @@ function ownKeys(target) {
   return Reflect.ownKeys(target);
 }
 function setProperty(state2, property, value2, deleting = false) {
+  if (property === "__proto__") {
+    return;
+  }
   if (!deleting && state2[property] === value2) return;
   const prev = state2[property], len = state2.length;
   if (value2 === void 0) {
@@ -4538,7 +4603,7 @@ const proxyTraps = {
     if (!tracked) {
       const desc = Object.getOwnPropertyDescriptor(target, property);
       const isFunction = typeof value2 === "function";
-      if (getListener() && (!isFunction || target.hasOwnProperty(property)) && !(desc && desc.get)) value2 = getNode(nodes, property, value2)();
+      if (getListener() && (!isFunction || Object.prototype.hasOwnProperty.call(target, property)) && !(desc && desc.get)) value2 = getNode(nodes, property, value2)();
       else if (value2 != null && isFunction && value2 === Array.prototype[property]) {
         return (...args) => batch(() => Array.prototype[property].apply(receiver, args));
       }
@@ -10344,7 +10409,39 @@ function installPixelWorldMobileSelectionSafeArea(canvasRoot) {
     feed?.removeEventListener("toggle", sync, true);
   };
 }
-var _tmpl$$q = /* @__PURE__ */ template(`<button type=button class=pixel-world-hotspot><span aria-hidden=true>`), _tmpl$2$q = /* @__PURE__ */ template(`<div class=pixel-world-canvas__hotspot-tooltip data-hotspot-tooltip role=status><span></span><button type=button class=pixel-world-canvas__hotspot-tooltip-close>×`);
+function hotspotTooltipSafeBand(summary, command, viewportHeight) {
+  const top = Math.max(10, summary.bottom + 4);
+  const bottom = Math.min(viewportHeight - 10, command?.top ?? viewportHeight - 10) - 4;
+  return { top, maxHeight: Math.max(26, bottom - top) };
+}
+function installHotspotTooltipPlacement(tooltip) {
+  const feed = document.querySelector('[data-viewer-overlay="feed"]');
+  const command = document.querySelector('[data-viewer-overlay="next-move"]');
+  const update = () => {
+    for (const property of ["top", "bottom", "max-height", "overflow-y", "padding"]) tooltip.style.removeProperty(property);
+    if (!feed?.open) return;
+    const summary = feed.querySelector("summary");
+    if (!summary) return;
+    const summaryRect = summary.getBoundingClientRect();
+    const rect = tooltip.getBoundingClientRect();
+    if (rect.bottom <= summaryRect.top || rect.top >= summaryRect.bottom) return;
+    const commandRect = command && getComputedStyle(command).display !== "none" ? command.getBoundingClientRect() : null;
+    const band = hotspotTooltipSafeBand(summaryRect, commandRect, window.innerHeight);
+    tooltip.style.top = `${band.top}px`;
+    tooltip.style.bottom = "auto";
+    tooltip.style.maxHeight = `${band.maxHeight}px`;
+    tooltip.style.overflowY = "auto";
+    if (band.maxHeight < 40) tooltip.style.padding = "1px 7px";
+  };
+  update();
+  window.addEventListener("resize", update);
+  feed?.addEventListener("toggle", update);
+  return () => {
+    window.removeEventListener("resize", update);
+    feed?.removeEventListener("toggle", update);
+  };
+}
+var _tmpl$$q = /* @__PURE__ */ template(`<button type=button class=pixel-world-hotspot data-hotspot-hit-target=44><span class=pixel-world-hotspot__glyph aria-hidden=true style=pointer-events:none>`), _tmpl$2$q = /* @__PURE__ */ template(`<div class=pixel-world-canvas__hotspot-tooltip data-hotspot-tooltip role=status><span></span><button type=button class=pixel-world-canvas__hotspot-tooltip-close>×`);
 function isZhLocale$1(locale) {
   return String(locale || "").trim().toLowerCase().startsWith("zh");
 }
@@ -10366,13 +10463,54 @@ function pixelWorldHotspotTooltipId(hotspot) {
   const id = String(hotspot?.id || hotspot?.kind || "hotspot").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
   return `pixel-world-hotspot-tooltip-${id || "hotspot"}`;
 }
+function createHotspotFocusRestoration() {
+  let trigger;
+  return {
+    remember: (element) => {
+      trigger = element;
+    },
+    restore: () => {
+      if (trigger) trigger.dataset.dismissedHover = "true";
+      queueMicrotask(() => {
+        if (!trigger || !document.contains(trigger)) return;
+        trigger.dataset.restoringFocus = "true";
+        trigger.focus();
+        delete trigger.dataset.restoringFocus;
+      });
+    }
+  };
+}
 function PixelWorldHotspot(props) {
+  let buttonRef;
+  const [stageSize, setStageSize] = createSignal({
+    width: 960,
+    height: 540
+  });
+  onMount(() => {
+    const stage = buttonRef.parentElement;
+    const update = () => {
+      const rect = stage.getBoundingClientRect();
+      if (rect.width && rect.height) setStageSize(rect);
+    };
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(stage);
+    onCleanup(() => observer.disconnect());
+  });
+  const glyphOffset = (axis, dimension) => {
+    const size = stageSize()[dimension];
+    const point = parseFloat(props.style?.[axis] || "50") * size / 100;
+    return point - Math.max(22, Math.min(size - 22, point));
+  };
   const hotspot = () => props.hotspot;
   const selection = () => ({
     kind: "hotspot",
     id: hotspot().id
   });
   const inspect = () => {
+    delete buttonRef.dataset.dismissedHover;
+    props.onHotspotTrigger?.(buttonRef);
     props.onHotspotInspect?.(selection());
     props.onHover?.(selection());
   };
@@ -10384,69 +10522,117 @@ function PixelWorldHotspot(props) {
       inspect();
     };
     _el$.$$keydown = (event) => {
+      if (event.key === "Tab" && !event.shiftKey) {
+        const close = document.getElementById(pixelWorldHotspotTooltipId(hotspot()))?.querySelector("button");
+        if (close) {
+          event.preventDefault();
+          close.focus();
+        }
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         props.onHotspotClear?.();
         props.onHover?.(null);
-        event.currentTarget.blur();
+        props.onHotspotRestoreFocus?.();
       }
     };
-    _el$.addEventListener("mouseleave", () => props.onHover?.(null));
-    _el$.addEventListener("mouseenter", () => props.onHover?.(selection()));
+    _el$.addEventListener("mouseleave", (event) => {
+      if (event.relatedTarget?.closest?.("[data-hotspot-tooltip]")?.id === pixelWorldHotspotTooltipId(hotspot())) return;
+      delete buttonRef.dataset.dismissedHover;
+      props.onHover?.(null);
+    });
+    _el$.$$mousemove = () => {
+      delete buttonRef.dataset.dismissedHover;
+      props.onHotspotHoverIntent?.();
+      props.onHotspotTrigger?.(buttonRef);
+      props.onHover?.(selection());
+    };
+    _el$.addEventListener("mouseenter", () => {
+      if (buttonRef.dataset.dismissedHover) return;
+      props.onHotspotTrigger?.(buttonRef);
+      props.onHover?.(selection());
+    });
     _el$.addEventListener("blur", () => props.onHover?.(null));
-    _el$.addEventListener("focus", inspect);
+    _el$.addEventListener("focus", () => {
+      if (buttonRef.dataset.restoringFocus) return;
+      inspect();
+    });
+    var _ref$ = buttonRef;
+    typeof _ref$ === "function" ? use(_ref$, _el$) : buttonRef = _el$;
     insert(_el$2, (() => {
       var _c$ = memo(() => hotspot().kind === "blocker");
       return () => _c$() ? "!" : hotspot().kind === "goal" ? "G" : "i";
     })());
     createRenderEffect((_p$) => {
-      var _v$ = hotspot().kind, _v$2 = props.style, _v$3 = `${hotspot().kind}:${hotspot().label}`, _v$4 = pixelWorldHotspotAccessibleLabel(props.locale, hotspot()), _v$5 = pixelWorldHotspotTooltipId(hotspot());
+      var _v$ = hotspot().kind, _v$2 = {
+        ...props.style,
+        "--hotspot-projected-x": props.style?.left,
+        "--hotspot-projected-y": props.style?.top,
+        left: `clamp(22px, ${props.style?.left || "50%"}, calc(100% - 22px))`,
+        top: `clamp(22px, ${props.style?.top || "50%"}, calc(100% - 22px))`
+      }, _v$3 = `${hotspot().kind}:${hotspot().label}`, _v$4 = pixelWorldHotspotAccessibleLabel(props.locale, hotspot()), _v$5 = pixelWorldHotspotTooltipId(hotspot()), _v$6 = `${Number(props.glyphSize) || 20}px`, _v$7 = `${Number(props.glyphSize) || 20}px`, _v$8 = `translate(${glyphOffset("left", "width")}px, ${glyphOffset("top", "height")}px)`;
       _v$ !== _p$.e && setAttribute(_el$, "data-hotspot-kind", _p$.e = _v$);
       _p$.t = style(_el$, _v$2, _p$.t);
       _v$3 !== _p$.a && setAttribute(_el$, "title", _p$.a = _v$3);
       _v$4 !== _p$.o && setAttribute(_el$, "aria-label", _p$.o = _v$4);
       _v$5 !== _p$.i && setAttribute(_el$, "aria-describedby", _p$.i = _v$5);
+      _v$6 !== _p$.n && setStyleProperty(_el$2, "width", _p$.n = _v$6);
+      _v$7 !== _p$.s && setStyleProperty(_el$2, "height", _p$.s = _v$7);
+      _v$8 !== _p$.h && setStyleProperty(_el$2, "transform", _p$.h = _v$8);
       return _p$;
     }, {
       e: void 0,
       t: void 0,
       a: void 0,
       o: void 0,
-      i: void 0
+      i: void 0,
+      n: void 0,
+      s: void 0,
+      h: void 0
     });
     return _el$;
   })();
 }
 function PixelWorldHotspotTooltip(props) {
+  let tooltipRef;
+  onMount(() => onCleanup(installHotspotTooltipPlacement(tooltipRef)));
   const hotspot = () => props.hotspot;
-  return (() => {
-    var _el$3 = _tmpl$2$q(), _el$4 = _el$3.firstChild, _el$5 = _el$4.nextSibling;
-    insert(_el$4, () => `${pixelWorldHotspotKindLabel(props.locale, hotspot().kind)}: ${hotspot().label}`);
-    _el$5.$$click = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      props.onClose?.();
-    };
-    _el$5.$$keydown = (event) => {
-      if (event.key === "Escape") {
+  return createComponent(Portal, {
+    get children() {
+      var _el$3 = _tmpl$2$q(), _el$4 = _el$3.firstChild, _el$5 = _el$4.nextSibling;
+      _el$3.addEventListener("mouseleave", (event) => {
+        if (event.relatedTarget?.closest?.(".pixel-world-hotspot")?.getAttribute("aria-describedby") === pixelWorldHotspotTooltipId(hotspot())) return;
+        props.onHoverLeave?.();
+      });
+      var _ref$2 = tooltipRef;
+      typeof _ref$2 === "function" ? use(_ref$2, _el$3) : tooltipRef = _el$3;
+      insert(_el$4, () => `${pixelWorldHotspotKindLabel(props.locale, hotspot().kind)}: ${hotspot().label}`);
+      _el$5.$$click = (event) => {
         event.preventDefault();
         event.stopPropagation();
         props.onClose?.();
-      }
-    };
-    createRenderEffect((_p$) => {
-      var _v$6 = pixelWorldHotspotTooltipId(hotspot()), _v$7 = tr$3(props.locale, "关闭热点说明", "Close hotspot explanation");
-      _v$6 !== _p$.e && setAttribute(_el$3, "id", _p$.e = _v$6);
-      _v$7 !== _p$.t && setAttribute(_el$5, "aria-label", _p$.t = _v$7);
-      return _p$;
-    }, {
-      e: void 0,
-      t: void 0
-    });
-    return _el$3;
-  })();
+      };
+      _el$5.$$keydown = (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          props.onClose?.();
+        }
+      };
+      createRenderEffect((_p$) => {
+        var _v$9 = pixelWorldHotspotTooltipId(hotspot()), _v$0 = tr$3(props.locale, "关闭热点说明", "Close hotspot explanation");
+        _v$9 !== _p$.e && setAttribute(_el$3, "id", _p$.e = _v$9);
+        _v$0 !== _p$.t && setAttribute(_el$5, "aria-label", _p$.t = _v$0);
+        return _p$;
+      }, {
+        e: void 0,
+        t: void 0
+      });
+      return _el$3;
+    }
+  });
 }
-delegateEvents(["keydown", "click"]);
+delegateEvents(["mousemove", "keydown", "click"]);
 function isZhLocale(locale) {
   return String(locale || "").trim().toLowerCase().startsWith("zh");
 }
@@ -10470,6 +10656,55 @@ function resolvePixelWorldReadoutStatus(locale, connectionStatus, worldFeed = {}
   if (status === "connecting" || status === "reconnecting") return warn(tr$2(locale, "正在重连", "RECONNECTING"), "reconnecting");
   if (status !== "connected") return warn(tr$2(locale, "离线", "OFFLINE"), "offline");
   return feedStatus === "ready" ? { label: tr$2(locale, "实时", "LIVE"), className: "badge badge--good pixel-world-readout__status pixel-world-readout__status--ready" } : warn(tr$2(locale, "同步中", "SYNCING"), "syncing");
+}
+const PIXEL_WORLD_CANVAS_WIDTH = 960;
+const PIXEL_WORLD_CANVAS_HEIGHT = 540;
+const PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX = 44;
+function safeNumber$1(value2, fallback = 0) {
+  const number = Number(value2);
+  return Number.isFinite(number) ? number : fallback;
+}
+function clampRatio$1(value2) {
+  return Math.min(1, Math.max(0, safeNumber$1(value2)));
+}
+function toCanvasPoint(position, worldBounds, width, height, cameraState) {
+  if (!position || !worldBounds) return null;
+  const x = clampRatio$1(safeNumber$1(position.x_cm ?? position.xCm) / Math.max(1, safeNumber$1(worldBounds.width_cm ?? worldBounds.widthCm, 1)));
+  const y = clampRatio$1(safeNumber$1(position.y_cm ?? position.yCm) / Math.max(1, safeNumber$1(worldBounds.depth_cm ?? worldBounds.depthCm, 1)));
+  const zoom = Math.max(0.5, Number(cameraState?.zoom) || 1);
+  return {
+    x: width / 2 + (20 + x * Math.max(1, width - 40) - width / 2) * zoom + (Number(cameraState?.pan_x_px ?? cameraState?.panX) || 0),
+    y: height / 2 + (20 + y * Math.max(1, height - 40) - height / 2) * zoom + (Number(cameraState?.pan_y_px ?? cameraState?.panY) || 0)
+  };
+}
+function pixelWorldHotspotGlyphSize(hotspot) {
+  return Math.max(
+    14,
+    Math.min(32, safeNumber$1(hotspot?.size_hint_px ?? hotspot?.sizeHintPx, 16))
+  );
+}
+function pixelWorldHotspotStyle(hotspot, worldBounds, index = 0, cameraState) {
+  const fallback = {
+    left: `${20 + index % 4 * 16}%`,
+    top: `${22 + Math.floor(index / 4) * 16}%`
+  };
+  const position = hotspot?.pos;
+  if (!position || !worldBounds) {
+    return {
+      ...fallback,
+      width: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
+      height: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
+      transform: "translate(-50%, -50%)"
+    };
+  }
+  const point = toCanvasPoint(position, worldBounds, PIXEL_WORLD_CANVAS_WIDTH, PIXEL_WORLD_CANVAS_HEIGHT, cameraState);
+  return {
+    left: `${point.x / PIXEL_WORLD_CANVAS_WIDTH * 100}%`,
+    top: `${point.y / PIXEL_WORLD_CANVAS_HEIGHT * 100}%`,
+    width: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
+    height: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
+    transform: "translate(-50%, -50%)"
+  };
 }
 var _tmpl$$p = /* @__PURE__ */ template(`<div class=pixel-world-canvas__grid>`), _tmpl$2$p = /* @__PURE__ */ template(`<div class="pixel-world-canvas__terrain-band pixel-world-canvas__terrain-band--one">`), _tmpl$3$m = /* @__PURE__ */ template(`<div class="pixel-world-canvas__terrain-band pixel-world-canvas__terrain-band--two">`), _tmpl$4$j = /* @__PURE__ */ template(`<div class=pixel-world-fragment-terrain>`), _tmpl$5$i = /* @__PURE__ */ template(`<div class=pixel-world-route>`), _tmpl$6$c = /* @__PURE__ */ template(`<div class="pixel-world-route-waypoint pixel-world-route-waypoint--mid">`), _tmpl$7$8 = /* @__PURE__ */ template(`<div class="pixel-world-route-waypoint pixel-world-route-waypoint--target">`), _tmpl$8$5 = /* @__PURE__ */ template(`<button class="pixel-world-entity pixel-world-entity--location"data-pixel-world-location-marker=true><span>`), _tmpl$9$4 = /* @__PURE__ */ template(`<button class="pixel-world-entity pixel-world-entity--agent"data-pixel-world-agent-marker=true><span>`), _tmpl$0$4 = /* @__PURE__ */ template(`<button type=button class="pixel-world-entity pixel-world-entity--agent pixel-world-entity--canvas-hit-target"data-pixel-world-agent-marker=true><span>`), _tmpl$1$1 = /* @__PURE__ */ template(`<div class="pixel-world-canvas__callout pixel-world-canvas__callout--goal">`), _tmpl$10$1 = /* @__PURE__ */ template(`<div class="pixel-world-canvas__callout pixel-world-canvas__callout--blocker">`), _tmpl$11$1 = /* @__PURE__ */ template(`<div class=pixel-world-canvas__selection>`), _tmpl$12$1 = /* @__PURE__ */ template(`<div class="pixel-world-canvas pixel-world-canvas--rendered"><canvas id=pixel-world-embedded-runtime-canvas class=pixel-world-canvas__surface tabindex=0 role=img aria-describedby=pixel-world-canvas-accessible-summary width=960 height=540></canvas><div id=pixel-world-canvas-accessible-summary class=sr-only></div><div class=pixel-world-canvas__overlay>`), _tmpl$13$1 = /* @__PURE__ */ template(`<div class=pixel-world-action-receipt__detail>`), _tmpl$14$1 = /* @__PURE__ */ template(`<span>`), _tmpl$15$1 = /* @__PURE__ */ template(`<div class=pixel-world-action-receipt__meta><span>`), _tmpl$16$1 = /* @__PURE__ */ template(`<div data-viewer-overlay=receipt><div class=pixel-world-action-receipt__label></div><div class=pixel-world-action-receipt__body><div class=pixel-world-action-receipt__title></div><div class=pixel-world-action-receipt__summary>`), _tmpl$17$1 = /* @__PURE__ */ template(`<span class=pixel-world-command-cell__blocker-chip>`), _tmpl$18$1 = /* @__PURE__ */ template(`<div class=pixel-world-command-cell__detail>`), _tmpl$19$1 = /* @__PURE__ */ template(`<div class=pixel-world-command-strip data-viewer-overlay=next-move><div class="pixel-world-command-cell pixel-world-command-cell--next pixel-world-shell-region pixel-world-shell-region--primary"data-shell-region=next-move-primary><div class=pixel-world-command-cell__header><div class=pixel-world-command-cell__label></div></div><div class=pixel-world-command-cell__value></div><a class=pixel-world-command-cell__action></a></div><div class="pixel-world-command-cell pixel-world-shell-region pixel-world-shell-region--supporting"data-shell-region=supporting-context><div class="pixel-world-shell-context-group pixel-world-shell-context-group--objective"><div class=pixel-world-command-cell__label></div><div class=pixel-world-command-cell__value></div><div class=pixel-world-command-cell__detail></div></div><div class="pixel-world-shell-context-group pixel-world-shell-context-group--leverage"><div class=pixel-world-command-cell__label></div><div class=pixel-world-command-cell__value></div><div class=pixel-world-command-cell__detail></div><div class=pixel-world-shell-context-group__agent><span class=pixel-world-command-cell__label></span><strong>`), _tmpl$20$1 = /* @__PURE__ */ template(`<span class="badge badge--accent">`), _tmpl$21$1 = /* @__PURE__ */ template(`<div class="pixel-world-readout badge-row"><span></span><span class="badge badge--accent">`), _tmpl$22$1 = /* @__PURE__ */ template(`<div class="pixel-world-focus-hud__cell pixel-world-focus-hud__cell--tick"data-hud-priority=telemetry><span></span><strong></strong><em>`), _tmpl$23$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-hud data-focus-hud=true><div class=pixel-world-focus-hud__identity><div class=pixel-world-focus-hud__eyebrow></div><div class=pixel-world-focus-hud__title></div></div><div class="pixel-world-focus-hud__cell pixel-world-focus-hud__cell--prompt"><span></span><strong></strong><em></em></div><div class="pixel-world-focus-hud__cell pixel-world-focus-hud__cell--mission"><span></span><strong></strong><em></em></div><div class="pixel-world-focus-hud__cell pixel-world-focus-hud__cell--blocker"><span></span><strong></strong></div><div class=pixel-world-focus-controls><button type=button class="pixel-world-focus-control pixel-world-focus-control--primary"></button><button id=viewer-focus-exit type=button class="pixel-world-focus-control pixel-world-focus-control--quiet"></button><details class=pixel-world-focus-more-controls><summary></summary><button type=button class="pixel-world-focus-control pixel-world-focus-control--secondary"></button><button type=button class="pixel-world-focus-control pixel-world-focus-control--secondary">`), _tmpl$24$1 = /* @__PURE__ */ template(`<span class="badge badge--warn">`), _tmpl$25$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-cinematic data-focus-cinematic=true><div class=pixel-world-focus-cinematic__eyebrow></div><div class=pixel-world-focus-cinematic__title></div><div class=pixel-world-focus-cinematic__body></div><div class=badge-row><span class="badge badge--accent">`), _tmpl$26$1 = /* @__PURE__ */ template(`<div class="pixel-world-focus-rail__item pixel-world-focus-rail__item--blocker"data-focus-priority=blocker><span></span><strong>`), _tmpl$27$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-rail__item><span></span><strong>`), _tmpl$28$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-rail data-focus-rail=true><div class=pixel-world-focus-rail__label>`), _tmpl$29$1 = /* @__PURE__ */ template(`<span class=sr-only>`), _tmpl$30$1 = /* @__PURE__ */ template(`<div class="pixel-world-focus-minimap__node pixel-world-focus-minimap__node--selected"data-selected=true><span></span><strong>`), _tmpl$31$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-minimap data-focus-minimap=true><div class=pixel-world-focus-minimap__label></div><div class=pixel-world-focus-minimap__grid></div><div class=pixel-world-focus-minimap__route></div><div class="pixel-world-focus-minimap__node pixel-world-focus-minimap__node--target"><span></span><strong></strong></div><div class="pixel-world-focus-minimap__node pixel-world-focus-minimap__node--agent"><span></span><strong></strong></div><div class=pixel-world-focus-minimap__meta><span></span><span></span><span></span><span>`), _tmpl$32$1 = /* @__PURE__ */ template(`<pre class=json>`), _tmpl$33$1 = /* @__PURE__ */ template(`<details class=diagnostic><summary>`), _tmpl$34$1 = /* @__PURE__ */ template(`<span class=badge>`), _tmpl$35$1 = /* @__PURE__ */ template(`<div class=badge-row><span class="badge badge--accent"></span><span class=badge></span><span>`), _tmpl$36$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-command-tray><div class="pixel-world-focus-command-chip pixel-world-focus-command-chip--target"><span></span><strong></strong><em></em></div><div class="pixel-world-focus-command-chip pixel-world-focus-command-chip--blocker"><span></span><strong></strong></div><div class="pixel-world-focus-command-chip pixel-world-focus-command-chip--receipt"><span></span><strong></strong></div><button type=button class="pixel-world-focus-command-chip pixel-world-focus-command-chip--primary"data-chat-send=1>`), _tmpl$37$1 = /* @__PURE__ */ template(`<div class=empty>`), _tmpl$38$1 = /* @__PURE__ */ template(`<div class="panel panel--nested"><div class=panel__header><div class="stack stack--compact"><div class=panel__eyebrow></div><div class=panel__title></div><div class=panel__meta-copy></div></div></div><div class="panel__body stack"><div class=field><label for=agent-chat-message></label><textarea id=agent-chat-message rows=2></textarea></div><div class=toolbar><button type=button data-chat-send=1></button></div><div><div class="panel__title panel__title--spaced"></div><div class=event-list>`), _tmpl$39$1 = /* @__PURE__ */ template(`<div id=viewer-command-console class="pixel-world-focus-command-surface stack">`), _tmpl$40$1 = /* @__PURE__ */ template(`<div class=feedback-detail>`), _tmpl$41$1 = /* @__PURE__ */ template(`<div class=feedback-card><div class=badge-row><span></span></div><div class=feedback-summary>`), _tmpl$42$1 = /* @__PURE__ */ template(`<div><div class=event-card__title><span></span></div><div class=event-card__meta></div><div class=feedback-summary>`), _tmpl$43$1 = /* @__PURE__ */ template(`<div class=pixel-world-host__summary><div class=pixel-world-host__summary-copy><div class=pixel-world-host__headline></div><div class=feedback-detail>`), _tmpl$44$1 = /* @__PURE__ */ template(`<div class="empty pixel-world-render-unavailable"data-viewer-overlay=renderer-unavailable>`), _tmpl$45$1 = /* @__PURE__ */ template(`<div class=pixel-world-focus-receipt>`), _tmpl$46$1 = /* @__PURE__ */ template(`<details id=viewer-focus-command-drawer class="pixel-world-focus-drawer pixel-world-focus-drawer--command"><summary></summary><div class=pixel-world-focus-drawer__body>`), _tmpl$47$1 = /* @__PURE__ */ template(`<div class=feedback-detail data-renderer-fatal>`), _tmpl$48$1 = /* @__PURE__ */ template(`<details class="diagnostic pixel-world-render-diagnostics"><summary></summary><div class="pixel-world-host__toolbar badge-row"><span class="badge badge--accent"></span><span class="badge badge--accent"></span><span class="badge badge--accent"></span><span class=badge></span><span class=badge></span><span class=badge></span><span class=badge></span><span class=badge></span><span class=badge></span><button type=button></button><button type=button></button><div class=feedback-detail>`), _tmpl$49$1 = /* @__PURE__ */ template(`<details id=viewer-focus-diagnostics-drawer class="pixel-world-focus-drawer pixel-world-focus-drawer--diagnostics"><summary></summary><div class=pixel-world-focus-drawer__body><div class=badge-row><span class=badge></span><span class=badge></span><span class=badge></span></div><div class="toolbar toolbar--spaced"><button type=button>`), _tmpl$50$1 = /* @__PURE__ */ template(`<div class="stack flow-top"><pre class=json>`), _tmpl$51$1 = /* @__PURE__ */ template(`<div data-viewer-overlay=world-hud><div class=pixel-world-focus-entry data-viewer-overlay=cinematic-entry><div id=pixel-world-focus-entry-hint class=pixel-world-focus-entry__hint></div><button type=button class=pixel-world-focus-entry__button aria-pressed=false></button></div><details class=diagnostic><summary>`), _tmpl$52$1 = /* @__PURE__ */ template(`<div>`), _tmpl$53$1 = /* @__PURE__ */ template(`<button type=button class=pixel-world-render-unavailable__retry>`);
 function tr$1(locale, zh, en) {
@@ -10611,18 +10846,6 @@ function routeWaypointStyle(link, worldBounds, index, stop) {
     top: `${(from.y + (to.y - from.y) * ratio).toFixed(1)}%`
   };
 }
-function hotspotStyle(hotspot, worldBounds, index) {
-  const sizePx = Math.max(14, Math.min(32, safeNumber(hotspot.size_hint_px, 16)));
-  return {
-    ...toWorldPercentStyle(hotspot.pos, worldBounds, {
-      left: `${20 + index % 4 * 16}%`,
-      top: `${22 + Math.floor(index / 4) * 16}%`
-    }),
-    width: `${sizePx}px`,
-    height: `${sizePx}px`,
-    transform: "translate(-50%, -50%)"
-  };
-}
 function fieldValue(value2, snakeName, camelName, fallback = void 0) {
   if (!value2 || typeof value2 !== "object") {
     return fallback;
@@ -10669,7 +10892,7 @@ function pixelWorldVisualState(renderState) {
 }
 function PixelWorldHostHotspotLayer(props) {
   const visualState = () => pixelWorldVisualState(props.renderState());
-  return createComponent(For, {
+  return createComponent(Index, {
     get each() {
       return visualState().visualHotspots.slice(0, 8);
     },
@@ -10677,9 +10900,14 @@ function PixelWorldHostHotspotLayer(props) {
       get locale() {
         return props.locale();
       },
-      hotspot,
+      get hotspot() {
+        return hotspot();
+      },
       get style() {
-        return hotspotStyle(hotspot, visualState().worldBounds, index());
+        return pixelWorldHotspotStyle(hotspot(), visualState().worldBounds, index, props.cameraState?.());
+      },
+      get glyphSize() {
+        return pixelWorldHotspotGlyphSize(hotspot());
       },
       get onHover() {
         return props.onHover;
@@ -10689,6 +10917,15 @@ function PixelWorldHostHotspotLayer(props) {
       },
       get onHotspotClear() {
         return props.onHotspotClear;
+      },
+      get onHotspotHoverIntent() {
+        return props.onHotspotHoverIntent;
+      },
+      get onHotspotTrigger() {
+        return props.onHotspotTrigger;
+      },
+      get onHotspotRestoreFocus() {
+        return props.onHotspotRestoreFocus;
       }
     })
   });
@@ -11115,14 +11352,16 @@ function buildPixelWorldRenderInput(locale = state.uiLocale) {
 }
 function PixelWorldCanvasRenderer(props) {
   let canvasRef;
+  const hotspotFocus = createHotspotFocusRestoration();
   const visualState = () => pixelWorldVisualState(props.renderState());
   const [inspectedHotspot, setInspectedHotspot] = createSignal(null);
+  const [hoverDismissed, setHoverDismissed] = createSignal(false);
   const activeHotspot = () => {
     const inspected = inspectedHotspot();
     if (inspected?.kind === "hotspot") {
       return visualState().visualHotspots.find((hotspot) => hotspot.id === inspected.id) || null;
     }
-    return props.hoveredHotspot?.() || null;
+    return hoverDismissed() ? null : props.hoveredHotspot?.() || null;
   };
   const selectedEntityLabel = () => pixelWorldSelectedEntityLabel(visualState(), visualState().selection, isLocaleZh(props.locale()));
   onMount(() => onCleanup(installPixelWorldMobileSelectionSafeArea(() => canvasRef?.closest(".pixel-world-canvas"))));
@@ -11189,11 +11428,27 @@ function PixelWorldCanvasRenderer(props) {
       get renderState() {
         return props.renderState;
       },
+      get cameraState() {
+        return props.cameraState;
+      },
       get onHover() {
         return props.onHover;
       },
-      onHotspotInspect: setInspectedHotspot,
-      onHotspotClear: () => setInspectedHotspot(null)
+      onHotspotInspect: (selection) => {
+        setHoverDismissed(false);
+        setInspectedHotspot(selection);
+      },
+      onHotspotHoverIntent: () => setHoverDismissed(false),
+      onHotspotClear: () => {
+        setHoverDismissed(true);
+        setInspectedHotspot(null);
+      },
+      get onHotspotTrigger() {
+        return hotspotFocus.remember;
+      },
+      get onHotspotRestoreFocus() {
+        return hotspotFocus.restore;
+      }
     }), null);
     insert(_el$15, createComponent(Show, {
       get when() {
@@ -11227,9 +11482,12 @@ function PixelWorldCanvasRenderer(props) {
           get hotspot() {
             return activeHotspot();
           },
+          onHoverLeave: () => props.onHover(null),
           onClose: () => {
+            setHoverDismissed(true);
             setInspectedHotspot(null);
             props.onHover(null);
+            hotspotFocus.restore();
           }
         });
       }
@@ -12302,6 +12560,7 @@ function PixelWorldHost(props) {
         return createComponent(PixelWorldCanvasRenderer, {
           locale,
           rendererStatus,
+          cameraState,
           renderInput,
           renderState,
           selection: selectedEntity,

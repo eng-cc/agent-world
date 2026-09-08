@@ -304,6 +304,22 @@ body {
   pointer-events: auto;
 }
 
+/* Hotspot explanations are portaled to document.body so the expanded Feed
+ * stacking context cannot cover the read-only inspection surface. */
+.pixel-world-hotspot:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.pixel-world-canvas__hotspot-tooltip {
+  position: fixed;
+  z-index: 70;
+  top: 52px;
+  right: 10px;
+  width: min(42vw, 320px);
+  max-width: calc(100vw - 20px);
+}
+
 [data-viewer-overlay="navigation"] {
   position: fixed;
   display: flex;
@@ -836,6 +852,7 @@ body {
   }
 
   .pixel-world-canvas__hotspot-tooltip {
+    position: fixed;
     top: 112px;
     right: 10px;
     width: min(420px, calc(100% - 20px));
@@ -1029,6 +1046,7 @@ body {
   }
 
   .pixel-world-canvas__hotspot-tooltip {
+    position: fixed;
     top: auto;
     right: 10px;
     bottom: calc(144px + min(38dvh, 280px) + 8px);

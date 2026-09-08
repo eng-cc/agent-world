@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { createHash } from "node:crypto";
 import { readFileSync, statSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, extname, join, normalize, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +19,10 @@ const session = `player-visual-feedback-${process.pid}`;
 const browserBin = process.env.AGENT_BROWSER_BIN || "agent-browser";
 const skipBuild = process.argv.includes("--skip-build");
 const onlyProduction = process.argv.includes("--only-production");
+const onlyCamera = process.argv.includes("--only-camera");
+const onlyTouch = process.argv.includes("--only-touch");
+const onlyTooltipFeed = process.argv.includes("--only-tooltip-feed");
+const onlyFocus = process.argv.includes("--only-focus");
 const statuses = ["ready", "replay", "empty", "gap", "unavailable"];
 const viewports = [
   { name: "mobile", width: 390, height: 844 },
@@ -35,7 +40,12 @@ const summary = {
   inputMode: "visible-ui-controls-plus-dom-readback",
   mockDisabled: false,
   fixtureBoundary: "deterministic QA bridge and fake world_feed; no runtime/provider/playability claim",
-  phase: onlyProduction ? "production-hotspot-only" : "full-matrix",
+  phase: onlyProduction ? "production-hotspot-only"
+    : onlyCamera ? "camera-regression-only"
+      : onlyTouch ? "touch-regression-only"
+        : onlyTooltipFeed ? "tooltip-feed-regression-only"
+          : onlyFocus ? "focus-regression-only"
+            : "full-matrix",
   status: "running",
   startedAt: new Date().toISOString(),
   viewports: {},
@@ -43,6 +53,12 @@ const summary = {
   feedStatuses: {},
   interactions: {},
   productionHotspot: {},
+  secondReview: {
+    camera: {},
+    touchTargets: {},
+    tooltipFeed: {},
+    focusRestoration: {},
+  },
 };
 
 mkdirSync(outDir, { recursive: true });
@@ -319,7 +335,7 @@ const probe = String.raw`(() => {
     if (!box) return [];
     const x = Math.max(1, Math.min(innerWidth - 1, box.x + Math.max(1, box.width / 2)));
     const y = Math.max(1, Math.min(innerHeight - 1, box.y + Math.max(1, box.height / 2)));
-    return document.elementsFromPoint(x, y).slice(0, 6).map((node) => ({ tag: node.tagName, id: node.id || null, className: node.className || null, overlay: node.getAttribute?.('data-viewer-overlay') || null, text: String(node.textContent || '').trim().slice(0, 160) }));
+    return document.elementsFromPoint(x, y).slice(0, 6).map((node) => ({ tag: node.tagName, id: node.id || null, className: node.className || null, tooltipAncestor: node.closest?.(".pixel-world-canvas__hotspot-tooltip")?.className || null, overlay: node.getAttribute?.('data-viewer-overlay') || null, text: String(node.textContent || '').trim().slice(0, 160) }));
   };
   const feed = document.querySelector('[data-viewer-overlay="feed"]');
   const feedSummary = feed?.querySelector("summary");
@@ -328,9 +344,12 @@ const probe = String.raw`(() => {
   const primaryAction = primary?.querySelector('.pixel-world-command-cell__action');
   const supporting = command?.querySelector('[data-shell-region="supporting-context"]');
   const receipt = document.querySelector('.pixel-world-action-receipt');
+  const canvas = document.querySelector('#pixel-world-embedded-runtime-canvas');
   const selection = document.querySelector('.pixel-world-canvas__selection');
   const readout = document.querySelector('.pixel-world-readout');
   const hotspotNodes = [...document.querySelectorAll('[data-hotspot-kind]')];
+  const tooltipNode = document.querySelector('[data-hotspot-tooltip]');
+  const tooltipClose = tooltipNode?.querySelector('.pixel-world-canvas__hotspot-tooltip-close');
   return JSON.stringify({
     runtime: window.__AW_TEST__?.getState?.() || null,
     feed: feed ? { status: feed.dataset.worldFeedStatus || null, open: feed.open, text: feed.textContent.trim(), rect: rect(feed), summaryRect: rect(feedSummary), statusRow: text('.world-feed__status-row', feed), scrollTop: feed.scrollTop, scrollHeight: feed.scrollHeight, clientHeight: feed.clientHeight } : null,
@@ -339,11 +358,12 @@ const probe = String.raw`(() => {
     primary: primary ? { text: primary.textContent.trim(), rect: rect(primary), visible: getComputedStyle(primary).display !== 'none' && getComputedStyle(primary).visibility !== 'hidden', scrollTop: primary.scrollTop, scrollHeight: primary.scrollHeight, clientHeight: primary.clientHeight, actionRect: rect(primaryAction), actionText: primaryAction?.textContent.trim() || null } : null,
     supporting: supporting ? { text: supporting.textContent.trim(), rect: rect(supporting), visible: getComputedStyle(supporting).display !== 'none' } : null,
     receipt: receipt ? { present: receipt.dataset.receiptPresent, state: receipt.dataset.receiptState, confidence: receipt.dataset.receiptConfidence, text: receipt.textContent.trim(), rect: rect(receipt), visible: getComputedStyle(receipt).display !== 'none', scrollTop: receipt.scrollTop, scrollHeight: receipt.scrollHeight, clientHeight: receipt.clientHeight } : null,
-    tooltip: document.querySelector('[data-hotspot-tooltip]') ? { text: text('[data-hotspot-tooltip]'), rect: rect(document.querySelector('[data-hotspot-tooltip]')), close: (() => { const node = document.querySelector('.pixel-world-canvas__hotspot-tooltip-close'); return node ? { ariaLabel: node.getAttribute('aria-label'), rect: rect(node) } : null; })() } : null,
-    hotspots: hotspotNodes.map((node) => ({ tag: node.tagName, kind: node.dataset.hotspotKind, label: node.getAttribute('aria-label'), title: node.getAttribute('title'), role: node.getAttribute('role'), tabIndex: node.tabIndex, text: node.textContent.trim(), rect: rect(node) })),
+    canvas: canvas ? { rect: rect(canvas), width: canvas.width, height: canvas.height } : null,
+    tooltip: tooltipNode ? { text: text('[data-hotspot-tooltip]'), rect: rect(tooltipNode), stack: stackAt(rect(tooltipNode)), close: tooltipClose ? { ariaLabel: tooltipClose.getAttribute('aria-label'), rect: rect(tooltipClose), stack: stackAt(rect(tooltipClose)) } : null } : null,
+    hotspots: hotspotNodes.map((node) => ({ tag: node.tagName, kind: node.dataset.hotspotKind, label: node.getAttribute('aria-label'), title: node.getAttribute('title'), role: node.getAttribute('role'), tabIndex: node.tabIndex, text: node.textContent.trim(), rect: rect(node), glyphRect: rect(node.querySelector(".pixel-world-hotspot__glyph")) })),
     viewport: { width: innerWidth, height: innerHeight, clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth, overflowX: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth) },
     visualFixture: Boolean(document.body.getAttribute("data-viewer-visual-fixture")),
-    activeElement: (() => { const node = document.activeElement; return node ? { tag: node.tagName, id: node.id || null, className: node.className || null, ariaLabel: node.getAttribute?.('aria-label') || null, kind: node.getAttribute?.('data-hotspot-kind') || null } : null; })(),
+    activeElement: (() => { const node = document.activeElement; return node ? { tag: node.tagName, id: node.id || null, className: node.className || null, ariaLabel: node.getAttribute?.('aria-label') || null, kind: node.getAttribute?.('data-hotspot-kind') || null, originalTrigger: node === window.__qaOriginalTrigger } : null; })(),
     hitTest: { selection: stackAt(selection ? rect(selection) : null), feed: stackAt(feed ? rect(feed) : null) },
     bodyText: document.body.innerText,
   });
@@ -355,6 +375,66 @@ function visible(textValue) { return textValue && textValue.trim().length > 0; }
 
 function intersects(a, b) {
   return Boolean(a && b && a.right > b.x && a.x < b.right && a.bottom > b.y && a.y < b.bottom);
+}
+
+function rectCenter(rect) {
+  return rect ? { x: rect.x + (rect.width / 2), y: rect.y + (rect.height / 2) } : null;
+}
+
+function cameraHotspotWorld(kind) {
+  return {
+    blocker: { x: 2_900_000, y: 3_450_000 },
+    goal: { x: 7_150_000, y: 2_200_000 },
+    info: { x: 4_550_000, y: 1_200_000 },
+  }[kind] || null;
+}
+
+function projectedCanvasPoint(canvas, world, camera) {
+  const width = Number(canvas?.width || 960);
+  const height = Number(canvas?.height || 540);
+  const cssWidth = Number(canvas?.rect?.width || 0);
+  const cssHeight = Number(canvas?.rect?.height || 0);
+  const normalizedX = Math.min(1, Math.max(0, Number(world?.x || 0) / 10_000_000));
+  const normalizedY = Math.min(1, Math.max(0, Number(world?.y || 0) / 5_000_000));
+  const baseX = 20 + (normalizedX * Math.max(1, width - 40));
+  const baseY = 20 + (normalizedY * Math.max(1, height - 40));
+  const zoom = Math.max(0.5, Number(camera?.zoom) || 1);
+  const panX = Number(camera?.pan_x_px) || 0;
+  const panY = Number(camera?.pan_y_px) || 0;
+  const point = {
+    x: (width / 2) + ((baseX - (width / 2)) * zoom) + panX,
+    y: (height / 2) + ((baseY - (height / 2)) * zoom) + panY,
+  };
+  return {
+    x: Number(canvas?.rect?.x || 0) + (point.x * (cssWidth / width)),
+    y: Number(canvas?.rect?.y || 0) + (point.y * (cssHeight / height)),
+    canvasPoint: point,
+  };
+}
+
+function assertPointNear(actual, expected, tolerance, message, details = {}) {
+  assert(actual && expected, `${message}: missing point`, { actual, expected, ...details });
+  const dx = Math.abs(actual.x - expected.x);
+  const dy = Math.abs(actual.y - expected.y);
+  assert(dx <= tolerance && dy <= tolerance, `${message}: projected point drifted by ${dx.toFixed(2)}px/${dy.toFixed(2)}px`, {
+    actual,
+    expected,
+    dx,
+    dy,
+    tolerance,
+    ...details,
+  });
+}
+
+function runtimeStable(before, after) {
+  return before?.logicalTime === after?.logicalTime
+    && before?.eventSeq === after?.eventSeq
+    && before?.selectedKind === after?.selectedKind
+    && before?.selectedId === after?.selectedId;
+}
+
+function stackHasClass(stack, classFragment) {
+  return String(stack?.[0]?.className || "").includes(classFragment) || String(stack?.[0]?.tooltipAncestor || "").includes(classFragment);
 }
 
 async function waitForFeedStatus(status) {
@@ -391,8 +471,8 @@ async function clickVisible(selector) {
 
 async function clickVisibleInPlace(selector) {
   const selectorLiteral = JSON.stringify(selector);
-  const target = await evalJson(`(() => { const node = document.querySelector(${selectorLiteral}); if (!node) throw new Error("missing visible target"); const rect = node.getBoundingClientRect(); const x = Math.max(1, Math.min(innerWidth - 1, rect.left + Math.max(1, rect.width / 2))); const y = Math.max(1, Math.min(innerHeight - 1, rect.top + Math.max(1, rect.height / 2))); const visible = rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight; const topHit = document.elementsFromPoint(x, y).slice(0, 4).map((hit) => ({ tag: hit.tagName, className: hit.className || null, kind: hit.getAttribute?.("data-hotspot-kind") || null })); return JSON.stringify({ visible, rect: { x: Math.round(rect.x), y: Math.round(rect.y), right: Math.round(rect.right), bottom: Math.round(rect.bottom) }, topHit }); })()`);
-  assert(target.visible, `target is not visible in place: ${selector}`, target);
+  const target = await evalJson(`(() => { const node = document.querySelector(${selectorLiteral}); if (!node) throw new Error("missing visible target"); const rect = node.getBoundingClientRect(); const x = Math.max(1, Math.min(innerWidth - 1, rect.left + Math.max(1, rect.width / 2))); const y = Math.max(1, Math.min(innerHeight - 1, rect.top + Math.max(1, rect.height / 2))); const visible = rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight; const topHit = document.elementsFromPoint(x, y).slice(0, 4).map((hit) => ({ tag: hit.tagName, className: hit.className || null, kind: hit.getAttribute?.("data-hotspot-kind") || null })); return JSON.stringify({ visible, targetTop: node === document.elementFromPoint(x, y) || node.contains(document.elementFromPoint(x, y)), rect: { x: Math.round(rect.x), y: Math.round(rect.y), right: Math.round(rect.right), bottom: Math.round(rect.bottom) }, topHit }); })()`);
+  assert(target.visible && target.targetTop, `target is not the visible top hit in place: ${selector}`, target);
   const x = Math.round((target.rect.x + target.rect.right) / 2);
   const y = Math.round((target.rect.y + target.rect.bottom) / 2);
   await browserJson(["mouse", "move", String(x), String(y)]);
@@ -411,6 +491,86 @@ async function clickRecordedRect(rect, description) {
   return { rect, x, y };
 }
 
+async function clickAtCoordinates(x, y, selector, description) {
+  const selectorLiteral = JSON.stringify(selector);
+  const point = await evalJson(`(() => {
+    const target = document.querySelector(${selectorLiteral});
+    const node = document.elementFromPoint(${Number(x)}, ${Number(y)});
+    const stack = document.elementsFromPoint(${Number(x)}, ${Number(y)}).slice(0, 6).map((hit) => ({
+      tag: hit.tagName,
+      className: hit.className || null,
+      kind: hit.getAttribute?.("data-hotspot-kind") || null,
+      overlay: hit.getAttribute?.("data-viewer-overlay") || null,
+    }));
+    return JSON.stringify({
+      targetPresent: Boolean(target),
+      targetTop: Boolean(target && (node === target || target.contains(node))),
+      stack,
+    });
+  })()`);
+  assert(point.targetPresent && point.targetTop, `${description} is not the top hit at the requested point`, point);
+  await browserJson(["mouse", "move", String(Math.round(x)), String(Math.round(y))]);
+  await browserJson(["mouse", "down"]);
+  await browserJson(["mouse", "up"]);
+  return { x: Math.round(x), y: Math.round(y), point };
+}
+
+async function dispatchCanvasPan(deltaX, deltaY) {
+  const delta = await evalJson(`(() => {
+    const canvas = document.querySelector('#pixel-world-embedded-runtime-canvas');
+    if (!canvas) throw new Error("missing runtime canvas");
+    const rect = canvas.getBoundingClientRect();
+    const start = { x: rect.left + (rect.width * 0.63), y: rect.top + (rect.height * 0.31) };
+    const pointer = (type, x, y, buttons) => canvas.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true, pointerId: 7331, clientX: x, clientY: y, buttons, button: 0,
+    }));
+    pointer("pointerdown", start.x, start.y, 1);
+    pointer("pointermove", start.x + ${Number(deltaX)}, start.y + ${Number(deltaY)}, 1);
+    pointer("pointerup", start.x + ${Number(deltaX)}, start.y + ${Number(deltaY)}, 0);
+    return JSON.stringify({ start, end: { x: start.x + ${Number(deltaX)}, y: start.y + ${Number(deltaY)} } });
+  })()`);
+  await waitShort();
+  return delta;
+}
+
+async function dispatchCanvasZoom(deltaY) {
+  const point = await evalJson(`(() => {
+    const canvas = document.querySelector('#pixel-world-embedded-runtime-canvas');
+    if (!canvas) throw new Error("missing runtime canvas");
+    const rect = canvas.getBoundingClientRect();
+    const x = rect.left + (rect.width * 0.56);
+    const y = rect.top + (rect.height * 0.42);
+    canvas.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: ${Number(deltaY)}, deltaX: 0, clientX: x, clientY: y }));
+    return JSON.stringify({ x, y });
+  })()`);
+  await waitShort();
+  return point;
+}
+
+function cameraState(result) {
+  return result.runtime?.pixelWorldCamera || result.runtime?.camera || null;
+}
+
+function projectedCanvasDelta(before, after, hotspot, canvas) {
+  const width = Number(canvas?.width || 960);
+  const height = Number(canvas?.height || 540);
+  const cssWidth = Number(canvas?.rect?.width || 0);
+  const cssHeight = Number(canvas?.rect?.height || 0);
+  const worldWidth = 10_000_000;
+  const worldDepth = 5_000_000;
+  const normalizedX = Math.min(1, Math.max(0, Number(hotspot.worldX ?? 0) / worldWidth));
+  const normalizedY = Math.min(1, Math.max(0, Number(hotspot.worldY ?? 0) / worldDepth));
+  const centeredX = (20 + (normalizedX * Math.max(1, width - 40))) - (width / 2);
+  const centeredY = (20 + (normalizedY * Math.max(1, height - 40))) - (height / 2);
+  const zoomDelta = Number(after.zoom || 1) - Number(before.zoom || 1);
+  const panDeltaX = Number(after.pan_x_px || 0) - Number(before.pan_x_px || 0);
+  const panDeltaY = Number(after.pan_y_px || 0) - Number(before.pan_y_px || 0);
+  return {
+    x: (centeredX * zoomDelta + panDeltaX) * (cssWidth / width),
+    y: (centeredY * zoomDelta + panDeltaY) * (cssHeight / height),
+  };
+}
+
 async function waitShort() { await browserRaw(["wait", "180"]); }
 
 async function waitForTooltip() {
@@ -421,6 +581,252 @@ async function waitForTooltip() {
     await browserRaw(["wait", "100"]);
   }
   return evalJson(probe);
+}
+
+function hotspotFor(result, kind) {
+  return result.hotspots?.find((hotspot) => hotspot.kind === kind) || null;
+}
+
+function assertHotspotTooltipPainted(result, label) {
+  const tooltip = result.tooltip;
+  const viewport = result.viewport;
+  assert(tooltip?.rect?.width > 0 && tooltip.rect.height > 0, `${label}: tooltip is not visible`, tooltip);
+  assert(tooltip.rect.x >= 0 && tooltip.rect.y >= 0
+    && tooltip.rect.right <= viewport.width && tooltip.rect.bottom <= viewport.height,
+  `${label}: tooltip leaves viewport`, { tooltip, viewport });
+  assert(stackHasClass(tooltip.stack, "pixel-world-canvas__hotspot-tooltip"),
+    `${label}: tooltip is not the painted hit at its center`, tooltip);
+  assert(tooltip.close?.rect?.width > 0 && tooltip.close.rect.height > 0,
+    `${label}: tooltip close control is not visible`, tooltip);
+  assert(stackHasClass(tooltip.close.stack, "pixel-world-canvas__hotspot-tooltip-close"),
+    `${label}: tooltip close control is obscured at its painted center`, tooltip.close);
+}
+
+async function runCameraProjectionRegression(port, { visualFixture, label }) {
+  await openFixture(port, { status: "ready", locale: "en", width: 768, height: 1024, visualFixture });
+  const initial = await waitForFeedStatus("ready");
+  const hotspot = hotspotFor(initial, "info");
+  const camera = cameraState(initial);
+  assert(camera && initial.canvas?.rect?.width > 0 && initial.canvas?.rect?.height > 0,
+    `${label}: camera/canvas state is unavailable`, { camera, canvas: initial.canvas });
+  const world = cameraHotspotWorld("info");
+  const initialExpected = projectedCanvasPoint(initial.canvas, world, camera);
+  const initialActual = rectCenter(hotspot?.glyphRect || hotspot?.rect);
+  assertPointNear(initialActual, initialExpected, 4, `${label}: default camera hotspot misses 20px-inset projection`, {
+    camera,
+    world,
+    canvas: initial.canvas,
+    hotspot,
+  });
+
+  const steps = [
+    { name: "pan-both-axes", action: () => dispatchCanvasPan(48, -32) },
+    { name: "zoom-in", action: () => dispatchCanvasZoom(-100) },
+    { name: "zoom-out", action: () => dispatchCanvasZoom(100) },
+  ];
+  const checks = [{ name: "default", before: camera, after: camera, actual: initialActual, expected: initialExpected }];
+  let previous = initial;
+  for (const step of steps) {
+    const beforeCamera = cameraState(previous);
+    const beforeHotspot = hotspotFor(previous, "info");
+    await step.action();
+    const after = await evalJson(probe);
+    const afterCamera = cameraState(after);
+    const afterHotspot = hotspotFor(after, "info");
+    assert(afterCamera && afterHotspot, `${label}/${step.name}: camera or hotspot disappeared`, { afterCamera, afterHotspot: afterHotspot?.rect, after });
+    assert(afterCamera.pan_x_px !== beforeCamera.pan_x_px || afterCamera.pan_y_px !== beforeCamera.pan_y_px || afterCamera.zoom !== beforeCamera.zoom,
+      `${label}/${step.name}: camera input did not change camera state`, { beforeCamera, afterCamera });
+    const expected = projectedCanvasPoint(after.canvas, world, afterCamera);
+    const actual = rectCenter(afterHotspot.glyphRect || afterHotspot.rect);
+    assertPointNear(actual, expected, 4, `${label}/${step.name}: hotspot does not follow canvas projection`, {
+      beforeCamera,
+      afterCamera,
+      beforeHotspot: beforeHotspot?.rect,
+      afterHotspot: afterHotspot.rect,
+      world,
+      canvas: after.canvas,
+    });
+    checks.push({ name: step.name, before: beforeCamera, after: afterCamera, actual, expected });
+    previous = after;
+  }
+  const beforeEdge = previous;
+  const edgePoint = projectedCanvasPoint(beforeEdge.canvas, world, cameraState(beforeEdge));
+  await dispatchCanvasPan(20 - edgePoint.canvasPoint.x, 0);
+  const edge = await evalJson(probe);
+  const edgeHotspot = hotspotFor(edge, "info");
+  const edgeExpected = projectedCanvasPoint(edge.canvas, world, cameraState(edge));
+  const edgeActual = rectCenter(edgeHotspot?.glyphRect || edgeHotspot?.rect);
+  assertPointNear(edgeActual, edgeExpected, 4, `${label}: near-inset glyph projection drifted`, { edgeHotspot, camera: cameraState(edge) });
+  assert(edgeHotspot.rect.x >= edge.canvas.rect.x - 1 && edgeHotspot.rect.right <= edge.canvas.rect.right + 1,
+    `${label}: near-inset 44px target escapes stage`, { hotspot: edgeHotspot, canvas: edge.canvas });
+  checks.push({ name: "near-20px-inset", actual: edgeActual, expected: edgeExpected, target: edgeHotspot.rect, camera: cameraState(edge) });
+  const screenshot = join(outDir, `s3-camera-inset-${label}.png`);
+  await browserRaw(["screenshot", screenshot], { timeout: 20_000 });
+  summary.secondReview.camera[label] = { screenshot, visualFixture, initial, checks };
+}
+
+async function runTouchTargetSurface(port, { visualFixture, label }) {
+  await openFixture(port, { status: "ready", locale: "en", width: 390, height: 844, visualFixture });
+  const initial = await waitForFeedStatus("ready");
+  const expectedRuntime = initial.runtime;
+  const taps = [];
+  for (const kind of ["blocker", "goal", "info"]) {
+    const beforePan = await evalJson(probe);
+    const projected = projectedCanvasPoint(beforePan.canvas, cameraHotspotWorld(kind), cameraState(beforePan));
+    // The fixed command HUD owns its painted region. Move the world point
+    // through the real camera handler into clear stage before pointer taps.
+    await dispatchCanvasPan(((kind === "goal" ? 380 : 180) - projected.x) * beforePan.canvas.width / beforePan.canvas.rect.width,
+      (280 - projected.y) * beforePan.canvas.height / beforePan.canvas.rect.height);
+    const reachable = await evalJson(probe);
+    const hotspot = hotspotFor(reachable, kind);
+    assert(hotspot?.rect?.width >= 44 && hotspot.rect.height >= 44,
+      `${label}/${kind}: hotspot hit box is below 44px`, hotspot);
+    assert(hotspot.rect.x >= 0 && hotspot.rect.y >= 0
+      && hotspot.rect.right <= initial.viewport.width && hotspot.rect.bottom <= initial.viewport.height,
+    `${label}/${kind}: hotspot hit box is not clamped into viewport`, { hotspot, viewport: initial.viewport });
+    const points = [
+      { edge: "top-left", x: hotspot.rect.x + 2, y: hotspot.rect.y + 2 },
+      { edge: "top-right", x: hotspot.rect.right - 2, y: hotspot.rect.y + 2 },
+      { edge: "bottom-left", x: hotspot.rect.x + 2, y: hotspot.rect.bottom - 2 },
+      { edge: "bottom-right", x: hotspot.rect.right - 2, y: hotspot.rect.bottom - 2 },
+    ];
+    for (const point of points) {
+      assert(point.x >= 0 && point.y >= 0 && point.x < initial.viewport.width && point.y < initial.viewport.height,
+        `${label}/${kind}/${point.edge}: edge tap leaves viewport`, { point, hotspot: hotspot.rect, viewport: initial.viewport });
+      const tap = await clickAtCoordinates(point.x, point.y, `[data-hotspot-kind="${kind}"]`, `${label}/${kind}/${point.edge}`);
+      const opened = await waitForTooltip();
+      assert(opened.tooltip?.text?.startsWith(`${kind === "blocker" ? "Blocker" : kind === "goal" ? "Goal" : "Info"}:`),
+        `${label}/${kind}/${point.edge}: wrong tooltip opened`, { tap, tooltip: opened.tooltip, hotspots: opened.hotspots });
+      assert(runtimeStable(expectedRuntime, opened.runtime), `${label}/${kind}/${point.edge}: hotspot tap changed runtime selection/time`, {
+        before: expectedRuntime,
+        after: opened.runtime,
+      });
+      assertHotspotTooltipPainted(opened, `${label}/${kind}/${point.edge}`);
+      taps.push({ kind, camera: cameraState(reachable), cameraBefore: cameraState(beforePan), reason: "pan world target clear of fixed command HUD", edge: point.edge, point, target: hotspot.rect, opened: opened.tooltip, runtime: opened.runtime });
+      await clickRecordedRect(opened.tooltip.close.rect, `${label}/${kind}/${point.edge} close`);
+      await waitShort();
+      const closed = await evalJson(probe);
+      assert(!closed.tooltip, `${label}/${kind}/${point.edge}: close did not dismiss tooltip`, closed);
+    }
+  }
+  summary.secondReview.touchTargets[label] = { visualFixture, initial, taps };
+}
+
+async function runTouchTargetRegression(port) {
+  await runTouchTargetSurface(port, { visualFixture: true, label: "fixture" });
+  await runTouchTargetSurface(port, { visualFixture: false, label: "production" });
+}
+
+async function runTooltipFeedSurface(port, { visualFixture, label, width, height, hotspotKind }) {
+  await openFixture(port, { status: "ready", locale: "en", width, height, visualFixture });
+  await waitForFeedStatus("ready");
+  await clickVisible('[data-viewer-overlay="feed"] > summary');
+  await waitShort();
+  const feedOpen = await evalJson(probe);
+  assert(feedOpen.feed?.open === true, `${label}: Feed did not open`, feedOpen.feed);
+  const target = hotspotFor(feedOpen, hotspotKind);
+  assert(target?.rect?.width > 0 && target.rect.height > 0, `${label}: ${hotspotKind} hotspot is not visible`, { target, feed: feedOpen.feed });
+  await evalJson(`(() => { const node = document.querySelector('[data-hotspot-kind="${hotspotKind}"]'); if (!node) throw new Error("missing hotspot"); node.focus(); return JSON.stringify({ kind: node.dataset.hotspotKind, describedBy: node.getAttribute("aria-describedby") }); })()`);
+  await browserRaw(["press", "Enter"]);
+  const opened = await waitForTooltip();
+  assert(opened.tooltip?.text?.startsWith(`${hotspotKind === "blocker" ? "Blocker" : "Goal"}:`), `${label}: wrong tooltip opened`, opened.tooltip);
+  assertHotspotTooltipPainted(opened, label);
+  assert(!intersects(opened.tooltip.rect, opened.feed?.summaryRect), `${label}: tooltip covers Feed summary action`, {
+    tooltip: opened.tooltip.rect,
+    summary: opened.feed?.summaryRect,
+  });
+  const screenshot = join(outDir, `s3-tooltip-feed-${label}.png`);
+  await browserRaw(["screenshot", screenshot], { timeout: 20_000 });
+  await clickRecordedRect(opened.tooltip.close.rect, `${label} tooltip close`);
+  await waitShort();
+  const closed = await evalJson(probe);
+  assert(!closed.tooltip, `${label}: pointer close did not dismiss tooltip`, closed);
+
+  const blocker = hotspotFor(closed, "blocker");
+  assert(blocker?.rect?.width > 0 && blocker.rect.height > 0, `${label}: blocker hotspot is not visible for Escape path`, { blocker, feed: closed.feed });
+  await evalJson(`(() => { const node = document.querySelector('[data-hotspot-kind="blocker"]'); node.focus(); return JSON.stringify({ kind: node.dataset.hotspotKind }); })()`);
+  await browserRaw(["press", "Enter"]);
+  const beforeEscape = await waitForTooltip();
+  assertHotspotTooltipPainted(beforeEscape, `${label} Escape path`);
+  await browserRaw(["press", "Escape"]);
+  await waitShort();
+  const afterEscape = await evalJson(probe);
+  assert(!afterEscape.tooltip, `${label}: Escape did not dismiss Feed-open tooltip`, afterEscape);
+  summary.secondReview.tooltipFeed[label] = { screenshot, visualFixture, viewport: { width, height }, feedOpen, opened, closed, beforeEscape, afterEscape };
+}
+
+async function runTooltipFeedRegression(port) {
+  const cases = [
+    { width: 390, height: 844, hotspotKind: "goal", label: "fixture-mobile-goal" },
+    { width: 844, height: 390, hotspotKind: "blocker", label: "fixture-landscape-blocker" },
+    { width: 640, height: 360, hotspotKind: "goal", label: "fixture-compact-goal" },
+    { width: 390, height: 844, hotspotKind: "goal", label: "production-mobile-goal", visualFixture: false },
+    { width: 844, height: 390, hotspotKind: "blocker", label: "production-landscape-blocker", visualFixture: false },
+    { width: 640, height: 360, hotspotKind: "goal", label: "production-compact-goal", visualFixture: false },
+  ];
+  for (const testCase of cases) {
+    await runTooltipFeedSurface(port, { visualFixture: testCase.visualFixture !== false, ...testCase });
+  }
+}
+
+async function focusHotspotAndActivate(kind) {
+  const focused = await evalJson(`(() => { const node = document.querySelector('[data-hotspot-kind="${kind}"]'); if (!node) throw new Error("missing hotspot"); node.focus(); window.__qaOriginalTrigger = node; return JSON.stringify({ kind: node.dataset.hotspotKind, label: node.getAttribute("aria-label"), describedBy: node.getAttribute("aria-describedby"), active: document.activeElement === node }); })()`);
+  assert(focused.active && focused.label && focused.describedBy, `focus/${kind}: trigger did not receive accessible focus`, focused);
+  await browserRaw(["press", "Enter"]);
+  const opened = await waitForTooltip();
+  const relation = await evalJson(`(() => { const node = document.querySelector('[data-hotspot-kind="${kind}"]'); const id = node?.getAttribute("aria-describedby"); return JSON.stringify({ label: node?.getAttribute("aria-label"), describedBy: id, describedNode: Boolean(id && document.getElementById(id)), active: document.activeElement === node }); })()`);
+  assert(relation.label && relation.describedNode, `focus/${kind}: open tooltip is not linked by aria-describedby`, relation);
+  assert(opened.tooltip, `focus/${kind}: Enter did not open tooltip`, opened);
+  return { focused, opened, relation };
+}
+
+async function runFocusRestorationSurface(port, { visualFixture, label }) {
+  const cases = [];
+  for (const kind of ["goal", "blocker"]) {
+    await openFixture(port, { status: "ready", locale: "en", width: 390, height: 844, visualFixture });
+    const triggerEscape = await focusHotspotAndActivate(kind);
+    await browserRaw(["press", "Escape"]);
+    await waitShort();
+    const afterTriggerEscape = await evalJson(probe);
+    assert(!afterTriggerEscape.tooltip && afterTriggerEscape.activeElement?.kind === kind && afterTriggerEscape.activeElement?.tag === "BUTTON" && afterTriggerEscape.activeElement?.originalTrigger,
+      `${label}/${kind}: trigger Escape did not restore focus`, { afterTriggerEscape, triggerEscape });
+
+    await openFixture(port, { status: "ready", locale: "en", width: 390, height: 844, visualFixture });
+    const pointerClose = await focusHotspotAndActivate(kind);
+    await clickRecordedRect(pointerClose.opened.tooltip.close.rect, `${label}/${kind} pointer close`);
+    await waitShort();
+    const afterPointerClose = await evalJson(probe);
+    assert(!afterPointerClose.tooltip && afterPointerClose.activeElement?.kind === kind && afterPointerClose.activeElement?.tag === "BUTTON" && afterPointerClose.activeElement?.originalTrigger,
+      `${label}/${kind}: pointer close did not restore focus`, { afterPointerClose, pointerClose });
+
+    await openFixture(port, { status: "ready", locale: "en", width: 390, height: 844, visualFixture });
+    const keyboardClose = await focusHotspotAndActivate(kind);
+    let closeFocused = false;
+    for (let tab = 0; tab < 8; tab += 1) {
+      await browserRaw(["press", "Tab"]);
+      const focus = await evalJson(probe);
+      if (focus.activeElement?.className?.includes("pixel-world-canvas__hotspot-tooltip-close")) {
+        closeFocused = true;
+        break;
+      }
+    }
+    assert(closeFocused, `${label}/${kind}: Tab did not reach tooltip close`, keyboardClose.opened);
+    await browserRaw(["press", "Escape"]);
+    await waitShort();
+    const afterKeyboardClose = await evalJson(probe);
+    assert(!afterKeyboardClose.tooltip && afterKeyboardClose.activeElement?.kind === kind && afterKeyboardClose.activeElement?.tag === "BUTTON" && afterKeyboardClose.activeElement?.originalTrigger,
+      `${label}/${kind}: close Escape did not restore focus`, { afterKeyboardClose, keyboardClose });
+    for (const [name, before, after] of [["trigger-Escape", triggerEscape.opened, afterTriggerEscape], ["pointer-close", pointerClose.opened, afterPointerClose], ["close-Escape", keyboardClose.opened, afterKeyboardClose]]) {
+      assert(runtimeStable(before.runtime, after.runtime), `${label}/${kind}/${name}: inspection changed runtime`, { before: before.runtime, after: after.runtime });
+    }
+    cases.push({ kind, triggerEscape, afterTriggerEscape, pointerClose, afterPointerClose, keyboardClose, afterKeyboardClose });
+  }
+  summary.secondReview.focusRestoration[label] = { visualFixture, cases };
+}
+
+async function runFocusRestorationRegression(port) {
+  await runFocusRestorationSurface(port, { visualFixture: true, label: "fixture" });
+  await runFocusRestorationSurface(port, { visualFixture: false, label: "production" });
 }
 
 function assertBase(label, result, expectedStatus) {
@@ -494,6 +900,17 @@ async function runInteractions(port) {
     assert(hotspot.tabIndex >= 0 || hotspot.role === "button" || hotspot.tag === "BUTTON" || visible(hotspot.label), `A4: hotspot ${hotspot.kind} has no keyboard/accessibility affordance`, hotspot);
   }
   const beforeInteractionState = before.runtime || {};
+  // Scrolling the world can leave an Info explanation open. Close it through
+  // its painted control before targeting a world point behind that overlay.
+  const existingExplanation = await evalJson(probe);
+  if (existingExplanation.tooltip) {
+    assertHotspotTooltipPainted(existingExplanation, "A4 existing explanation");
+    await clickRecordedRect(existingExplanation.tooltip.close.rect, "A4 existing explanation close");
+    await waitShort();
+    const dismissed = await evalJson(probe);
+    assert(!dismissed.tooltip, "A4 existing explanation did not close before goal inspection", dismissed);
+    assert(runtimeStable(existingExplanation.runtime, dismissed.runtime), "A4 precondition close changed runtime", dismissed.runtime);
+  }
   const goalClick = await clickVisibleInPlace('[data-hotspot-kind="goal"]');
   const afterPointerHotspot = await waitForTooltip();
   assert(afterPointerHotspot.tooltip?.text?.includes("Goal: stabilize the first production line"), "A4: visible hotspot click did not expose a goal explanation", { tooltip: afterPointerHotspot.tooltip, goalClick });
@@ -602,6 +1019,14 @@ async function runProductionHotspotRegression(port) {
   assert(initial.hotspots.length >= 2, "R2/production: production path did not expose hotspot buttons", initial.hotspots);
   assert(initial.hotspots.every((hotspot) => hotspot.tag === "BUTTON" && hotspot.tabIndex >= 0), "R2/production: hotspot is not keyboard reachable", initial.hotspots);
 
+  await evalJson(`(() => {
+    window.__qaPointerTrace = [];
+    for (const type of ["pointerdown", "pointerup", "click", "focusin", "mouseover", "mouseout"]) document.addEventListener(type, (event) => {
+      const node = event.target;
+      window.__qaPointerTrace.push({ type, time: performance.now(), x: event.clientX, y: event.clientY, tag: node?.tagName, className: node?.className, kind: node?.dataset?.hotspotKind, dismissed: node?.dataset?.dismissedHover, tooltip: Boolean(document.querySelector("[data-hotspot-tooltip]")) });
+    }, true);
+    return true;
+  })()`);
   const zhGoalClick = await clickVisibleInPlace('[data-hotspot-kind="goal"]');
   const zhGoal = await waitForTooltip();
   assert(zhGoal.visualFixture === false, "R2/zh-CN: visual fixture marker unexpectedly enabled", zhGoal);
@@ -610,7 +1035,13 @@ async function runProductionHotspotRegression(port) {
   await clickRecordedRect(zhGoal.tooltip.close?.rect, "R2/zh-CN tooltip close control");
   await waitShort();
   const zhClosed = await evalJson(probe);
-  assert(!zhClosed.tooltip, "R2/zh-CN: visible tooltip close did not dismiss", zhClosed);
+  const pointerTrace = await evalJson("JSON.stringify(window.__qaPointerTrace)");
+  writeFileSync(join(outDir, "production-pointer-trace.json"), JSON.stringify(pointerTrace, null, 2));
+  assert(!zhClosed.tooltip, "R2/zh-CN: visible tooltip close did not dismiss", { zhClosed, zhGoal, trace: pointerTrace });
+  for (const type of ["pointerdown", "pointerup", "click"]) {
+    assert(pointerTrace.some((event) => event.type === type && event.className === "pixel-world-canvas__hotspot-tooltip-close"),
+      `R2/zh-CN: close did not receive ${type}`, pointerTrace);
+  }
 
   await evalJson(`(() => { const node = document.querySelector('[data-hotspot-kind="blocker"]'); if (!node) throw new Error("missing production blocker hotspot"); node.scrollIntoView({ block: "center" }); node.focus(); return JSON.stringify({ active: document.activeElement === node }); })()`);
   await browserRaw(["press", "Enter"]);
@@ -633,7 +1064,7 @@ async function runProductionHotspotRegression(port) {
   assert(!afterTabEscape.tooltip, "R2/production: Escape on focused tooltip close did not dismiss", afterTabEscape);
   const screenshot = join(outDir, "r2-production-zh-hotspot-tab-close.png");
   await browserRaw(["screenshot", screenshot], { timeout: 20_000 });
-  summary.productionHotspot = { initial, zhGoal, zhClosed, keyboardOpened, afterTabEscape, screenshot };
+  summary.productionHotspot = { pointerTrace, initial, zhGoal, zhClosed, keyboardOpened, afterTabEscape, screenshot };
 }
 
 async function main() {
@@ -643,6 +1074,7 @@ async function main() {
     assert(build.status === 0, "Viewer bundle build failed; see bundle-build.log", { status: build.status, signal: build.signal });
   }
   assert(statSafe(bundlePath), `missing ${bundlePath}; build:viewer:bundle did not produce the test bundle`);
+  summary.sourceDigests = Object.fromEntries([bundlePath, resolve(viewerRoot, "viewer.html"), resolve(viewerRoot, "viewer_terminal_shell.css"), fileURLToPath(import.meta.url)].map((path) => [relative(repoRoot, path), createHash("sha256").update(readFileSync(path)).digest("hex")]));
   assert(spawnSync(browserBin, ["--version"], { stdio: "ignore" }).status === 0, `missing browser automation command: ${browserBin}`);
   const server = createServer(serveFile);
   await new Promise((resolveServer) => server.listen(0, "127.0.0.1", resolveServer));
@@ -652,16 +1084,34 @@ async function main() {
     closeBrowser();
     if (onlyProduction) {
       await runProductionHotspotRegression(port);
+    } else if (onlyCamera) {
+      await runCameraProjectionRegression(port, { visualFixture: true, label: "fixture" });
+      await runCameraProjectionRegression(port, { visualFixture: false, label: "production" });
+    } else if (onlyTouch) {
+      await runTouchTargetRegression(port);
+    } else if (onlyTooltipFeed) {
+      await runTooltipFeedRegression(port);
+    } else if (onlyFocus) {
+      await runFocusRestorationRegression(port);
     } else {
       await runStatusMatrix(port);
       await runViewportMatrix(port);
       await runShortLandscapeMatrix(port);
+      await runCameraProjectionRegression(port, { visualFixture: true, label: "fixture" });
+      await runCameraProjectionRegression(port, { visualFixture: false, label: "production" });
+      await runTouchTargetRegression(port);
+      await runTooltipFeedRegression(port);
+      await runFocusRestorationRegression(port);
       await runProductionHotspotRegression(port);
       await runInteractions(port);
     }
     const consoleOutput = await browserRaw(["console"]);
     writeFileSync(join(outDir, "browser-console.log"), consoleOutput, "utf8");
     assert(!/\[(?:error|pageerror)\]|\b(?:fatal|CONTEXT_LOST_WEBGL)\b/i.test(consoleOutput), "browser console contains runtime errors", { consoleOutput });
+    for (const [path, digest] of Object.entries(summary.sourceDigests)) {
+      assert(createHash("sha256").update(readFileSync(resolve(repoRoot, path))).digest("hex") === digest,
+        `source bytes changed during headed run: ${path}`);
+    }
     summary.console = { path: join(outDir, "browser-console.log"), errors: 0 };
     summary.status = "passed";
   } catch (error) {

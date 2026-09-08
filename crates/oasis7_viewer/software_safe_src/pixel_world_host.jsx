@@ -7,8 +7,9 @@ import { installPixelWorldRenderDtoProbe, installPixelWorldVisualFixtureHook, pi
 import { pixelWorldSelectedBlockerVisualFixture } from "./pixel_world_visual_fixture_data.js";
 import { pixelWorldReadableAgentLabel, pixelWorldReadableEntityText, pixelWorldSelectedEntityLabel } from "./pixel_world_identity.js";
 import { applyPixelWorldMobileSelectionSafeArea, installPixelWorldMobileSelectionSafeArea } from "./pixel_world_mobile_safe_area.js";
-import { PixelWorldHotspot, PixelWorldHotspotTooltip } from "./pixel_world_hotspot.jsx";
+import { createHotspotFocusRestoration, PixelWorldHotspot, PixelWorldHotspotTooltip } from "./pixel_world_hotspot.jsx";
 import { resolvePixelWorldReadoutStatus } from "./pixel_world_readout.js";
+import { pixelWorldHotspotGlyphSize, pixelWorldHotspotStyle } from "./pixel_world_hotspot_projection.js";
 export { pixelWorldSelectedBlockerVisualFixture };
 function tr(locale, zh, en) { return core.isLocaleZh(locale) ? zh : en; }
 const PIXEL_WORLD_RUNTIME_CANVAS_ID = "pixel-world-embedded-runtime-canvas"; const PIXEL_WORLD_RENDERER_UNAVAILABLE_MESSAGE_ID = "pixel-world-renderer-unavailable-message";
@@ -166,18 +167,6 @@ function routeWaypointStyle(link, worldBounds, index, stop) {
     top: `${(from.y + ((to.y - from.y) * ratio)).toFixed(1)}%`,
   };
 }
-function hotspotStyle(hotspot, worldBounds, index) {
-  const sizePx = Math.max(14, Math.min(32, safeNumber(hotspot.size_hint_px, 16)));
-  return {
-    ...toWorldPercentStyle(hotspot.pos, worldBounds, {
-      left: `${20 + ((index % 4) * 16)}%`,
-      top: `${22 + (Math.floor(index / 4) * 16)}%`,
-    }),
-    width: `${sizePx}px`,
-    height: `${sizePx}px`,
-    transform: "translate(-50%, -50%)",
-  };
-}
 function fieldValue(value, snakeName, camelName, fallback = undefined) {
   if (!value || typeof value !== "object") {
     return fallback;
@@ -224,11 +213,15 @@ function pixelWorldVisualState(renderState) {
 }
 function PixelWorldHostHotspotLayer(props) {
   const visualState = () => pixelWorldVisualState(props.renderState());
-  return <For each={visualState().visualHotspots.slice(0, 8)}>{(hotspot, index) => (
-    <PixelWorldHotspot locale={props.locale()} hotspot={hotspot}
-      style={hotspotStyle(hotspot, visualState().worldBounds, index())} onHover={props.onHover}
-      onHotspotInspect={props.onHotspotInspect} onHotspotClear={props.onHotspotClear} />
-  )}</For>;
+  return <Index each={visualState().visualHotspots.slice(0, 8)}>{(hotspot, index) => (
+    <PixelWorldHotspot locale={props.locale()} hotspot={hotspot()}
+      style={pixelWorldHotspotStyle(hotspot(), visualState().worldBounds, index, props.cameraState?.())}
+      glyphSize={pixelWorldHotspotGlyphSize(hotspot())}
+      onHover={props.onHover}
+      onHotspotInspect={props.onHotspotInspect} onHotspotClear={props.onHotspotClear}
+      onHotspotHoverIntent={props.onHotspotHoverIntent}
+      onHotspotTrigger={props.onHotspotTrigger} onHotspotRestoreFocus={props.onHotspotRestoreFocus} />
+  )}</Index>;
 }
 function PixelWorldHostVisualLayer(props) {
   const visualState = () => pixelWorldVisualState(props.renderState());
@@ -539,14 +532,16 @@ export function buildPixelWorldRenderInput(locale = core.state.uiLocale) {
 }
 function PixelWorldCanvasRenderer(props) {
   let canvasRef;
+  const hotspotFocus = createHotspotFocusRestoration();
   const visualState = () => pixelWorldVisualState(props.renderState());
   const [inspectedHotspot, setInspectedHotspot] = createSignal(null);
+  const [hoverDismissed, setHoverDismissed] = createSignal(false);
   const activeHotspot = () => {
     const inspected = inspectedHotspot();
     if (inspected?.kind === "hotspot") {
       return visualState().visualHotspots.find((hotspot) => hotspot.id === inspected.id) || null;
     }
-    return props.hoveredHotspot?.() || null;
+    return hoverDismissed() ? null : props.hoveredHotspot?.() || null;
   };
   const selectedEntityLabel = () => pixelWorldSelectedEntityLabel(visualState(), visualState().selection, core.isLocaleZh(props.locale()));
   onMount(() => onCleanup(installPixelWorldMobileSelectionSafeArea(() => canvasRef?.closest(".pixel-world-canvas"))));
@@ -598,9 +593,11 @@ function PixelWorldCanvasRenderer(props) {
           onSelect={props.onSelect}
           onHover={props.onHover}
         />
-        <PixelWorldHostHotspotLayer locale={props.locale} renderState={props.renderState}
-          onHover={props.onHover} onHotspotInspect={setInspectedHotspot}
-          onHotspotClear={() => setInspectedHotspot(null)} />
+        <PixelWorldHostHotspotLayer locale={props.locale} renderState={props.renderState} cameraState={props.cameraState}
+          onHover={props.onHover} onHotspotInspect={(selection) => { setHoverDismissed(false); setInspectedHotspot(selection); }}
+          onHotspotHoverIntent={() => setHoverDismissed(false)}
+          onHotspotClear={() => { setHoverDismissed(true); setInspectedHotspot(null); }}
+          onHotspotTrigger={hotspotFocus.remember} onHotspotRestoreFocus={hotspotFocus.restore} />
         <Show when={visualState().goalHighlight}>
           <div class="pixel-world-canvas__callout pixel-world-canvas__callout--goal">
             {`${tr(props.locale(), "目标", "Goal")}: ${visualState().goalHighlight.title}`}
@@ -612,14 +609,17 @@ function PixelWorldCanvasRenderer(props) {
           </div>
         </Show>
         <Show when={activeHotspot()}>
-          <PixelWorldHotspotTooltip
-            locale={props.locale()}
-            hotspot={activeHotspot()}
-            onClose={() => {
-              setInspectedHotspot(null);
-              props.onHover(null);
-            }}
-          />
+            <PixelWorldHotspotTooltip
+              locale={props.locale()}
+              hotspot={activeHotspot()}
+              onHoverLeave={() => props.onHover(null)}
+              onClose={() => {
+                setHoverDismissed(true);
+                setInspectedHotspot(null);
+                props.onHover(null);
+                hotspotFocus.restore();
+              }}
+            />
         </Show>
       </div>
       <Show when={visualState().selection}>
@@ -1521,6 +1521,7 @@ export function PixelWorldHost(props) {
         <PixelWorldCanvasRenderer
           locale={locale}
           rendererStatus={rendererStatus}
+          cameraState={cameraState}
           renderInput={renderInput}
           renderState={renderState}
           selection={selectedEntity}
