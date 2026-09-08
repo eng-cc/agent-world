@@ -19,6 +19,19 @@ write_forwarding_wrapper() {
   chmod +x "$wrapper"
 }
 
+write_helper_launcher() {
+  local wrapper="$1"
+  local target="$2"
+  local quoted_target
+  printf -v quoted_target '%q' "$target"
+  {
+    printf '%s\n' '#!/usr/bin/env bash'
+    printf '%s\n' 'command -v grep >/dev/null 2>&1 || exit 127'
+    printf 'exec %s "$@"\n' "$quoted_target"
+  } >"$wrapper"
+  chmod +x "$wrapper"
+}
+
 if [[ -n "${OASIS7_TEST_PYTHON:-}" ]]; then
   REAL_PYTHON="$OASIS7_TEST_PYTHON"
 else
@@ -27,6 +40,29 @@ fi
 
 if [[ ! -x "$REAL_PYTHON" ]] || ! "$REAL_PYTHON" -c 'import ast; print("ready")' | grep -Fxq ready; then
   echo "find-python-with-module.test: OASIS7_TEST_PYTHON or PATH discovery must provide a functional Python interpreter" >&2
+  exit 1
+fi
+
+# Keep a persistent regression for launchers that need helper commands while
+# PATH is unrestricted, then fail if the child test reuses that launcher after
+# its fixtures intentionally reduce PATH.  The guard permits one child run.
+if [[ -z "${OASIS7_TEST_HELPER_LAUNCHER:-}" ]]; then
+  helper_launcher="$TMPDIR/helper-python"
+  write_helper_launcher "$helper_launcher" "$REAL_PYTHON"
+  if ! OASIS7_TEST_PYTHON="$helper_launcher" \
+    OASIS7_TEST_HELPER_LAUNCHER=1 \
+    bash "$SCRIPT_DIR/find-python-with-module.test.sh"; then
+    echo "find-python-with-module.test: helper-dependent launcher regression failed" >&2
+    exit 1
+  fi
+fi
+
+# Resolve launchers (for example pyenv shims) before later fixtures reduce
+# PATH.  The resolved interpreter must not depend on helper commands supplied
+# by the launcher environment.
+REAL_PYTHON="$("$REAL_PYTHON" -c 'import sys; print(sys.executable)')"
+if [[ ! -x "$REAL_PYTHON" ]]; then
+  echo "find-python-with-module.test: launcher did not expose an executable sys.executable: $REAL_PYTHON" >&2
   exit 1
 fi
 
