@@ -27,16 +27,35 @@ exit 0
 SH
   chmod +x "$TMPDIR/broken-bin/$name"
 done
+for utility in bash tr dirname basename; do
+  ln -s "$(command -v "$utility")" "$TMPDIR/broken-bin/$utility"
+done
 ln -s "$REAL_PYTHON" "$TMPDIR/working-bin/python42"
+generic_home="$TMPDIR/no-bundled-home"
+mkdir -p "$generic_home"
 
-selected="$(PATH="$TMPDIR/broken-bin:$TMPDIR/working-bin:$PATH" \
+selected="$(HOME="$generic_home" PATH="$TMPDIR/broken-bin:$TMPDIR/working-bin:$PATH" \
   "$ROOT_DIR/scripts/pm/find-python-with-module.sh" ast)"
-if [[ "$selected" == "$TMPDIR/broken-bin/"* ]]; then
-  echo "find-python-with-module.test: accepted a non-executing interpreter: $selected" >&2
+if [[ "$selected" != "$TMPDIR/working-bin/python42" ]]; then
+  echo "find-python-with-module.test: generic discovery did not select python42: $selected" >&2
   exit 1
 fi
 if ! "$selected" -c 'import ast; print("selected")' | grep -Fxq selected; then
   echo "find-python-with-module.test: selected interpreter cannot execute Python" >&2
+  exit 1
+fi
+
+# The Codex bundled runtime uses a Unix bin/python3 layout.  Isolate HOME and
+# PATH so this contract exercises the bundled candidate rather than a host
+# installation or the generic future-python shim above.
+bundled_home="$TMPDIR/bundled-home"
+bundled_python_dir="$bundled_home/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin"
+mkdir -p "$bundled_python_dir"
+ln -s "$REAL_PYTHON" "$bundled_python_dir/python3"
+bundled_selected="$(HOME="$bundled_home" PATH="$TMPDIR/broken-bin" \
+  "$ROOT_DIR/scripts/pm/find-python-with-module.sh" ast)"
+if [[ "$bundled_selected" != "$bundled_python_dir/python3" ]]; then
+  echo "find-python-with-module.test: did not select Unix bundled runtime: $bundled_selected" >&2
   exit 1
 fi
 
