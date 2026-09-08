@@ -252,10 +252,7 @@ impl World {
                     ));
                 }
                 let preferred_ledger = factory.input_ledger.clone();
-                let mut available_inputs = self.ledger_material_stacks(&preferred_ledger);
-                if available_inputs.is_empty() && preferred_ledger != MaterialLedgerId::world() {
-                    available_inputs = self.material_stacks();
-                }
+                let available_inputs = self.ledger_material_stacks(&preferred_ledger);
 
                 let request = RecipeExecutionRequest {
                     recipe_id: recipe_id.clone(),
@@ -311,6 +308,13 @@ impl World {
                 stack,
                 deterministic_seed,
             } => {
+                if !self.state.agents.contains_key(requester_agent_id) {
+                    return Ok(EconomyActionResolution::Rejected(
+                        RejectReason::AgentNotFound {
+                            agent_id: requester_agent_id.clone(),
+                        },
+                    ));
+                }
                 if module_id.trim().is_empty() {
                     return Ok(EconomyActionResolution::Rejected(
                         RejectReason::RuleDenied {

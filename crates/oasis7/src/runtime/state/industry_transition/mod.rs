@@ -8,6 +8,16 @@ mod material_transfer;
 mod material_transit;
 mod recipe_lifecycle;
 
+fn factory_has_canonical_stable_line(factory: &FactoryState) -> bool {
+    factory.production.same_recipe_repeat_count >= 3
+        && factory
+            .production
+            .last_completed_canonical_snapshot
+            .as_ref()
+            .zip(factory.production.last_completed_recipe_id.as_ref())
+            .is_some_and(|(snapshot, recipe_id)| snapshot.recipe_id == *recipe_id)
+}
+
 impl<'a> WorldStateProjection<'a> {
     pub(crate) fn with_industry_overlay(mut self, overlay: &'a PreparedIndustryEvent) -> Self {
         self.industry_overlay = Some(overlay);
@@ -69,6 +79,7 @@ pub(crate) struct PreparedFactoryLifecycle {
     agent: Option<(String, AgentCell)>,
     progress: Option<IndustryProgressState>,
     construction_receipt: Option<(String, FactoryBuildPowerObligationV1)>,
+    recycle_receipt: Option<(String, FactoryRecycleReceiptV1)>,
 }
 
 #[derive(Debug)]
@@ -85,11 +96,18 @@ pub(crate) struct PreparedRecipeLifecycle {
     failure_disposition: Option<(ActionId, FactoryProductionFailureDispositionV1)>,
     settlement_order: Option<(ActionId, u64)>,
     next_settlement_order: Option<u64>,
+    completion_receipt: Option<(ActionId, RecipeCompletionReceiptV1)>,
 }
 
 impl PreparedIndustryEvent {
     pub(crate) fn has_construction_receipt(&self) -> bool {
         matches!(self, Self::FactoryLifecycle(value) if value.construction_receipt.is_some())
+    }
+    pub(crate) fn has_completion_receipt(&self) -> bool {
+        matches!(self, Self::RecipeLifecycle(value) if value.completion_receipt.is_some())
+    }
+    pub(crate) fn has_recycle_receipt(&self) -> bool {
+        matches!(self, Self::FactoryLifecycle(value) if value.recycle_receipt.is_some())
     }
     pub(crate) fn prepare(
         state: &WorldState,
@@ -142,6 +160,32 @@ impl PreparedIndustryEvent {
             Self::MaterialTransit(value) => value.install(state),
             Self::FactoryLifecycle(value) => value.install(state),
             Self::RecipeLifecycle(value) => value.install(state),
+        }
+    }
+
+    pub(super) fn serialize_terminal_receipts<S: SerializeStruct>(
+        &self,
+        state: &WorldState,
+        out: &mut S,
+    ) -> Result<(), S::Error> {
+        match self {
+            Self::RecipeLifecycle(value) => value.serialize_terminal_receipts(state, out),
+            Self::FactoryLifecycle(value) => value.serialize_terminal_receipts(state, out),
+            _ => {
+                if !state.recipe_completion_receipts.is_empty() {
+                    out.serialize_field(
+                        "recipe_completion_receipts",
+                        &state.recipe_completion_receipts,
+                    )?;
+                }
+                if !state.factory_recycle_receipts.is_empty() {
+                    out.serialize_field(
+                        "factory_recycle_receipts",
+                        &state.factory_recycle_receipts,
+                    )?;
+                }
+                Ok(())
+            }
         }
     }
 

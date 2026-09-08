@@ -321,11 +321,15 @@ fn refreshed_industry_progress(
         .values()
         .map(|factory| factory.production.completed_jobs)
         .sum::<u64>();
-    let mut next = if state
-        .factories
-        .values()
-        .any(|factory| factory.production.same_recipe_repeat_count >= 3)
-    {
+    let mut next = if state.factories.values().any(|factory| {
+        factory.production.same_recipe_repeat_count >= 3
+            && factory
+                .production
+                .last_completed_canonical_snapshot
+                .as_ref()
+                .zip(factory.production.last_completed_recipe_id.as_ref())
+                .is_some_and(|(snapshot, recipe_id)| snapshot.recipe_id == *recipe_id)
+    }) {
         IndustryStage::ScaleOut
     } else {
         IndustryStage::Bootstrap

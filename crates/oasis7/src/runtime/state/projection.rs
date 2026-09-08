@@ -550,8 +550,8 @@ where
         - usize::from(state.product_validation_receipts.is_empty() && industry_history_overlay.is_none())
         - usize::from(state.factory_construction_receipts.is_empty() && industry_overlay.is_none_or(|v| !v.has_construction_receipt()))
         - usize::from(state.product_validation_attempts.is_empty() && industry_history_overlay.is_none())
-        - usize::from(state.recipe_completion_receipts.is_empty())
-        - usize::from(state.factory_recycle_receipts.is_empty());
+        - usize::from(state.recipe_completion_receipts.is_empty() && industry_overlay.is_none_or(|v| !v.has_completion_receipt()))
+        - usize::from(state.factory_recycle_receipts.is_empty() && industry_overlay.is_none_or(|v| !v.has_recycle_receipt()));
     let mut output = serializer.serialize_struct("WorldState", field_count)?;
     output.serialize_field("time", &state.time)?;
     if let Some(overlay) = agent_claim_terminal_overlay {
@@ -808,14 +808,18 @@ where
             &state.industry_settlement_orders,
         )?;
     }
-    if !state.recipe_completion_receipts.is_empty() {
-        output.serialize_field(
-            "recipe_completion_receipts",
-            &state.recipe_completion_receipts,
-        )?;
-    }
-    if !state.factory_recycle_receipts.is_empty() {
-        output.serialize_field("factory_recycle_receipts", &state.factory_recycle_receipts)?;
+    if let Some(overlay) = industry_overlay {
+        overlay.serialize_terminal_receipts(state, &mut output)?;
+    } else {
+        if !state.recipe_completion_receipts.is_empty() {
+            output.serialize_field(
+                "recipe_completion_receipts",
+                &state.recipe_completion_receipts,
+            )?;
+        }
+        if !state.factory_recycle_receipts.is_empty() {
+            output.serialize_field("factory_recycle_receipts", &state.factory_recycle_receipts)?;
+        }
     }
     if let Some(overlay) = industry_overlay {
         overlay.serialize_pending_and_progress(state, &mut output)?;

@@ -101,6 +101,7 @@ impl PreparedRecipeLifecycle {
             failure_disposition: None,
             settlement_order: None,
             next_settlement_order: None,
+            completion_receipt: None,
         }
     }
 
@@ -351,6 +352,7 @@ impl PreparedRecipeLifecycle {
             failure_disposition: None,
             settlement_order: None,
             next_settlement_order: None,
+            completion_receipt: None,
         })
     }
 
@@ -377,6 +379,26 @@ impl PreparedRecipeLifecycle {
             unreachable!()
         };
         let (mut materials, world) = normalized_materials(state);
+        let completion_receipt = RecipeCompletionReceiptV1 {
+            job_id: *job_id,
+            requester_agent_id: requester_agent_id.clone(),
+            factory_id: factory_id.clone(),
+            recipe_id: recipe_id.clone(),
+            accepted_batches: *accepted_batches,
+            produce: produce.clone(),
+            byproducts: byproducts.clone(),
+            output_ledger: output_ledger.clone(),
+            bottleneck_tags: bottleneck_tags.clone(),
+            logistics_route_ids: logistics_route_ids.clone(),
+            logistics_path_ids: logistics_path_ids.clone(),
+        };
+        if let Some(existing) = state.recipe_completion_receipts.get(job_id) {
+            if existing != &completion_receipt {
+                return Err(invalid(format!(
+                    "recipe completion conflicts with persisted receipt: job_id={job_id}"
+                )));
+            }
+        }
         if state.settled_recipe_job_ids.contains(job_id) {
             return Ok(Self::idempotent(
                 state,
@@ -467,6 +489,28 @@ impl PreparedRecipeLifecycle {
         }
         let mut progress = state.industry_progress.clone();
         progress.completed_recipe_jobs = progress.completed_recipe_jobs.saturating_add(1);
+        if progress.starter_industrial_milestone.is_none()
+            && *accepted_batches > 0
+            && factory_id == STARTER_SMELTER_FACTORY_ID
+            && recipe_id == STARTER_SMELTER_RECIPE_ID
+            && state
+                .factories
+                .get(factory_id)
+                .is_some_and(|factory| factory.output_ledger == *output_ledger)
+            && produce
+                .iter()
+                .any(|stack| stack.kind == "iron_ingot" && stack.amount > 0)
+        {
+            progress.starter_industrial_milestone = Some(StarterIndustrialMilestoneV1 {
+                profile_id: STARTER_INDUSTRIAL_PROFILE_ID.to_string(),
+                profile_revision: STARTER_INDUSTRIAL_PROFILE_REVISION,
+                factory_id: factory_id.clone(),
+                recipe_id: recipe_id.clone(),
+                output_ledger: output_ledger.clone(),
+                settlement_job_id: *job_id,
+                settled_at: now,
+            });
+        }
         let factory_update = factory.map(|value| (factory_id.clone(), value));
         refresh_progress(state, factory_update.as_ref(), &mut progress, now);
         let no_active = factory_update
@@ -504,6 +548,7 @@ impl PreparedRecipeLifecycle {
             )),
             next_settlement_order: (!state.industry_settlement_orders.contains_key(job_id))
                 .then(|| state.next_industry_settlement_order.saturating_add(1)),
+            completion_receipt: Some((*job_id, completion_receipt)),
         })
     }
 
@@ -648,6 +693,7 @@ impl PreparedRecipeLifecycle {
             failure_disposition,
             settlement_order,
             next_settlement_order,
+            completion_receipt: None,
         })
     }
 
@@ -675,6 +721,7 @@ impl PreparedRecipeLifecycle {
             failure_disposition: None,
             settlement_order: None,
             next_settlement_order: None,
+            completion_receipt: None,
         }
     }
 
@@ -718,6 +765,9 @@ impl PreparedRecipeLifecycle {
         }
         if let Some(next) = self.next_settlement_order {
             state.next_industry_settlement_order = next;
+        }
+        if let Some((id, receipt)) = self.completion_receipt {
+            state.recipe_completion_receipts.insert(id, receipt);
         }
     }
 
@@ -790,6 +840,31 @@ impl PreparedRecipeLifecycle {
                 &state.industry_settlement_orders,
             )
         }
+    }
+
+    pub(super) fn serialize_terminal_receipts<S: SerializeStruct>(
+        &self,
+        state: &WorldState,
+        out: &mut S,
+    ) -> Result<(), S::Error> {
+        if let Some((id, receipt)) = &self.completion_receipt {
+            out.serialize_field(
+                "recipe_completion_receipts",
+                &SparseOverlay {
+                    base: &state.recipe_completion_receipts,
+                    updates: &BTreeMap::from([(*id, receipt.clone())]),
+                },
+            )?;
+        } else if !state.recipe_completion_receipts.is_empty() {
+            out.serialize_field(
+                "recipe_completion_receipts",
+                &state.recipe_completion_receipts,
+            )?;
+        }
+        if !state.factory_recycle_receipts.is_empty() {
+            out.serialize_field("factory_recycle_receipts", &state.factory_recycle_receipts)?;
+        }
+        Ok(())
     }
 
     pub(super) fn serialize_logistics<S: SerializeStruct>(
@@ -894,7 +969,7 @@ fn refresh_progress(
         .sum::<u64>();
     let stable = collected
         .iter()
-        .any(|factory| factory.production.same_recipe_repeat_count >= 3);
+        .any(|factory| factory_has_canonical_stable_line(factory));
     let current = progress.stage;
     let mut next = if stable {
         IndustryStage::ScaleOut

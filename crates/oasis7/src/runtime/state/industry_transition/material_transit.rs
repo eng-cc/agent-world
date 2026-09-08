@@ -192,6 +192,12 @@ impl PreparedMaterialTransit {
                     "material transit completion has no pending job: job_id={job_id}"
                 ))
             })?;
+        if now < pending.ready_at {
+            return Err(invalid(format!(
+                "material transit completion is early: job_id={job_id} ready_at={} now={now}",
+                pending.ready_at
+            )));
+        }
         let expected_loss = {
             let amount = pending.amount.max(0);
             ((amount as i128)
@@ -576,7 +582,7 @@ pub(super) fn refresh_progress_stage(
     if state
         .factories
         .values()
-        .any(|factory| factory.production.same_recipe_repeat_count >= 3)
+        .any(factory_has_canonical_stable_line)
     {
         next = IndustryStage::ScaleOut;
     }

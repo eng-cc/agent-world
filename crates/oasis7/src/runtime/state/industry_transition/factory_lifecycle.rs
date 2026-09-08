@@ -17,7 +17,7 @@ fn refresh_progress_without_factory(
         .factories
         .iter()
         .filter(|(id, _)| id.as_str() != removed)
-        .any(|(_, factory)| factory.production.same_recipe_repeat_count >= 3);
+        .any(|(_, factory)| factory_has_canonical_stable_line(factory));
     let mut next = if stable {
         IndustryStage::ScaleOut
     } else {
@@ -100,6 +100,7 @@ impl PreparedFactoryLifecycle {
                     agent: None,
                     progress: None,
                     construction_receipt: None,
+                    recycle_receipt: None,
                 })
             }
             DomainEvent::FactoryMaintained {
@@ -123,16 +124,38 @@ impl PreparedFactoryLifecycle {
                 factory_id,
                 recycle_ledger,
                 recovered,
-                ..
-            } => Self::prepare_recycled(
-                state,
-                event,
-                now,
-                operator_agent_id,
-                factory_id,
-                recycle_ledger,
-                recovered,
-            ),
+                durability_ppm,
+            } => {
+                let receipt = FactoryRecycleReceiptV1 {
+                    operator_agent_id: operator_agent_id.clone(),
+                    factory_id: factory_id.clone(),
+                    recycle_ledger: recycle_ledger.clone(),
+                    recovered: recovered.clone(),
+                    durability_ppm: *durability_ppm,
+                };
+                if let Some(existing) = state.factory_recycle_receipts.get(factory_id) {
+                    if existing != &receipt {
+                        return Err(invalid(format!(
+                            "factory recycle conflicts with persisted receipt: factory_id={factory_id}"
+                        )));
+                    }
+                }
+                Self::prepare_recycled(
+                    state,
+                    event,
+                    now,
+                    operator_agent_id,
+                    factory_id,
+                    recycle_ledger,
+                    recovered,
+                )
+                .map(|mut prepared| {
+                    if !state.retired_factory_ids.contains(factory_id) {
+                        prepared.recycle_receipt = Some((factory_id.clone(), receipt));
+                    }
+                    prepared
+                })
+            }
             _ => Err(invalid(
                 "factory lifecycle preparation requires supported event",
             )),
@@ -409,6 +432,7 @@ impl PreparedFactoryLifecycle {
             agent: Some((builder.into(), agent)),
             progress: None,
             construction_receipt: None,
+            recycle_receipt: None,
         })
     }
 
@@ -513,6 +537,7 @@ impl PreparedFactoryLifecycle {
                 .construction_power_obligation
                 .clone()
                 .map(|value| (spec.factory_id.clone(), value)),
+            recycle_receipt: None,
         })
     }
 
@@ -539,6 +564,7 @@ impl PreparedFactoryLifecycle {
                 .map(|cell| (builder.to_string(), cell)),
             progress: None,
             construction_receipt: None,
+            recycle_receipt: None,
         }
     }
 
@@ -625,6 +651,7 @@ impl PreparedFactoryLifecycle {
             agent,
             progress: None,
             construction_receipt: None,
+            recycle_receipt: None,
         })
     }
 
@@ -655,6 +682,7 @@ impl PreparedFactoryLifecycle {
                     .map(|cell| (operator.to_string(), cell)),
                 progress: None,
                 construction_receipt: None,
+                recycle_receipt: None,
             });
         }
         let factory = state.factories.get(factory_id).ok_or_else(|| {
@@ -728,6 +756,7 @@ impl PreparedFactoryLifecycle {
             agent,
             progress: Some(progress),
             construction_receipt: None,
+            recycle_receipt: None,
         })
     }
 
@@ -775,6 +804,9 @@ impl PreparedFactoryLifecycle {
         }
         if let Some((id, receipt)) = self.construction_receipt {
             state.factory_construction_receipts.insert(id, receipt);
+        }
+        if let Some((id, receipt)) = self.recycle_receipt {
+            state.factory_recycle_receipts.insert(id, receipt);
         }
     }
 
@@ -887,5 +919,30 @@ impl PreparedFactoryLifecycle {
         } else {
             Ok(())
         }
+    }
+
+    pub(super) fn serialize_terminal_receipts<S: SerializeStruct>(
+        &self,
+        state: &WorldState,
+        out: &mut S,
+    ) -> Result<(), S::Error> {
+        if !state.recipe_completion_receipts.is_empty() {
+            out.serialize_field(
+                "recipe_completion_receipts",
+                &state.recipe_completion_receipts,
+            )?;
+        }
+        if let Some((id, receipt)) = &self.recycle_receipt {
+            out.serialize_field(
+                "factory_recycle_receipts",
+                &SparseOverlay {
+                    base: &state.factory_recycle_receipts,
+                    updates: &BTreeMap::from([(id.clone(), receipt.clone())]),
+                },
+            )?;
+        } else if !state.factory_recycle_receipts.is_empty() {
+            out.serialize_field("factory_recycle_receipts", &state.factory_recycle_receipts)?;
+        }
+        Ok(())
     }
 }

@@ -433,7 +433,9 @@ impl World {
         let dir = dir.as_ref();
         fs::create_dir_all(dir)?;
         let snapshot = self.snapshot();
-        self.persist_snapshot_files_to_dir(dir, snapshot)
+        self.persist_snapshot_files_to_dir(dir, snapshot)?;
+        self.attach_persistence_dir(dir);
+        Ok(())
     }
 
     pub fn save_to_dir_with_chain_resource_context(
@@ -450,7 +452,9 @@ impl World {
             world_config_hash,
             generation_algorithm_hash,
         );
-        self.persist_snapshot_files_to_dir(dir, snapshot)
+        self.persist_snapshot_files_to_dir(dir, snapshot)?;
+        self.attach_persistence_dir(dir);
+        Ok(())
     }
 
     fn persist_snapshot_files_to_dir(
@@ -475,6 +479,10 @@ impl World {
         self.save_distfs_sidecar(dir, &persisted_snapshot, archive_bytes.as_deref(), None)?;
         self.save_module_store_to_dir(dir)?;
         Ok(())
+    }
+
+    fn attach_persistence_dir(&self, dir: &Path) {
+        *self.persistence_dir.borrow_mut() = Some(dir.to_path_buf());
     }
 
     pub fn save_to_dir_with_modules(&self, dir: impl AsRef<Path>) -> Result<(), WorldError> {
