@@ -4,6 +4,7 @@ use super::super::continuous_agent_harness::{
     ContinuousAgentResponseContextV1, ContinuousAgentTurnContextV1, h_v1,
 };
 use super::super::decision_provider::{DecisionResponse, ProviderDiagnostics};
+use super::behavior_budget::BudgetTraceState;
 use super::behavior_context::{CognitionBudgetExhausted, builtin_provider_decision};
 use super::*;
 use std::time::Instant;
@@ -35,7 +36,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
         })
     }
 
-    fn set_builtin_response_context(&mut self, decision: &AgentDecision) {
+    pub(super) fn set_builtin_response_context(&mut self, decision: &AgentDecision) {
         let Some(request_context) = self.continuous_context.request_context.as_ref() else {
             return;
         };
@@ -62,49 +63,6 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             transport_attempt: request_context.transport_attempt,
             request_digest: request_context.request_digest.clone(),
         });
-    }
-
-    fn budget_exhausted_decision(
-        &mut self,
-        observation: &Observation,
-        trace_chat_start: usize,
-        exhausted: CognitionBudgetExhausted,
-    ) -> AgentDecision {
-        let decision = AgentDecision::Wait;
-        let message = exhausted.message();
-        let trace_chat_messages = self.conversation_history
-            [trace_chat_start.min(self.conversation_history.len())..]
-            .to_vec();
-        self.pending_trace = Some(AgentDecisionTrace {
-            agent_id: self.agent_id.clone(),
-            time: observation.time,
-            decision: decision.clone(),
-            llm_input: None,
-            llm_output: Some(message.clone()),
-            llm_error: Some(message.clone()),
-            parse_error: None,
-            llm_diagnostics: Some(LlmDecisionDiagnostics {
-                model: Some(self.config.model.clone()),
-                latency_ms: Some(0),
-                prompt_tokens: None,
-                completion_tokens: None,
-                total_tokens: None,
-                retry_count: 0,
-            }),
-            llm_effect_intents: Vec::new(),
-            llm_effect_receipts: Vec::new(),
-            llm_step_trace: vec![LlmStepTrace {
-                step_index: 0,
-                step_type: "budget_admission".to_string(),
-                input_summary: exhausted.kind.name().to_string(),
-                output_summary: message,
-                status: "denied".to_string(),
-            }],
-            llm_prompt_section_trace: Vec::new(),
-            llm_chat_messages: trace_chat_messages,
-        });
-        self.set_builtin_response_context(&decision);
-        decision
     }
 }
 
@@ -334,7 +292,26 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
             ));
 
             if let Err(exhausted) = self.admit_model_call() {
-                return self.budget_exhausted_decision(observation, trace_chat_start, exhausted);
+                return self.budget_exhausted_decision(
+                    observation,
+                    trace_chat_start,
+                    exhausted,
+                    BudgetTraceState {
+                        model,
+                        latency_total_ms,
+                        prompt_tokens_total,
+                        completion_tokens_total,
+                        total_tokens_total,
+                        has_prompt_tokens,
+                        has_completion_tokens,
+                        has_total_tokens,
+                        repair_rounds_used,
+                        trace_inputs,
+                        trace_outputs,
+                        llm_step_trace,
+                        llm_prompt_section_trace,
+                    },
+                );
             }
             let request_started_at = Instant::now();
             match self.client.complete(&request) {
@@ -570,10 +547,42 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                                             "module_call skipped: limit exceeded".to_string();
                                     } else {
                                         if let Err(exhausted) = self.admit_tool_call() {
+                                            let denial = exhausted.message();
+                                            turn_status = "degraded".to_string();
+                                            turn_output_summary = format!(
+                                                "{}; module_call admission denied: {}",
+                                                turn_output_summary, denial
+                                            );
+                                            llm_step_trace.push(LlmStepTrace {
+                                                step_index: turn,
+                                                step_type: if is_repair_turn {
+                                                    "repair".to_string()
+                                                } else {
+                                                    "dialogue_turn".to_string()
+                                                },
+                                                input_summary: input_summary.clone(),
+                                                output_summary: turn_output_summary.clone(),
+                                                status: turn_status.clone(),
+                                            });
                                             return self.budget_exhausted_decision(
                                                 observation,
                                                 trace_chat_start,
                                                 exhausted,
+                                                BudgetTraceState {
+                                                    model,
+                                                    latency_total_ms,
+                                                    prompt_tokens_total,
+                                                    completion_tokens_total,
+                                                    total_tokens_total,
+                                                    has_prompt_tokens,
+                                                    has_completion_tokens,
+                                                    has_total_tokens,
+                                                    repair_rounds_used,
+                                                    trace_inputs,
+                                                    trace_outputs,
+                                                    llm_step_trace,
+                                                    llm_prompt_section_trace,
+                                                },
                                             );
                                         }
                                         if let Some(message_to_user) = message_to_user.as_deref() {

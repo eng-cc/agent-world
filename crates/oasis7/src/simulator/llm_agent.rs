@@ -30,6 +30,7 @@ use super::types::{
     ResourceOwner,
 };
 
+mod behavior_budget;
 mod behavior_context;
 mod behavior_guardrails;
 mod behavior_loop;

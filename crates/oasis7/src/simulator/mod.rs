@@ -159,6 +159,11 @@ pub use llm_agent::{
     LlmAgentBehavior, LlmAgentBuildError, LlmAgentConfig, LlmClientError,
     OpenAiChatCompletionClient,
 };
+#[cfg(all(test, not(target_arch = "wasm32")))]
+pub(crate) use llm_agent::{
+    LlmCompletionClient, LlmCompletionRequest, LlmCompletionResult, LlmCompletionTurn,
+    LlmPromptProfile,
+};
 pub use llm_defaults::{
     DEFAULT_CONFIG_FILE_NAME, DEFAULT_LLM_FORCE_REPLAN_AFTER_SAME_ACTION,
     DEFAULT_LLM_LONG_TERM_GOAL, DEFAULT_LLM_MAX_DECISION_STEPS, DEFAULT_LLM_MAX_MODULE_CALLS,

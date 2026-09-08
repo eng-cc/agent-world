@@ -1077,5 +1077,8 @@ impl RuntimeLlmSidecar {
 }
 
 #[cfg(test)]
+#[path = "llm_sidecar_budget_tests.rs"]
+mod budget_tests;
+#[cfg(test)]
 #[path = "llm_sidecar_tests.rs"]
 mod tests;

@@ -4,7 +4,7 @@ use super::agent_cognition_identity::{
     production_observation, production_request_fixture, production_turn_context, request_fixture,
     request_from_value,
 };
-use crate::simulator::{AgentCognitionStore, AsyncAgentRunner};
+use crate::simulator::{AgentBehavior, AgentCognitionStore, AsyncAgentRunner};
 use serde_json::json;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -57,6 +57,51 @@ impl crate::simulator::llm_agent::LlmCompletionClient for RetryCountingLlmClient
                 payload: json!({"decision": "wait"}),
             }],
             output: "{\"decision\":\"wait\"}".to_string(),
+            model: Some(request.model.clone()),
+            prompt_tokens: Some(1),
+            completion_tokens: Some(1),
+            total_tokens: Some(2),
+        })
+    }
+}
+
+#[derive(Clone)]
+struct SequenceBudgetLlmClient {
+    outputs: Arc<Vec<String>>,
+    calls: Arc<AtomicUsize>,
+}
+
+#[derive(Clone)]
+struct ErrorBudgetLlmClient;
+
+impl crate::simulator::llm_agent::LlmCompletionClient for ErrorBudgetLlmClient {
+    fn complete(
+        &self,
+        _request: &crate::simulator::llm_agent::LlmCompletionRequest,
+    ) -> Result<crate::simulator::llm_agent::LlmCompletionResult, crate::simulator::LlmClientError>
+    {
+        Err(crate::simulator::LlmClientError::Http {
+            message: "provider unavailable".to_string(),
+        })
+    }
+}
+
+impl crate::simulator::llm_agent::LlmCompletionClient for SequenceBudgetLlmClient {
+    fn complete(
+        &self,
+        request: &crate::simulator::llm_agent::LlmCompletionRequest,
+    ) -> Result<crate::simulator::llm_agent::LlmCompletionResult, crate::simulator::LlmClientError>
+    {
+        let index = self.calls.fetch_add(1, Ordering::SeqCst);
+        let output = self
+            .outputs
+            .get(index)
+            .cloned()
+            .unwrap_or_else(|| r#"{"decision":"wait"}"#.to_string());
+        let payload = serde_json::from_str(&output).expect("valid scripted budget payload");
+        Ok(crate::simulator::llm_agent::LlmCompletionResult {
+            turns: vec![crate::simulator::llm_agent::LlmCompletionTurn::Decision { payload }],
+            output,
             model: Some(request.model.clone()),
             prompt_tokens: Some(1),
             completion_tokens: Some(1),
@@ -149,23 +194,135 @@ fn transport_retry_keeps_request_model_budget_consumed() {
         }
         std::thread::yield_now();
     };
-    // The async runner exposes provider failures through `decision_trace` and
-    // leaves the top-level decision empty. The native behavior still emits a
-    // stable Wait trace before the second provider invocation is attempted.
-    assert!(retry.decision.is_none(), "retry outcome: {retry:?}");
     assert_eq!(
-        retry
-            .decision_trace
-            .as_ref()
-            .map(|trace| trace.decision.clone()),
-        Some(crate::simulator::AgentDecision::Wait),
-        "retry trace: {retry:?}"
+        retry.lifecycle,
+        crate::simulator::AsyncTurnLifecycle::Completed
     );
+    assert_eq!(retry.feedback, crate::simulator::AsyncTurnFeedback::Wait);
+    assert_eq!(
+        retry.world_effect,
+        crate::simulator::AsyncWorldEffect::NoEffect
+    );
+    assert_eq!(retry.decision, Some(crate::simulator::AgentDecision::Wait));
     assert_eq!(calls.load(Ordering::SeqCst), 1);
     assert!(
         retry
             .decision_trace
             .and_then(|trace| trace.llm_error)
             .is_some_and(|error| error.starts_with("budget_exhausted:"))
+    );
+}
+
+#[test]
+fn budget_exhaustion_preserves_prior_native_trace_evidence() {
+    let mut fixture = production_request_fixture(1, 60_000);
+    fixture["budget_contract"]["max_model_calls"] = json!(1);
+    fixture["budget_contract"]["max_tool_calls"] = json!(1);
+    let request_context = request_from_value(fixture);
+    let calls = Arc::new(AtomicUsize::new(0));
+    let behavior = crate::simulator::LlmAgentBehavior::new(
+        "agent-1",
+        retry_budget_llm_config(),
+        SequenceBudgetLlmClient {
+            outputs: Arc::new(vec![
+                r#"{"type":"module_call","module":"agent.modules.list","args":{}}"#.to_string(),
+            ]),
+            calls: Arc::clone(&calls),
+        },
+    );
+    let mut behavior = behavior;
+    crate::simulator::AgentBehavior::set_continuous_request_context(
+        &mut behavior,
+        Some(&request_context),
+    );
+
+    assert_eq!(
+        behavior.decide(&production_observation("agent-1", 42)),
+        crate::simulator::AgentDecision::Wait
+    );
+    let trace = behavior
+        .take_decision_trace()
+        .expect("budget exhaustion trace exists");
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    assert!(trace.llm_effect_intents.is_empty());
+    assert!(trace.llm_effect_receipts.is_empty());
+    assert!(
+        trace
+            .llm_input
+            .as_deref()
+            .is_some_and(|input| !input.is_empty())
+    );
+    assert!(
+        trace
+            .llm_output
+            .as_deref()
+            .is_some_and(|output| output.contains("agent.modules.list"))
+    );
+    assert!(
+        trace
+            .llm_step_trace
+            .iter()
+            .any(|step| step.status == "ok" && step.output_summary.contains("module_call"))
+    );
+    assert!(
+        trace
+            .llm_step_trace
+            .iter()
+            .any(|step| step.step_type == "budget_admission" && step.status == "denied")
+    );
+    assert!(
+        trace
+            .llm_error
+            .as_deref()
+            .is_some_and(|error| error.starts_with("budget_exhausted:"))
+    );
+}
+
+#[test]
+fn native_provider_error_remains_failed_after_budget_wait_normalization() {
+    let mut fixture = production_request_fixture(1, 60_000);
+    fixture["retry_seq"] = json!(1);
+    fixture["budget_contract"]["max_model_calls"] = json!(1);
+    fixture["budget_contract"]["max_tool_calls"] = json!(1);
+    let request_context = request_from_value(fixture);
+    let turn_context = production_turn_context(&request_context);
+    let behavior = crate::simulator::LlmAgentBehavior::new(
+        "agent-1",
+        retry_budget_llm_config(),
+        ErrorBudgetLlmClient,
+    );
+    let mut runner = AsyncAgentRunner::new(16).expect("create target actor runner");
+    runner.register(behavior).expect("register builtin actor");
+    let turn_id = runner
+        .start_turn_with_request_context_and_observation(
+            "agent-1",
+            production_observation("agent-1", 42),
+            turn_context,
+            request_context,
+        )
+        .expect("open production builtin turn");
+    let outcome = loop {
+        if let Some(outcome) = runner
+            .poll_completed()
+            .expect("poll production builtin turn")
+            .into_iter()
+            .find(|outcome| outcome.turn_id == turn_id)
+        {
+            break outcome;
+        }
+        std::thread::yield_now();
+    };
+    assert_eq!(
+        outcome.lifecycle,
+        crate::simulator::AsyncTurnLifecycle::Failed
+    );
+    assert!(matches!(
+        outcome.feedback,
+        crate::simulator::AsyncTurnFeedback::ProviderError { .. }
+    ));
+    assert!(outcome.decision.is_none());
+    assert_eq!(
+        outcome.world_effect,
+        crate::simulator::AsyncWorldEffect::NoEffect
     );
 }

@@ -1,4 +1,4 @@
-use super::super::decision_trace::is_trace_only_overflow;
+use super::super::decision_trace::{is_budget_exhausted_wait, is_trace_only_overflow};
 use super::*;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -297,7 +297,9 @@ impl RuntimeLlmSidecar {
         if let Some(cognition) = cognition.as_ref() {
             if decision_trace.as_ref().is_none_or(|trace| {
                 trace.parse_error.is_none()
-                    && (trace.llm_error.is_none() || is_trace_only_overflow(trace))
+                    && (trace.llm_error.is_none()
+                        || is_trace_only_overflow(trace)
+                        || is_budget_exhausted_wait(trace))
             }) {
                 self.provider_active_turns
                     .insert(agent_id.clone(), cognition.request.clone());

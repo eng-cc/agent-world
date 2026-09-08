@@ -1,4 +1,4 @@
-use super::super::decision_trace::is_trace_only_overflow;
+use super::super::decision_trace::{is_budget_exhausted_wait, is_trace_only_overflow};
 use super::llm_sidecar::RuntimeProviderActionContext;
 use super::*;
 use crate::runtime::{
@@ -49,7 +49,10 @@ impl ViewerRuntimeLiveServer {
             return Err(self.finish_provider_transport_exhaustion(agent_id, decision_trace));
         }
         if let Some(trace) = decision_trace.as_ref() {
-            if trace.llm_error.is_some() && !is_trace_only_overflow(trace) {
+            if trace.llm_error.is_some()
+                && !is_trace_only_overflow(trace)
+                && !is_budget_exhausted_wait(trace)
+            {
                 if !decision_trace_provider_error_retryable(trace).unwrap_or(false) {
                     if let Some(feedback) = self.llm_sidecar.fail_provider_turn_with_feedback(
                         decision.agent_id.as_str(),
