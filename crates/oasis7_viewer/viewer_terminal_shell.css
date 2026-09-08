@@ -474,6 +474,28 @@ body {
   flex: 0 0 auto;
 }
 
+.world-feed__latest {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.world-feed__latest-copy {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.world-feed__latest--empty {
+  color: var(--muted);
+}
+
 .world-feed__summary::-webkit-details-marker {
   display: none;
 }
@@ -574,6 +596,144 @@ body {
 .world-feed__empty {
   color: var(--muted);
   font-size: 13px;
+}
+
+/* Player clarity surfaces: the inline canonical document stays within its
+   structure budget while this loaded stylesheet owns the visual treatment. */
+.pixel-world-decision-area {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.pixel-world-action-receipt__changes {
+  color: rgba(174, 213, 198, 0.9);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.pixel-world-command-cell__feedback {
+  color: var(--muted-strong);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.stage-hero__secondary-action {
+  opacity: 0.72;
+}
+
+.stage-hero__secondary-action .callout {
+  border-color: rgba(152, 177, 150, 0.2);
+  background: rgba(255, 255, 255, 0.018);
+  box-shadow: none;
+}
+
+.stage-hero__secondary-action .toolbar button {
+  min-height: 36px;
+  padding-inline: 12px;
+  font-size: 12px;
+}
+
+.pixel-world-fragment-terrain--associated {
+  opacity: 0.98;
+  box-shadow:
+    inset 0 0 0 2px rgba(250, 204, 21, 0.7),
+    0 0 28px rgba(250, 204, 21, 0.42);
+}
+
+.pixel-world-fragment-terrain--muted {
+  opacity: 0.2;
+  filter: saturate(0.35);
+}
+
+.pixel-world-route--associated {
+  opacity: 1;
+  box-shadow: 0 0 22px rgba(250, 204, 21, 0.62), 0 0 4px rgba(255, 255, 255, 0.28);
+}
+
+.pixel-world-route--muted,
+.pixel-world-route-waypoint--muted {
+  opacity: 0.2 !important;
+  filter: saturate(0.35);
+}
+
+.pixel-world-route-waypoint--associated {
+  border-color: rgba(250, 204, 21, 0.98);
+  box-shadow: 0 0 22px rgba(250, 204, 21, 0.72);
+}
+
+.pixel-world-entity__code {
+  color: inherit;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pixel-world-canvas__legend {
+  position: absolute;
+  top: 96px;
+  left: 16px;
+  z-index: 12;
+  display: grid;
+  gap: 5px;
+  min-width: 128px;
+  padding: 8px 10px;
+  border: 1px solid rgba(141, 199, 170, 0.28);
+  border-radius: 7px;
+  background: rgba(7, 12, 18, 0.8);
+  box-shadow: var(--shadow-inset-stage), 0 8px 18px rgba(0, 0, 0, 0.18);
+  color: var(--muted-strong);
+  font-size: 10px;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.pixel-world-canvas__legend-title {
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pixel-world-canvas__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.pixel-world-canvas__legend-swatch {
+  width: 14px;
+  min-width: 14px;
+  height: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.pixel-world-canvas__legend-item--route .pixel-world-canvas__legend-swatch {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(141, 199, 170, 0.94);
+  box-shadow: 0 0 8px rgba(141, 199, 170, 0.55);
+}
+
+.pixel-world-canvas__legend-item--goal .pixel-world-canvas__legend-swatch { color: rgba(250, 204, 21, 0.96); }
+.pixel-world-canvas__legend-item--blocker .pixel-world-canvas__legend-swatch { color: rgba(229, 143, 118, 0.98); }
+.pixel-world-canvas__legend-item--resource .pixel-world-canvas__legend-swatch { color: rgba(110, 231, 183, 0.98); }
+
+.pixel-world-host--focus > .pixel-world-decision-area {
+  display: none;
 }
 
 .agent-activity,
@@ -770,6 +930,18 @@ body {
     min-height: 100dvh;
     width: 100%;
     overflow-x: hidden;
+  }
+
+  .pixel-world-command-cell__action {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 10px;
+  }
+
+  .pixel-world-entity {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 4px;
   }
 
   #viewer-stage-panel[data-viewer-map-layer="base"] {
@@ -1001,7 +1173,7 @@ body {
   }
 
   [data-viewer-overlay="cinematic-entry"] {
-    top: 64px;
+    top: 80px;
     right: auto;
     left: 10px;
   }
@@ -1037,7 +1209,7 @@ body {
 
   [data-viewer-shell="player-fullscreen"] .pixel-world-readout {
     display: none;
-    top: 112px;
+    top: 132px;
   }
 
   [data-viewer-overlay="feed"] {
@@ -1268,4 +1440,131 @@ body {
     bottom: calc(48px + 16px + min(42dvh, calc(100dvh - 72px - min(12dvh, 48px) - 16px - 8px - 96px)) + 8px);
     max-height: calc(100dvh - 72px - 48px - 16px - min(42dvh, calc(100dvh - 72px - min(12dvh, 48px) - 16px - 8px - 96px)) - 8px);
   }
+}
+
+/* Keep the player decision stack in one layout context on narrow screens.
+ * The map remains the visual backdrop, while command, context, receipt, and
+ * legend occupy a single bottom anchored flow so a long receipt can grow and
+ * scroll with the decision surface instead of being clipped by a second
+ * viewport overlay. */
+@media (max-width: 640px) {
+  /* Feed is a compact, scrollable context band below the top chrome. Keep it
+   * above the map backdrop but outside the bottom decision/receipt band. */
+  .stack > [data-viewer-overlay="feed"] {
+    position: absolute;
+    top: 132px;
+    right: 10px;
+    bottom: auto;
+    left: 10px;
+    width: auto;
+    max-width: none;
+    max-height: min(20dvh, 128px);
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .stack > [data-viewer-overlay="feed"][open] {
+    position: absolute;
+    top: 132px;
+    bottom: auto;
+    max-height: min(20dvh, 128px);
+  }
+
+  .pixel-world-decision-area {
+    position: absolute;
+    z-index: 25;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    max-height: calc(100dvh - 276px);
+    overflow-x: visible;
+    overflow-y: auto;
+    align-content: start;
+    gap: 8px;
+    scroll-padding-block: 8px;
+    pointer-events: auto;
+  }
+
+  .pixel-world-decision-area > [data-viewer-overlay="next-move"],
+  .pixel-world-decision-area > [data-viewer-overlay="receipt"] {
+    position: static;
+    inset: auto;
+    width: auto;
+    max-width: none;
+    max-height: none;
+    height: auto;
+    overflow: visible;
+  }
+
+  .pixel-world-decision-area > [data-viewer-overlay="next-move"] {
+    grid-template-columns: 1fr;
+    padding: 0;
+    gap: 8px;
+  }
+
+  .pixel-world-decision-area .pixel-world-command-cell,
+  .pixel-world-decision-area [data-shell-region="supporting-context"] {
+    min-height: 0;
+    height: auto;
+    overflow: visible;
+  }
+
+  .pixel-world-decision-area [data-shell-region="supporting-context"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .pixel-world-decision-area > [data-viewer-overlay="receipt"] {
+    min-height: 0;
+    padding: 10px 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .pixel-world-decision-area .pixel-world-command-cell__action,
+  [data-viewer-overlay="cinematic-entry"] .pixel-world-focus-entry__button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .pixel-world-decision-area .pixel-world-canvas__legend {
+    position: static;
+    z-index: auto;
+    width: max-content;
+    max-width: 100%;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  .pixel-world-entity {
+    flex-direction: column;
+    gap: 2px;
+    min-width: 44px;
+    min-height: 44px;
+    height: auto;
+    padding: 4px;
+    overflow: visible;
+  }
+
+  .pixel-world-entity[data-selected="true"] {
+    min-width: 44px;
+    min-height: 44px;
+    width: auto;
+    height: auto;
+  }
+
+}
+
+/* Markers stay terse; selected and hover context stays in the safe HUD callouts
+ * so identity remains collision-free without turning the map into a wall of
+ * names. */
+.pixel-world-entity {
+  flex-direction: column;
+  gap: 2px;
+  overflow: visible;
+}
+
+.pixel-world-entity[data-selected="true"] {
+  min-width: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
 }

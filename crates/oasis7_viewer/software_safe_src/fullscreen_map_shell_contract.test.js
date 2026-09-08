@@ -159,6 +159,26 @@ describe("fullscreen map shell contract", () => {
     );
   });
 
+  it("keeps the mobile Feed band below top chrome and outside the decision band", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    expect(terminalShellCss).toMatch(
+      /@media\s*\(max-width:\s*640px\)[\s\S]*?\.stack\s*>\s*\[data-viewer-overlay="feed"\]\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?top:\s*132px;[\s\S]*?bottom:\s*auto;[\s\S]*?max-height:\s*min\(20dvh,\s*128px\)/i,
+    );
+    expect(terminalShellCss).toMatch(
+      /@media\s*\(max-width:\s*640px\)[\s\S]*?\.pixel-world-decision-area\s*\{[\s\S]*?max-height:\s*calc\(100dvh\s*-\s*276px\);[\s\S]*?align-content:\s*start;/i,
+    );
+  });
+
+  it("leaves a mobile gap between navigation, Cinematic, and Feed", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    expect(terminalShellCss).toMatch(
+      /@media\s*\(max-width:\s*640px\)[\s\S]*?\.secondary-viewer-nav\s*\{[\s\S]*?top:\s*56px;[\s\S]*?\[data-viewer-overlay="cinematic-entry"\]\s*\{[\s\S]*?top:\s*80px;/i,
+    );
+    expect(terminalShellCss).toMatch(
+      /@media\s*\(max-width:\s*640px\)[\s\S]*?\.stack\s*>\s*\[data-viewer-overlay="feed"\]\s*\{[\s\S]*?top:\s*132px;/i,
+    );
+  });
+
   it("bounds short-landscape Next Move content inside its receipt-safe band", async () => {
     const { terminalShellCss } = await readViewerHtml();
     expect(terminalShellCss).toMatch(

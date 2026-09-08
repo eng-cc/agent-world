@@ -145,6 +145,27 @@ describe("WorldFeedPanel", () => {
     expect(document.querySelectorAll("a[data-world-feed-receipt-ref]")).toHaveLength(1);
   });
 
+  it("surfaces the highest event sequence in the collapsed summary while preserving feed status", () => {
+    render(() => (
+      <WorldFeedPanel
+        feed={() => ({
+          status: "ready",
+          events: [
+            { event_seq: 7, kind: "resource_change", summary: "Ore changed", detail: "ore +1", receipt_ref: null },
+            { event_seq: 8, kind: "weather_shift", summary: "Solar flare reached the belt", detail: "ambient", receipt_ref: null },
+          ],
+        })}
+        locale={() => "en"}
+        tr={tr}
+      />
+    ));
+
+    const summary = document.querySelector(".world-feed__summary");
+    expect(summary).toHaveAttribute("data-world-feed-latest", "8");
+    expect(summary).toHaveTextContent("LIVE");
+    expect(summary).toHaveTextContent("Latest: Solar flare reached the belt");
+  });
+
   it("formats runtime kinds and keeps diagnostic JSON out of the player feed", () => {
     render(() => (
       <WorldFeedPanel

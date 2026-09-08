@@ -2100,35 +2100,37 @@ function WorldStageHero() {
       </div>
       <Show when={recommendedAction()}>
         {(action) => (
-          <CalloutCard
-            title={tr(locale(), "推荐动作", "Recommended Action")}
-            badge={action().executeKind || "ready"}
-            badgeClass="badge badge--good"
-          >
-            <div class="feedback-summary">
-              {action().label || action().actionId || tr(locale(), "当前存在一条更合适的推进动作。", "One action is currently the best next move.")}
-            </div>
-            <div
-              class="feedback-detail"
-              id={gameplayActionDisabledReason(action(), gameplaySummary(), locale()) ? gameplayActionBlockedReasonId(action()) : undefined}
+          <div class="stage-hero__secondary-action" data-hero-secondary-action="true">
+            <CalloutCard
+              title={tr(locale(), "推荐动作", "Recommended Action")}
+              badge={action().executeKind || "ready"}
+              badgeClass="badge badge--good"
             >
-              {gameplayActionDisabledReason(action(), gameplaySummary(), locale())
-                || gameplayActionDetail(action(), gameplaySummary(), locale())}
-            </div>
-            <div class="toolbar" aria-label={tr(locale(), "下一步动作", "Next Move action")}>
-              <button
-                type="button"
-                data-testid={gameplayActionTestId(action(), "recommended")}
-                class={gameplayActionButtonClass(action())}
-                aria-busy={gameplayActionButtonBusyAttrs(action())}
-                disabled={gameplayActionButtonDisabled(action(), gameplaySummary(), locale())}
-                aria-describedby={gameplayActionDisabledReason(action(), gameplaySummary(), locale()) ? gameplayActionBlockedReasonId(action()) : undefined}
-                onClick={() => renderGameplayAction(action())}
+              <div class="feedback-summary">
+                {action().label || action().actionId || tr(locale(), "当前存在一条更合适的推进动作。", "One action is currently the best next move.")}
+              </div>
+              <div
+                class="feedback-detail"
+                id={gameplayActionDisabledReason(action(), gameplaySummary(), locale()) ? gameplayActionBlockedReasonId(action()) : undefined}
               >
-                {gameplayActionDisplayLabel(action(), locale())}
-              </button>
-            </div>
-          </CalloutCard>
+                {gameplayActionDisabledReason(action(), gameplaySummary(), locale())
+                  || gameplayActionDetail(action(), gameplaySummary(), locale())}
+              </div>
+              <div class="toolbar" aria-label={tr(locale(), "下一步动作", "Next Move action")}>
+                <button
+                  type="button"
+                  data-testid={gameplayActionTestId(action(), "recommended")}
+                  class={gameplayActionButtonClass(action())}
+                  aria-busy={gameplayActionButtonBusyAttrs(action())}
+                  disabled={gameplayActionButtonDisabled(action(), gameplaySummary(), locale())}
+                  aria-describedby={gameplayActionDisabledReason(action(), gameplaySummary(), locale()) ? gameplayActionBlockedReasonId(action()) : undefined}
+                  onClick={() => renderGameplayAction(action())}
+                >
+                  {gameplayActionDisplayLabel(action(), locale())}
+                </button>
+              </div>
+            </CalloutCard>
+          </div>
         )}
       </Show>
       <Show when={gameplaySummary()?.blockerKind === "runtime_snapshot_empty_entities"}>

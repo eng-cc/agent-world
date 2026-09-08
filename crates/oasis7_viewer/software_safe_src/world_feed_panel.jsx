@@ -115,6 +115,7 @@ function WorldFeedPanel(props) {
   const status = () => String(feed().status || "unavailable");
   const statusLabel = () => statusCopy(locale(), tr, status());
   const summaryStatusLabel = () => statusBadgeLabel(locale(), tr, status());
+  const latestEvent = () => presentationEvents().at(-1) || null;
   const shouldReload = () => status() !== "unavailable"
     && Boolean(feed().snapshotReloadRequired || status() === "gap");
 
@@ -127,7 +128,10 @@ function WorldFeedPanel(props) {
       data-world-feed-status={status()}
       aria-live="polite"
     >
-      <summary class="panel__header panel__header--stack world-feed__summary">
+      <summary
+        class="panel__header panel__header--stack world-feed__summary"
+        data-world-feed-latest={latestEvent()?.event_seq == null ? undefined : String(latestEvent().event_seq)}
+      >
         <div class="panel__eyebrow">{tr(locale(), "环境上下文", "Ambient Context")}</div>
         <div class="world-feed__summary-line">
           <div class="panel__title">{tr(locale(), "World Feed", "World Feed")}</div>
@@ -136,6 +140,22 @@ function WorldFeedPanel(props) {
         <div class="panel__meta-copy">
           {tr(locale(), "只读的运行时环境投影；不会替代 Action Receipt，也不会证明玩家动作成功。", "Read-only runtime context; it never replaces Action Receipt or proves a player action succeeded.")}
         </div>
+        <Show
+          when={latestEvent()}
+          fallback={(
+            <div class="world-feed__latest world-feed__latest--empty" data-world-feed-latest-empty="true">
+              {status() === "loading"
+                ? tr(locale(), "等待最新环境动态。", "Waiting for the latest ambient activity.")
+                : status() === "unavailable"
+                  ? tr(locale(), "最新环境动态不可用。", "The latest ambient activity is unavailable.")
+                  : tr(locale(), "暂无最新环境动态。", "No latest ambient activity is available.")}
+            </div>
+          )}
+        >
+          <div class="world-feed__latest" data-world-feed-latest="true">
+            <span class="world-feed__latest-copy">{`${tr(locale(), "最新", "Latest")}: ${latestEvent().summary} · ${eventKindLabel(latestEvent(), locale(), tr)}`}</span>
+          </div>
+        </Show>
       </summary>
       <div class="panel__body world-feed__body">
         <div class="world-feed__status-row">
