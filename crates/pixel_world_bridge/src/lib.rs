@@ -743,6 +743,9 @@ fn render_signature(render_state: Option<&RenderState>, mode: RenderSignatureMod
         hash_position(&mut hasher, &fragment.pos);
         hash_f64(&mut hasher, fragment.footprint_cm);
         fragment.color.hash(&mut hasher);
+        if matches!(mode, RenderSignatureMode::Content) {
+            fragment.dominant_compound.hash(&mut hasher);
+        }
         hash_f64(&mut hasher, fragment.emphasis.unwrap_or(0.0));
     }
 

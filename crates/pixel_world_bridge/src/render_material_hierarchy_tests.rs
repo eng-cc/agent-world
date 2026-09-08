@@ -226,6 +226,57 @@ fn paused_animation_keeps_event_shapes_static_and_above_core() {
 }
 
 #[test]
+fn same_color_compound_update_reconciles_inset_without_resetting_camera() {
+    let mut state = sample_render_state(20_000.0);
+    state.fragment_terrain[0].dominant_compound = "compound_a".into();
+    let mut app = render_test_app(state.clone());
+    let inset = |app: &mut App| {
+        let world = app.world_mut();
+        world
+            .query_filtered::<(Entity, &Sprite), With<PixelWorldFragmentInsetVisual>>()
+            .single(world)
+            .map(|(entity, sprite)| (entity, sprite.custom_size.unwrap()))
+            .unwrap()
+    };
+    let before = inset(&mut app);
+    let camera_signature = camera_content_signature(Some(&state));
+    state.fragment_terrain[0].dominant_compound = "compound_b".into();
+    {
+        let mut runtime = app.world_mut().resource_mut::<BevyRuntimeState>();
+        runtime.reactive_scheduling = true;
+        runtime.animation_dirty = false;
+        runtime.needs_reconcile = false;
+        runtime.hit_regions_dirty = false;
+        runtime.camera_user_override = true;
+        runtime.render_content_signature = render_content_signature(runtime.render_state.as_ref());
+        let version = runtime.render_version + 1;
+        apply_external_render_snapshot(
+            &mut runtime,
+            true,
+            RenderSnapshot::Changed {
+                version,
+                state: Some(state.clone()),
+            },
+        );
+        assert!(
+            runtime.needs_reconcile,
+            "compound-only update must reconcile"
+        );
+        assert!(!runtime.hit_regions_dirty);
+        assert!(runtime.camera_user_override);
+    }
+    assert_eq!(camera_signature, camera_content_signature(Some(&state)));
+    app.update();
+    let after = inset(&mut app);
+    assert_eq!(before.0, after.0, "reuse the existing inset entity");
+    assert_eq!(before.1.x, after.1.x);
+    assert_ne!(
+        before.1.y, after.1.y,
+        "compound-only update changes inset shape"
+    );
+}
+
+#[test]
 fn compound_shading_preserves_channels_without_saturation_or_overflow() {
     let mut patch = sample_render_state(20_000.0).fragment_terrain.remove(0);
     patch.color = [200, 100, 0];

@@ -278,6 +278,33 @@ describe("pixel world host", () => {
     expect(readout).not.toHaveTextContent(/routes=|fragments=|hotspots=|renderer=|runtime=/i);
   }, HEAVY_UI_TEST_TIMEOUT_MS);
 
+  it("refreshes connection and feed badges across updates without remounting", async () => {
+    useTestRustRenderState();
+    const { core } = await renderPixelWorldHost(sampleSnapshot(), "?test_api=1&connect=0&locale=en");
+    await waitFor(() => expect(document.querySelector(".pixel-world-readout")).not.toBeNull());
+    const connection = document.querySelector("[data-world-connection-status]");
+    const feed = document.querySelector("[data-world-feed-readout-status]");
+    for (const [connectionStatus, status, stale, connectionLabel, feedLabel] of [
+      ["connecting", "loading", false, "CONNECTING", "SYNCING"],
+      ["connected", "ready", false, "ONLINE", "LIVE"],
+      ["closed", "ready", true, "CLOSED", "STALE"],
+    ]) {
+      core.state.connectionStatus = connectionStatus;
+      Object.assign(core.state.worldFeed, { status, stale });
+      core.requestRender();
+      await waitFor(() => {
+        expect(document.querySelector("[data-world-connection-status]")).toBe(connection);
+        expect(document.querySelector("[data-world-feed-readout-status]")).toBe(feed);
+        expect(connection).toHaveTextContent(`World connection: ${connectionLabel}`);
+        expect(feed).toHaveTextContent(`Feed freshness: ${feedLabel}`);
+        expect(connection).toHaveClass(`pixel-world-readout__connection--${connectionLabel.toLowerCase()}`);
+        expect(feed).toHaveClass(`pixel-world-readout__feed--${feedLabel.toLowerCase()}`);
+        expect(connection).toHaveAttribute("data-world-connection-status", connectionLabel.toLowerCase());
+        expect(feed).toHaveAttribute("data-world-feed-readout-status", status);
+      });
+    }
+  }, HEAVY_UI_TEST_TIMEOUT_MS);
+
   it("does not label a disconnected or stale world as LIVE", async () => {
     useTestRustRenderState();
     const { core } = await renderPixelWorldHost(
