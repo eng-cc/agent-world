@@ -4074,22 +4074,48 @@ def _execute_unlocked(
     }
 
 
-def _reject_journal_ledger_aliases(journal_path: Path, ledger_path: Path, plan: dict[str, Any]) -> None:
-    """Keep every journal mutation, including lock and emergency files, off nonce history."""
-    ledgers = [Path(ledger_path)]
+def _reject_journal_input_aliases(
+    journal_path: Path,
+    ledger_path: Path,
+    plan: dict[str, Any],
+    *,
+    input_paths: tuple[Path, ...] = (),
+) -> None:
+    """Keep journal, lock and emergency writes off admission/recovery inputs.
+
+    This runs before locking, including for dry runs and completed resumes.
+    Enumerate retained evidence by its canonical descriptor schema, not by
+    arbitrary nested path fields (which can describe remote node state).
+    """
+    protected = [Path(ledger_path), Path(CANONICAL_TRUST_ROOT_PATH), *input_paths]
     declared = plan.get("credential_nonce_ledger")
     if isinstance(declared, dict) and isinstance(declared.get("path"), str):
-        ledgers.append(Path(declared["path"]))
+        protected.append(Path(declared["path"]))
+    descriptors = [plan.get("consumer_impact_record")]
+    evidence = plan.get("identity_v2_evidence")
+    if isinstance(evidence, dict):
+        descriptors.extend((evidence.get("context"), evidence.get("plan_intent")))
+        entries = evidence.get("entries")
+        if isinstance(entries, list):
+            fields = _load_planner().IDENTITY_V2_EVIDENCE_ARTIFACT_FIELDS
+            for entry in entries:
+                if isinstance(entry, dict):
+                    descriptors.extend(entry.get(field) for field in fields)
+    for descriptor in descriptors:
+        if isinstance(descriptor, dict) and isinstance(descriptor.get("path"), str):
+            protected.append(Path(descriptor["path"]))
     outputs = [Path(journal_path), Path(f"{journal_path}.lock"), Path(f"{journal_path}.emergency.json")]
     try:
         for output in outputs:
-            for ledger in ledgers:
-                if output.resolve() == ledger.resolve() or (
-                    output.exists() and ledger.exists() and output.samefile(ledger)
+            for retained in protected:
+                if output.resolve() == retained.resolve() or (
+                    output.exists() and retained.exists() and output.samefile(retained)
                 ):
-                    _fail("transaction journal/lock/emergency output must not alias the credential nonce ledger")
+                    _fail("transaction journal/lock/emergency output must not alias input, retained evidence, or credential nonce ledger")
+    except AdapterError:
+        raise
     except (OSError, RuntimeError):
-        _fail("cannot establish transaction journal and nonce ledger separation")
+        _fail("cannot establish transaction journal and retained input separation")
 
 
 def execute(
@@ -4104,7 +4130,7 @@ def execute(
     raw_v1_bytes_by_node: Mapping[str, bytes] | None = None,
 ) -> dict[str, Any]:
     """Serialize one transaction while retaining the implementation boundary."""
-    _reject_journal_ledger_aliases(Path(journal_path), Path(ledger_path), plan)
+    _reject_journal_input_aliases(Path(journal_path), Path(ledger_path), plan)
     lock = _acquire_transaction_lock(Path(journal_path))
     try:
         return _execute_unlocked(
@@ -4376,7 +4402,7 @@ def resume_transaction(
     raw_v1_bytes_by_node: Mapping[str, bytes] | None = None,
 ) -> dict[str, Any]:
     """Serialize resume/reconciliation against the same transaction lock."""
-    _reject_journal_ledger_aliases(Path(journal_path), Path(ledger_path), plan)
+    _reject_journal_input_aliases(Path(journal_path), Path(ledger_path), plan)
     lock = _acquire_transaction_lock(Path(journal_path))
     try:
         return _resume_transaction_unlocked(
@@ -4466,6 +4492,12 @@ def main(argv: list[str] | None = None) -> int:
         _fail("identity-v2 evidence-map and mode must be supplied together")
     plan = _load_json(args.plan, "plan")
     authority = _load_json(args.authority, "authority")
+    input_paths = (args.plan, args.authority)
+    if args.identity_v2_evidence_map is not None:
+        input_paths += (args.identity_v2_evidence_map,)
+    _reject_journal_input_aliases(
+        args.journal, args.ledger, plan, input_paths=input_paths
+    )
     if args.identity_v2_evidence_map is not None:
         evidence_map = _load_json(args.identity_v2_evidence_map, "identity-v2 evidence map")
         # This bridge path deliberately performs no lock, journal, ledger, or

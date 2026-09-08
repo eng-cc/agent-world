@@ -381,6 +381,17 @@ class FullNetworkCleanRoomAdapterTests(unittest.TestCase):
         self._test_directory.cleanup()
         self.fixture.tearDown()
 
+    def test_journal_cannot_overwrite_retained_context_in_valid_dry_run(self) -> None:
+        journal = Path(self.identity_v2_evidence["context"]["path"])
+        original = journal.read_bytes()
+        with self.assertRaisesRegex(self.adapter.AdapterError, "alias"):
+            self.adapter.execute(
+                self.plan, self._authority(), journal_path=journal,
+                ledger_path=self.ledger_path, dry_run=True,
+            )
+        self.assertEqual(journal.read_bytes(), original)
+        self.assertFalse(Path(f"{journal}.lock").exists())
+
     def test_identity_v2_evidence_schema_matches_planner_v2(self) -> None:
         self.assertEqual(
             self.adapter.IDENTITY_V2_EVIDENCE_SCHEMA,
@@ -3175,6 +3186,75 @@ class FullNetworkCleanRoomAdapterTests(unittest.TestCase):
 
 
 class JournalLedgerAliasTests(unittest.TestCase):
+    def test_retained_evidence_alias_matrix_is_rejected_before_lock(self):
+        adapter = load_module("retained_alias_adapter", ADAPTER_PATH)
+        fields = (
+            "raw_v1", "prepare_manifest", "payload", "provider_attestation",
+            "unsigned_envelope", "signed_envelope", "verification",
+        )
+        locations = [("context", None), ("plan_intent", None)] + [
+            (field, node) for node in range(5) for field in fields
+        ] + [("consumer_impact_record", None)]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for index, (field, node) in enumerate(locations):
+                for output_suffix in ("", ".lock", ".emergency.json"):
+                    for alias_kind in ("direct", "hardlink", "symlink"):
+                        case = root / f"{index}-{len(output_suffix)}-{alias_kind}"
+                        case.mkdir()
+                        journal = case / "journal.json"
+                        output = Path(f"{journal}{output_suffix}")
+                        retained = output if alias_kind == "direct" else case / "retained.json"
+                        retained.write_bytes(b"retained evidence bytes\n")
+                        if alias_kind == "hardlink":
+                            os.link(retained, output)
+                        elif alias_kind == "symlink":
+                            output.symlink_to(retained)
+                        descriptor = {"path": str(retained)}
+                        evidence = {"entries": [{} for _ in range(5)]}
+                        plan = {"identity_v2_evidence": evidence}
+                        if field == "consumer_impact_record":
+                            plan[field] = descriptor
+                        elif node is None:
+                            evidence[field] = descriptor
+                        else:
+                            evidence["entries"][node][field] = descriptor
+                        for dry_run in (True, False):
+                            for resume in (False, True):
+                                with self.subTest(field=field, node=node, output=output_suffix, alias=alias_kind, dry_run=dry_run, resume=resume):
+                                    with mock.patch.object(adapter, "_acquire_transaction_lock") as lock, mock.patch.object(adapter, "_release_transaction_lock"), mock.patch.object(adapter, "_execute_unlocked"), mock.patch.object(adapter, "_resume_transaction_unlocked"):
+                                        with self.assertRaisesRegex(adapter.AdapterError, "alias"):
+                                            if resume:
+                                                adapter.resume_transaction(plan, {}, journal, ledger_path=case / "ledger", dry_run=dry_run)
+                                            else:
+                                                adapter.execute(plan, {}, journal_path=journal, ledger_path=case / "ledger", dry_run=dry_run)
+                                        lock.assert_not_called()
+                                    self.assertEqual(retained.read_bytes(), b"retained evidence bytes\n")
+
+    def test_cli_input_aliases_are_rejected_before_execute(self):
+        adapter = load_module("cli_input_alias_adapter", ADAPTER_PATH)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for input_name in ("plan", "authority", "evidence-map"):
+                for suffix in ("", ".lock", ".emergency.json"):
+                    case = root / f"{input_name}-{len(suffix)}"
+                    case.mkdir()
+                    journal = case / "journal.json"
+                    paths = {name: case / f"{name}.json" for name in ("plan", "authority", "evidence-map")}
+                    paths[input_name] = Path(f"{journal}{suffix}")
+                    for path in paths.values():
+                        path.write_bytes(b"{}")
+                    argv = ["--plan", str(paths["plan"]), "--authority", str(paths["authority"]), "--journal", str(journal), "--ledger", str(case / "ledger")]
+                    if input_name == "evidence-map":
+                        argv += ["--identity-v2-evidence-map", str(paths[input_name]), "--identity-v2-mode", "current_admission"]
+                    with self.subTest(input=input_name, suffix=suffix):
+                        with mock.patch.object(adapter, "execute", return_value={}) as execute, mock.patch.object(adapter, "validate_authority"), mock.patch.object(adapter, "_current_identity_v2_admission", return_value={}):
+                            with self.assertRaisesRegex(adapter.AdapterError, "alias"):
+                                adapter.main(argv)
+                            execute.assert_not_called()
+                        for path in paths.values():
+                            self.assertEqual(path.read_bytes(), b"{}")
+
     def test_lock_and_emergency_outputs_cannot_alias_ledger(self):
         adapter = load_module("alias_aux_adapter", ADAPTER_PATH)
         with tempfile.TemporaryDirectory() as directory:
