@@ -2574,6 +2574,56 @@ def load_json(path: Path) -> dict[str, Any]:
     return require_object(value, "clean-room input")
 
 
+def _plan_output_inputs(source: Path, evidence_path: Path, evidence: dict[str, Any]) -> list[Path]:
+    protected = [source, evidence_path]
+    descriptors = [evidence.get("context"), evidence.get("plan_intent")]
+    for entry in evidence.get("entries", []):
+        if isinstance(entry, dict):
+            descriptors.extend(entry.get(field) for field in IDENTITY_V2_EVIDENCE_ARTIFACT_FIELDS)
+    for descriptor in descriptors:
+        if isinstance(descriptor, dict) and isinstance(descriptor.get("path"), str):
+            protected.append(Path(descriptor["path"]))
+    return protected
+
+
+def _reject_plan_output_aliases(output: Path, protected: list[Path]) -> None:
+    try:
+        if output.is_symlink():
+            die("plan output must not be a symlink")
+        for retained in protected:
+            if output.resolve() == retained.resolve() or (
+                output.exists() and retained.exists() and output.samefile(retained)
+            ):
+                die("plan output must not alias input or retained identity evidence")
+    except (OSError, RuntimeError):
+        die("cannot establish plan output and retained evidence separation")
+
+
+def _write_plan_atomic(output: Path, plan: dict[str, Any], protected: list[Path]) -> None:
+    _reject_plan_output_aliases(output, protected)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=output.parent, prefix=f".{output.name}.", suffix=".partial", delete=False) as handle:
+            temporary = Path(handle.name)
+            json.dump(plan, handle, ensure_ascii=True, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        _reject_plan_output_aliases(output, protected)
+        os.replace(temporary, output)
+        temporary = None
+        if os.name != "nt":
+            descriptor = os.open(output.parent, os.O_RDONLY)
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -2593,13 +2643,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.identity_v2_evidence_map is None:
         die("identity-v2 evidence map is required for planner CLI admission")
     evidence = load_json(args.identity_v2_evidence_map)
+    protected = _plan_output_inputs(args.input, args.identity_v2_evidence_map, evidence)
+    if args.out is not None:
+        _reject_plan_output_aliases(args.out.expanduser(), protected)
     plan = build_plan(load_json(args.input).copy(), identity_v2_evidence=evidence)
     if args.out is not None:
         output = args.out.expanduser()
-        if output.is_symlink():
-            die(f"plan output must not be a symlink: {output}")
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(plan, ensure_ascii=True, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        _write_plan_atomic(output, plan, protected)
     if args.json:
         print(json.dumps(plan, ensure_ascii=True, indent=2, sort_keys=True))
     else:

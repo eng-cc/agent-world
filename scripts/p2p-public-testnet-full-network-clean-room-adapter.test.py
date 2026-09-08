@@ -3174,5 +3174,42 @@ class FullNetworkCleanRoomAdapterTests(unittest.TestCase):
                 self.adapter.validate_credential_ledger(self.plan, ledger)
 
 
+class JournalLedgerAliasTests(unittest.TestCase):
+    def test_lock_and_emergency_outputs_cannot_alias_ledger(self):
+        adapter = load_module("alias_aux_adapter", ADAPTER_PATH)
+        with tempfile.TemporaryDirectory() as directory:
+            journal = Path(directory) / "journal.json"
+            for suffix in (".lock", ".emergency.json"):
+                ledger = Path(f"{journal}{suffix}")
+                ledger.write_bytes(b"nonce history\n")
+                with mock.patch.object(adapter, "_acquire_transaction_lock") as lock:
+                    with self.assertRaises(adapter.AdapterError):
+                        adapter.execute({}, {}, journal_path=journal, ledger_path=ledger)
+                    lock.assert_not_called()
+                self.assertEqual(ledger.read_bytes(), b"nonce history\n")
+
+    def test_execute_and_resume_reject_journal_ledger_alias_before_lock(self):
+        adapter = load_module("alias_adapter", ADAPTER_PATH)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ledger = root / "nonce.jsonl"
+            ledger.write_bytes(b"retained nonce history\n")
+            aliases = [ledger, root / "hardlink", root / "symlink"]
+            os.link(ledger, aliases[1])
+            aliases[2].symlink_to(ledger)
+            for journal in aliases:
+                for dry_run in (True, False):
+                    for resume in (False, True):
+                        with self.subTest(journal=journal.name, dry_run=dry_run, resume=resume):
+                            with mock.patch.object(adapter, "_acquire_transaction_lock") as lock, mock.patch.object(adapter, "_release_transaction_lock"), mock.patch.object(adapter, "_execute_unlocked"), mock.patch.object(adapter, "_resume_transaction_unlocked"):
+                                with self.assertRaises(adapter.AdapterError):
+                                    if resume:
+                                        adapter.resume_transaction({}, {}, journal, ledger_path=ledger, dry_run=dry_run)
+                                    else:
+                                        adapter.execute({}, {}, journal_path=journal, ledger_path=ledger, dry_run=dry_run)
+                                lock.assert_not_called()
+                            self.assertEqual(ledger.read_bytes(), b"retained nonce history\n")
+
+
 if __name__ == "__main__":
     unittest.main()

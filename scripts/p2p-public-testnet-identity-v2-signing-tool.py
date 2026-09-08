@@ -620,7 +620,7 @@ def find_provider(registry: dict[str, Any], provider_id: str) -> dict[str, Any]:
     return matches[0]
 
 
-def validate_context(context: dict[str, Any], *, now: datetime | None = None) -> dict[str, Any]:
+def validate_context(context: dict[str, Any], *, now: datetime | None = None, historical_audit: bool = False) -> dict[str, Any]:
     require_exact_fields(context, CONTEXT_FIELDS, "context")
     if context["schema_version"] != CONTEXT_SCHEMA:
         fail("context schema is unsupported")
@@ -640,7 +640,7 @@ def validate_context(context: dict[str, Any], *, now: datetime | None = None) ->
     current = now or datetime.now(timezone.utc)
     if issued > current + timedelta(seconds=MAX_CLOCK_SKEW_SECONDS):
         fail("context issued_at is in the future")
-    if expires <= current:
+    if not historical_audit and expires <= current:
         fail("context freshness window is stale")
     return context
 
@@ -1414,6 +1414,7 @@ def _assert_registry_verification(
 def command_verify(args: argparse.Namespace) -> None:
     if args.mode not in {"current_admission", "historical_audit"}:
         fail("verification mode is unsupported")
+    historical_only = args.mode == "historical_audit"
     outputs = [(args.out, "verified-envelope output"), (args.verification_out, "verification receipt output")]
     protected = [
         (args.envelope, "identity envelope"),
@@ -1431,7 +1432,7 @@ def command_verify(args: argparse.Namespace) -> None:
     envelope = validate_envelope(read_json(envelope_path, "identity envelope"))
     raw_bytes = read_bytes(args.raw_v1, "raw-v1")
     raw = validate_raw(raw_bytes)
-    context = validate_context(read_json(args.context, "context"))
+    context = validate_context(read_json(args.context, "context"), historical_audit=historical_only)
     intent = validate_intent(read_json(args.plan_intent, "plan-intent"), context)
     attestation = read_json(args.attestation, "provider attestation")
     trust_path = _regular(args.trust_config, "trust-config")
@@ -1475,10 +1476,9 @@ def command_verify(args: argparse.Namespace) -> None:
     capture_start = parse_timestamp(context["capture_start"], "context.capture_start")
     capture_end = parse_timestamp(context["capture_end"], "context.capture_end")
     now = datetime.now(timezone.utc)
-    if expires <= now or issued >= expires or issued < capture_start or expires > capture_end:
+    if (not historical_only and expires <= now) or issued >= expires or issued < capture_start or expires > capture_end:
         fail("identity envelope freshness is stale or inverted")
     current_status = signer["status"]
-    historical_only = args.mode == "historical_audit"
     if not historical_only and current_status != "active":
         fail("current admission rejects retired or revoked signer")
     if not historical_only and envelope["rotation_epoch"] != trust["rotation_epoch"]:

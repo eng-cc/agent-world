@@ -705,6 +705,47 @@ class IdentityV2SigningToolContractTests(unittest.TestCase):
         envelope = self._assemble(payload, manifest, signature, attestation, stem)
         return payload, manifest, signature, attestation, envelope
 
+    def test_expired_historical_evidence_is_forensic_only(self) -> None:
+        from unittest.mock import patch
+        old_now = self.now - timedelta(days=1)
+        context = json.loads(self.context.read_text())
+        for field in ("capture_start", "capture_end", "issued_at", "expires_at"):
+            context[field] = (datetime.fromisoformat(context[field].replace("Z", "+00:00")) - timedelta(days=1)).isoformat().replace("+00:00", "Z")
+        write_json(self.context, context)
+        self.capture_start, self.capture_end = context["capture_start"], context["capture_end"]
+        self.issued_at, self.expires_at = context["issued_at"], context["expires_at"]
+        self.context_digest = digest_file(self.context)
+        trust = json.loads(self.trust.read_text())
+        trust["allowlist"][0]["valid_from"] = self.capture_start
+        trust["allowlist"][0]["valid_until"] = self.expires_at
+        write_json(self.trust, trust)
+        registry = json.loads(self.registry.read_text())
+        registry["trust_config_sha256"] = digest_file(self.trust)
+        write_json(self.registry, registry)
+        intent = json.loads(self.intent.read_text())
+        intent["context_digest"] = digest_file(self.context)
+        write_json(self.intent, intent)
+        self.plan_digest = digest_file(self.intent)
+        self._write_template()
+        clock_patch = "\nfrom datetime import datetime, timezone\nclass HistoricalClock(datetime):\n    @classmethod\n    def now(cls, tz=None):\n        return datetime.fromisoformat(" + repr(old_now.isoformat()) + ")\ntool.datetime = HistoricalClock\n"
+        historical_harness = CHILD_HARNESS.replace("raise SystemExit(tool.main", clock_patch + "raise SystemExit(tool.main")
+        with patch.dict(globals(), {"CHILD_HARNESS": historical_harness}):
+            _, _, _, _, envelope = self._prepare_sign_assemble("expired-history")
+        verified, receipt = self._verify(envelope, mode="historical_audit")
+        self.assertTrue(json.loads(verified.read_text())["historical_only"])
+        self.assertFalse(json.loads(receipt.read_text())["apply_authorized"])
+        current_output, current_receipt = self.root / "expired-current.json", self.root / "expired-current-receipt.json"
+        current = self._run(
+            "verify", "--mode", "current_admission", "--envelope", str(envelope),
+            "--attestation", str(self.root / "expired-history.attestation.json"),
+            "--raw-v1", str(self.raw), "--context", str(self.context),
+            "--plan-intent", str(self.intent), "--trust-config", str(self.trust),
+            "--provider-registry", str(self.registry), "--out", str(current_output),
+            "--verification-out", str(current_receipt),
+        )
+        self._assert_rejected_no_output(current, current_output, current_receipt)
+        self.assertIn(b"stale", current.stderr)
+
     def test_prepare_is_deterministic_and_binds_exact_raw_context_and_intent(self) -> None:
         payload_a, manifest_a = self._prepare("a")
         payload_b, manifest_b = self._prepare("b")

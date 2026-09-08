@@ -2718,5 +2718,40 @@ class FullNetworkCleanRoomPlanTests(unittest.TestCase):
         )
 
 
+class PlannerOutputAliasTests(unittest.TestCase):
+    def test_atomic_output_preserves_prior_plan_on_replace_failure(self):
+        module = load_module()
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "plan.json"
+            output.write_bytes(b"prior plan\n")
+            with patch.object(module.os, "replace", side_effect=OSError("injected failure")):
+                with self.assertRaises(OSError):
+                    module._write_plan_atomic(output, {"plan": "new"}, [])
+            self.assertEqual(output.read_bytes(), b"prior plan\n")
+            self.assertEqual(list(output.parent.iterdir()), [output])
+            module._write_plan_atomic(output, {"plan": "new"}, [])
+            self.assertEqual(json.loads(output.read_text()), {"plan": "new"})
+
+    def test_cli_rejects_output_aliases_without_modifying_evidence(self):
+        module = load_module()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, evidence_path, artifact = (root / name for name in ("input.json", "map.json", "raw.bin"))
+            source.write_text("{}")
+            artifact.write_bytes(b"exact runtime bytes")
+            descriptor = {"path": str(artifact), "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(), "size_bytes": artifact.stat().st_size}
+            evidence_path.write_text(json.dumps({"context": descriptor, "plan_intent": descriptor, "entries": [{"raw_v1": descriptor}]}))
+            hardlink = root / "hardlink"
+            os.link(artifact, hardlink)
+            parent_alias = root / "parent-alias"
+            parent_alias.symlink_to(root, target_is_directory=True)
+            before = {path: path.read_bytes() for path in (source, evidence_path, artifact)}
+            for output in (source, evidence_path, artifact, hardlink, parent_alias / artifact.name):
+                with self.subTest(output=str(output)), patch.object(module, "build_plan", return_value={"plan_digest": "test", "execution": {"mode": "plan-only"}}):
+                    with self.assertRaises(SystemExit):
+                        module.main(["--input", str(source), "--identity-v2-evidence-map", str(evidence_path), "--out", str(output)])
+                    self.assertEqual({path: path.read_bytes() for path in before}, before)
+
+
 if __name__ == "__main__":
     unittest.main()

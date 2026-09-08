@@ -4074,6 +4074,24 @@ def _execute_unlocked(
     }
 
 
+def _reject_journal_ledger_aliases(journal_path: Path, ledger_path: Path, plan: dict[str, Any]) -> None:
+    """Keep every journal mutation, including lock and emergency files, off nonce history."""
+    ledgers = [Path(ledger_path)]
+    declared = plan.get("credential_nonce_ledger")
+    if isinstance(declared, dict) and isinstance(declared.get("path"), str):
+        ledgers.append(Path(declared["path"]))
+    outputs = [Path(journal_path), Path(f"{journal_path}.lock"), Path(f"{journal_path}.emergency.json")]
+    try:
+        for output in outputs:
+            for ledger in ledgers:
+                if output.resolve() == ledger.resolve() or (
+                    output.exists() and ledger.exists() and output.samefile(ledger)
+                ):
+                    _fail("transaction journal/lock/emergency output must not alias the credential nonce ledger")
+    except (OSError, RuntimeError):
+        _fail("cannot establish transaction journal and nonce ledger separation")
+
+
 def execute(
     plan: dict[str, Any],
     authority: dict[str, Any],
@@ -4086,6 +4104,7 @@ def execute(
     raw_v1_bytes_by_node: Mapping[str, bytes] | None = None,
 ) -> dict[str, Any]:
     """Serialize one transaction while retaining the implementation boundary."""
+    _reject_journal_ledger_aliases(Path(journal_path), Path(ledger_path), plan)
     lock = _acquire_transaction_lock(Path(journal_path))
     try:
         return _execute_unlocked(
@@ -4357,6 +4376,7 @@ def resume_transaction(
     raw_v1_bytes_by_node: Mapping[str, bytes] | None = None,
 ) -> dict[str, Any]:
     """Serialize resume/reconciliation against the same transaction lock."""
+    _reject_journal_ledger_aliases(Path(journal_path), Path(ledger_path), plan)
     lock = _acquire_transaction_lock(Path(journal_path))
     try:
         return _resume_transaction_unlocked(
