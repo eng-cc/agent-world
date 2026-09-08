@@ -7,6 +7,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import stat
 import subprocess
@@ -139,6 +140,50 @@ class EvidenceAggregateTests(unittest.TestCase):
         result = self.run_aggregate([cross_paired, *self.input_paths[1:]], output)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(output.read_bytes(), b"sentinel")
+
+    def test_rejects_output_aliases_to_retained_evidence_and_preserves_bytes(self) -> None:
+        """Publication cannot replace any retained descriptor or inode alias."""
+        retained_paths = [
+            Path(self.full_map["context"]["path"]),
+            Path(self.full_map["plan_intent"]["path"]),
+            *(
+                Path(entry[artifact]["path"])
+                for entry in self.full_map["entries"]
+                for artifact in self.planner.IDENTITY_V2_EVIDENCE_ARTIFACT_FIELDS
+            ),
+        ]
+        for retained in retained_paths:
+            with self.subTest(alias=retained.name):
+                before = retained.read_bytes()
+                result = self.run_aggregate(self.input_paths, retained)
+                self.assertNotEqual(result.returncode, 0, result.stderr)
+                self.assertRegex(result.stderr.lower(), r"alias|retained|output")
+                self.assertEqual(retained.read_bytes(), before)
+
+        input_alias = self.input_paths[0]
+        before = input_alias.read_bytes()
+        result = self.run_aggregate(self.input_paths, input_alias)
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertRegex(result.stderr.lower(), r"alias|input|output")
+        self.assertEqual(input_alias.read_bytes(), before)
+
+        context = Path(self.full_map["context"]["path"])
+        symlink = self.root / "context-output-symlink.json"
+        symlink.symlink_to(context)
+        before = context.read_bytes()
+        result = self.run_aggregate(self.input_paths, symlink)
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertRegex(result.stderr.lower(), r"alias|retained|output")
+        self.assertEqual(context.read_bytes(), before)
+
+        hardlink = self.root / "context-output-hardlink.json"
+        os.link(context, hardlink)
+        before = context.read_bytes()
+        result = self.run_aggregate(self.input_paths, hardlink)
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertRegex(result.stderr.lower(), r"alias|retained|inode|output")
+        self.assertEqual(context.read_bytes(), before)
+        self.assertEqual(hardlink.read_bytes(), before)
 
     def _rewrite_map(self, name: str, source: Path, transform) -> Path:
         value = json.loads(source.read_text(encoding="utf-8"))

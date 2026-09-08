@@ -127,13 +127,26 @@ def _descriptor_key(value: dict[str, Any]) -> tuple[str, int, str]:
     return (value["sha256"], value["size_bytes"], value["path"])
 
 
-def _aggregate(input_paths: Sequence[Path]) -> dict[str, Any]:
+def _aggregate(
+    input_paths: Sequence[Path], *, retained_paths: list[Path] | None = None
+) -> dict[str, Any]:
     if len(input_paths) != len(NODE_ORDER):
         die(f"exactly {len(NODE_ORDER)} --input-map arguments are required")
     resolved_paths = [path.absolute() for path in input_paths]
     if len(set(resolved_paths)) != len(resolved_paths):
         die("duplicate input-map paths are not allowed")
     values = [_read_input_map(path, index) for index, path in enumerate(resolved_paths)]
+    if retained_paths is not None:
+        retained_paths.extend(resolved_paths)
+        for value in values:
+            retained_paths.extend(
+                [
+                    Path(value["context"]["path"]),
+                    Path(value["plan_intent"]["path"]),
+                    *(Path(value["entries"][0][artifact]["path"])
+                      for artifact in ARTIFACT_FIELDS),
+                ]
+            )
     first = values[0]
     task_uid = first["task_uid"]
     head_oid = first["head_oid"]
@@ -195,6 +208,40 @@ def _aggregate(input_paths: Sequence[Path]) -> dict[str, Any]:
     return aggregate
 
 
+def _canonical_path(path: Path) -> Path:
+    try:
+        return path.resolve(strict=False)
+    except (OSError, RuntimeError) as error:
+        die(f"cannot resolve output/evidence alias: {error.__class__.__name__}")
+
+
+def _check_output_collisions(output: Path, retained_paths: Sequence[Path]) -> None:
+    """Reject path and inode aliases before atomically publishing aggregate bytes."""
+    canonical_output = _canonical_path(output)
+    identities: dict[tuple[int, int], Path] = {}
+    canonical_retained: dict[Path, Path] = {}
+    for retained in retained_paths:
+        canonical = _canonical_path(retained)
+        canonical_retained.setdefault(canonical, retained)
+        try:
+            metadata = retained.stat()
+        except OSError as error:
+            die(
+                "retained evidence became unavailable before output publication: "
+                f"{error.__class__.__name__}"
+            )
+        identities.setdefault((metadata.st_dev, metadata.st_ino), retained)
+    if canonical_output in canonical_retained:
+        die("--out must not alias a retained evidence path")
+    if os.path.lexists(output):
+        try:
+            metadata = output.stat()
+        except OSError as error:
+            die(f"cannot inspect output alias: {error.__class__.__name__}")
+        if (metadata.st_dev, metadata.st_ino) in identities:
+            die("--out must not alias a retained evidence inode")
+
+
 def _check_output_parent(path: Path) -> None:
     if not path.is_absolute():
         die("--out must be an absolute path")
@@ -224,8 +271,14 @@ def _check_output_parent(path: Path) -> None:
             die("existing output must have mode 0600")
 
 
-def _write_atomic(value: dict[str, Any], output: Path) -> None:
+def _write_atomic(
+    value: dict[str, Any],
+    output: Path,
+    *,
+    retained_paths: Sequence[Path] = (),
+) -> None:
     _check_output_parent(output)
+    _check_output_collisions(output, retained_paths)
     payload = (json.dumps(value, ensure_ascii=True, sort_keys=True, indent=2) + "\n").encode("utf-8")
     temporary: Path | None = None
     try:
@@ -240,6 +293,9 @@ def _write_atomic(value: dict[str, Any], output: Path) -> None:
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
+        # Recheck immediately before the only mutation.  Atomic replacement
+        # is not permission to race a retained descriptor into the output.
+        _check_output_collisions(output, retained_paths)
         os.replace(temporary, output)
         temporary = None
         if os.name != "nt":
@@ -270,8 +326,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     resolved_inputs = {path.absolute() for path in input_paths}
     if output.absolute() in resolved_inputs:
         parser.error("--out must not replace an input map")
-    aggregate = _aggregate(input_paths)
-    _write_atomic(aggregate, output)
+    retained_paths: list[Path] = []
+    aggregate = _aggregate(input_paths, retained_paths=retained_paths)
+    _write_atomic(aggregate, output, retained_paths=retained_paths)
     return 0
 
 
