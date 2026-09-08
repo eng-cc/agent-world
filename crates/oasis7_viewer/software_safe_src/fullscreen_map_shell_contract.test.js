@@ -189,6 +189,10 @@ describe("fullscreen map shell contract", () => {
     for (const html of [viewerHtml, compatHtml]) {
       const hotspot = findRule(html, /\.pixel-world-hotspot(?:\s|$)/);
       expect(numericDeclaration(hotspot, "border-radius")).toBe(0);
+      const close = findRule(html, /\.pixel-world-canvas__hotspot-tooltip-close(?:\s|$)/);
+      expect(numericDeclaration(close, "min-width")).toBe(44);
+      expect(numericDeclaration(close, "min-height")).toBe(44);
+      expect(html).not.toMatch(/\.pixel-world-hotspot\s*\{[^}]*box-shadow:\s*0/);
       expect(numericDeclaration(findRule(html, /\.pixel-world-hotspot__glyph(?:\s|$)/), "border-radius")).toBe(999);
       const selectedEntity = findRule(html, /\.pixel-world-entity\[data-selected="true"\],/);
       expect(numericDeclaration(hotspot, "z-index")).toBeGreaterThan(numericDeclaration(selectedEntity, "z-index"));

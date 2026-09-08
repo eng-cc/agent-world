@@ -1,6 +1,7 @@
 import { createSignal, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import { installHotspotTooltipPlacement } from "./pixel_world_tooltip_placement.js";
+import { moveFocusFromHotspotTooltip } from "./pixel_world_hotspot_focus.js";
 
 function isZhLocale(locale) {
   return String(locale || "").trim().toLowerCase().startsWith("zh");
@@ -168,12 +169,13 @@ export function PixelWorldHotspotTooltip(props) {
       }}
       role="status"
     >
-      <span>{`${pixelWorldHotspotKindLabel(props.locale, hotspot().kind)}: ${hotspot().label}`}</span>
+      <span data-hotspot-tooltip-body>{`${pixelWorldHotspotKindLabel(props.locale, hotspot().kind)}: ${hotspot().label}`}</span>
       <button
         type="button"
         class="pixel-world-canvas__hotspot-tooltip-close"
         aria-label={tr(props.locale, "关闭热点说明", "Close hotspot explanation")}
         onKeyDown={(event) => {
+          if (event.key === "Tab" && moveFocusFromHotspotTooltip(tooltipRef, event.shiftKey)) event.preventDefault();
           if (event.key === "Escape") {
             event.preventDefault();
             event.stopPropagation();

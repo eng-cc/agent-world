@@ -22,6 +22,7 @@ const onlyProduction = process.argv.includes("--only-production");
 const onlyCamera = process.argv.includes("--only-camera");
 const onlyTouch = process.argv.includes("--only-touch");
 const onlyTooltipFeed = process.argv.includes("--only-tooltip-feed");
+const onlyThirdReview = process.argv.includes("--only-third-review");
 const onlyFocus = process.argv.includes("--only-focus");
 const statuses = ["ready", "replay", "empty", "gap", "unavailable"];
 const viewports = [
@@ -40,7 +41,7 @@ const summary = {
   inputMode: "visible-ui-controls-plus-dom-readback",
   mockDisabled: false,
   fixtureBoundary: "deterministic QA bridge and fake world_feed; no runtime/provider/playability claim",
-  phase: onlyProduction ? "production-hotspot-only"
+  phase: onlyThirdReview ? "third-review-only" : onlyProduction ? "production-hotspot-only"
     : onlyCamera ? "camera-regression-only"
       : onlyTouch ? "touch-regression-only"
         : onlyTooltipFeed ? "tooltip-feed-regression-only"
@@ -53,6 +54,7 @@ const summary = {
   feedStatuses: {},
   interactions: {},
   productionHotspot: {},
+  thirdReview: { keyboard: [], longTooltips: [], glow: [] },
   secondReview: {
     camera: {},
     touchTargets: {},
@@ -198,7 +200,7 @@ export function derivePixelWorldRenderState(input) {
     // Three read-only fixture explanations exercise blocker/goal/info paths.
     visual_hotspots: [
       { id: "fixture-hotspot-blocker", kind: "blocker", label: "iron input is exhausted", pos: { x_cm: 2900000, y_cm: 3450000, z_cm: 0 } },
-      { id: "fixture-hotspot-goal", kind: "goal", label: "stabilize the first production line", pos: { x_cm: 7150000, y_cm: 2200000, z_cm: 0 } },
+      { id: "fixture-hotspot-goal", kind: "goal", label: String(gameplay.objective || "").length > 120 ? gameplay.objective : "stabilize the first production line", pos: { x_cm: 7150000, y_cm: 2200000, z_cm: 0 } },
       { id: "fixture-hotspot-info", kind: "info", label: "read-only world context", pos: { x_cm: 4550000, y_cm: 1200000, z_cm: 0 } },
     ],
     commercial_surface: {
@@ -241,6 +243,8 @@ const productionSnapshot = {
 const fakeWebSocket = String.raw`(() => {
   const status = new URLSearchParams(location.search).get("feed_status") || "ready";
   const sendProductionSnapshot = !new URLSearchParams(location.search).has("pixel_world_visual_fixture");
+  const incomingSnapshot = ${JSON.stringify(productionSnapshot)};
+  if (new URLSearchParams(location.search).get("long_hotspot") === "1") incomingSnapshot.player_gameplay.objective = "Long runtime explanation: " + "Replenish upstream materials and inspect sustainable production constraints before expansion. ".repeat(32) + "QA_LABEL_END";
   const listeners = new WeakMap();
   const emit = (socket, type, payload = {}) => {
     const callbacks = listeners.get(socket)?.[type] || [];
@@ -255,7 +259,7 @@ const fakeWebSocket = String.raw`(() => {
     constructor(url) { this.url = url; this.readyState = FixtureWebSocket.CONNECTING; listeners.set(this, {}); queueMicrotask(() => { this.readyState = FixtureWebSocket.OPEN; emit(this, "open"); }); }
     addEventListener(type, callback) { const table = listeners.get(this); table[type] ||= []; table[type].push(callback); }
     removeEventListener(type, callback) { const list = listeners.get(this)?.[type] || []; const index = list.indexOf(callback); if (index >= 0) list.splice(index, 1); }
-    send(raw) { const message = JSON.parse(raw); if (message.type === "hello") { if (sendProductionSnapshot) queueMicrotask(() => emit(this, "message", { data: JSON.stringify({ type: "snapshot", snapshot: ${JSON.stringify(productionSnapshot)} }) })); queueMicrotask(() => emit(this, "message", { data: JSON.stringify({ type: "hello_ack", server: "qa-fixture", world_id: "fixture-world", control_profile: "fixture" }) })); } if (message.type === "request_world_feed") queueMicrotask(() => emit(this, "message", { data: JSON.stringify({ type: "world_feed", feed: feed(status) }) })); }
+    send(raw) { const message = JSON.parse(raw); if (message.type === "hello") { if (sendProductionSnapshot) queueMicrotask(() => emit(this, "message", { data: JSON.stringify({ type: "snapshot", snapshot: incomingSnapshot }) })); queueMicrotask(() => emit(this, "message", { data: JSON.stringify({ type: "hello_ack", server: "qa-fixture", world_id: "fixture-world", control_profile: "fixture" }) })); } if (message.type === "request_world_feed") queueMicrotask(() => emit(this, "message", { data: JSON.stringify({ type: "world_feed", feed: feed(status) }) })); }
     close() { this.readyState = FixtureWebSocket.CLOSED; emit(this, "close"); }
   }
   window.WebSocket = FixtureWebSocket;
@@ -314,11 +318,12 @@ function statSafe(path) {
   try { return statSync(path).isFile(); } catch { return false; }
 }
 
-function fixtureUrl(port, { status = "ready", locale = "en", visualFixture = true } = {}) {
+function fixtureUrl(port, { status = "ready", locale = "en", visualFixture = true, longHotspot = false } = {}) {
   const params = new URLSearchParams({
     browser_fixture: "1", test_api: "1", connect: "1", hosted_bootstrap: "0", ws: "ws://qa-fixture",
     locale, feed_status: status, t: Date.now().toString(),
   });
+  if (longHotspot) params.set("long_hotspot", "1");
   if (visualFixture) {
     params.set("visual_fixture", "1");
     params.set("viewer_visual_fixture", "shell_selected_blocker");
@@ -829,6 +834,86 @@ async function runFocusRestorationRegression(port) {
   await runFocusRestorationSurface(port, { visualFixture: false, label: "production" });
 }
 
+async function runThirdReview(port) {
+  for (const visualFixture of [true, false]) {
+    for (const kind of ["blocker", "goal"]) {
+      await openFixture(port, { visualFixture, width: 390, height: 844 });
+      const start = await focusHotspotAndActivate(kind);
+      const successor = await evalJson(`(() => {
+        const origin = window.__qaOriginalTrigger;
+        const controls = [...document.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex]')].filter((node) => node.tabIndex >= 0 && !node.disabled && !node.closest('[data-hotspot-tooltip]') && node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden');
+        window.__qaNextControl = controls[controls.indexOf(origin) + 1];
+        return JSON.stringify({ exists: Boolean(window.__qaNextControl), kind: window.__qaNextControl?.dataset?.hotspotKind, label: window.__qaNextControl?.getAttribute('aria-label') });
+      })()`);
+      assert(successor.exists, "T2 keyboard: no native successor found", successor);
+      await browserRaw(["press", "Tab"]);
+      let state = await evalJson(probe);
+      assert(state.activeElement?.className?.includes("hotspot-tooltip-close"), "T2 keyboard: first Tab did not reach close", state.activeElement);
+      await browserRaw(["press", "Shift+Tab"]);
+      const backward = await evalJson("JSON.stringify({ original: document.activeElement === window.__qaOriginalTrigger })");
+      assert(backward.original, "T2 keyboard: ShiftTab did not return to exact origin", backward);
+      await browserRaw(["press", "Tab"]);
+      state = await evalJson(probe);
+      assert(state.activeElement?.className?.includes("hotspot-tooltip-close"), "T2 keyboard: repeated Tab did not reach close", state.activeElement);
+      await browserRaw(["press", "Tab"]);
+      const forward = await evalJson("JSON.stringify({ next: document.activeElement === window.__qaNextControl, tag: document.activeElement?.tagName, kind: document.activeElement?.dataset?.hotspotKind })");
+      assert(forward.next, "T2 keyboard: forward Tab restarted document or trapped focus", { successor, forward });
+      const after = await evalJson(probe);
+      assert(runtimeStable(start.opened.runtime, after.runtime), "T2 keyboard traversal changed runtime", after.runtime);
+      summary.thirdReview.keyboard.push({ visualFixture, kind, successor, backward, forward });
+    }
+  }
+  for (const viewport of [viewports[0], ...shortLandscapeViewports]) {
+    for (const feedOpen of [false, true]) {
+      await openFixture(port, { visualFixture: false, longHotspot: true, width: viewport.width, height: viewport.height });
+      await waitForFeedStatus("ready");
+      if (feedOpen) await clickVisible('[data-viewer-overlay="feed"] > summary');
+      const label = `${viewport.name}-${feedOpen ? "open" : "collapsed"}`;
+      const initial = await focusHotspotAndActivate("goal");
+      assert(initial.opened.tooltip.text.length > 2000 && initial.opened.tooltip.text.includes("QA_LABEL_END"), `T2 ${label}: normal snapshot did not deliver long explanation`, initial.opened.tooltip);
+      assertHotspotTooltipPainted(initial.opened, `T2 ${label}`);
+      if (feedOpen) assert(!intersects(initial.opened.tooltip.rect, initial.opened.feed.summaryRect), `T2 ${label}: long tooltip covers Feed summary`, initial.opened);
+      const bodySelector = '.pixel-world-canvas__hotspot-tooltip > span';
+      const bodyBefore = await evalJson(`(() => { const node = document.querySelector('${bodySelector}'); return JSON.stringify({ scrollTop: node?.scrollTop, scrollHeight: node?.scrollHeight, clientHeight: node?.clientHeight }); })()`);
+      assert(bodyBefore.scrollHeight > bodyBefore.clientHeight + 5, `T2 ${label}: long tooltip lacks bounded scroll body`, bodyBefore);
+      await browserRaw(["scroll", "down", "10000", "--selector", bodySelector]);
+      const bodyAfter = await evalJson(`(() => { const node = document.querySelector('${bodySelector}'); return JSON.stringify({ scrollTop: node.scrollTop, scrollHeight: node.scrollHeight, clientHeight: node.clientHeight }); })()`);
+      assert(bodyAfter.scrollTop > 0 && bodyAfter.scrollTop + bodyAfter.clientHeight >= bodyAfter.scrollHeight - 3, `T2 ${label}: long explanation end cannot be reached`, bodyAfter);
+      const scrolled = await evalJson(probe);
+      assertHotspotTooltipPainted(scrolled, `T2 ${label} scrolled`);
+      const screenshot = join(outDir, `t2-long-tooltip-${label}.png`);
+      await browserRaw(["screenshot", screenshot]);
+      const taps = [];
+      for (const [edge, xSide, ySide] of [["top-left", "x", "y"], ["top-right", "right", "y"], ["bottom-left", "x", "bottom"], ["bottom-right", "right", "bottom"]]) {
+        const opened = await evalJson(probe);
+        const close = opened.tooltip?.close?.rect;
+        assert(close?.width >= 44 && close.height >= 44, `T2 ${label}: sole touch close is below44px`, close);
+        const x = close[xSide] + (xSide === "x" ? 2 : -2);
+        const y = close[ySide] + (ySide === "y" ? 2 : -2);
+        const tap = await clickAtCoordinates(x, y, '.pixel-world-canvas__hotspot-tooltip-close', `T2 ${label}/${edge}`);
+        await waitShort();
+        const closed = await evalJson(probe);
+        assert(!closed.tooltip && closed.activeElement?.originalTrigger, `T2 ${label}/${edge}: close failed to dismiss and restore`, closed);
+        assert(runtimeStable(initial.opened.runtime, closed.runtime), `T2 ${label}/${edge}: close changed runtime`, closed.runtime);
+        taps.push({ edge, close, tap });
+        if (edge !== "bottom-right") await focusHotspotAndActivate("goal");
+      }
+      summary.thirdReview.longTooltips.push({ viewport, feedOpen, screenshot, initial: initial.opened, bodyBefore, bodyAfter, taps });
+    }
+  }
+  for (const visualFixture of [true, false]) {
+    for (const viewport of [viewports[0], viewports[1]]) {
+      await openFixture(port, { visualFixture, width: viewport.width, height: viewport.height });
+      await waitForFeedStatus("ready");
+      const glow = await evalJson(`JSON.stringify([...document.querySelectorAll('[data-hotspot-kind]')].map((node) => { const glyph = node.querySelector('.pixel-world-hotspot__glyph'); return { kind: node.dataset.hotspotKind, outerShadow: getComputedStyle(node).boxShadow, glyphShadow: getComputedStyle(glyph).boxShadow, outerWidth: node.getBoundingClientRect().width, glyphWidth: glyph.getBoundingClientRect().width }; }))`);
+      assert(glow.length === 3 && glow.every((node) => node.outerShadow === "none" && node.glyphShadow !== "none" && node.outerWidth >= 44 && node.glyphWidth <= 32), "T2 responsive glow leaks onto44px hitbox", glow);
+      const screenshot = join(outDir, `t2-glow-${visualFixture ? "fixture" : "production"}-${viewport.name}.png`);
+      await browserRaw(["screenshot", screenshot]);
+      summary.thirdReview.glow.push({ visualFixture, viewport, glow, screenshot });
+    }
+  }
+}
+
 function assertBase(label, result, expectedStatus) {
   assert(result.runtime?.pixelWorldRuntimeStatus === "ready", `${label}: runtime not ready`, result);
   assert(result.runtime?.renderMode === "viewer" || result.runtime?.renderMode === "software_safe", `${label}: unexpected render mode`, result.runtime);
@@ -1082,7 +1167,9 @@ async function main() {
   const port = address.port;
   try {
     closeBrowser();
-    if (onlyProduction) {
+    if (onlyThirdReview) {
+      await runThirdReview(port);
+    } else if (onlyProduction) {
       await runProductionHotspotRegression(port);
     } else if (onlyCamera) {
       await runCameraProjectionRegression(port, { visualFixture: true, label: "fixture" });
@@ -1094,6 +1181,7 @@ async function main() {
     } else if (onlyFocus) {
       await runFocusRestorationRegression(port);
     } else {
+      await runThirdReview(port);
       await runStatusMatrix(port);
       await runViewportMatrix(port);
       await runShortLandscapeMatrix(port);

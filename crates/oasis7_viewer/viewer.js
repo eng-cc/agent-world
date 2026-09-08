@@ -10409,39 +10409,73 @@ function installPixelWorldMobileSelectionSafeArea(canvasRoot) {
     feed?.removeEventListener("toggle", sync, true);
   };
 }
-function hotspotTooltipSafeBand(summary, command, viewportHeight) {
-  const top = Math.max(10, summary.bottom + 4);
-  const bottom = Math.min(viewportHeight - 10, command?.top ?? viewportHeight - 10) - 4;
-  return { top, maxHeight: Math.max(26, bottom - top) };
+const MARGIN = 10;
+const MIN_HEIGHT = 56;
+function hotspotTooltipSafeBand(summary, command, viewportHeight, preferredTop = 52) {
+  const obstacles = [summary, command].filter(Boolean).map((rect) => ({
+    top: Math.max(MARGIN, rect.top - 4),
+    bottom: Math.min(viewportHeight - MARGIN, (rect.bottom ?? viewportHeight) + 4)
+  })).sort((a, b) => a.top - b.top);
+  const bands = [];
+  let cursor = MARGIN;
+  for (const obstacle of obstacles) {
+    if (obstacle.top - cursor >= MIN_HEIGHT) bands.push({ top: cursor, bottom: obstacle.top });
+    cursor = Math.max(cursor, obstacle.bottom);
+  }
+  if (viewportHeight - MARGIN - cursor >= MIN_HEIGHT) bands.push({ top: cursor, bottom: viewportHeight - MARGIN });
+  if (!bands.length) bands.push({ top: MARGIN, bottom: Math.max(MARGIN + MIN_HEIGHT, viewportHeight - MARGIN) });
+  const distance = (band2) => Math.abs(Math.max(band2.top, Math.min(band2.bottom - MIN_HEIGHT, preferredTop)) - preferredTop);
+  bands.sort((a, b) => distance(a) - distance(b));
+  const band = bands[0];
+  return { top: band.top, maxHeight: band.bottom - band.top };
 }
 function installHotspotTooltipPlacement(tooltip) {
   const feed = document.querySelector('[data-viewer-overlay="feed"]');
   const command = document.querySelector('[data-viewer-overlay="next-move"]');
+  const summary = feed?.querySelector("summary");
+  const visibleRect = (node) => node && getComputedStyle(node).display !== "none" ? node.getBoundingClientRect() : null;
   const update = () => {
-    for (const property of ["top", "bottom", "max-height", "overflow-y", "padding"]) tooltip.style.removeProperty(property);
-    if (!feed?.open) return;
-    const summary = feed.querySelector("summary");
-    if (!summary) return;
-    const summaryRect = summary.getBoundingClientRect();
-    const rect = tooltip.getBoundingClientRect();
-    if (rect.bottom <= summaryRect.top || rect.top >= summaryRect.bottom) return;
-    const commandRect = command && getComputedStyle(command).display !== "none" ? command.getBoundingClientRect() : null;
-    const band = hotspotTooltipSafeBand(summaryRect, commandRect, window.innerHeight);
+    tooltip.style.removeProperty("top");
+    tooltip.style.removeProperty("bottom");
+    const preferredTop = tooltip.getBoundingClientRect().top;
+    const band = hotspotTooltipSafeBand(visibleRect(summary), visibleRect(command), window.innerHeight, preferredTop);
     tooltip.style.top = `${band.top}px`;
     tooltip.style.bottom = "auto";
-    tooltip.style.maxHeight = `${band.maxHeight}px`;
-    tooltip.style.overflowY = "auto";
-    if (band.maxHeight < 40) tooltip.style.padding = "1px 7px";
+    tooltip.style.setProperty("--hotspot-tooltip-max-height", `${band.maxHeight}px`);
   };
   update();
+  const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+  for (const node of [summary, command]) if (node) observer?.observe(node);
   window.addEventListener("resize", update);
   feed?.addEventListener("toggle", update);
   return () => {
+    observer?.disconnect();
     window.removeEventListener("resize", update);
     feed?.removeEventListener("toggle", update);
   };
 }
-var _tmpl$$q = /* @__PURE__ */ template(`<button type=button class=pixel-world-hotspot data-hotspot-hit-target=44><span class=pixel-world-hotspot__glyph aria-hidden=true style=pointer-events:none>`), _tmpl$2$q = /* @__PURE__ */ template(`<div class=pixel-world-canvas__hotspot-tooltip data-hotspot-tooltip role=status><span></span><button type=button class=pixel-world-canvas__hotspot-tooltip-close>×`);
+const FOCUSABLE = "button, a[href], input, select, textarea, [tabindex]";
+function moveFocusFromHotspotTooltip(tooltip, backwards) {
+  const trigger = [...document.querySelectorAll(".pixel-world-hotspot")].find((node) => node.getAttribute("aria-describedby") === tooltip.id);
+  if (!trigger) return false;
+  if (backwards) {
+    trigger.focus();
+    return true;
+  }
+  const controls = [...document.querySelectorAll(FOCUSABLE)].filter((node) => {
+    if (node.tabIndex < 0 || node.disabled || tooltip.contains(node)) return false;
+    for (let ancestor = node; ancestor; ancestor = ancestor.parentElement) {
+      const style2 = getComputedStyle(ancestor);
+      if (ancestor.hidden || ancestor.inert || style2.display === "none" || style2.visibility === "hidden") return false;
+    }
+    return true;
+  });
+  const next = controls[controls.indexOf(trigger) + 1];
+  if (!next || next === trigger) return false;
+  next.focus();
+  return document.activeElement === next;
+}
+var _tmpl$$q = /* @__PURE__ */ template(`<button type=button class=pixel-world-hotspot data-hotspot-hit-target=44><span class=pixel-world-hotspot__glyph aria-hidden=true style=pointer-events:none>`), _tmpl$2$q = /* @__PURE__ */ template(`<div class=pixel-world-canvas__hotspot-tooltip data-hotspot-tooltip role=status><span data-hotspot-tooltip-body></span><button type=button class=pixel-world-canvas__hotspot-tooltip-close>×`);
 function isZhLocale$1(locale) {
   return String(locale || "").trim().toLowerCase().startsWith("zh");
 }
@@ -10613,6 +10647,7 @@ function PixelWorldHotspotTooltip(props) {
         props.onClose?.();
       };
       _el$5.$$keydown = (event) => {
+        if (event.key === "Tab" && moveFocusFromHotspotTooltip(tooltipRef, event.shiftKey)) event.preventDefault();
         if (event.key === "Escape") {
           event.preventDefault();
           event.stopPropagation();

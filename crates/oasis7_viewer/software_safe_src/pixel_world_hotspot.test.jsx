@@ -5,6 +5,16 @@ import { PixelWorldHotspot, PixelWorldHotspotTooltip } from "./pixel_world_hotsp
 const hotspot = { id: "hotspot-blocker", kind: "blocker", label: "Blocked route" };
 
 describe("pixel world hotspot controls", () => {
+  it("continues both directions from a portaled close control", () => {
+    render(() => <><button class="pixel-world-hotspot" aria-describedby="pixel-world-hotspot-tooltip-test">Origin</button><button>Next control</button><PixelWorldHotspotTooltip locale="en" hotspot={{ id: "test", kind: "goal", label: "Goal" }} /></>);
+    const close = screen.getByRole("button", { name: "Close hotspot explanation" });
+    close.focus();
+    fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Origin" }));
+    close.focus();
+    fireEvent.keyDown(close, { key: "Tab" });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Next control" }));
+  });
   it("is touch and keyboard inspectable without selecting or executing gameplay", () => {
     const onHover = vi.fn();
     const onHotspotInspect = vi.fn();

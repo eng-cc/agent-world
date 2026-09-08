@@ -313,6 +313,10 @@ body {
 
 .pixel-world-canvas__hotspot-tooltip {
   position: fixed;
+  padding: 5px 9px;
+  min-height: 56px;
+  max-height: var(--hotspot-tooltip-max-height, calc(100dvh - 20px));
+  overflow: hidden;
   z-index: 70;
   top: 52px;
   right: 10px;
