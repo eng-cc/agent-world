@@ -33,6 +33,12 @@ class ReceiptTest(unittest.TestCase):
     moved=pr(); moved["base"]["sha"]="c"*40
     with self.api(r=moved):
       self.assertEqual("b"*40,M.live("eng-cc/oasis7",UID,1,7,"required-gate","42")[2])
+  def test_expected_base_ref_rejects_same_oid_pr_retarget(self):
+    moved=pr(); moved["base"]["ref"]="release"
+    moved_run=run(); moved_run["pull_requests"][0]["base"]["ref"]="release"
+    with self.api(r=moved,runs=[moved_run]):
+      with self.assertRaisesRegex(SystemExit,"wrong_base_ref|base identity"):
+        M.live("eng-cc/oasis7",UID,1,7,"required-gate","42",expected_base_ref="main")
   def test_planner_config_digest_is_bound_into_the_issued_receipt(self):
     receipt=self.invoke_verify()
     self.assertIn("planner_config_sha256",receipt["planner"],

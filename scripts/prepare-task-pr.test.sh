@@ -438,6 +438,8 @@ run_prepare() {
     TEST_GH_ISSUE_BODY_JSON="${TEST_GH_ISSUE_BODY_JSON:-}" \
     TEST_GH_ISSUE_FULL_JSON="${TEST_GH_ISSUE_FULL_JSON:-}" \
     TEST_GH_ISSUE_VIEW_JSON="${TEST_GH_ISSUE_VIEW_JSON:-}" \
+    TEST_PR_STATE_TSV="${TEST_PR_STATE_TSV:-}" \
+    TEST_PR_BASE_REF="${TEST_PR_BASE_REF:-}" \
     "$ROOT_DIR/scripts/prepare-task-pr.sh" "$SMOKE_BRANCH" "$@"
 }
 
@@ -1515,6 +1517,12 @@ promotion_receipt_helper="$TMPDIR/promotion-receipt-helper.py"
 cat >"$promotion_receipt_helper" <<'PY'
 #!/usr/bin/env python3
 import os,sys
+if "--base-ref" in sys.argv:
+    expected=sys.argv[sys.argv.index("--base-ref") + 1]
+    observed=os.environ.get("TEST_PR_BASE_REF") or "main"
+    if expected != observed:
+        print(f"ci-ready-receipt: base ref mismatch: expected {expected}, observed {observed}", file=sys.stderr)
+        raise SystemExit(1)
 with open(os.environ["TEST_GH_LOG"],"a") as f: f.write("receipt "+" ".join(sys.argv[1:])+"\n")
 PY
 promotion_project_helper="$TMPDIR/promotion-project-helper.py"
@@ -1562,6 +1570,27 @@ assert "--allow-ready-pr" not in receipt,lines
 PY
 assert_promoted_truth
 "$REAL_GIT" -C "$ROOT_DIR" update-ref refs/remotes/origin/main "$COMPARISON_OID"
+
+# A PR retargeted to another base branch at the same base OID must not pass
+# promotion.  The immutable receipt OID remains valid, but live PR base-ref
+# identity is part of the promotion gate.
+set_promotion_ready_truth
+retargeted_base_log="$TMPDIR/gh-promotion-retargeted-base.log"
+retargeted_base_err="$TMPDIR/retargeted-base.err"
+if PREPARE_TASK_PR_CI_READY_RECEIPT_PATH="$promotion_receipt_helper" \
+  PREPARE_TASK_PR_PROJECT_TASK_PATH="$promotion_project_helper" TEST_PR_STATE_TSV=$'true\tOPEN\t' TEST_PR_BASE_REF=release \
+    run_prepare "$retargeted_base_log" "$TMPDIR/git-promotion-retargeted-base.log" --promote-draft "$promotion_receipt" >/dev/null 2>"$retargeted_base_err"; then
+  echo "promotion must reject a PR retargeted to another base branch at the same base OID" >&2
+  exit 1
+fi
+if ! grep -Eq 'base branch|base ref' "$retargeted_base_err"; then
+  echo "retargeted-base promotion failed for an unrelated reason: $(cat "$retargeted_base_err")" >&2
+  exit 1
+fi
+if grep -Eq '^receipt |^record-pr ordinary$|^pr ready ' "$retargeted_base_log"; then
+  echo "retargeted-base promotion reached receipt, ready, or record: $(cat "$retargeted_base_log")" >&2
+  exit 1
+fi
 
 # A receipt with a different base OID must fail before any promotion helper or
 # GitHub mutation, even when the local packet is otherwise complete.
