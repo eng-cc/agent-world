@@ -474,8 +474,8 @@ describe("fullscreen map shell contract", () => {
     const { terminalShellCss } = await readViewerHtml();
     const mobileBlock = terminalShellCss.match(/@media\s*\(max-width:\s*640px\)[\s\S]*$/i)?.[0] || "";
     expect(mobileBlock).toMatch(/\[data-viewer-overlay=["']feed["']\][^{]*\{[^}]*top:\s*104px/i);
-    expect(mobileBlock).toMatch(/\[data-viewer-overlay=["']renderer-unavailable["']\][^{]*\{[^}]*top:\s*158px/i);
-    expect(mobileBlock).toMatch(/\.pixel-world-render-diagnostics\[data-renderer-state=["']unavailable["']\][^{]*\{[^}]*top:\s*232px/i);
+    expect(mobileBlock).toMatch(/\[data-viewer-overlay=["']renderer-unavailable["']\][^{]*\{[^}]*top:\s*calc\(132px \+ min\(20dvh, 128px\) \+ 8px\)/i);
+    expect(mobileBlock).toMatch(/\.pixel-world-render-diagnostics\[data-renderer-state=["']unavailable["']\][^{]*\{[^}]*top:\s*calc\(132px \+ min\(20dvh, 128px\) \+ 120px\)/i);
   });
 
   it("keeps a mobile More route for secondary Diagnostics without a narrow-screen hide rule", async () => {

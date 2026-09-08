@@ -3,6 +3,7 @@ import { toCanvasPoint } from './pixel_world_hotspot_projection.js';
 import { pixelWorldVisualState } from './pixel_world_visual_clarity.jsx';
 import { pixelWorldReadableAgentLabel } from './pixel_world_identity.js';
 import { isLocaleZh } from './legacy_core.js';
+import { forwardRendererTargetPointer } from './pixel_world_renderer_target_input.js';
 
 // Mirrors the renderer's logical-canvas projection, including missing-position
 // presentation. Never apply collision offsets to a true world hit target.
@@ -30,6 +31,7 @@ export function PixelWorldRendererTargets(props) {
     aria-label={`${isZh() ? '选择' : 'Select'} ${kind === 'agent' ? pixelWorldReadableAgentLabel(entity, entity.id, isZh()) : entity.label || entity.id}`}
     style={rendererEntityTargetStyle(entity,state().worldBounds,props.stageSize(),props.cameraState?.())}
     onClick={() => props.onSelect({kind,id:entity.id})}
+    onPointerDown={forwardRendererTargetPointer}
     onMouseEnter={() => props.onHover({kind,id:entity.id})}
     onMouseLeave={() => props.onHover(null)} />}</For>;
 }

@@ -16,6 +16,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
 
 mod host_state;
+mod presentation_clock;
 mod render;
 #[path = "lib_test_hit_targets.rs"]
 mod test_hit_targets;
@@ -344,6 +345,7 @@ enum InputEvent {
 
 #[derive(Default)]
 struct BridgeSharedState {
+    reduced_motion: bool,
     booted: bool,
     mounted: bool,
     canvas_selector: Option<String>,
@@ -359,6 +361,7 @@ struct BridgeSharedState {
 
 #[derive(Resource, Default)]
 struct BevyRuntimeState {
+    reduced_motion: bool,
     mounted: bool,
     render_state: Option<RenderState>,
     render_version: u64,
@@ -1021,6 +1024,7 @@ fn sync_external_state(mut runtime: ResMut<BevyRuntimeState>) {
     }
     runtime.needs_reconcile |= has_input;
     let animation_version = shared_animation_version();
+    runtime.reduced_motion = BRIDGE_SHARED.with(|shared| shared.borrow().reduced_motion);
     runtime.animation_dirty |= animation_version != runtime.animation_version;
     if runtime.animation_dirty {
         runtime.animation_version = animation_version;
@@ -1106,19 +1110,6 @@ impl PixelWorldBridge {
             shared.render_version += 1;
         });
         status_value("ready")
-    }
-
-    #[wasm_bindgen]
-    pub fn tick(&mut self, _animation_ms: f64) -> JsValue {
-        if self.mounted {
-            BRIDGE_SHARED.with(|shared| {
-                let mut shared = shared.borrow_mut();
-                shared.animation_version = shared.animation_version.wrapping_add(1);
-            });
-            status_value("ready")
-        } else {
-            status_value("detached")
-        }
     }
 
     #[wasm_bindgen]

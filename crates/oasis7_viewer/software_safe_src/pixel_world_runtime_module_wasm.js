@@ -241,6 +241,7 @@ export async function createPixelWorldBridge({ onEvent, onFatal } = {}) {
   function startAnimationLoop() {
     stopAnimationLoop();
     reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+    runtime.set_reduced_motion(reducedMotion);
     if (reducedMotion || !canTick()) return;
     const generation = animationGeneration;
     const tick = (animationMs) => {
@@ -270,6 +271,7 @@ export async function createPixelWorldBridge({ onEvent, onFatal } = {}) {
     const mediaQuery = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
     const onMotionChange = (event) => {
       reducedMotion = event.matches === true;
+      runtime.set_reduced_motion(reducedMotion);
       if (reducedMotion) stopAnimationLoop(); else resume();
     };
     mediaQuery?.addEventListener?.("change", onMotionChange);

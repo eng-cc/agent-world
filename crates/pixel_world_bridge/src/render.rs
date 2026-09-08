@@ -933,7 +933,11 @@ pub(crate) fn render_scene(
         runtime.needs_reconcile = false;
         runtime.animation_dirty = false;
     }
-    let animation_ms = time.elapsed_secs_f64() * 1000.0;
+    let animation_ms = if runtime.reduced_motion {
+        0.0
+    } else {
+        time.elapsed_secs_f64() * 1000.0
+    };
     let mut rebuild_hit_regions = false;
     if static_reconcile {
         canvas_resize::requeue_follow_target_after_resize(&mut runtime, width, height);

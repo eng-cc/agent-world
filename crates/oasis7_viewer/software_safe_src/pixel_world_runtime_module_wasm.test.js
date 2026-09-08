@@ -91,6 +91,7 @@ vi.mock("./pixel_world_bridge_bindgen.js", () => {
       this.wheel = vi.fn();
       this.click = vi.fn();
       this.tick = vi.fn();
+      this.set_reduced_motion = vi.fn();
       this.unmount = vi.fn(() => ({ status: "detached" }));
       this.update = vi.fn(() => ({ status: "ready" }));
       this.mount = vi.fn((canvas, renderState) => {
@@ -495,8 +496,12 @@ describe("pixel world wasm runtime bridge", () => {
     bridge.mount(canvas, { selection: null });
     expect(mediaQuery.addEventListener).toHaveBeenCalledWith("change", expect.any(Function));
     mediaChange?.({ matches: true });
+    expect(runtimeState.instances[0].set_reduced_motion).toHaveBeenLastCalledWith(true);
     expect(runtimeState.instances[0].tick).toHaveBeenCalledTimes(1);
     expect(animation.runNext(100)).toBe(false);
+    mediaQuery.matches = false;
+    mediaChange?.({ matches: false });
+    expect(runtimeState.instances[0].set_reduced_motion).toHaveBeenLastCalledWith(false);
     bridge.unmount();
     expect(mediaQuery.removeEventListener).toHaveBeenCalledWith("change", expect.any(Function));
   });

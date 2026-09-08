@@ -4,6 +4,7 @@ import { dirname, extname, join, normalize, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { completionEvidence } from './pixel-world-completion-evidence.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const viewerRoot = resolve(scriptDir, "..");
@@ -12,7 +13,10 @@ const runId = new Date().toISOString().replace(/[:.]/g, "-");
 const outDir = resolve(repoRoot, "output/playwright/pixel-world-hotspot-visual", runId);
 const agentBrowserBin = process.env.AGENT_BROWSER_BIN || "agent-browser";
 const session = `pixel-world-hotspot-visual-${process.pid}`;
-const summary = { status: "running", fixtureName: "recent_event_glyphs", startedAt: new Date().toISOString(), viewports: {} };
+const routeMotionEvidence = process.argv.includes('--routes-and-motion');
+const completionRun = process.argv.includes('--completion');
+const fixtureName = routeMotionEvidence ? 'routes_and_events' : 'recent_event_glyphs';
+const summary = { status: "running", fixtureName, startedAt: new Date().toISOString(), viewports: {} };
 mkdirSync(outDir, { recursive: true });
 
 function fail(message, details) { throw new Error(`${message}${details ? `\n${JSON.stringify(details, null, 2)}` : ""}`); }
@@ -73,13 +77,18 @@ const server = createServer(serveFile);
 try {
   await new Promise((resolveServer) => server.listen(0, "127.0.0.1", resolveServer));
   const address = server.address();
-  const url = `http://127.0.0.1:${address.port}/viewer.html?test_api=1&connect=0&locale=en&pixel_world_visual_fixture=recent_event_glyphs`;
+  const url = `http://127.0.0.1:${address.port}/viewer.html?test_api=1&connect=0&locale=en&pixel_world_visual_fixture=${fixtureName}`;
   summary.url = url; closeBrowser(); await browserJson(["open", url], { timeout: 45_000 });
-  for (const [name, width, height] of [["desktop", 1440, 900], ["narrow", 390, 844]]) {
+  for (const [name, width, height] of [["desktop", 1440, 1000], ["narrow", 390, 844], ...((completionRun || routeMotionEvidence) ? [['compact',320,568]] : [])]) {
     await browserJson(["set", "viewport", String(width), String(height)]);
     if (name !== 'desktop') await browserJson(['open',url]);
-    const state = await evalJson(String.raw`(async()=>{const read=()=>(${pageStateScript()}); const deadline=Date.now()+15000; while(Date.now()<deadline){const s=read(); if(s.rendererReady && s.runtimeStatus==='ready') return JSON.stringify(s); await new Promise(r=>setTimeout(r,100));} throw new Error('renderer not ready');})()`);
-    assert(state.fixture === "recent_event_glyphs" && state.rendererReady && state.runtimeStatus === "ready" && !state.fatal, "fixture renderer did not become ready", state);
+    let state = await evalJson(String.raw`(async()=>{const read=()=>(${pageStateScript()}); const deadline=Date.now()+15000; while(Date.now()<deadline){const s=read(); if(s.rendererReady && s.runtimeStatus==='ready') return JSON.stringify(s); await new Promise(r=>setTimeout(r,100));} throw new Error('renderer not ready');})()`);
+    if (routeMotionEvidence || name === 'compact') {
+      await evalJson(`(async()=>{for(let n=0;n<${name === 'compact' && routeMotionEvidence ? 3 : 1};n++){document.querySelector('#pixel-world-embedded-runtime-canvas').dispatchEvent(new WheelEvent('wheel',{deltaY:300,bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,80));}await new Promise(r=>setTimeout(r,250));return true;})()`);
+      state=await evalJson(pageStateScript());
+    }
+    assert(state.fixture === fixtureName && state.rendererReady && state.runtimeStatus === "ready" && !state.fatal, "fixture renderer did not become ready", state);
+    if (routeMotionEvidence) assert(state.renderDto.links.length === 2 && state.renderDto.links.every(link => link.kind === 'agent_assignment' && link.from && link.to && link.source_class === 'runtime_projection'), 'published assignment links missing from real Rust DTO',state.renderDto.links);
     assert(state.renderDto?.agents?.some((agent) => agent.id === "agent-0"), "fixture Render DTO omits agent-0", state.renderDto);
     assert(state.renderDto?.receipt_target?.agent_id === "agent-0" && state.renderDto?.receipt_target?.state === "blocked", "fixture Render DTO omits the blocked agent-0 receipt target", state.renderDto);
     const glyphKinds = Object.fromEntries((state.renderDto?.visual_hotspots || []).map((hotspot) => [hotspot.id, hotspot.kind]));
@@ -121,9 +130,9 @@ try {
     const initialProjection = await evalJson(selectionGeometryScript());
     await evalJson(`(() => { document.querySelector('#pixel-world-embedded-runtime-canvas').dispatchEvent(new WheelEvent('wheel', {deltaY:-100,bubbles:true,cancelable:true})); return true; })()`);
     const zoomProjection = await evalJson(selectionGeometryScript());
-    await runBrowser(['mouse','move',String(width > 640 ? 850 : 100),'400']);
+    await runBrowser(['mouse','move',String(width > 640 ? 850 : 100),String(width === 320 ? 240 : 400)]);
     await runBrowser(['mouse','down']);
-    await runBrowser(['mouse','move',String(width > 640 ? 890 : 140),'420']);
+    await runBrowser(['mouse','move',String(width > 640 ? 890 : 140),String(width === 320 ? 260 : 420)]);
     await runBrowser(['mouse','up']);
     const panProjection = await evalJson(selectionGeometryScript());
     for (const projection of [initialProjection,zoomProjection,panProjection]) assert(projection.count === 1 && projection.width >= 44 && projection.height >= 44 && projection.error < 1.1, 'renderer selection projection diverged', projection);
@@ -131,6 +140,62 @@ try {
     assert(panProjection.camera.pan_x_px !== zoomProjection.camera.pan_x_px, 'drag did not change renderer camera', {zoomProjection,panProjection});
     const projectionPath = writeJson(`${name}-selection-projection.json`, {initialProjection,zoomProjection,panProjection});
     summary.viewports[name].projectionPath = projectionPath;
+    if (routeMotionEvidence) {
+      // Reload before the animation comparison so pan/hover do not contaminate
+      // the frame comparison. Media emulation is observed from matchMedia.
+      await browserJson(['set','media','dark']);
+      await browserJson(['open',url]);
+      await evalJson(`new Promise(resolve => setTimeout(() => resolve(true),600))`);
+      await evalJson(`(async()=>{for(let n=0;n<${name === 'compact' && routeMotionEvidence ? 3 : 1};n++){document.querySelector('#pixel-world-embedded-runtime-canvas').dispatchEvent(new WheelEvent('wheel',{deltaY:300,bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,80));}await new Promise(r=>setTimeout(r,250));return true;})()`);
+      const mediaBefore = await evalJson(`matchMedia('(prefers-reduced-motion: reduce)').matches`);
+      assert(mediaBefore === false,'normal-motion media preference not observed',mediaBefore);
+      const motionTargets = await evalJson(targetsScript());
+      const motionCanvas = await evalJson(bringCanvasIntoViewScript());
+      const frameFiles = {};
+      for (const mode of ['normal','reduced']) {
+        if (mode === 'reduced') await browserJson(['set','media','dark','reduced-motion']);
+        await evalJson(`new Promise(resolve => setTimeout(() => resolve(true),300))`);
+        for (const frame of [0,1]) {
+          const path=join(outDir,`${name}-${mode}-frame-${frame}.png`);
+          await runBrowser(['screenshot','--full',path]);
+          frameFiles[`${mode}${frame}`]=path;
+          await evalJson(`new Promise(resolve => setTimeout(() => resolve(true),350))`);
+        }
+      }
+      const mediaAfter=await evalJson(`matchMedia('(prefers-reduced-motion: reduce)').matches`);
+      assert(mediaAfter === true,'reduced-motion media preference not observed',mediaAfter);
+      const reducedInput=await evalJson(receiptScript('hover','recent:resource-transfer-fixture'));
+      assert(reducedInput.receipt.visible,'reduced preference froze input',reducedInput);
+      await evalJson(receiptScript('leave'));
+      const reducedSnapshot=await evalJson(`(async()=>{const before=window.__OASIS7_PIXEL_WORLD_RENDER_DTO__().world_tick;const snapshot=window.__OASIS7_PIXEL_WORLD_VISUAL_FIXTURES__.routes_and_events();snapshot.time=13;window.__AW_TEST__.injectSnapshot(snapshot);window.__OASIS7_PIXEL_WORLD_VISUAL_FIXTURE_AUTH_ALIGNMENT__();await new Promise(r=>setTimeout(r,200));return {before,after:window.__OASIS7_PIXEL_WORLD_RENDER_DTO__().world_tick,reduced:matchMedia('(prefers-reduced-motion: reduce)').matches};})()`);
+      assert(reducedSnapshot.reduced && reducedSnapshot.after===13,'reduced preference froze snapshot updates',reducedSnapshot);
+      await browserJson(['set','media','dark']);
+      const mediaRestored=await evalJson(`matchMedia('(prefers-reduced-motion: reduce)').matches`);
+      assert(mediaRestored === false,'normal preference did not restore live',mediaRestored);
+      for (const frame of [0,1,2]) {
+        const path=join(outDir,`${name}-restored-frame-${frame}.png`);
+        await runBrowser(['screenshot','--full',path]);
+        frameFiles[`restored${frame}`]=path;
+        await evalJson(`new Promise(resolve=>setTimeout(()=>resolve(true),350))`);
+      }
+      const glyphDiffs={};
+      for (const id of ['recent:resource-transfer-fixture','recent:build-queue-fixture']) {
+        const hit=motionTargets.find(hit=>hit.id===id);
+        const center={x:motionCanvas.canvas.left+hit.canvas_x,y:motionCanvas.canvas.top+hit.canvas_y};
+        const files={};
+        for (const [key,path] of Object.entries(frameFiles)) {
+          files[key]=join(outDir,`${name}-${key}-${id.split(':')[1]}.png`);
+          cropGlyph(path,files[key],center);
+        }
+        glyphDiffs[id]={normal:screenshotDifference(files.normal0,files.normal1),reduced:screenshotDifference(files.reduced0,files.reduced1),restored:[screenshotDifference(files.restored0,files.restored1),screenshotDifference(files.restored0,files.restored2)].sort((a,b)=>b.changedPixelRatio-a.changedPixelRatio)[0]};
+        assert(glyphDiffs[id].reduced.changedPixelRatio === 0,'reduced-motion event pixels continue animating',glyphDiffs[id]);
+        assert(glyphDiffs[id].restored.changedPixelRatio > 0,'normal event motion did not resume',glyphDiffs[id]);
+      }
+      const motionPath=writeJson(`${name}-motion-evidence.json`,{mediaBefore,mediaAfter,mediaRestored,reducedInput,reducedSnapshot,frameFiles,glyphDiffs,routeCount:state.renderDto.links.length,links:state.renderDto.links});
+      summary.viewports[name].motionPath=motionPath;
+      await browserJson(['set','media','dark']);
+    }
+    if (completionRun) summary.viewports[name].completion=await completionEvidence({name,url:url.replace("routes_and_events","recent_event_glyphs"),outDir,evalJson,browserJson,runBrowser,writeJson,assert});
   }
   summary.status = "passed"; summary.completedAt = new Date().toISOString(); writeJson("summary.json", summary); console.log(`pixel-world hotspot visual smoke passed: ${join(outDir, "summary.json")}`);
 } catch (error) { summary.status = "failed"; summary.completedAt = new Date().toISOString(); summary.failure = { message: error instanceof Error ? error.message : String(error) }; writeJson("summary.json", summary); console.error(`pixel-world hotspot visual smoke failed: ${join(outDir, "summary.json")}`); throw error; }

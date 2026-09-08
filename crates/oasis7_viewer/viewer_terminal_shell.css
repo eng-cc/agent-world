@@ -202,6 +202,11 @@ body {
   width: min(560px, calc(100vw - 48px));
   max-height: calc(100dvh - 120px);
   overflow: auto;
+  background: #141d19;
+  border: 1px solid rgba(152, 177, 150, 0.34);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  overscroll-behavior: contain;
 }
 
 [data-viewer-overlay="next-move"] {
@@ -1282,14 +1287,14 @@ body {
   }
 
   [data-viewer-overlay="renderer-unavailable"] {
-    top: 158px;
+    top: calc(132px + min(20dvh, 128px) + 8px);
     left: 10px;
     right: 10px;
     max-width: calc(100vw - 20px);
   }
 
   [data-viewer-overlay="world-hud"] .pixel-world-render-diagnostics[data-renderer-state="unavailable"] {
-    top: 232px;
+    top: calc(132px + min(20dvh, 128px) + 120px);
     left: 10px;
     right: 10px;
     max-width: calc(100vw - 20px);
@@ -1717,4 +1722,20 @@ body {
     bottom: 10px;
     width: auto;
   }
+}
+
+/* Expanded details form one opaque reading surface over the map and Feed. */
+[data-viewer-overlay="world-summary"] #viewer-gameplay-details[open] > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+[data-viewer-overlay="world-summary"] #viewer-gameplay-details[open] > summary > .badge {
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+}
+.pixel-world-render-unavailable__retry {
+  min-height: 44px;
 }
