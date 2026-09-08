@@ -4,6 +4,12 @@ import { createSignal } from 'solid-js';
 import { PixelWorldRendererTargets, rendererEntityTargetStyle } from './pixel_world_renderer_targets.jsx';
 
 describe('real renderer accessible projection', () => {
+  it('keeps partially visible hit boxes at each edge until their full bounds leave the canvas', () => {
+    for (const [x, y, visible] of [[-1,50,true],[101,50,true],[50,-1,true],[50,101,true],[-22,50,false],[122,50,false],[50,-22,false],[50,122,false]]) {
+      const style = rendererEntityTargetStyle({id:'edge',pos:{x_cm:50,y_cm:50}}, {width_cm:100,depth_cm:100}, {width:100,height:100}, {pan_x_px:x-50,pan_y_px:y-50});
+      expect(style.display, `${x},${y}`).toBe(visible ? undefined : 'none');
+    }
+  });
   const bounds = { width_cm: 1000, depth_cm: 1000 };
   const agent = { id: 'agent-0', pos: { x_cm: 250, y_cm: 600 } };
   it('retains focused targets across snapshots while updating data, geometry and membership', async () => {

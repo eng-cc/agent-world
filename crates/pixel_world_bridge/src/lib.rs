@@ -15,6 +15,7 @@ use serde_wasm_bindgen::{Serializer, from_value};
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
 
+mod facility_signature;
 mod host_state;
 mod presentation_clock;
 mod render;
@@ -783,6 +784,7 @@ fn render_signature(render_state: Option<&RenderState>, mode: RenderSignatureMod
 
     if matches!(mode, RenderSignatureMode::Content) {
         hash_social_links(&mut hasher, &render_state.social_links);
+        facility_signature::hash_visuals(&mut hasher, &render_state.micro_depot_facilities);
     }
 
     render_state.visual_hotspots.len().hash(&mut hasher);

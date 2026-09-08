@@ -12,7 +12,7 @@ export function rendererEntityTargetStyle(entity, worldBounds, size, camera) {
   const idLength = new TextEncoder().encode(entity.id || '').length;
   const point = toCanvasPoint(entity.pos, worldBounds, width, height, camera)
     || toCanvasPoint({ x_cm: 36 + (idLength * 29) % Math.max(40, width - 72), y_cm: 44 + (idLength * 17) % Math.max(48, height - 88) }, { width_cm: width, depth_cm: height }, width, height, camera);
-  return { left: `${point.x / width * 100}%`, top: `${point.y / height * 100}%`, width: '44px', height: '44px', transform: 'translate(-50%, -50%)', display: point.x < 0 || point.y < 0 || point.x > width || point.y > height ? 'none' : undefined };
+  return { left: `${point.x / width * 100}%`, top: `${point.y / height * 100}%`, width: '44px', height: '44px', transform: 'translate(-50%, -50%)', display: point.x + 22 <= 0 || point.y + 22 <= 0 || point.x - 22 >= width || point.y - 22 >= height ? 'none' : undefined };
 }
 
 export function PixelWorldRendererTargets(props) {

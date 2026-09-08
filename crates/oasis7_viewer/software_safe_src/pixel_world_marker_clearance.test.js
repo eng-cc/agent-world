@@ -11,6 +11,13 @@ describe('actionable marker overlay clearance', () => {
     expect(globalMarkerRule).toMatch(/box-sizing:\s*border-box/);
   });
   const rect = (left, top, right, bottom) => ({ left, top, right, bottom });
+  it('uses the prioritized fallback only when no free placement exists', () => {
+    const marker = rect(170,319,214,363);
+    const bounds = rect(0,0,390,844);
+    const fallback = {x:0,y:-105};
+    expect(pixelWorldMarkerClearance(marker, [rect(0,0,390,260),rect(0,266,390,844)], bounds, fallback)).toEqual(fallback);
+    expect(pixelWorldMarkerClearance(marker, [], bounds, fallback)).toEqual({x:0,y:0});
+  });
   it.each([
     [390, 844, rect(253, 353, 297, 397), [rect(10, 266, 380, 363), rect(252, 371, 380, 469)]],
     [320, 844, rect(85, 344, 129, 388), [rect(10, 266, 310, 363)]],
