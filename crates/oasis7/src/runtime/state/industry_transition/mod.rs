@@ -8,14 +8,18 @@ mod material_transfer;
 mod material_transit;
 mod recipe_lifecycle;
 
-fn factory_has_canonical_stable_line(factory: &FactoryState) -> bool {
+pub(crate) fn factory_has_canonical_stable_line(factory: &FactoryState) -> bool {
     factory.production.same_recipe_repeat_count >= 3
         && factory
             .production
             .last_completed_canonical_snapshot
             .as_ref()
             .zip(factory.production.last_completed_recipe_id.as_ref())
-            .is_some_and(|(snapshot, recipe_id)| snapshot.recipe_id == *recipe_id)
+            .is_some_and(|(snapshot, recipe_id)| {
+                !snapshot.recipe_id.is_empty()
+                    && !recipe_id.is_empty()
+                    && snapshot.recipe_id == *recipe_id
+            })
 }
 
 impl<'a> WorldStateProjection<'a> {

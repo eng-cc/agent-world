@@ -607,19 +607,21 @@ impl PreparedFactoryLifecycle {
                 "factory maintenance durability is out of range: factory_id={factory_id} durability_ppm={durability}"
             )));
         }
-        let available = state
-            .material_ledgers
-            .get(ledger_id)
-            .and_then(|v| v.get("hardware_part"))
-            .copied()
-            .unwrap_or(0);
+        let (mut materials, world) = normalized_materials(state);
+        let world_id = MaterialLedgerId::world();
+        let available = (if ledger_id == &world_id {
+            Some(&world)
+        } else {
+            state.material_ledgers.get(ledger_id)
+        })
+        .and_then(|v| v.get("hardware_part"))
+        .copied()
+        .unwrap_or(0);
         if available < parts {
             return Err(invalid(format!(
                 "factory maintenance consume failed: insufficient material hardware_part: requested={parts} available={available}"
             )));
         }
-        let (mut materials, world) = normalized_materials(state);
-        let world_id = MaterialLedgerId::world();
         let mut ledgers = BTreeMap::from([(world_id.clone(), world)]);
         if ledger_id != &world_id {
             ledgers.insert(

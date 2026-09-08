@@ -1,4 +1,5 @@
 use super::pos;
+use crate::runtime::state::FactoryProductionSnapshot;
 use crate::runtime::state::industry_transition::{
     PreparedFactoryLifecycle, PreparedRecipeLifecycle,
 };
@@ -140,4 +141,103 @@ fn recipe_started_cost_preflight_reads_legacy_world_materials() {
         .install(&mut state);
     assert_eq!(state.materials["ore"], 3);
     assert_eq!(state.material_ledgers[&MaterialLedgerId::world()]["ore"], 3);
+}
+
+#[test]
+fn factory_maintained_cost_preflight_reads_legacy_world_materials() {
+    let mut world = World::new();
+    register(&mut world);
+    world.set_material_balance("steel", 2).unwrap();
+    let started = DomainEvent::FactoryBuildStarted {
+        job_id: 2,
+        builder_agent_id: "actor".into(),
+        site_id: "site".into(),
+        spec: spec(),
+        consume_ledger: MaterialLedgerId::world(),
+        ready_at: world.state().time + 1,
+        contract_version: Some(0),
+        site_authority_revision: None,
+        site_location_id: None,
+        location_anchor_revision: None,
+        construction_power_obligation: None,
+    };
+    world
+        .append_event_for_test(WorldEventBody::Domain(started), None)
+        .unwrap();
+    let mut state = world.state().clone();
+    state.time += 1;
+    PreparedFactoryLifecycle::prepare(
+        &state,
+        &DomainEvent::FactoryBuilt {
+            job_id: 2,
+            builder_agent_id: "actor".into(),
+            site_id: "site".into(),
+            spec: spec(),
+        },
+        state.time,
+    )
+    .unwrap()
+    .install(&mut state);
+    state.materials.insert("hardware_part".into(), 2);
+    state.material_ledgers.remove(&MaterialLedgerId::world());
+    let event = DomainEvent::FactoryMaintained {
+        operator_agent_id: "actor".into(),
+        factory_id: "factory".into(),
+        consume_ledger: MaterialLedgerId::world(),
+        consumed_parts: 1,
+        durability_ppm: 1_000_000,
+    };
+    let before = state.clone();
+    PreparedFactoryLifecycle::prepare(&state, &event, state.time)
+        .unwrap()
+        .install(&mut state);
+    assert_eq!(before.materials["hardware_part"], 2);
+    assert_eq!(state.materials["hardware_part"], 1);
+}
+
+#[test]
+fn empty_recipe_identity_does_not_form_a_canonical_stable_line() {
+    let mut world = World::new();
+    register(&mut world);
+    world.set_material_balance("steel", 2).unwrap();
+    let mut state = world.state().clone();
+    state.factories.insert(
+        "factory".into(),
+        FactoryState {
+            factory_id: "factory".into(),
+            site_id: "site".into(),
+            builder_agent_id: "actor".into(),
+            spec: spec(),
+            input_ledger: MaterialLedgerId::world(),
+            output_ledger: MaterialLedgerId::world(),
+            durability_ppm: 1_000_000,
+            production: FactoryProductionState {
+                same_recipe_repeat_count: 3,
+                last_completed_recipe_id: Some(String::new()),
+                last_completed_canonical_snapshot: Some(FactoryProductionSnapshot::default()),
+                ..FactoryProductionState::default()
+            },
+            location_anchor_revision: None,
+            site_authority_revision: None,
+            site_location_id: None,
+            construction_power_profile_key: None,
+            construction_power_profile_revision: None,
+            built_at: 0,
+        },
+    );
+    state
+        .apply_domain_event(
+            &DomainEvent::GameplayPolicyUpdated {
+                operator_agent_id: "actor".into(),
+                electricity_tax_bps: 0,
+                data_tax_bps: 0,
+                power_trade_fee_bps: 0,
+                max_open_contracts_per_agent: 16,
+                blocked_agents: vec![],
+                forbidden_location_ids: vec![],
+            },
+            2,
+        )
+        .unwrap();
+    assert_eq!(state.industry_progress.stage, IndustryStage::Bootstrap);
 }
