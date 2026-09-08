@@ -562,7 +562,8 @@ local_role_review_status() {
   local source_branch="$2"
   local source_head="$3"
   local comparison_ref="$4"
-  python3 - "$source_worktree" "$source_branch" "$source_head" "$comparison_ref" <<'PY'
+  local expected_comparison_oid="${5:-}"
+  python3 - "$source_worktree" "$source_branch" "$source_head" "$comparison_ref" "$expected_comparison_oid" <<'PY'
 from __future__ import annotations
 
 from pathlib import Path
@@ -576,6 +577,7 @@ source_worktree = Path(sys.argv[1]).resolve()
 source_branch = sys.argv[2]
 source_head = sys.argv[3]
 comparison_ref = sys.argv[4]
+expected_comparison_oid = sys.argv[5] if len(sys.argv) > 5 else ""
 root = source_worktree
 tasks_dir = root / ".pm" / "tasks"
 
@@ -905,11 +907,32 @@ required = {
     "Pre-PR Local Role Review": "passed",
     "Task UID": task_uid,
     "Source Branch": source_branch,
-    "Comparison Ref": comparison_ref,
     "Comparison OID": comparison_oid,
 }
 
+# Promotion binds the packet to the immutable receipt base OID.  Keep the
+# packet field as the default authority for pre-promotion validation, then
+# override that expected value only when promotion supplies a receipt base.
+if expected_comparison_oid:
+    required["Comparison OID"] = expected_comparison_oid
+
+# The symbolic ref is audit context.  During promotion the receipt's base
+# OID is the immutable review-range authority, so a later move of the symbolic
+# base ref must not invalidate an otherwise exact packet.  Without a receipt,
+# retain the current comparison ref as the pre-PR validation authority.
+if not expected_comparison_oid:
+    required["Comparison Ref"] = comparison_ref
+
 missing: list[str] = []
+
+packet_comparison_ref = parse_field(selected_block, "Comparison Ref")
+if expected_comparison_oid:
+    if not packet_comparison_ref:
+        missing.append("Comparison Ref")
+    elif not re.fullmatch(
+        r"(?:refs/[A-Za-z0-9._/-]+|[0-9a-f]{40,64})", packet_comparison_ref
+    ):
+        missing.append("Comparison Ref canonical")
 
 for key, expected in required.items():
     if parse_field(selected_block, key) != expected:
@@ -1307,6 +1330,25 @@ fi
 
 COMPARISON_COMMIT_REF="${COMPARISON_REF}^{commit}"
 COMPARISON_HEAD="$(git rev-parse "$COMPARISON_COMMIT_REF")"
+
+# Promotion revalidates the review against the immutable CI receipt base OID.
+# The live receipt validator below remains authoritative for the PR/check
+# identity; this early read only prevents a moving local symbolic ref from
+# shadowing the frozen review range during local role-review selection.
+REVIEW_COMPARISON_OID=""
+if [[ -n "$PROMOTE_DRAFT_RECEIPT" ]]; then
+  [[ -f "$PROMOTE_DRAFT_RECEIPT" ]] || die "promote_draft requires an existing ci_ready_receipt"
+  PROMOTE_DRAFT_RECEIPT_BASE_OID="$(python3 - "$PROMOTE_DRAFT_RECEIPT" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    print(json.load(handle).get("base_oid", ""))
+PY
+)" || die "promote_draft could not read ci_ready_receipt base identity"
+  [[ "$PROMOTE_DRAFT_RECEIPT_BASE_OID" =~ ^[0-9a-f]{40,64}$ ]] || die "promote_draft ci_ready_receipt has invalid base identity"
+  REVIEW_COMPARISON_OID="$PROMOTE_DRAFT_RECEIPT_BASE_OID"
+fi
 BASE_WORKTREE=""
 if [[ -n "$LOCAL_BASE_REF" ]]; then
   BASE_WORKTREE="$(branch_checkout_path "$BASE_BRANCH" 2>/dev/null || true)"
@@ -1418,7 +1460,7 @@ if git show-ref --verify --quiet "refs/remotes/$REMOTE_NAME/$SOURCE_BRANCH"; the
   REMOTE_SOURCE_REF="refs/remotes/$REMOTE_NAME/$SOURCE_BRANCH"
 fi
 
-LOCAL_ROLE_REVIEW_OUTPUT="$(local_role_review_status "$SOURCE_WORKTREE" "$SOURCE_BRANCH" "$SOURCE_HEAD" "$COMPARISON_REF")"
+LOCAL_ROLE_REVIEW_OUTPUT="$(local_role_review_status "$SOURCE_WORKTREE" "$SOURCE_BRANCH" "$SOURCE_HEAD" "$COMPARISON_REF" "$REVIEW_COMPARISON_OID")"
 LOCAL_ROLE_REVIEW_STATUS="$(plan_kv_get "$LOCAL_ROLE_REVIEW_OUTPUT" "status")"
 LOCAL_ROLE_REVIEW_TASK_UID="$(plan_kv_get "$LOCAL_ROLE_REVIEW_OUTPUT" "task_uid")"
 LOCAL_ROLE_REVIEW_LOG_PATH="$(plan_kv_get "$LOCAL_ROLE_REVIEW_OUTPUT" "evidence_sink")"
@@ -1509,13 +1551,35 @@ print('true' if r.get('status')=='ready' and r.get('workflow_phase')=='pre_pr_re
 PY
 )"
   [[ "$TASK_READY" == true ]] || die "promote_draft requires task truth at ready/pre_pr_ready"
+  CANONICAL_DEFAULT_BRANCH="$(python3 - "$SOURCE_WORKTREE/.pm/github-project-sync/tasks.json" "$RT" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+task_uid = sys.argv[2]
+try:
+    mapping = json.loads(path.read_text(encoding="utf-8"))
+except (OSError, json.JSONDecodeError) as exc:
+    raise SystemExit(f"cannot read canonical task mapping: {exc}")
+record = (mapping.get("tasks") or {}).get(task_uid) or {}
+default_branch = str(record.get("default_branch") or "").strip()
+if not default_branch:
+    raise SystemExit(f"canonical task default_branch is missing for {task_uid}")
+print(default_branch)
+PY
+)" || die "promote_draft could not read canonical task default_branch"
   command -v gh >/dev/null 2>&1 || die '`gh` not found in PATH'
+  CURRENT_DEFAULT_BRANCH="$(gh api "repos/$RR" --jq '.default_branch')" || die "promote_draft could not read live repository default_branch"
+  [[ -n "$CURRENT_DEFAULT_BRANCH" ]] || die "promote_draft live repository default_branch is missing"
+  [[ "$CANONICAL_DEFAULT_BRANCH" == "$CURRENT_DEFAULT_BRANCH" ]] || die "promote_draft canonical task default_branch $CANONICAL_DEFAULT_BRANCH differs from live repository default_branch $CURRENT_DEFAULT_BRANCH"
+  [[ "$BASE_BRANCH" == "$CANONICAL_DEFAULT_BRANCH" ]] || die "promote_draft --base $BASE_BRANCH differs from canonical task default_branch $CANONICAL_DEFAULT_BRANCH"
   PR_STATE_FIELDS="$(gh pr view "$PR_TO_PROMOTE" -R "$RR" --json isDraft,state,mergedAt --jq '[.isDraft,.state,(.mergedAt // "")] | @tsv')" || die "promote_draft could not read PR state"
   IFS=$'\t' read -r PR_IS_DRAFT PR_STATE PR_MERGED_AT <<<"$PR_STATE_FIELDS"
   [[ "$PR_STATE" == OPEN && -z "$PR_MERGED_AT" ]] || die "promote_draft requires an open, unmerged PR"
   case "$PR_IS_DRAFT" in true|false) ;; *) die "promote_draft received uncertain PR draft state: $PR_IS_DRAFT" ;; esac
   CI_READY_RECEIPT_HELPER="${PREPARE_TASK_PR_CI_READY_RECEIPT_PATH:-$ROOT_DIR/scripts/pm/ci-ready-receipt.py}"
-  RECEIPT_VERIFY_CMD=(python3 "$CI_READY_RECEIPT_HELPER" --repository "$RR" --task-uid "$RT" --task-issue-number "$RI" --pr-number "$RP" --check-name "$RC" --check-app-id "$RA" --planner-digest "$RD" --receipt "$PROMOTE_DRAFT_RECEIPT" --refresh-same-identity)
+  RECEIPT_VERIFY_CMD=(python3 "$CI_READY_RECEIPT_HELPER" --repository "$RR" --task-uid "$RT" --task-issue-number "$RI" --pr-number "$RP" --check-name "$RC" --check-app-id "$RA" --planner-digest "$RD" --receipt "$PROMOTE_DRAFT_RECEIPT" --refresh-same-identity --base-ref "$CANONICAL_DEFAULT_BRANCH")
   [[ "$PR_IS_DRAFT" == false ]] && RECEIPT_VERIFY_CMD+=(--allow-ready-pr)
   "${RECEIPT_VERIFY_CMD[@]}" >/dev/null \
     || die "promote_draft ci_ready_receipt live validation failed"
