@@ -302,6 +302,33 @@ class ApplyTransport:
         return self._receipt("rollback-clean-redeploy", None)
 
 
+class ReceivedPlanOnlyTransport:
+    """Exercise rollback callbacks without retaining the planner's full plan."""
+
+    def __init__(self) -> None:
+        self.received_policy: dict[str, object] | None = None
+
+    def _rollback_receipt(self, plan: dict[str, object]) -> dict[str, object]:
+        self.received_policy = {
+            "forensic_backup": copy.deepcopy(plan["forensic_backup"]),
+            "rollback": copy.deepcopy(plan["rollback"]),
+        }
+        return {"rollback_steps": list(plan["rollback"]["steps"])}
+
+    def reobserve_failed_state(
+        self, plan: dict[str, object], started: list[str], failed_operation: str
+    ) -> dict[str, object]:
+        return self._rollback_receipt(plan)
+
+    def rollback_clean_redeploy(
+        self,
+        plan: dict[str, object],
+        started: list[str],
+        failed_state: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        return self._rollback_receipt(plan)
+
+
 class FullNetworkCleanRoomAdapterTests(unittest.TestCase):
     def setUp(self) -> None:
         self.planner = load_module("full_network_clean_room", PLANNER_PATH)
@@ -363,6 +390,61 @@ class FullNetworkCleanRoomAdapterTests(unittest.TestCase):
             self.adapter.IDENTITY_V2_EVIDENCE_SCHEMA,
             "oasis7.identity_v2_evidence_map.v2",
         )
+
+    def test_transport_plan_passes_forensic_backup_and_rollback_to_received_dto(self) -> None:
+        """Rollback transport must consume policy from its received DTO."""
+        transport_plan = self.adapter._transport_plan(self.plan)
+        transport = ReceivedPlanOnlyTransport()
+        receipt = transport.reobserve_failed_state(
+            transport_plan, ["stop:storage-205"], "stop:storage-205"
+        )
+        self.assertIsNotNone(transport.received_policy)
+        assert transport.received_policy is not None
+        self.assertEqual(transport.received_policy["forensic_backup"], self.plan["forensic_backup"])
+        self.assertEqual(transport.received_policy["rollback"], self.plan["rollback"])
+        self.assertEqual(receipt["rollback_steps"], self.plan["rollback"]["steps"])
+        receipt = transport.rollback_clean_redeploy(
+            transport_plan, ["stop:storage-205"], receipt
+        )
+        self.assertEqual(receipt["rollback_steps"], self.plan["rollback"]["steps"])
+
+    def test_redigested_policy_drift_is_rejected_before_transport(self) -> None:
+        """A self-consistent plan digest cannot authorize policy changes."""
+        mutations = (
+            (
+                "rollback steps",
+                lambda plan: plan["rollback"].__setitem__(
+                    "steps", ["unsafe-provider-operation"]
+                ),
+            ),
+            (
+                "rollback unknown field",
+                lambda plan: plan["rollback"].__setitem__(
+                    "unexpected_policy", {"operator_action": "unsafe"}
+                ),
+            ),
+            (
+                "forensic unknown field",
+                lambda plan: plan["forensic_backup"].__setitem__(
+                    "unexpected_policy", {"operator_action": "unsafe"}
+                ),
+            ),
+        )
+        for label, mutate in mutations:
+            with self.subTest(policy=label):
+                plan = copy.deepcopy(self.plan)
+                mutate(plan)
+                plan["plan_digest"] = self.adapter.canonical_plan_digest(plan)
+                with self.assertRaises(self.adapter.AdapterError) as raised:
+                    self.adapter.validate_plan(plan)
+                self.assertRegex(
+                    str(raised.exception), r"(?i)rollback|forensic|policy|canonical|field"
+                )
+
+    def test_authority_accepts_exact_rollback_policy_binding(self) -> None:
+        """External apply authority must cover the exact clean-redeploy policy."""
+        authority = self._authority()
+        self.adapter.validate_authority(self.plan, authority)
 
     def test_validate_plan_rejects_missing_identity_v2_evidence_map(self) -> None:
         """The adapter must not validate a legacy receipt-only plan."""
@@ -577,6 +659,7 @@ class FullNetworkCleanRoomAdapterTests(unittest.TestCase):
                     "ledger_path": plan["credential_nonce_ledger"]["path"],
                     "apply_authorized": apply_authorized,
                     "forensic_backup": copy.deepcopy(plan["forensic_backup"]),
+                    "rollback": copy.deepcopy(plan["rollback"]),
                     "package_commit": plan["truth"]["package"]["commit"],
                     "checkpoint_id": plan["truth"]["checkpoint"]["checkpoint_id"],
                     "checkpoint_manifest_hash": plan["truth"]["checkpoint"]["manifest_hash"],

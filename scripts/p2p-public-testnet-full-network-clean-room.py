@@ -173,6 +173,11 @@ NODE_ORDER = (
 )
 VALIDATOR_NAMES = frozenset({"storage-205", "sequencer-204"})
 OBSERVER_NAMES = frozenset(set(NODE_ORDER) - VALIDATOR_NAMES)
+CANONICAL_PLAN_INTENT_ACTION = "public-testnet-governed-rebuild"
+# Plan intent uses stable semantic reset identifiers.  The concrete paths
+# used by the destructive plan are independently derived from deployment
+# inventory below; neither path layout nor caller input can redefine intent.
+CANONICAL_PLAN_INTENT_RESET_SURFACE_IDS = ("config", "execution", "world")
 
 # These are relative reset surfaces, not a seed/copy source.  The validator
 # list is intentionally byte-for-byte aligned with the pair rebuild executor.
@@ -751,12 +756,15 @@ def _identity_v2_evidence_map(
         die("identity-v2 context task/head binding mismatch")
     if context.get("capture_window_id") != request.get("capture_window_id"):
         die("identity-v2 context capture window binding mismatch")
-    if intent.get("context_digest") != hashlib.sha256(
+    context_digest = hashlib.sha256(
         json.dumps(context, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest():
+    ).hexdigest()
+    if intent.get("context_digest") != context_digest:
         die("identity-v2 plan intent context binding mismatch")
     if not isinstance(intent.get("context_digest"), str) or HEX64_RE.fullmatch(intent["context_digest"]) is None:
         die("identity-v2 plan intent context digest is malformed")
+    if intent != _canonical_plan_intent(context_digest):
+        die("identity-v2 plan intent does not exactly match canonical deployment truth")
     entries = evidence.get("entries")
     if not isinstance(entries, list) or len(entries) != len(NODE_ORDER):
         die("identity-v2 evidence map must contain exactly five entries")
@@ -1205,6 +1213,25 @@ def _canonical_state_surface_variants(name: str) -> tuple[tuple[str, ...], ...]:
         # sparse or caller-invented surface list.
         return (canonical, stack_layout)
     return (canonical,)
+
+
+def _canonical_plan_intent(context_digest: str) -> dict[str, Any]:
+    """Build the exact pre-receipt intent from code-owned deployment truth."""
+    return {
+        "schema_version": "oasis7.clean_room_plan_intent.v1",
+        "context_digest": context_digest,
+        "adapter_action": CANONICAL_PLAN_INTENT_ACTION,
+        "nodes": [
+            {
+                "node_name": name,
+                "node_id": EXPECTED_NODES[name]["node_id"],
+                "peer_id": CANONICAL_PEER_REGISTRY[name],
+                "role": EXPECTED_NODES[name]["role"],
+                "reset_surface_ids": list(CANONICAL_PLAN_INTENT_RESET_SURFACE_IDS),
+            }
+            for name in sorted(NODE_ORDER)
+        ],
+    }
 
 
 def _validate_deployment_inventory(

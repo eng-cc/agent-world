@@ -1348,8 +1348,19 @@ class FullNetworkCleanRoomPlanTests(unittest.TestCase):
         intent = {
             "schema_version": "oasis7.clean_room_plan_intent.v1",
             "context_digest": context_digest,
-            "adapter_action": "public-testnet-governed-rebuild",
-            "nodes": [],
+            "adapter_action": self.module.CANONICAL_PLAN_INTENT_ACTION,
+            "nodes": [
+                {
+                    "node_name": node_name,
+                    "node_id": self.module.EXPECTED_NODES[node_name]["node_id"],
+                    "peer_id": self.module.CANONICAL_PEER_REGISTRY[node_name],
+                    "role": self.module.EXPECTED_NODES[node_name]["role"],
+                    "reset_surface_ids": list(
+                        self.module.CANONICAL_PLAN_INTENT_RESET_SURFACE_IDS
+                    ),
+                }
+                for node_name in sorted(self.module.NODE_ORDER)
+            ],
         }
         intent_path = root / "plan-intent.json"
         intent_path.write_bytes(json.dumps(intent, sort_keys=True, separators=(",", ":")).encode())
@@ -1612,6 +1623,39 @@ class FullNetworkCleanRoomPlanTests(unittest.TestCase):
             )
         self.assertEqual(set(raw_by_node), set(self.module.NODE_ORDER))
         self.assertEqual(set(envelopes), set(self.module.NODE_ORDER))
+
+    def test_identity_v2_evidence_map_rejects_plan_intent_governed_truth_drift(self) -> None:
+        """Admission binds action, managed nodes, roles, and reset surfaces to code truth."""
+        mutations = (
+            ("adapter action", lambda intent: intent.__setitem__("adapter_action", "unsafe-reset")),
+            (
+                "node role",
+                lambda intent: intent["nodes"][0].__setitem__("role", "validator"),
+            ),
+            (
+                "reset surfaces",
+                lambda intent: intent["nodes"][0].__setitem__("reset_surface_ids", ["world"]),
+            ),
+            (
+                "managed node set",
+                lambda intent: intent["nodes"].pop(),
+            ),
+        )
+        for label, mutate in mutations:
+            with self.subTest(mutation=label), tempfile.TemporaryDirectory() as directory:
+                evidence = copy.deepcopy(self._baseline_identity_v2_evidence)
+                source = Path(evidence["plan_intent"]["path"])
+                intent = json.loads(source.read_text(encoding="utf-8"))
+                mutate(intent)
+                target = Path(directory) / "tampered-plan-intent.json"
+                _write_fixture_json(target, intent)
+                target.chmod(0o600)
+                evidence["plan_intent"] = _fixture_descriptor(target)
+                with self.assertRaises(SystemExit) as raised:
+                    self.module._identity_v2_evidence_map(evidence, self._baseline_request)
+                self.assertRegex(
+                    str(raised.exception), r"(?i)plan intent|deployment truth|action|node|surface"
+                )
 
     def test_plan_requires_adapter_live_receipt_and_never_treats_plan_as_apply_proof(self) -> None:
         request = self._input()

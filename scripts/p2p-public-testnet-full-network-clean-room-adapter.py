@@ -248,6 +248,83 @@ TRANSPORT_PLAN_FIELDS = frozenset(
     }
 )
 
+# These policy DTOs are provider-facing authority, not caller-extensible
+# metadata.  Keep their schemas and values code-owned so a caller cannot
+# redigest a plan after changing rollback or backup behavior.
+CANONICAL_ROLLBACK_STEPS = (
+    "stop-started-nodes",
+    "preserve-failed-state-for-forensics",
+    "reinstall-exact-package-and-truth",
+    "rerun-fresh-root-probe",
+)
+FORENSIC_BACKUP_FIELDS = frozenset(
+    {
+        "mode",
+        "task_uid",
+        "frozen_head_oid",
+        "required_before_reset",
+        "operator_authorized",
+        "current_authorization",
+        "immutable",
+        "seed_eligible",
+        "cross_node_state_copy",
+        "restore_old_state",
+        "receipt_required_per_node",
+        "authority",
+        "repository",
+        "action",
+        "targets",
+        "transaction_id",
+        "capture_window_id",
+        "actor",
+        "issued_at",
+        "expires_at",
+    }
+)
+ROLLBACK_FIELDS = frozenset(
+    {
+        "policy",
+        "steps",
+        "stop_started_nodes",
+        "preserve_failed_state_for_forensics",
+        "restore_old_state",
+        "cross_node_state_copy",
+        "reinstall_exact_package_and_truth",
+        "rerun_fresh_root_probe",
+        "provider_mutation_requires_external_authority",
+    }
+)
+NO_BACKUP_AUTHORITY_RECEIPT_FIELDS = frozenset(
+    {
+        "schema_version",
+        "authenticated",
+        "verified",
+        "signer_id",
+        "verifier_id",
+        "trust_root_id",
+        "signed_payload_sha256",
+        "signature_hex",
+        "canonical_digest",
+        "bindings",
+    }
+)
+NO_BACKUP_AUTHORITY_BINDING_FIELDS = frozenset(
+    {
+        "repository",
+        "action",
+        "targets",
+        "task_uid",
+        "transaction_id",
+        "capture_window_id",
+        "frozen_head_oid",
+        "actor",
+        "issued_at",
+        "expires_at",
+        "current_authorization",
+        "consumer_impact_record",
+    }
+)
+
 
 class AdapterError(RuntimeError):
     """A fail-closed adapter contract violation."""
@@ -1126,47 +1203,9 @@ def validate_plan(
     if surfaces.get("observers_by_node") != expected_observers:
         _fail("observer surface summary is not bound to governed node inventory")
     _validate_plan_semantic_bindings(plan, planner, nodes)
+    _validate_forensic_backup_policy(plan)
+    _validate_rollback_policy(plan)
     forensic = _object(plan.get("forensic_backup"), "forensic backup")
-    if (
-        forensic.get("restore_old_state") is not False
-        or forensic.get("cross_node_state_copy") is not False
-        or forensic.get("seed_eligible") is not False
-    ):
-        _fail("old-state restore or cross-node copy is not an adapter operation")
-    mode = forensic.get("mode")
-    if (
-        forensic.get("task_uid") != plan["task_uid"]
-        or forensic.get("frozen_head_oid") != plan["head_oid"]
-    ):
-        _fail("forensic backup task or frozen-head binding drifted")
-    if mode not in {"forensic-backup", "operator-authorized-no-backup"}:
-        _fail("forensic backup mode is unsupported")
-    if mode == "forensic-backup":
-        if (
-            forensic.get("required_before_reset") is not True
-            or forensic.get("immutable") is not True
-            or forensic.get("receipt_required_per_node") is not True
-            or forensic.get("operator_authorized") is not False
-            or forensic.get("current_authorization") is not False
-            or forensic.get("authority") is not None
-        ):
-            _fail("forensic-backup mode has an unsafe authority or reset combination")
-    else:
-        if (
-            forensic.get("required_before_reset") is not False
-            or forensic.get("immutable") is not False
-            or forensic.get("receipt_required_per_node") is not False
-            or forensic.get("operator_authorized") is not True
-            or forensic.get("current_authorization") is not True
-        ):
-            _fail("operator-authorized-no-backup mode has an unsafe reset combination")
-    rollback = _object(plan.get("rollback"), "rollback")
-    if (
-        rollback.get("policy") != "clean-redeploy"
-        or rollback.get("restore_old_state") is not False
-        or rollback.get("cross_node_state_copy") is not False
-    ):
-        _fail("rollback is not clean-redeploy-only")
     capture_window = _object(plan.get("capture_window"), "transaction capture window")
     if set(capture_window) != {"id", "starts_at", "ends_at"}:
         _fail("transaction capture window contains an unsafe field")
@@ -1328,6 +1367,96 @@ def _validate_no_backup_authority(plan: dict[str, Any]) -> None:
         _fail("no-backup authority receipt bindings are not exact")
 
 
+def _validate_forensic_backup_policy(plan: dict[str, Any]) -> None:
+    """Require the exact code-owned forensic-backup policy projection."""
+    forensic = _object(plan.get("forensic_backup"), "forensic backup")
+    if set(forensic) != set(FORENSIC_BACKUP_FIELDS):
+        _fail("forensic backup policy schema is not the exact code-owned projection")
+    mode = _string(forensic.get("mode"), "forensic backup mode")
+    common = {
+        "task_uid": plan["task_uid"],
+        "frozen_head_oid": plan["head_oid"],
+        "seed_eligible": False,
+        "cross_node_state_copy": False,
+        "restore_old_state": False,
+    }
+    if mode == "forensic-backup":
+        expected = {
+            "mode": mode,
+            **common,
+            "required_before_reset": True,
+            "operator_authorized": False,
+            "current_authorization": False,
+            "immutable": True,
+            "receipt_required_per_node": True,
+            "authority": None,
+            "repository": None,
+            "action": None,
+            "targets": None,
+            "transaction_id": plan["transaction_id"],
+            "capture_window_id": plan["capture_window_id"],
+            "actor": None,
+            "issued_at": None,
+            "expires_at": None,
+        }
+    elif mode == "operator-authorized-no-backup":
+        # This helper performs the signed authority and dynamic time/actor
+        # checks.  The exact root shape and code-owned static projection are
+        # enforced here as well, before any DTO is constructed.
+        _validate_no_backup_authority(plan)
+        authority = _object(forensic.get("authority"), "no-backup authority")
+        if set(authority) != set(NO_BACKUP_AUTHORITY_RECEIPT_FIELDS):
+            _fail("no-backup authority receipt schema is not exact")
+        bindings = _object(authority.get("bindings"), "no-backup authority bindings")
+        if set(bindings) != set(NO_BACKUP_AUTHORITY_BINDING_FIELDS):
+            _fail("no-backup authority bindings schema is not exact")
+        expected = {
+            "mode": mode,
+            **common,
+            "required_before_reset": False,
+            "operator_authorized": True,
+            "current_authorization": True,
+            "immutable": False,
+            "receipt_required_per_node": False,
+            "authority": authority,
+            "repository": REPOSITORY,
+            "action": "full-network-clean-room",
+            "targets": list(plan["node_order"]),
+            "transaction_id": plan["transaction_id"],
+            "capture_window_id": plan["capture_window_id"],
+            "actor": forensic["actor"],
+            "issued_at": forensic["issued_at"],
+            "expires_at": forensic["expires_at"],
+        }
+    else:
+        _fail("forensic backup mode is unsupported")
+    if forensic != expected:
+        _fail("forensic backup policy is not the exact code-owned projection")
+
+
+def _validate_rollback_policy(plan: dict[str, Any]) -> None:
+    """Require the exact clean-redeploy policy and no caller-owned fields."""
+    rollback = _object(plan.get("rollback"), "rollback")
+    if set(rollback) != set(ROLLBACK_FIELDS):
+        _fail("rollback policy schema is not the exact code-owned projection")
+    if rollback != _canonical_rollback_policy():
+        _fail("rollback policy is not the exact code-owned clean-redeploy projection")
+
+
+def _canonical_rollback_policy() -> dict[str, Any]:
+    return {
+        "policy": "clean-redeploy",
+        "steps": list(CANONICAL_ROLLBACK_STEPS),
+        "stop_started_nodes": True,
+        "preserve_failed_state_for_forensics": True,
+        "restore_old_state": False,
+        "cross_node_state_copy": False,
+        "reinstall_exact_package_and_truth": True,
+        "rerun_fresh_root_probe": True,
+        "provider_mutation_requires_external_authority": True,
+    }
+
+
 def validate_authority(
     plan: dict[str, Any],
     authority: dict[str, Any],
@@ -1422,6 +1551,7 @@ def validate_authority(
         "ledger_path": plan["credential_nonce_ledger"]["path"],
         "apply_authorized": authority["apply_authorized"],
         "forensic_backup": plan["forensic_backup"],
+        "rollback": plan["rollback"],
         "package_commit": plan["truth"]["package"]["commit"],
         "checkpoint_id": plan["truth"]["checkpoint"]["checkpoint_id"],
         "checkpoint_manifest_hash": plan["truth"]["checkpoint"]["manifest_hash"],
@@ -2787,6 +2917,81 @@ def _project_transport_string_list(value: Any, label: str) -> list[str]:
     return [_string(item, f"{label} entry") for item in value]
 
 
+def _project_transport_no_backup_authority(value: Any, label: str) -> dict[str, Any]:
+    receipt = _project_exact_object(
+        value, set(NO_BACKUP_AUTHORITY_RECEIPT_FIELDS), label
+    )
+    bindings = _project_exact_object(
+        receipt["bindings"],
+        set(NO_BACKUP_AUTHORITY_BINDING_FIELDS),
+        f"{label} bindings",
+    )
+    bindings["targets"] = _project_transport_string_list(
+        bindings["targets"], f"{label} bindings targets"
+    )
+    bindings["consumer_impact_record"] = _project_exact_object(
+        bindings["consumer_impact_record"],
+        {"path", "sha256"},
+        f"{label} bindings consumer impact record",
+    )
+    receipt["bindings"] = bindings
+    return receipt
+
+
+def _project_transport_forensic_backup(value: Any) -> dict[str, Any]:
+    forensic = _project_exact_object(
+        value, set(FORENSIC_BACKUP_FIELDS), "transport forensic backup"
+    )
+    forensic["mode"] = _string(forensic["mode"], "transport forensic backup mode")
+    for field in (
+        "required_before_reset",
+        "operator_authorized",
+        "current_authorization",
+        "immutable",
+        "seed_eligible",
+        "cross_node_state_copy",
+        "restore_old_state",
+        "receipt_required_per_node",
+    ):
+        forensic[field] = _bool(forensic[field], f"transport forensic backup {field}")
+    for field in ("task_uid", "frozen_head_oid", "transaction_id", "capture_window_id"):
+        forensic[field] = _string(forensic[field], f"transport forensic backup {field}")
+    for field in ("repository", "action", "actor", "issued_at", "expires_at"):
+        if forensic[field] is not None:
+            forensic[field] = _string(forensic[field], f"transport forensic backup {field}")
+    if forensic["targets"] is not None:
+        forensic["targets"] = _project_transport_string_list(
+            forensic["targets"], "transport forensic backup targets"
+        )
+    if forensic["authority"] is not None:
+        forensic["authority"] = _project_transport_no_backup_authority(
+            forensic["authority"], "transport forensic backup authority"
+        )
+    return forensic
+
+
+def _project_transport_rollback(value: Any) -> dict[str, Any]:
+    rollback = _project_exact_object(
+        value, set(ROLLBACK_FIELDS), "transport rollback"
+    )
+    rollback["steps"] = _project_transport_string_list(
+        rollback["steps"], "transport rollback steps"
+    )
+    for field in (
+        "stop_started_nodes",
+        "preserve_failed_state_for_forensics",
+        "restore_old_state",
+        "cross_node_state_copy",
+        "reinstall_exact_package_and_truth",
+        "rerun_fresh_root_probe",
+        "provider_mutation_requires_external_authority",
+    ):
+        rollback[field] = _bool(rollback[field], f"transport rollback {field}")
+    if rollback != _canonical_rollback_policy():
+        _fail("transport rollback is not the exact code-owned clean-redeploy policy")
+    return rollback
+
+
 def _project_transport_list(value: Any, label: str) -> list[Any]:
     if not isinstance(value, list):
         _fail(f"{label} must be a list")
@@ -3209,6 +3414,12 @@ def _transport_plan(plan: dict[str, Any]) -> dict[str, Any]:
     plan = _object(plan, "transport plan")
     if set(plan) - TRANSPORT_PLAN_FIELDS - {"authority", "credential_nonce_ledger"}:
         _fail("transport plan contains a field outside the allowlist")
+    # Recheck policy immediately at the provider boundary.  This protects
+    # callers that hand the adapter a redigested plan without first invoking
+    # validate_plan, and makes the projected DTO the only policy source for
+    # callback implementations.
+    _validate_forensic_backup_policy(plan)
+    _validate_rollback_policy(plan)
     result = {
         "schema_version": _string(plan.get("schema_version"), "transport plan schema version"),
         "task_uid": _string(plan.get("task_uid"), "transport plan task uid"),
@@ -3239,6 +3450,12 @@ def _transport_plan(plan: dict[str, Any]) -> dict[str, Any]:
         "deployment_inventory": _project_transport_inventory(plan.get("deployment_inventory")),
         "truth": _project_transport_truth(plan.get("truth")),
         "execution": _project_transport_execution(plan.get("execution")),
+        # Rollback/re-observation callbacks receive only these exact policy
+        # projections; they never need to close over the planner's full plan.
+        "forensic_backup": _project_transport_forensic_backup(
+            plan.get("forensic_backup")
+        ),
+        "rollback": _project_transport_rollback(plan.get("rollback")),
         "fresh_root_probe": _project_transport_fresh_root_probe(plan.get("fresh_root_probe")),
         "observer_gate": _project_transport_observer_gate(plan.get("observer_gate")),
         "operation_journal_contract": _project_transport_journal_contract(
