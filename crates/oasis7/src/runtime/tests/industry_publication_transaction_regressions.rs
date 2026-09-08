@@ -146,6 +146,10 @@ fn fixtures() -> Vec<(&'static str, World, DomainEvent)> {
     };
     let mut transit_base = base.clone();
     append(&mut transit_base, transit.clone());
+    transit_base = with_time(
+        &transit_base,
+        transit_base.state().pending_material_transits[&14].ready_at,
+    );
     let transit_done = DomainEvent::MaterialTransitCompleted {
         job_id: 14,
         requester_agent_id: "actor".into(),
@@ -596,6 +600,10 @@ fn transit_completion_late_failures_preserve_pending_routes_ledgers_receipts_and
     routed
         .append_event_for_test(WorldEventBody::Domain(started.clone()), None)
         .unwrap();
+    routed = with_time(
+        &routed,
+        routed.state().pending_material_transits[&404].ready_at,
+    );
     let mut completion = DomainEvent::MaterialTransitCompleted {
         job_id: 404,
         requester_agent_id: "actor".into(),
@@ -684,6 +692,10 @@ fn transit_world_ledger_keeps_compat_material_cache_in_sync_on_debit_and_credit(
     credit
         .append_event_for_test(WorldEventBody::Domain(started), None)
         .unwrap();
+    credit = with_time(
+        &credit,
+        credit.state().pending_material_transits[&14].ready_at,
+    );
     let mut completed = fixtures()[5].2.clone();
     if let DomainEvent::MaterialTransitCompleted { to_ledger, .. } = &mut completed {
         *to_ledger = MaterialLedgerId::world();
@@ -722,6 +734,10 @@ fn duplicate_route_ids_accumulate_and_release_every_reservation() {
     world
         .append_event_for_test(WorldEventBody::Domain(started), None)
         .unwrap();
+    world = with_time(
+        &world,
+        world.state().pending_material_transits[&14].ready_at,
+    );
     assert_eq!(
         world.state().logistics_routes["route"].reserved_capacity_units,
         4
