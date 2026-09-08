@@ -7,6 +7,18 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
+write_forwarding_wrapper() {
+  local wrapper="$1"
+  local target="$2"
+  local quoted_target
+  printf -v quoted_target '%q' "$target"
+  {
+    printf '%s\n' '#!/usr/bin/env bash'
+    printf 'exec %s "$@"\n' "$quoted_target"
+  } >"$wrapper"
+  chmod +x "$wrapper"
+}
+
 if [[ -n "${OASIS7_TEST_PYTHON:-}" ]]; then
   REAL_PYTHON="$OASIS7_TEST_PYTHON"
 else
@@ -30,7 +42,7 @@ done
 for utility in bash tr dirname basename; do
   ln -s "$(command -v "$utility")" "$TMPDIR/broken-bin/$utility"
 done
-ln -s "$REAL_PYTHON" "$TMPDIR/working-bin/python42"
+write_forwarding_wrapper "$TMPDIR/working-bin/python42" "$REAL_PYTHON"
 generic_home="$TMPDIR/no-bundled-home"
 mkdir -p "$generic_home"
 
@@ -51,7 +63,7 @@ fi
 bundled_home="$TMPDIR/bundled-home"
 bundled_python_dir="$bundled_home/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin"
 mkdir -p "$bundled_python_dir"
-ln -s "$REAL_PYTHON" "$bundled_python_dir/python3"
+write_forwarding_wrapper "$bundled_python_dir/python3" "$REAL_PYTHON"
 bundled_selected="$(HOME="$bundled_home" PATH="$TMPDIR/broken-bin" \
   "$ROOT_DIR/scripts/pm/find-python-with-module.sh" ast)"
 if [[ "$bundled_selected" != "$bundled_python_dir/python3" ]]; then
