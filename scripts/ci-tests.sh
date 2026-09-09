@@ -189,6 +189,8 @@ run_operational_contract_tests() {
   run_packaging_contract_tests
   run python3 ./scripts/pm/ci-ready-receipt.test.py
   run python3 ./scripts/pm/review-plan.test.py
+  run python3 ./scripts/pm/subagent-task-packet.test.py
+  run python3 ./scripts/pm/bootstrap-task-snapshot.test.py
   run python3 ./scripts/pm/integration-ci.test.py
   run python3 ./scripts/pm/integration-selection-regression.test.py
   run python3 ./scripts/pm/workflow-bootstrap-fallback.test.py

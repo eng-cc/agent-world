@@ -607,6 +607,11 @@ if [[ "$PM_BOOTSTRAP" == "1" ]]; then
 
   set +e
   (
+    if [[ -n "$PM_LOOP" ]]; then
+      "$PYTHON_BIN" "$ROOT_DIR/scripts/pm/loop-bootstrap.py" resume --root "$ROOT_DIR" \
+        --task-uid "$PM_TASK_UID" --manual-request-ref "$PM_MANUAL_REQUEST_REF" \
+        --loop "$PM_LOOP" --binding "$PM_LOOP_BINDING" >/dev/null
+    else
     cd "$TARGET_PATH" &&
     PM_ROOT_DIR="$TARGET_PATH" "$ROOT_DIR/scripts/pm/move-task.sh" --task-uid "$PM_TASK_UID" --to-status committed >/dev/null &&
     PM_ROOT_DIR="$TARGET_PATH" "$ROOT_DIR/scripts/pm/workflow-report.sh" --phase start --role "$PM_OWNER_ROLE" --task-uid "$PM_TASK_UID" >/dev/null &&
@@ -614,6 +619,7 @@ if [[ "$PM_BOOTSTRAP" == "1" ]]; then
       --repo-root "$TARGET_PATH" \
       --task-uid "$PM_TASK_UID" \
       --producer scripts/new-task-worktree.sh >/dev/null
+    fi
   )
   BOOTSTRAP_STATUS=$?
   set -e

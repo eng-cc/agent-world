@@ -7,6 +7,8 @@ import hashlib
 import shutil
 import subprocess
 import json
+import io
+from contextlib import redirect_stdout
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -14,8 +16,65 @@ sys.path.insert(0, str(Path(__file__).parent))
 spec = importlib.util.spec_from_file_location('loop_facade', Path(__file__).with_name('loop.py'))
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
+import loop_terminal
 
 class LoopTests(unittest.TestCase):
+    def dependency_command(self, command, bodies, *, search=None, terminal_pass=True):
+        uid, dependency_uid = 'task_' + 'a' * 32, 'task_' + 'b' * 32
+        task = {'task_uid': uid, 'repository': 'fixture/repo', 'loop_binding': {'task_uid': uid, 'dependencies': [dependency_uid]}}
+        policy = SimpleNamespace(validate_binding=lambda _: {'blockers': []}, validate_tool_root=lambda *a: {'blockers': []}, validate_dependencies=lambda *a: {'blockers': []})
+        def terminal_delivery(repository, selected_uid, number):
+            url = f'https://github.com/{repository}/issues/{number}'
+            body = 'task_uid: ' + selected_uid + '\n- workflow_phase: `task_done`'
+            issue = {'number': number, 'html_url': url, 'body': body, 'state': 'closed', 'state_reason': 'completed'}
+            item = {'id': 'I', 'project': {'id': 'P', 'number': 1, 'owner': {'login': 'fixture'}}, 'content': {'number': number, 'url': url, 'body': body}, 'fieldValues': {'pageInfo': {'hasNextPage': False}, 'nodes': [{'name': v, 'field': {'name': k}} for k, v in [('Status', 'Done' if terminal_pass else 'In Progress'), ('PM Status', 'done'), ('Workflow Phase', 'done')]]}}
+            project = {'id': 'P', 'owner': 'fixture', 'number': 1, 'page_complete': True, 'items': [item]}
+            operation = hashlib.sha256(f'{selected_uid}:post_merge_done:evidence_comment'.encode()).hexdigest()
+            comment = {'html_url': url + '#issuecomment-7', 'body': f'<!-- oasis7-pm-evidence -->\nOperation-ID: {operation}\nTask UID: {selected_uid}\nEvidence Phase: post_merge_done'}
+            return loop_terminal.validate_terminal_delivery(repository, selected_uid, number, issue_reader=lambda *a: issue, project_reader=lambda *a: project, comments_reader=lambda *a: [comment])
+        terminal = SimpleNamespace(validate_terminal_delivery=terminal_delivery)
+        contracts = SimpleNamespace(validate_contracts=lambda *a, **kw: {'blockers': []})
+        def gh(args, **kwargs):
+            if args[:3] == ['gh', 'issue', 'list']:
+                return json.dumps(search if search is not None else [{'number': n} for n in bodies])
+            number = int(args[-1].rsplit('/', 1)[-1])
+            body = bodies[number]
+            if isinstance(body, Exception): raise body
+            return json.dumps({'number': number, 'html_url': f'https://github.com/fixture/repo/issues/{number}', 'body': body})
+        modules = {'loop_policy': policy, 'loop_terminal': terminal, 'loop_contracts': contracts}
+        output = io.StringIO()
+        with patch.object(sys, 'argv', ['loop.py', command, '--task-uid', uid, '--tool-root', '.', '--manual-request-ref', 'current']), patch.object(module, 'load_task', return_value=task), patch.object(module, '_trusted_module', side_effect=lambda *a: modules[a[-1]]), patch.object(module.subprocess, 'check_output', side_effect=gh), patch.object(module.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='{"status":"can_continue"}')), patch.object(module, 'live_binding', return_value={'task_uid': dependency_uid, 'dependencies': []}), patch.object(module, 'common_dir', return_value=Path('/unused')), patch.object(module, 'Reservation'), patch.object(module, 'recovery_status', return_value={'pending_actions': []}), redirect_stdout(output):
+            code = module.main()
+        return code, json.loads(output.getvalue())
+
+    def test_dependency_main_filters_incidental_mentions_before_uniqueness(self):
+        uid = 'task_' + 'b' * 32
+        for command in ('status', 'resume-check'):
+            with self.subTest(command=command):
+                code, result = self.dependency_command(command, {1: 'task_uid: ' + uid + '\r\n', 2: 'Depends on ' + uid, 3: 'task_uid: task_' + 'c' * 32 + '\nDepends on ' + uid})
+                self.assertEqual(code, 0, result)
+                self.assertEqual(result['status'], 'passed')
+
+    def test_dependency_main_blocks_uncertain_ambiguous_or_unfinished(self):
+        uid = 'task_' + 'b' * 32
+        cases = [
+            ({1: 'task_uid: ' + uid, 2: 'task_uid: ' + uid}, {}, 'ambiguous'),
+            ({1: 'task_uid: ' + uid + '\ntask_uid: malformed'}, {}, 'canonical'),
+            ({1: 'task_uid: ' + uid + '\ntask_uid: ' + uid}, {}, 'canonical'),
+            ({1: 'task_uid: ' + uid + '\ntask_uid: task_' + 'c' * 32}, {}, 'canonical'),
+            ({1: 'task_uid:  ' + uid}, {}, 'canonical'),
+            ({1: 'task_uid: ' + uid, 2: OSError('read unavailable')}, {}, 'read unavailable'),
+            ({1: 'task_uid: ' + uid}, {'search': [{'number': n} for n in range(1, 101)]}, 'bounded'),
+            ({1: 'task_uid: ' + uid}, {'terminal_pass': False}, 'not successfully completed'),
+            ({1: 'ordinary mention ' + uid}, {}, 'missing'),
+        ]
+        for command in ('status', 'resume-check'):
+            for bodies, options, expected in cases:
+                with self.subTest(command=command, expected=expected):
+                    code, result = self.dependency_command(command, bodies, **options)
+                    self.assertEqual(code, 2, result)
+                    self.assertIn(expected, '; '.join(result['blockers']))
+
     def test_recovery_rejects_tampered_transition_identity(self):
         uid = 'task_' + 'a' * 32
         old = {'task_uid':uid,'owner_role':'repository_health_engineer','bootstrap_epoch':1}
@@ -70,7 +129,7 @@ class LoopTests(unittest.TestCase):
         policy = SimpleNamespace(validate_binding=lambda _: {'blockers': []}, validate_tool_root=lambda *args: {'blockers': []})
         terminal = SimpleNamespace(validate_terminal_delivery=lambda *args: {'status': 'blocked', 'blockers': ['Project has not finalized dependency']})
         binding = {'task_uid': 'task_' + 'a' * 32, 'dependencies': ['task_' + 'b' * 32]}
-        with patch.object(module, '_trusted_module', side_effect=lambda *args: terminal if args[-1] == 'loop_terminal' else policy), patch.object(module.subprocess, 'check_output', return_value='[{"number":1}]'):
+        with patch.object(module, '_trusted_module', side_effect=lambda *args: terminal if args[-1] == 'loop_terminal' else policy), patch.object(module.subprocess, 'check_output', side_effect=['[{"number":1}]', json.dumps({'number': 1, 'html_url': 'https://github.com/fixture/repo/issues/1', 'body': 'task_uid: ' + binding['dependencies'][0]})]):
             result = module.validate_task(Path('.'), {'loop_binding': binding, 'repository': 'fixture/repo'}, Path('.'))
         self.assertEqual(result['status'], 'blocked')
         self.assertIn('not successfully completed', result['blockers'][0])
@@ -82,7 +141,7 @@ class LoopTests(unittest.TestCase):
         uid, dependency_uid = 'task_' + 'a' * 32, 'task_' + 'b' * 32
         binding = {'task_uid': uid, 'dependencies': [dependency_uid]}
         modules = {'loop_policy': policy, 'loop_terminal': terminal, 'loop_contracts': contracts}
-        with patch.object(module, '_trusted_module', side_effect=lambda *args: modules[args[-1]]), patch.object(module.subprocess, 'check_output', return_value='[{"number":1}]'), patch.object(module, 'live_binding', return_value={'task_uid': dependency_uid, 'dependencies': []}):
+        with patch.object(module, '_trusted_module', side_effect=lambda *args: modules[args[-1]]), patch.object(module.subprocess, 'check_output', side_effect=['[{"number":1}]', json.dumps({'number': 1, 'html_url': 'https://github.com/fixture/repo/issues/1', 'body': 'task_uid: ' + dependency_uid})]), patch.object(module, 'live_binding', return_value={'task_uid': dependency_uid, 'dependencies': []}):
             result = module.validate_task(Path('.'), {'task_uid': uid, 'loop_binding': binding, 'repository': 'fixture/repo'}, Path('.'))
         self.assertEqual(result['status'], 'passed', result)
 

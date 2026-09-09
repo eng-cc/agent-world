@@ -30,10 +30,17 @@ elif a[:2] in (['issue','create'],['issue','edit']):
  if a[1]=='create': s['creates']+=1
  if a[1]=='create' and os.environ.get('FAKE_LOSS') and not s.get('lost'):
   s['lost']=True; p.write_text(json.dumps(s)); raise SystemExit('created but response lost')
+ if a[1]=='edit' and '- status: `committed`' in s['body'] and os.environ.get('FAKE_LIFECYCLE')=='move-task':
+  p.write_text(json.dumps(s)); raise SystemExit('move succeeded but response lost')
  emit(url)
 elif a[:2]==['issue','view']: emit({'number':1,'url':url,'title':'[PM] fixture','state':'OPEN','stateReason':None,'body':s['body']})
 elif a[:2]==['issue','comment']:
- comments=s.setdefault('comments',[]); comments.append({'id':len(comments)+1,'body':pathlib.Path(val('--body-file')).read_text()}); emit(url+'#issuecomment-'+str(len(comments)))
+ if 'Evidence Phase: start\n' in pathlib.Path(val('--body-file')).read_text() and os.environ.get('FAKE_LIFECYCLE')=='workflow-report-uncertain':
+  raise SystemExit('start outcome unavailable')
+ comments=s.setdefault('comments',[]); comments.append({'id':len(comments)+1,'body':pathlib.Path(val('--body-file')).read_text()})
+ if 'Evidence Phase: start\n' in comments[-1]['body'] and os.environ.get('FAKE_LIFECYCLE')=='workflow-report':
+  p.write_text(json.dumps(s)); raise SystemExit('start succeeded but response lost')
+ emit(url+'#issuecomment-'+str(len(comments)))
 elif a[:1]==['api'] and a[1].startswith('repos/eng-cc/oasis7/issues?'):
  emit([{'id':1,'number':1,'body':s['body']}] if s.get('body') else [])
 elif a[:2]==['api','repos/eng-cc/oasis7/issues/1/comments']: emit([s.get('comments',[])])
@@ -55,6 +62,17 @@ else: raise SystemExit('unsupported fake gh '+repr(a))
 '''
 
 class BootstrapEndToEnd(unittest.TestCase):
+    def test_uncertain_start_never_reposts(self):
+        self.test_full_flags_and_explicit_resume_reuse_task(lifecycle='workflow-report-uncertain')
+
+    def test_created_task_wrong_identity_does_not_resume(self):
+        self.test_full_flags_and_explicit_resume_reuse_task(lifecycle='new-task', identity_drift=True)
+
+    def test_created_task_retry_completes_missing_bootstrap_stages(self):
+        for point in ('new-task', 'move-task', 'workflow-report'):
+            with self.subTest(point=point):
+                self.test_full_flags_and_explicit_resume_reuse_task(lifecycle=point)
+
     def test_interrupted_setup_reconciles_missing_artifacts(self):
         self.test_full_flags_and_explicit_resume_reuse_task(setup='missing')
 
@@ -76,7 +94,7 @@ class BootstrapEndToEnd(unittest.TestCase):
     def test_uncertain_create_never_reposts(self):
         self.test_full_flags_and_explicit_resume_reuse_task(loss=True)
 
-    def test_full_flags_and_explicit_resume_reuse_task(self, advanced=False, loss=False, setup=None):
+    def test_full_flags_and_explicit_resume_reuse_task(self, advanced=False, loss=False, setup=None, lifecycle=None, identity_drift=False):
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
             root = temp / 'repo'
@@ -124,6 +142,23 @@ class BootstrapEndToEnd(unittest.TestCase):
                 '--pm-loop','code','--pm-loop-binding',str(source),'--pm-request-key','request:1','--pm-manual-request-ref','message:1','--json']
             if loss:
                 env['FAKE_LOSS']='1'
+            if lifecycle:
+                env['FAKE_LIFECYCLE']=lifecycle
+                real_python = shutil.which('python3')
+                wrapper = binary/'python3'
+                wrapper.write_text('#!/bin/sh\n"'+real_python+'" "$@"\nstatus=$?\nif [ "$status" = 0 ] && [ "$2" = "'+lifecycle+'" ]; then exit 97; fi\nexit "$status"\n')
+                wrapper.chmod(0o755)
+                failed = subprocess.run(command,cwd=start,env=env,text=True,capture_output=True)
+                self.assertNotEqual(failed.returncode,0,failed.stdout)
+                self.assertEqual(json.loads(state.read_text())['creates'],1)
+                self.assertFalse((target/'.pm/scratch'/UID/'bootstrap-task-snapshot.json').exists())
+                wrapper.unlink()
+                env.pop('FAKE_LIFECYCLE')
+                if identity_drift:
+                    value=json.loads(state.read_text())
+                    value['body']=value['body'].replace('task_uid: '+UID,'task_uid: task_'+'2'*32)
+                    state.write_text(json.dumps(value))
+                before_retry=json.loads(state.read_text())
             if setup:
                 # Fail after the actual worktree add side effect, before setup.
                 real_git = shutil.which('git')
@@ -142,6 +177,12 @@ class BootstrapEndToEnd(unittest.TestCase):
                 if setup == 'invalid_target': (target/'target').mkdir()
                 if setup == 'invalid_config': (target/'config.toml').mkdir()
             result = subprocess.run(command,cwd=start,env=env,text=True,capture_output=True)
+            if lifecycle == 'workflow-report-uncertain' or identity_drift:
+                self.assertNotEqual(result.returncode,0,result.stdout)
+                if not identity_drift: self.assertIn('start outcome uncertain',result.stderr)
+                self.assertEqual(json.loads(state.read_text()),before_retry)
+                self.assertFalse((target/'.pm/scratch'/UID/'bootstrap-task-snapshot.json').exists())
+                return
             if setup:
                 if setup.startswith('invalid_'):
                     self.assertNotEqual(result.returncode,0,result.stdout)
@@ -171,6 +212,18 @@ class BootstrapEndToEnd(unittest.TestCase):
             snapshot = json.loads((target/'.pm/scratch'/UID/'bootstrap-task-snapshot.json').read_text())
             self.assertEqual(snapshot['git']['base']['oid'],expected_base)
             self.assertEqual(snapshot['task']['loop_binding'],binding)
+            if lifecycle:
+                before=json.loads(state.read_text())
+                starts=[c for c in before.get('comments',[]) if 'Evidence Phase: start\n' in c['body']]
+                self.assertEqual(len(starts),1)
+                repeated=subprocess.run(command,cwd=start,env=env,text=True,capture_output=True)
+                self.assertEqual(repeated.returncode,0,repeated.stderr)
+                after=json.loads(state.read_text())
+                self.assertEqual(after['creates'],1)
+                self.assertEqual(after['comments'],before['comments'])
+                self.assertEqual(after['fields']['PM Status'],'committed')
+                self.assertEqual(after['fields']['Workflow Phase'],'execution')
+                return
             if advanced:
                 return
             # A later remote default head must not silently rebase the same request.

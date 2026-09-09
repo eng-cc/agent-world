@@ -119,6 +119,32 @@ def _trusted_module(root, target, binding, name):
     return module
 
 
+def dependency_issue(repository, uid):
+    # Search results are locators, not identity; a full window is not complete.
+    hits = json.loads(subprocess.check_output(['gh', 'issue', 'list', '-R', repository, '--state', 'all', '--search', uid + ' in:body', '--json', 'number', '--limit', '100'], text=True))
+    if not isinstance(hits, list) or len(hits) >= 100:
+        raise ValueError('dependency discovery exceeds bounded admission limit')
+    matches, seen = [], set()
+    for hit in hits:
+        number = hit.get('number') if isinstance(hit, dict) else None
+        if type(number) is not int or number < 1 or number in seen:
+            raise ValueError('dependency discovery identity unavailable or duplicated')
+        seen.add(number)
+        issue = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repository}/issues/{number}'], text=True))
+        if (not isinstance(issue, dict) or issue.get('number') != number
+                or issue.get('html_url') != f'https://github.com/{repository}/issues/{number}'
+                or not isinstance(issue.get('body'), str) or 'pull_request' in issue):
+            raise ValueError('dependency Issue readback identity unavailable')
+        fields = re.findall(r'^task_uid:[^\n]*$', issue['body'].replace('\r\n', '\n'), re.MULTILINE)
+        if not fields: continue  # Ordinary mentions do not establish task identity.
+        if len(fields) != 1 or not re.fullmatch(r'task_uid: task_[0-9a-f]{32}', fields[0]):
+            raise ValueError('dependency Issue canonical UID missing or ambiguous')
+        if fields == ['task_uid: ' + uid]: matches.append(number)
+    if len(matches) != 1:
+        raise ValueError('dependency task missing or ambiguous: ' + uid)
+    return matches[0]
+
+
 def validate_task(root, task, tool_root, base=None, head=None, contracts=True, purpose='in_flight'):
     if 'loop_binding' not in task or task['loop_binding'] is None:
         return {'status': 'legacy', 'blockers': []}
@@ -137,13 +163,12 @@ def validate_task(root, task, tool_root, base=None, head=None, contracts=True, p
             if len(closure) > 100: raise ValueError('dependency closure exceeds bounded admission limit')
             repository = task.get('repository')
             if not repository: raise ValueError('dependency validation requires live repository identity')
-            hits = json.loads(subprocess.check_output(['gh', 'issue', 'list', '-R', repository, '--state', 'all', '--search', uid + ' in:body', '--json', 'number', '--limit', '5'], text=True))
-            if len(hits) != 1: raise ValueError('dependency task missing or ambiguous: ' + uid)
+            number = dependency_issue(repository, uid)
             terminal = _trusted_module(tool_root, root, binding, 'loop_terminal')
-            completed = terminal.validate_terminal_delivery(repository, uid, hits[0]['number'])
+            completed = terminal.validate_terminal_delivery(repository, uid, number)
             if completed['status'] != 'passed':
                 raise ValueError('dependency is not successfully completed: ' + uid + ': ' + '; '.join(completed['blockers']))
-            dependency = live_binding({'repository': repository, 'issue_number': hits[0]['number'], 'task_uid': uid})
+            dependency = live_binding({'repository': repository, 'issue_number': number, 'task_uid': uid})
             if dependency is None: raise ValueError('dependency lacks immutable loop binding: ' + uid)
             closure[uid] = dependency
             pending.extend(dependency.get('dependencies', []))
