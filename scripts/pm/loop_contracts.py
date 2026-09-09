@@ -143,13 +143,14 @@ class GitHubAuthority:
         if type(number) is not int or number<1:
             raise ValueError("invalid publication issue")
         issue=self.api(f"repos/{REPOSITORY}/issues/{number}")
-        body=issue.get("body") or ""
-        match=re.search(r"(?m)^task_uid: (task_[0-9a-f]{32})$",body)
-        if issue.get("number")!=number or "<!-- oasis7-pm-task -->" not in body or not match or "pull_request" in issue:
+        body=(issue.get("body") or "").replace("\r\n","\n")
+        fields=re.findall(r"(?m)^task_uid:[^\n]*$",body)
+        matches=re.findall(r"(?m)^task_uid: (task_[0-9a-f]{32})$",body)
+        if issue.get("number")!=number or "<!-- oasis7-pm-task -->" not in body or len(fields)!=1 or len(matches)!=1 or "pull_request" in issue:
             raise ValueError("publication issue task identity mismatch")
-        if task_uid is not None and match.group(1)!=task_uid:
+        if task_uid is not None and matches[0]!=task_uid:
             raise ValueError("publication task UID mismatch")
-        return issue,match.group(1)
+        return issue,matches[0]
 
     def permission(self,login):
         if not isinstance(login,str) or not re.fullmatch(r"[A-Za-z0-9-]+",login):

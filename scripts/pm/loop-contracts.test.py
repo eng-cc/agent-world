@@ -164,6 +164,44 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             reader(self.ref)
 
+    def check_production_reader_issue(self, body):
+        import json
+        payload = {"marker":self.api.MARKER,"task_uid":self.record["task_uid"],
+                   "contract_digest":self.api.contract_digest(self.contract),"contract":self.contract}
+        def transport(path, body=None, paginate=False):
+            if path.endswith('/issues/11'): return issue
+            if path.endswith('/issues/comments/123'):
+                return {"id":123,"issue_url":"https://api.github.com/repos/eng-cc/oasis7/issues/11",
+                        "body":json.dumps(payload),"user":{"login":"owner"}}
+            if path.endswith('/collaborators/owner/permission'): return {"permission":"admin"}
+            if path.endswith('/pulls/12'):
+                return {"number":12,"merged":True,"head":{"sha":self.source},"merge_commit_sha":self.merged,
+                        "base":{"repo":{"full_name":"eng-cc/oasis7"}}}
+            self.fail('unexpected authority request: ' + path)
+        issue = {'number':11,'body':'<!-- oasis7-pm-task -->\n'+body}
+        with patch.object(self.api.GitHubAuthority, 'api', side_effect=transport):
+            return self.api.validate_contracts(self.root,self.root,{'input_contracts':[self.ref],'target_delivery':'pilot'})
+
+    def test_production_contract_reader_accepts_single_canonical_uid(self):
+        result = self.check_production_reader_issue('task_uid: '+self.record['task_uid'])
+        self.assertEqual(result['status'],'passed',result)
+        self.assertEqual(result['authority'],'live_github')
+        self.assertEqual(result['contracts_checked'],1)
+
+    def test_production_contract_reader_blocks_ambiguous_canonical_uid(self):
+        canonical = 'task_uid: '+self.record['task_uid']
+        for competing in (canonical, 'task_uid: task_'+'a'*32, 'task_uid: malformed'):
+            with self.subTest(competing=competing):
+                result = self.check_production_reader_issue(canonical+'\n'+competing)
+                self.assertEqual(result['status'],'blocked',result)
+                self.assertTrue(any('identity mismatch' in error for error in result['blockers']),result)
+
+    def test_production_contract_reader_blocks_missing_and_mention_only_uid(self):
+        for body in ('', 'mentions '+self.record['task_uid'], 'task_uid: malformed'):
+            with self.subTest(body=body):
+                result = self.check_production_reader_issue(body)
+                self.assertEqual(result['status'],'blocked',result)
+
     def test_publish_retry_reuses_exact_server_comment(self):
         reader=self.api.GitHubAuthority(self.root)
         import json
