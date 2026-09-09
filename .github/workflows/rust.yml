@@ -1,4 +1,5 @@
 name: Rust
+run-name: oasis7-ci|${{ github.event_name }}|${{ inputs.run_mode }}|${{ inputs.task_uid }}|${{ inputs.pr_number }}|${{ inputs.integration_base }}|${{ inputs.expected_head }}
 
 on:
   push:
@@ -115,18 +116,27 @@ jobs:
               else
                 # Bootstrap compatibility: old base has no loop admission. Only
                 # a reciprocal live legacy task may pass; never run candidate helpers.
-                python3 - "${{ github.repository }}" "${{ github.event.pull_request.number || inputs.pr_number }}" <<'PY'
+                python3 -I - "${{ github.repository }}" "${{ github.event.pull_request.number || inputs.pr_number }}" <<'PY'
           import json,re,subprocess,sys
           repo,number=sys.argv[1:]
           pr=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/pulls/{number}'],text=True))
-          refs=re.findall(r'(?:Refs|Fixes|Closes)\s+#(\d+)',pr.get('body') or '',re.I)
-          if len(set(refs))!=1: raise SystemExit('missing unique live task Issue reference')
-          issue=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/issues/{refs[0]}'],text=True))
+          uids=set(re.findall(r'task_[0-9a-f]{32}',pr.get('body') or ''))
+          if len(uids)==1:
+              uid=next(iter(uids))
+              hits=json.loads(subprocess.check_output(['gh','issue','list','-R',repo,'--state','all','--search',uid+' in:body','--json','number','--limit','5'],text=True))
+              if not isinstance(hits,list) or len(hits)!=1: raise SystemExit('live task Issue is ambiguous or missing')
+              issue_number=hits[0]['number']
+          else:
+              refs=set(re.findall(r'(?:Refs|Fixes|Closes)\s+#(\d+)',pr.get('body') or '',re.I))
+              if uids or len(refs)!=1: raise SystemExit('missing unique live task Issue identity')
+              issue_number,uid=next(iter(refs)),None
+          issue=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/issues/{issue_number}'],text=True))
           body=issue.get('body','')
-          if not re.search(r'^task_uid: task_[0-9a-f]{32}$',body,re.M): raise SystemExit('missing task identity')
-          if f'- pr_number: `{number}`' not in body: raise SystemExit('task PR identity mismatch')
+          issue_uids=re.findall(r'^task_uid: (task_[0-9a-f]{32})$',body,re.M)
+          if len(issue_uids)!=1 or (uid is not None and issue_uids!=[uid]): raise SystemExit('task UID identity mismatch')
+          if re.findall(r'^- pr_number: `([0-9]+)`$',body,re.M)!=[number]: raise SystemExit('task PR identity mismatch')
           if 'loop_binding_b64:' in body: raise SystemExit('effective base lacks loop admission; activation blocked')
-          pages=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/issues/{refs[0]}/comments','--paginate','--slurp'],text=True))
+          pages=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/issues/{issue_number}/comments','--paginate','--slurp'],text=True))
           if not isinstance(pages,list): raise SystemExit('lineage readback unavailable')
           comments=[item for page in pages for item in (page if isinstance(page,list) else [page])]
           if any('oasis7-loop-binding-history' in str(item.get('body','')) for item in comments if isinstance(item,dict)): raise SystemExit('loop binding deleted after history')

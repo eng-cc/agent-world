@@ -2,6 +2,7 @@
 """Explicit manual revalidation on the default-branch GitHub Actions workflow."""
 import argparse
 import base64
+import datetime
 import io
 import json
 import os
@@ -13,6 +14,8 @@ import zipfile
 WORKFLOW='.github/workflows/rust.yml'
 ARTIFACT='oasis7-required-plan-v1'
 OID=re.compile(r'[0-9a-f]{40}')
+DISCOVERY_PAGE_SIZE=100
+DISCOVERY_MAX_PAGES=10
 
 def gh(*args):
     return json.loads(subprocess.check_output(['gh',*args],text=True))
@@ -28,6 +31,54 @@ def pages(repository,path,key):
         result.extend(batch)
         if len(batch)<100: return result
     raise ValueError('integration API pagination limit exceeded')
+
+def current_request(repository,uid,number,base,head,branch):
+    """Select request identity before outcome; absence requires complete coverage."""
+    matches=[]
+    seen=set()
+    legacy_cannot_integrate=None
+    for page in range(1,DISCOVERY_MAX_PAGES+1):
+        response=gh('api',f'repos/{repository}/actions/workflows/rust.yml/runs?event=workflow_dispatch&per_page={DISCOVERY_PAGE_SIZE}&page={page}')
+        batch=response.get('workflow_runs')
+        if not isinstance(batch,list): raise ValueError('integration discovery readback malformed')
+        for run in batch:
+            run_id=run.get('id')
+            if type(run_id) is not int or run_id in seen: raise ValueError('integration discovery overlapping or invalid run identity')
+            seen.add(run_id)
+            if run.get('event')!='workflow_dispatch' or run.get('path')!=WORKFLOW or run.get('repository',{}).get('full_name')!=repository:
+                raise ValueError('integration discovery workflow provenance uncertain')
+            if not OID.fullmatch(str(run.get('head_sha',''))) or not isinstance(run.get('head_branch'),str):
+                raise ValueError('integration discovery ref identity uncertain')
+            if run['head_branch']!=branch or run['head_sha']!=base:
+                continue
+            parts=str(run.get('display_title','')).split('|')
+            if len(parts)!=7 or parts[:2]!=['oasis7-ci','workflow_dispatch']:
+                if legacy_cannot_integrate is None:
+                    source=gh('api',f'repos/{repository}/contents/{WORKFLOW}?ref={base}')
+                    if source.get('type')!='file' or source.get('path')!=WORKFLOW or source.get('encoding')!='base64':
+                        raise ValueError('integration effective workflow readback unavailable')
+                    legacy_cannot_integrate='integration_revalidation' not in base64.b64decode(source['content'],validate=False).decode()
+                if legacy_cannot_integrate: continue
+                raise ValueError('integration current request identity unavailable before outcome')
+            _,_,mode,request_uid,request_pr,request_base,request_head=parts
+            if mode in ('full_escalation','newapi_bridge_package'): continue
+            if mode!='integration_revalidation' or not re.fullmatch(r'task_[0-9a-f]{32}',request_uid) or not request_pr.isdigit() or not OID.fullmatch(request_base) or not OID.fullmatch(request_head):
+                raise ValueError('integration current request identity malformed')
+            if request_base!=run['head_sha']:
+                raise ValueError('integration request base differs from trusted workflow ref')
+            if request_base!=base or request_head!=head: continue
+            if (request_uid==uid)!=(int(request_pr)==int(number)):
+                raise ValueError('integration request task/PR identity conflicts')
+            if request_uid==uid and int(request_pr)==int(number):
+                attempt=run.get('run_attempt')
+                when=run.get('updated_at') if run.get('status') in ('queued','requested','waiting','pending') and attempt and attempt>1 else run.get('run_started_at') or run.get('created_at')
+                if type(attempt) is not int or attempt<1 or not isinstance(when,str): raise ValueError('integration attempt identity unavailable')
+                try: timestamp=datetime.datetime.fromisoformat(when.replace('Z','+00:00')).timestamp()
+                except ValueError as exc: raise ValueError('integration request time malformed') from exc
+                matches.append({'id':run_id,'run_attempt':attempt,'requested_at':timestamp})
+        if len(batch)<DISCOVERY_PAGE_SIZE:
+            return max(matches,key=lambda item:(item['requested_at'],item['id'],item['run_attempt'])) if matches else None
+    raise ValueError('integration discovery range exhausted; current request coverage incomplete')
 
 def identity(repository,uid,number,base,head):
     if not OID.fullmatch(base) or not OID.fullmatch(head): raise ValueError('exact base/source OIDs required')

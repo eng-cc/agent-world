@@ -1,0 +1,79 @@
+"""Current manual request selection cannot fall back to historical green."""
+import importlib.util
+import base64
+from pathlib import Path
+import unittest
+from unittest.mock import patch
+import integration_ci as integration
+P=Path(__file__).with_name('ci-ready-receipt.py')
+spec=importlib.util.spec_from_file_location('receipt_selection',P);receipt=importlib.util.module_from_spec(spec);spec.loader.exec_module(receipt)
+UID='task_'+'a'*32;BASE='b'*40;HEAD='c'*40
+
+def run(n,uid=UID,status='completed',conclusion='success'):
+ return {'id':n,'run_attempt':1,'run_started_at':f'2026-09-09T00:{n:02d}:00Z','event':'workflow_dispatch','head_branch':'main','head_sha':BASE,'path':integration.WORKFLOW,'repository':{'full_name':'owner/repo'},'status':status,'conclusion':conclusion,'display_title':f'oasis7-ci|workflow_dispatch|integration_revalidation|{uid}|{12 if uid==UID else 99}|{BASE}|{HEAD}'}
+
+class SelectionTests(unittest.TestCase):
+ def setUp(self):
+  self.pr={'draft':True,'state':'open','merged':False,'body':f'Task: {UID}\nRefs #1','base':{'sha':BASE,'ref':'main'},'head':{'sha':HEAD}}
+  self.runs=[run(20,conclusion='failure'),run(10)]
+ def api(self,*args):
+  path=args[-1]
+  if '/pulls/' in path:return self.pr
+  if '/runs?' in path:
+   if getattr(self,'read_error',False):raise OSError('authority read unavailable')
+   page=int(path.rsplit('page=',1)[1]);size=integration.DISCOVERY_PAGE_SIZE
+   return {'workflow_runs':self.runs[(page-1)*size:page*size]}
+  if '/contents/' in path:return {'type':'file','path':integration.WORKFLOW,'encoding':'base64','content':base64.b64encode(getattr(self,'workflow','no integration mode').encode()).decode()}
+  raise AssertionError(path)
+ def check(self,locator=None):
+  def verify(repo,uid,number,base,head,n,app):
+   r=next(r for r in self.runs if r['id']==n)
+   if getattr(self,'verification_error',False):raise OSError('artifact read uncertain')
+   if getattr(self,'race',False):self.runs.insert(0,run(30,status='queued',conclusion=None))
+   if r['conclusion']!='success' or r['status']!='completed':raise ValueError('current request not successful')
+   return {'id':n},{'workflow_run_id':n}
+  with patch.object(receipt,'gh',side_effect=self.api),patch.object(integration,'gh',side_effect=self.api),patch.object(receipt,'live',return_value=(self.pr,{'id':1},BASE,HEAD)),patch.object(integration,'verified_run',side_effect=verify):
+   return receipt.selected_live('owner/repo',UID,1,12,'required-gate',42,integration_run_id=locator)
+ def test_new_failure_blocks_even_normal_green(self):
+  with self.assertRaisesRegex((SystemExit,ValueError),'current request'):self.check()
+ def test_explicit_old_green_does_not_bypass_new_failure(self):
+  with self.assertRaisesRegex((SystemExit,ValueError),'current|superseded'):self.check(10)
+ def test_verified_other_task_does_not_hide_current_green(self):
+  self.runs=[run(20,uid='task_'+'d'*32,conclusion='failure'),run(10)]
+  self.assertEqual(self.check()[1]['id'],10)
+
+ def test_new_pending_and_cancelled_block_old_green(self):
+  for status,conclusion in [('queued',None),('in_progress',None),('completed','cancelled')]:
+   self.runs=[run(20,status=status,conclusion=conclusion),run(10)]
+   with self.assertRaisesRegex(SystemExit,'current request'):self.check()
+ def test_uncertain_discovery_and_artifact_block(self):
+  self.read_error=True
+  with self.assertRaisesRegex(SystemExit,'authority read'):self.check()
+  self.read_error=False;self.verification_error=True;self.runs=[run(20),run(10)]
+  with self.assertRaisesRegex(SystemExit,'artifact read'):self.check()
+ def test_more_than_twenty_unrelated_runs_and_multiple_pages(self):
+  self.runs=[run(n,uid='task_'+'d'*32) for n in range(140,20,-1)]+[run(10)]
+  self.assertEqual(self.check()[1]['id'],10)
+ def test_discovery_cap_is_not_absence(self):
+  self.runs=[run(n,uid='task_'+'d'*32) for n in range(140,20,-1)]
+  with patch.object(integration,'DISCOVERY_MAX_PAGES',1):
+   with self.assertRaisesRegex(SystemExit,'range exhausted'):self.check()
+ def test_same_run_new_attempt_pending_blocks(self):
+  latest=run(10,status='queued',conclusion=None);latest.update(run_attempt=2,updated_at='2026-09-09T00:40:00Z')
+  self.runs=[run(20),latest]
+  with self.assertRaisesRegex(SystemExit,'current request'):self.check()
+ def test_new_request_during_verification_blocks(self):
+  self.runs=[run(20),run(10)];self.race=True
+  with self.assertRaisesRegex(SystemExit,'changed during'):self.check()
+ def test_pre_activation_old_workflow_proves_unrelated(self):
+  old=run(20);old['display_title']='Rust';self.runs=[old]
+  self.assertEqual(self.check()[1]['id'],1)
+
+ def test_unknown_request_on_capable_workflow_never_skips(self):
+  self.workflow='integration_revalidation';self.runs[0]['display_title']='unknown'
+  with self.assertRaisesRegex(SystemExit,'identity unavailable'):self.check()
+ def test_spoofed_title_without_workflow_provenance_blocks(self):
+  self.runs[0]['path']='.github/workflows/other.yml'
+  with self.assertRaisesRegex(SystemExit,'provenance uncertain'):self.check()
+
+if __name__=='__main__':unittest.main()

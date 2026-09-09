@@ -464,7 +464,7 @@ def local_loop_admission(root, uid, base, head, tool_root):
             'policy_commit': (binding or {}).get('policy_commit'), 'task': task}
 
 
-def live_integration_admission(data, root, uid, tool_root, admission):
+def live_integration_admission(data, root, uid, tool_root, admission, integration_run_id=None):
     """Read selected CI and its frozen planner artifact; never trust a local receipt."""
     policy = data.get('policy_discovery') or {}
     required = policy.get('required_status_checks')
@@ -495,7 +495,7 @@ def live_integration_admission(data, root, uid, tool_root, admission):
         raise ValueError('CI task repository identity mismatch')
     request = {'root': str(effective), 'repository': data['repository'], 'uid': uid,
                'issue': task['issue_number'], 'pr': data['number'], 'app': next(iter(pins)),
-               'base_ref': data['baseRefName']}
+               'base_ref': data['baseRefName'], 'integration_run_id': integration_run_id}
     # Isolated stdlib loader installs only the two byte-verified modules. No
     # candidate directory/PYTHONPATH is added to the import search path.
     program = """import importlib.util,json,sys
@@ -503,7 +503,7 @@ from pathlib import Path
 request=json.loads(sys.argv[1]); directory=Path(request['root'])/'scripts/pm'
 for name,filename in [('integration_ci','integration_ci.py'),('ci_ready_receipt_identity','ci_ready_receipt_identity.py'),('ci_live','ci-ready-receipt.py')]:
  spec=importlib.util.spec_from_file_location(name,directory/filename); module=importlib.util.module_from_spec(spec); sys.modules[name]=module; spec.loader.exec_module(module)
-pr,run,base,head=module.selected_live(request['repository'],request['uid'],request['issue'],request['pr'],'required-gate',request['app'],allow_ready_pr=True,base_ref=request['base_ref'])
+pr,run,base,head=module.selected_live(request['repository'],request['uid'],request['issue'],request['pr'],'required-gate',request['app'],allow_ready_pr=True,base_ref=request['base_ref'],integration_run_id=request.get('integration_run_id'))
 planner=module.planner_for_run(request['repository'],run,base_oid=base,head_oid=head)
 proof={'integration_base_oid':base,'head_oid':head,'check_run_id':run['id'],'check_app_id':run['app']['id'],'planner_digest':module.hashlib.sha256(json.dumps(planner,sort_keys=True,separators=(',',':')).encode()).hexdigest()}
 if run.get('_integration'):
@@ -519,7 +519,7 @@ print(json.dumps(proof))
     return proof
 
 
-def production_decision(data, admin_authorized, root, uid, tool_root):
+def production_decision(data, admin_authorized, root, uid, tool_root, integration_run_id=None):
     # Never create a production receipt before fresh local authority admission.
     result = decision(data, admin_authorized, evidence_mode='pending_live_loop')
     if not result['ready_for_merge']: return result
@@ -528,7 +528,7 @@ def production_decision(data, admin_authorized, root, uid, tool_root):
         if not all(re.fullmatch(r'[0-9a-f]{40}', value) for value in (base, head)):
             raise ValueError('current PR base/head OIDs unavailable')
         admission = local_loop_admission(root, uid, base, head, tool_root)
-        integration = live_integration_admission(data, root, uid, tool_root, admission)
+        integration = live_integration_admission(data, root, uid, tool_root, admission, integration_run_id) if integration_run_id is not None else live_integration_admission(data, root, uid, tool_root, admission)
         fresh = read_pr_identity(data['repository'], data['number'])
         if any(fresh.get(key) != data.get(key) for key in ('number', 'baseRefOid', 'headRefOid')):
             raise ValueError('PR base/head changed during live loop admission; rerun gate')
@@ -548,6 +548,7 @@ def main() -> int:
     parser.add_argument("--fixture")
     parser.add_argument("--root", default=".")
     parser.add_argument("--task-uid")
+    parser.add_argument("--integration-run-id", type=int, help="manual run locator; latest matching request still revalidated live")
     parser.add_argument("--tool-root", help="effective loop helper checkout (default: OASIS7_LOOP_TOOL_ROOT or this script checkout)")
     parser.add_argument("--merge-hold", choices=["normal_pr_ci_watch", *sorted(HOLDS)])
     parser.add_argument("--admin-merge-authorized", action="store_true", help=argparse.SUPPRESS)
@@ -589,7 +590,7 @@ def main() -> int:
         if args.merge_hold:
             parser.error("--merge-hold is fixture-only; live hold truth is rebuilt from the GitHub task issue")
     result = (decision(data, args.admin_merge_authorized, evidence_mode=evidence_mode) if args.fixture else
-              production_decision(data, args.admin_merge_authorized, Path(args.root), args.task_uid, args.tool_root))
+              production_decision(data, args.admin_merge_authorized, Path(args.root), args.task_uid, args.tool_root, args.integration_run_id))
     print(json.dumps(result, indent=2, sort_keys=True) if args.json else ("ready_for_merge" if result["ready_for_merge"] else "\n".join(result["blockers"])))
     return 0 if result["ready_for_merge"] else 3
 

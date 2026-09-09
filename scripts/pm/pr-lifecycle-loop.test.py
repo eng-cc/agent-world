@@ -130,13 +130,17 @@ print(json.dumps(result))
 '''); gh.chmod(0o755)
         self.env = dict(os.environ,PATH=str(binary)+os.pathsep+os.environ['PATH'],CI_FIXTURE=str(self.state))
 
-    def check(self, run_base='a', artifact_base='a'):
+    def check(self, run_base='a', artifact_base='a', integration_run_id=None):
         pr={'draft':False,'state':'open','merged':False,'body':f'Task: {self.uid}\nRefs #1','head':{'sha':'b'*40},'base':{'ref':'main','sha':'a'*40}}
         run={'id':9,'name':'required-gate','app':{'id':42},'head_sha':'b'*40,'status':'completed','conclusion':'success','completed_at':'2026-01-01','details_url':'https://github.com/owner/repo/actions/runs/8','pull_requests':[{'number':12,'head':{'sha':'b'*40},'base':{'ref':'main','sha':run_base*40}}]}
         artifact={'schema':'oasis7-required-plan-v1','repository':'owner/repo','workflow_run_id':8,'head_oid':'b'*40,'base_oid':artifact_base*40,'check_name':'required-gate','planner':self.plan}
         self.state.write_text(json.dumps({'pr':pr,'run':run,'artifact':artifact}))
         with patch.dict(os.environ,self.env):
-            return gate.live_integration_admission(self.data,self.root,self.uid,self.root,self.context)
+            return gate.live_integration_admission(self.data,self.root,self.uid,self.root,self.context,integration_run_id)
+
+    def test_explicit_locator_is_forwarded_and_never_bypasses_live_discovery(self):
+        with self.assertRaisesRegex(ValueError,"locator absent"):
+            self.check(integration_run_id=8)
 
     def test_old_green_integration_run_blocks(self):
         with self.assertRaisesRegex(ValueError,'stale integration base'): self.check(run_base='c',artifact_base='c')

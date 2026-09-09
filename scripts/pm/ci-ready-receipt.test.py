@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 import importlib.util, io, json, sys, tempfile, unittest, zipfile
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, ExitStack
 from pathlib import Path
 from unittest.mock import patch
+import integration_ci
 
 P=Path(__file__).with_name("ci-ready-receipt.py")
 S=importlib.util.spec_from_file_location("ci_ready_receipt",P); M=importlib.util.module_from_spec(S); S.loader.exec_module(M)
 UID="task_12345678901234567890123456789012"
 
-def pr(): return {"draft":True,"state":"open","merged":False,"body":f"Task: {UID}\n\nRefs #1","head":{"sha":"a"*40},"base":{"sha":"b"*40}}
+def pr(): return {"draft":True,"state":"open","merged":False,"body":f"Task: {UID}\n\nRefs #1","head":{"sha":"a"*40},"base":{"sha":"b"*40,"ref":"main"}}
 def plan():
   p={"scope":"targeted","selected_capabilities":"pixel_world_bridge;viewer_js_required","reason_summary":"fixture","changed_path_count":"1","planner_config_sha256":"sha256:" + "c"*64}; p.update({k:"false" for k in M.RUN_FIELDS}); p["run_rust_baseline"]="true"; p["run_pixel_world_bridge_lib_tests"]="true"; p["run_pixel_world_bridge_wasm_check"]="true"; return p
 def run(conclusion="success",app=42): return {"id":9,"name":"required-gate","status":"completed","conclusion":conclusion,"completed_at":"2026-07-14T00:00:00Z","head_sha":"a"*40,"pull_requests":[{"number":7,"base":{"sha":"b"*40},"head":{"sha":"a"*40}}],"app":{"id":app},"output":{"summary":f"<!-- {M.PLAN_MARKER} -->\n```json\n{json.dumps(plan())}\n```"}}
@@ -26,7 +27,14 @@ def artifact_zip(payload=None,filename="oasis7-required-plan-v1.json"):
 
 class ReceiptTest(unittest.TestCase):
   def api(self, r=None, runs=None):
-    return patch.object(M,"gh",side_effect=[r or pr(),{"check_runs":runs if runs is not None else [run()]},{'merge_base_commit':{'sha':'b'*40}}])
+    def read(*args):
+      path=args[-1]
+      if '/pulls/' in path:return r or pr()
+      if '/check-runs?' in path:return {"check_runs":runs if runs is not None else [run()]}
+      if '/runs?' in path:return {'workflow_runs':[]}
+      if '/compare/' in path:return {'merge_base_commit':{'sha':'b'*40}}
+      raise AssertionError(path)
+    stack=ExitStack();stack.enter_context(patch.object(M,'gh',side_effect=read));stack.enter_context(patch.object(integration_ci,'gh',side_effect=read));return stack
   def test_scope_query_uses_gh_api_argv(self):
     with patch.object(M.subprocess,"check_output",return_value=json.dumps({"merge_base_commit":{"sha":"d"*40}})) as call:
       self.assertEqual(M.scope_base_for_run("eng-cc/oasis7","b"*40,"a"*40),"d"*40)

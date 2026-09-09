@@ -217,27 +217,33 @@ def main():
         payload = refreshed
     print(json.dumps(payload,sort_keys=True,indent=2 if a.json else None))
 def selected_live(repository,uid,issue,number,check_name,app,allow_ready_pr=False,base_ref=None,integration_run_id=None):
-    if integration_run_id is None:
-        try:
-            return live(repository,uid,issue,number,check_name,app,allow_ready_pr,base_ref)
-        except SystemExit as original:
-            # A rerun of the old event cannot replace its integration base.
-            failure=str(original)
-            if 'stale integration base' not in failure: raise
-    from integration_ci import verified_run
+    from integration_ci import current_request, verified_run
     pr=gh('api',f'repos/{repository}/pulls/{number}')
-    if (not allow_ready_pr and not pr.get('draft')) or f'Refs #{issue}' not in (pr.get('body') or ''):
+    if (not allow_ready_pr and not pr.get('draft')) or f'Refs #{issue}' not in (pr.get('body') or '') or f'Task: {uid}' not in (pr.get('body') or ''):
         raise SystemExit('ci-ready-receipt: manual integration task/draft identity mismatch')
+    if pr.get('state')!='open' or pr.get('merged'):
+        raise SystemExit('ci-ready-receipt: integration PR not open')
     if base_ref and pr['base']['ref']!=base_ref: raise SystemExit('ci-ready-receipt: manual integration base ref mismatch')
     base,head=pr['base']['sha'],pr['head']['sha']
-    ids=[integration_run_id] if integration_run_id else [r['id'] for r in gh('api',f'repos/{repository}/actions/workflows/rust.yml/runs?event=workflow_dispatch&per_page=20')['workflow_runs']]
-    for run_id in ids:
-        try:
-            check,proof=verified_run(repository,uid,number,base,head,run_id,app)
+    try:
+        selected=current_request(repository,uid,number,base,head,pr['base']['ref'])
+        if selected is not None:
+            if integration_run_id is not None and int(integration_run_id)!=selected["id"]:
+                raise ValueError('explicit integration locator superseded by current request')
             if check_name!='required-gate': raise ValueError('unsupported manual check')
+            check,proof=verified_run(repository,uid,number,base,head,selected["id"],app)
+            if current_request(repository,uid,number,base,head,pr['base']['ref'])!=selected:
+                raise ValueError('current request changed during integration verification')
             return pr,{**check,'_integration':proof},base,head
-        except (ValueError,KeyError,OSError,subprocess.SubprocessError):
-            continue
-    raise SystemExit('ci-ready-receipt: stale integration base or current integration evidence unavailable; run integration_ci.py dispatch with this task/PR, then validate its new run ID (ordinary rerun is insufficient)')
+        if integration_run_id is not None:
+            raise ValueError('explicit integration locator absent from verified current request range')
+    except (ValueError,KeyError,OSError,subprocess.SubprocessError) as exc:
+        raise SystemExit('ci-ready-receipt: current request blocked: '+str(exc)) from exc
+    # Only proven absence permits ordinary PR evidence. Never consult old green
+    # after a matching request has failed, remains pending or is unreadable.
+    ordinary=live(repository,uid,issue,number,check_name,app,allow_ready_pr,base_ref)
+    if current_request(repository,uid,number,base,head,pr["base"]["ref"]) is not None:
+        raise SystemExit("ci-ready-receipt: current request changed during ordinary CI verification")
+    return ordinary
 
 if __name__=="__main__": main()
