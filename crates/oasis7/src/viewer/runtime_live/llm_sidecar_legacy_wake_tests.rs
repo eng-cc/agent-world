@@ -304,11 +304,10 @@ fn legacy_sidecar_wake_recovery_handoff_clears_fence_without_provider_redispatch
             .is_none()
     );
     assert!(
-        server
+        !server
             .llm_sidecar
             .provider_contexts
-            .get(wake.agent_id.as_str())
-            .is_none()
+            .contains_key(wake.agent_id.as_str())
     );
     assert_eq!(
         server.world.cognition_execution_metrics()["provider_invocation_count"],
