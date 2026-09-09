@@ -397,6 +397,26 @@ class FullNetworkCleanRoomAdapterTests(unittest.TestCase):
         # on adapter ordering and side-effect boundaries.
         self.adapter._PLANNER_MODULE = self.planner
         self._test_directory = tempfile.TemporaryDirectory()
+        # The alias fence reads the authority reference closure independently
+        # of the mocked cryptographic verifier. Provision real synthetic files.
+        authority_root = Path(self._test_directory.name) / "authority"
+        authority_root.mkdir(mode=0o700)
+        public_key = authority_root / "public-key"
+        provider = authority_root / "provider"
+        verifier_tool = authority_root / "verifier"
+        for path in (public_key, provider, verifier_tool):
+            path.write_bytes(b"synthetic authority fixture")
+            path.chmod(0o600)
+        trust_config = authority_root / "trust.json"
+        registry = authority_root / "registry.json"
+        trust_config.write_text(json.dumps({"allowlist": [{"public_key_ref": str(public_key)}]}))
+        registry.write_text(json.dumps({
+            "trust_config_path": str(trust_config),
+            "providers": [{"public_key_ref": str(public_key), "adapter_path": str(provider)}],
+            "verifier": {"executable_path": str(verifier_tool)},
+        }))
+        self.planner.IDENTITY_V2_TRUST_CONFIG_PATH = trust_config
+        self.planner.IDENTITY_V2_PROVIDER_REGISTRY_PATH = registry
         self.ledger_path = Path(self._test_directory.name) / "nonce.jsonl"
         self._write_ledger(self.ledger_path)
         evidence_root = Path(self._test_directory.name) / "identity-v2-evidence"
@@ -3339,6 +3359,230 @@ class JournalLedgerAliasTests(unittest.TestCase):
                                         adapter.execute({}, {}, journal_path=journal, ledger_path=ledger, dry_run=dry_run)
                                 lock.assert_not_called()
                             self.assertEqual(ledger.read_bytes(), b"retained nonce history\n")
+
+
+class TransactionGuardEffectTests(unittest.TestCase):
+    def test_detected_drift_blocks_provider_rollback_and_emergency_effects(self):
+        adapter = load_module("guard_effect_adapter", ADAPTER_PATH)
+        for effect in ("provider", "rollback", "emergency"):
+            with self.subTest(effect=effect), tempfile.TemporaryDirectory() as directory:
+                journal = Path(directory) / "journal"
+                guard = adapter._acquire_transaction_lock(journal)
+                token = adapter._ACTIVE_TRANSACTION_GUARD.set(guard)
+                callback = mock.Mock()
+                try:
+                    lock = Path(f"{journal}.lock")
+                    lock.unlink()
+                    lock.write_bytes(b"")
+                    lock.chmod(0o600)
+                    with self.assertRaises(adapter.AdapterError):
+                        if effect == "emergency":
+                            adapter._persist_terminal(journal, {"status": "terminal-failure"})
+                        else:
+                            adapter._guarded_callback(callback, {"operation": effect})
+                    callback.assert_not_called()
+                    self.assertFalse(journal.exists())
+                    self.assertFalse(Path(f"{journal}.emergency.json").exists())
+                finally:
+                    adapter._ACTIVE_TRANSACTION_GUARD.reset(token)
+                    adapter._release_transaction_lock(guard)
+
+    def test_callback_replacement_is_detected_on_return(self):
+        adapter = load_module("guard_return_adapter", ADAPTER_PATH)
+        with tempfile.TemporaryDirectory() as directory:
+            journal = Path(directory) / "journal"
+            guard = adapter._acquire_transaction_lock(journal)
+            token = adapter._ACTIVE_TRANSACTION_GUARD.set(guard)
+            def callback():
+                lock = Path(f"{journal}.lock")
+                lock.unlink()
+                lock.write_bytes(b"")
+                lock.chmod(0o600)
+                return {"verified": True}
+            try:
+                with self.assertRaises(adapter.AdapterError):
+                    adapter._guarded_callback(callback)
+            finally:
+                adapter._ACTIVE_TRANSACTION_GUARD.reset(token)
+                adapter._release_transaction_lock(guard)
+
+
+class ReviewSixBoundaryTests(unittest.TestCase):
+    def _anchors(self, adapter, root):
+        planner = load_module("review_six_planner", PLANNER_PATH)
+        adapter._PLANNER_MODULE = planner
+        planner.IDENTITY_V2_PROVIDER_REGISTRY_PATH = root / "registry.json"
+        planner.IDENTITY_V2_TRUST_CONFIG_PATH = root / "trust.json"
+        artifacts = [root / name for name in ("key-a", "adapter-a", "key-b", "adapter-b", "verifier", "retired-key")]
+        for path in artifacts:
+            path.write_bytes(b"retained authority")
+            path.chmod(0o600)
+        registry = {"trust_config_path": str(planner.IDENTITY_V2_TRUST_CONFIG_PATH), "providers": [
+            {"public_key_ref": str(artifacts[0]), "adapter_path": str(artifacts[1])},
+            {"public_key_ref": str(artifacts[2]), "adapter_path": str(artifacts[3])},
+        ], "verifier": {"executable_path": str(artifacts[4])}}
+        trust = {"allowlist": [{"public_key_ref": str(path)} for path in (artifacts[0], artifacts[2], artifacts[5])]}
+        planner.IDENTITY_V2_PROVIDER_REGISTRY_PATH.write_text(json.dumps(registry))
+        planner.IDENTITY_V2_TRUST_CONFIG_PATH.write_text(json.dumps(trust))
+        return planner, artifacts
+
+    def test_registry_and_trust_reference_alias_closure(self):
+        adapter = load_module("review_six_alias", ADAPTER_PATH)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, artifacts = self._anchors(adapter, root)
+            for index, retained in enumerate(artifacts):
+                for suffix in ("", ".lock", ".emergency.json"):
+                    for kind in ("direct", "hardlink", "symlink"):
+                        with self.subTest(reference=index, suffix=suffix, alias=kind):
+                            journal = root / f"output-{index}-{len(suffix)}-{kind}"
+                            output = Path(f"{journal}{suffix}")
+                            if kind == "direct":
+                                # Change only the declared reference, not its meaning.
+                                retained.rename(output)
+                                for anchor in (adapter._PLANNER_MODULE.IDENTITY_V2_PROVIDER_REGISTRY_PATH, adapter._PLANNER_MODULE.IDENTITY_V2_TRUST_CONFIG_PATH):
+                                    anchor.write_text(anchor.read_text().replace(str(retained), str(output)))
+                            elif kind == "hardlink":
+                                os.link(retained, output)
+                            else:
+                                output.symlink_to(retained)
+                            snapshot = (output.read_bytes(), output.stat().st_mode)
+                            try:
+                                with self.assertRaisesRegex(adapter.AdapterError, "alias"):
+                                    adapter._reject_journal_input_aliases(journal, root / "ledger", {})
+                            finally:
+                                self.assertEqual((output.read_bytes(), output.stat().st_mode), snapshot)
+                                if kind == "direct":
+                                    output.rename(retained)
+                                    for anchor in (adapter._PLANNER_MODULE.IDENTITY_V2_PROVIDER_REGISTRY_PATH, adapter._PLANNER_MODULE.IDENTITY_V2_TRUST_CONFIG_PATH):
+                                        anchor.write_text(anchor.read_text().replace(str(output), str(retained)))
+
+    def test_authority_anchor_read_failure_blocks_before_lock(self):
+        adapter = load_module("review_six_unreadable", ADAPTER_PATH)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            planner, _ = self._anchors(adapter, root)
+            for field in ("IDENTITY_V2_PROVIDER_REGISTRY_PATH", "IDENTITY_V2_TRUST_CONFIG_PATH"):
+                path = getattr(planner, field)
+                original = path.read_bytes()
+                for failure in ("malformed", "missing"):
+                    with self.subTest(anchor=field, failure=failure):
+                        if failure == "malformed":
+                            path.write_bytes(b"not json")
+                        else:
+                            path.unlink()
+                        try:
+                            with mock.patch.object(adapter, "_acquire_transaction_lock") as acquire, mock.patch.object(adapter, "_release_transaction_lock"), mock.patch.object(adapter, "_execute_unlocked"):
+                                with self.assertRaises(adapter.AdapterError):
+                                    adapter.execute({}, {}, journal_path=root / "journal", ledger_path=root / "ledger")
+                                acquire.assert_not_called()
+                        finally:
+                            path.write_bytes(original)
+
+    def test_registry_key_api_alias_fails_before_lock_and_preserves_mode(self):
+        adapter = load_module("review_six_api_alias", ADAPTER_PATH)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, artifacts = self._anchors(adapter, root)
+            for resume in (False, True):
+                for dry_run in (False, True):
+                    with self.subTest(resume=resume, dry_run=dry_run):
+                        key = artifacts[2]
+                        before = (key.read_bytes(), key.stat().st_mode)
+                        try:
+                            with mock.patch.object(adapter, "_acquire_transaction_lock") as acquire, mock.patch.object(adapter, "_release_transaction_lock"), mock.patch.object(adapter, "_execute_unlocked"), mock.patch.object(adapter, "_resume_transaction_unlocked"):
+                                with self.assertRaisesRegex(adapter.AdapterError, "alias"):
+                                    if resume:
+                                        adapter.resume_transaction({}, {}, key, ledger_path=root / "ledger", dry_run=dry_run)
+                                    else:
+                                        adapter.execute({}, {}, journal_path=key, ledger_path=root / "ledger", dry_run=dry_run)
+                                acquire.assert_not_called()
+                        finally:
+                            self.assertEqual((key.read_bytes(), key.stat().st_mode), before)
+
+    def test_transaction_lock_open_and_flock_identity_races(self):
+        import fcntl
+        adapter = load_module("review_six_lock", ADAPTER_PATH)
+        real_open, real_flock = os.open, fcntl.flock
+        for boundary in ("open", "flock"):
+            for target in ("lock", "parent"):
+                with self.subTest(boundary=boundary, target=target), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    parent = root / "parent"
+                    parent.mkdir(mode=0o700)
+                    journal = parent / "journal"
+                    lock = Path(f"{journal}.lock")
+                    swapped = False
+                    def replace():
+                        nonlocal swapped
+                        if swapped:
+                            return
+                        swapped = True
+                        if target == "parent":
+                            parent.rename(root / "old-parent")
+                            parent.mkdir(mode=0o700)
+                        else:
+                            lock.unlink()
+                        lock.write_bytes(b"")
+                        lock.chmod(0o600)
+                    def opening(path, flags, *args, **kwargs):
+                        fd = real_open(path, flags, *args, **kwargs)
+                        if boundary == "open" and Path(path) == lock:
+                            replace()
+                        return fd
+                    def flocking(fd, operation):
+                        result = real_flock(fd, operation)
+                        if boundary == "flock" and operation & fcntl.LOCK_EX:
+                            replace()
+                        return result
+                    handle = None
+                    try:
+                        with mock.patch.object(os, "open", side_effect=opening), mock.patch.object(fcntl, "flock", side_effect=flocking):
+                            with self.assertRaises(adapter.AdapterError):
+                                handle = adapter._acquire_transaction_lock(journal)
+                        self.assertTrue(swapped)
+                    finally:
+                        if handle is not None:
+                            adapter._release_transaction_lock(handle)
+
+    def test_transaction_lock_rejects_writable_parent(self):
+        adapter = load_module("review_six_parent", ADAPTER_PATH)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            root.chmod(0o777)
+            handle = None
+            try:
+                with self.assertRaises(adapter.AdapterError):
+                    handle = adapter._acquire_transaction_lock(root / "journal")
+            finally:
+                if handle is not None:
+                    adapter._release_transaction_lock(handle)
+
+    def test_held_lock_drift_blocks_next_journal_effect(self):
+        adapter = load_module("review_six_lifetime", ADAPTER_PATH)
+        for resume in (False, True):
+            with self.subTest(resume=resume), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                journal = root / "journal"
+                journal.write_bytes(b"retained journal")
+                journal.chmod(0o600)
+                def unlocked(*args, **kwargs):
+                    lock = Path(f"{journal}.lock")
+                    # An unchanged persistent inode must continue to exclude a
+                    # second holder. Replacement must not make the first safe.
+                    with self.assertRaisesRegex(adapter.AdapterError, "locked"):
+                        adapter._acquire_transaction_lock(journal)
+                    lock.unlink()
+                    lock.write_bytes(b"")
+                    lock.chmod(0o600)
+                    adapter._write_journal(journal, {"status": "must-not-persist"})
+                with mock.patch.object(adapter, "_reject_journal_input_aliases"), mock.patch.object(adapter, "_execute_unlocked", side_effect=unlocked), mock.patch.object(adapter, "_resume_transaction_unlocked", side_effect=unlocked):
+                    with self.assertRaises(adapter.AdapterError):
+                        if resume:
+                            adapter.resume_transaction({}, {}, journal, ledger_path=root / "ledger")
+                        else:
+                            adapter.execute({}, {}, journal_path=journal, ledger_path=root / "ledger")
+                self.assertEqual(journal.read_bytes(), b"retained journal")
 
 
 class ReviewFiveBoundaryTests(unittest.TestCase):

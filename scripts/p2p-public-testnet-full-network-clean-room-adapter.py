@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import contextvars
 import datetime as dt
 import hashlib
 import importlib.util
@@ -1791,6 +1792,7 @@ def validate_credential_ledger(
 
 def reserve_nonce(path: Path, transaction_id: str, nonce: str) -> None:
     """Atomically append a one-shot reservation before remote observation."""
+    _check_transaction_guard()
     path = Path(path)
     _ledger_metadata(path)
     if SAFE_NONCE_RE.fullmatch(nonce) is None:
@@ -1823,6 +1825,7 @@ def reserve_nonce(path: Path, transaction_id: str, nonce: str) -> None:
                 "reserved_at": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
             }
             handle.seek(0, os.SEEK_END)
+            _check_transaction_guard()
             handle.write(json.dumps(row, ensure_ascii=True, sort_keys=True, separators=(",", ":")) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
@@ -2103,6 +2106,7 @@ def _reject_symlink_ancestors(path: Path, label: str = "transaction journal") ->
 
 
 def _write_journal(path: Path, record: dict[str, Any]) -> None:
+    _check_transaction_guard()
     path = Path(path)
     _reject_symlink_ancestors(path)
     if path.is_symlink():
@@ -2134,13 +2138,16 @@ def _write_journal(path: Path, record: dict[str, Any]) -> None:
             handle.write(json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":")) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
+        _check_transaction_guard()
         os.replace(temporary, path)
         _fsync_parent(path.parent)
-    except OSError:
+    except (OSError, AdapterError) as error:
         try:
             temporary.unlink(missing_ok=True)
         except (OSError, UnboundLocalError):
             pass
+        if isinstance(error, AdapterError):
+            raise
         _fail("transaction journal write failed")
 
 
@@ -2171,6 +2178,67 @@ def _read_journal(path: Path) -> dict[str, Any]:
     return record
 
 
+_ACTIVE_TRANSACTION_GUARD: contextvars.ContextVar[Any] = contextvars.ContextVar(
+    "clean_room_transaction_guard", default=None
+)
+
+
+class _TransactionLock:
+    """Sample pathname binding; not isolation from arbitrary same-UID writers."""
+
+    def __init__(self, handle: Any, parent_fd: int, path: Path):
+        self.handle, self.parent_fd, self.path = handle, parent_fd, path
+        self.invalid = False
+
+    def fileno(self) -> int:
+        return self.handle.fileno()
+
+    def close(self) -> None:
+        try:
+            self.handle.close()
+        finally:
+            os.close(self.parent_fd)
+
+    def check(self) -> None:
+        if self.invalid:
+            _fail("transaction lock binding was previously lost")
+        try:
+            _reject_symlink_ancestors(self.path, "transaction lock")
+            for opened, named, directory in (
+                (os.fstat(self.parent_fd), self.path.parent.lstat(), True),
+                (os.fstat(self.fileno()), self.path.lstat(), False),
+            ):
+                if (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino):
+                    _fail("transaction lock pathname or parent identity drifted")
+                if opened.st_uid != os.getuid():
+                    _fail("transaction lock or parent owner is invalid")
+                if directory:
+                    if not stat.S_ISDIR(opened.st_mode) or opened.st_mode & 0o022:
+                        _fail("transaction lock parent must be owner-protected")
+                elif not stat.S_ISREG(opened.st_mode) or stat.S_IMODE(opened.st_mode) != 0o600:
+                    _fail("transaction lock must be an owner-mode 0600 regular file")
+        except AdapterError:
+            self.invalid = True
+            raise
+        except OSError:
+            self.invalid = True
+            _fail("transaction lock pathname or parent is unavailable")
+
+
+def _check_transaction_guard() -> None:
+    guard = _ACTIVE_TRANSACTION_GUARD.get()
+    if guard is not None:
+        guard.check()
+
+
+def _guarded_callback(callback: Callable[..., Any], *args: Any) -> Any:
+    _check_transaction_guard()
+    try:
+        return callback(*args)
+    finally:
+        _check_transaction_guard()
+
+
 def _acquire_transaction_lock(journal_path: Path) -> Any:
     """Serialize a transaction and leave the lock durable for inspection."""
     lock_path = Path(f"{journal_path}.lock")
@@ -2178,26 +2246,42 @@ def _acquire_transaction_lock(journal_path: Path) -> Any:
     if lock_path.is_symlink():
         _fail("transaction lock must not be a symlink")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
+    parent_fd = None
+    descriptor = None
+    handle = None
     try:
         import fcntl
 
+        parent_fd = os.open(str(lock_path.parent), os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+        parent_metadata = os.fstat(parent_fd)
+        if parent_metadata.st_uid != os.getuid() or parent_metadata.st_mode & 0o022:
+            _fail("transaction lock parent must be owner-protected")
         flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
         descriptor = os.open(str(lock_path), flags, 0o600)
         handle = os.fdopen(descriptor, "a+", encoding="utf-8")
-        os.fchmod(handle.fileno(), 0o600)
-        metadata = lock_path.stat()
-        if metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o600:
-            handle.close()
-            _fail("transaction lock owner or mode is invalid")
+        guard = _TransactionLock(handle, parent_fd, lock_path)
+        guard.check()
         try:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            handle.close()
             _fail("transaction is already locked")
-        return handle
+        guard.check()
+        return guard
     except AdapterError:
+        if handle is not None:
+            handle.close()
+        elif descriptor is not None:
+            os.close(descriptor)
+        if parent_fd is not None:
+            os.close(parent_fd)
         raise
     except (OSError, ImportError):
+        if handle is not None:
+            handle.close()
+        elif descriptor is not None:
+            os.close(descriptor)
+        if parent_fd is not None:
+            os.close(parent_fd)
         _fail("transaction lock cannot be acquired")
 
 
@@ -2375,7 +2459,7 @@ def _verify_receipt_with_verifier(
         # A provider verifier never needs nonce seams or other adapter-only
         # authority material.  Keep that boundary identical to the transport
         # DTO boundary.
-        result = verifier(transport_plan, receipt)
+        result = _guarded_callback(verifier, transport_plan, receipt)
     except Exception as error:
         _fail(f"provider receipt verifier failed: {error.__class__.__name__}")
     result = _object(result, "provider receipt verifier result")
@@ -2878,7 +2962,7 @@ def _verify_provenance(
             transport_plan = _transport_plan(plan)
             _consumer_impact_locator(plan)
             try:
-                result = verifier(transport_plan, receipt)
+                result = _guarded_callback(verifier, transport_plan, receipt)
             except Exception as error:
                 _fail(f"external provenance verifier failed: {error.__class__.__name__}")
             validate_result(receipt, result)
@@ -3741,7 +3825,7 @@ def _execute_unlocked(
                 # remote evidence has already been collected.
                 transport_node = _transport_node(node)
                 _consumer_impact_locator(plan)
-                evidence = transport.inspect_node(transport_node)
+                evidence = _guarded_callback(transport.inspect_node, transport_node)
                 validated_evidence = validate_remote_preflight(
                     plan,
                     node,
@@ -3843,7 +3927,7 @@ def _execute_unlocked(
             if operation == "fresh-root-probe":
                 transport_plan = _transport_plan(plan)
                 _consumer_impact_locator(plan)
-                raw_receipt = transport.verify_fresh_root_probe(transport_plan)
+                raw_receipt = _guarded_callback(transport.verify_fresh_root_probe, transport_plan)
                 receipt = _validate_provider_receipt(
                     plan,
                     operation,
@@ -3859,13 +3943,13 @@ def _execute_unlocked(
                 transport_node = _transport_node(node) if node is not None else None
                 if phase == "preflight":
                     _consumer_impact_locator(plan)
-                    raw_receipt = transport.preflight(operation, transport_node)
+                    raw_receipt = _guarded_callback(transport.preflight, operation, transport_node)
                 elif phase == "verify":
                     _consumer_impact_locator(plan)
-                    raw_receipt = transport.verify(operation, transport_node)
+                    raw_receipt = _guarded_callback(transport.verify, operation, transport_node)
                 elif operation == "fleet-health":
                     _consumer_impact_locator(plan)
-                    raw_receipt = transport.health(operation)
+                    raw_receipt = _guarded_callback(transport.health, operation)
                 else:
                     # Append only after the exact pre-callback binding check:
                     # if it fails, no provider mutation has begun and the
@@ -3879,7 +3963,7 @@ def _execute_unlocked(
                         _fail("provider mutation capture lease is expired or not yet active")
                     if _rollback_candidate(operation) and operation not in rollback_candidates:
                         rollback_candidates.append(operation)
-                    raw_receipt = transport.mutate(operation, transport_node)
+                    raw_receipt = _guarded_callback(transport.mutate, operation, transport_node)
                 # A successful start/rebuild callback may have changed the
                 # provider even if its receipt is malformed or the following
                 # durable journal write fails.  Include that operation in the
@@ -4018,7 +4102,7 @@ def _execute_unlocked(
                 rollback_plan = _transport_plan(plan)
                 rollback_candidates_snapshot = list(rollback_candidates)
                 _consumer_impact_locator(plan)
-                rollback_reobservation_receipt = transport.reobserve_failed_state(
+                rollback_reobservation_receipt = _guarded_callback(transport.reobserve_failed_state,
                     rollback_plan, rollback_candidates_snapshot, failed_operation
                 )
                 rollback_reobservation_receipt = _validate_provider_receipt(
@@ -4034,7 +4118,7 @@ def _execute_unlocked(
                 rollback_plan = _transport_plan(plan)
                 rollback_candidates_snapshot = list(rollback_candidates)
                 _consumer_impact_locator(plan)
-                rollback_receipt = transport.rollback_clean_redeploy(
+                rollback_receipt = _guarded_callback(transport.rollback_clean_redeploy,
                     rollback_plan, rollback_candidates_snapshot, rollback_reobservation_receipt
                 )
                 rollback_receipt = _validate_provider_receipt(
@@ -4097,6 +4181,30 @@ def _execute_unlocked(
     }
 
 
+def _authority_reference_paths(planner: Any) -> list[Path]:
+    """Read only typed authority references, never arbitrary plan path fields."""
+    registry = _load_json(Path(planner.IDENTITY_V2_PROVIDER_REGISTRY_PATH), "provider registry")
+    trust_path = Path(_string(registry.get("trust_config_path"), "provider registry trust_config_path"))
+    paths = [trust_path]
+    providers = registry.get("providers")
+    if not isinstance(providers, list) or not providers:
+        _fail("provider registry providers must be non-empty")
+    for provider in providers:
+        entry = _object(provider, "provider registry entry")
+        for field in ("public_key_ref", "adapter_path"):
+            paths.append(Path(_string(entry.get(field), f"provider registry {field}")))
+    verifier = _object(registry.get("verifier"), "provider registry verifier")
+    paths.append(Path(_string(verifier.get("executable_path"), "provider registry verifier executable_path")))
+    for anchor in {trust_path, Path(planner.IDENTITY_V2_TRUST_CONFIG_PATH)}:
+        trust = _load_json(anchor, "identity trust config")
+        entries = trust.get("allowlist")
+        if not isinstance(entries, list) or not entries:
+            _fail("identity trust config allowlist must be non-empty")
+        for entry in entries:
+            paths.append(Path(_string(_object(entry, "trust allowlist entry").get("public_key_ref"), "trust public_key_ref")))
+    return paths
+
+
 def _reject_journal_input_aliases(
     journal_path: Path,
     ledger_path: Path,
@@ -4138,6 +4246,15 @@ def _reject_journal_input_aliases(
             protected.append(Path(descriptor["path"]))
     outputs = [Path(journal_path), Path(f"{journal_path}.lock"), Path(f"{journal_path}.emergency.json")]
     try:
+        # Reject direct anchor collisions first, even if the colliding anchor
+        # is malformed. Then fail closed while expanding the authority closure.
+        for output in outputs:
+            for retained in protected:
+                if output.resolve() == retained.resolve() or (
+                    output.exists() and retained.exists() and output.samefile(retained)
+                ):
+                    _fail("transaction journal/lock/emergency output must not alias input, retained evidence, or credential nonce ledger")
+        protected.extend(_authority_reference_paths(planner))
         for output in outputs:
             for retained in protected:
                 if output.resolve() == retained.resolve() or (
@@ -4164,6 +4281,7 @@ def execute(
     """Serialize one transaction while retaining the implementation boundary."""
     _reject_journal_input_aliases(Path(journal_path), Path(ledger_path), plan)
     lock = _acquire_transaction_lock(Path(journal_path))
+    guard_token = _ACTIVE_TRANSACTION_GUARD.set(lock)
     try:
         return _execute_unlocked(
             plan,
@@ -4176,6 +4294,7 @@ def execute(
             raw_v1_bytes_by_node=raw_v1_bytes_by_node,
         )
     finally:
+        _ACTIVE_TRANSACTION_GUARD.reset(guard_token)
         _release_transaction_lock(lock)
 
 
@@ -4436,6 +4555,7 @@ def resume_transaction(
     """Serialize resume/reconciliation against the same transaction lock."""
     _reject_journal_input_aliases(Path(journal_path), Path(ledger_path), plan)
     lock = _acquire_transaction_lock(Path(journal_path))
+    guard_token = _ACTIVE_TRANSACTION_GUARD.set(lock)
     try:
         return _resume_transaction_unlocked(
             plan,
@@ -4448,6 +4568,7 @@ def resume_transaction(
             raw_v1_bytes_by_node=raw_v1_bytes_by_node,
         )
     finally:
+        _ACTIVE_TRANSACTION_GUARD.reset(guard_token)
         _release_transaction_lock(lock)
 
 
