@@ -57,11 +57,28 @@ impl ViewerRuntimeLiveServer {
         status: ContinuationStatusV1,
         reason: &str,
     ) -> Result<bool, String> {
-        let Some(wake_id) = self
+        let wake_id = self
             .llm_sidecar
-            .pending_runtime_wake_id_for_agent(agent_id)
-            .map(str::to_string)
-        else {
+            .provider_recovery_context(agent_id)
+            .and_then(|context| {
+                self.llm_sidecar
+                    .pending_runtime_wake_id_for_context(agent_id, &context)
+                    .map(str::to_string)
+            })
+            .or_else(|| {
+                self.llm_sidecar
+                    .pending_runtime_wake_id_for_terminal(agent_id)
+                    .map(str::to_string)
+            });
+        let Some(wake_id) = wake_id else {
+            if self
+                .llm_sidecar
+                .has_pending_runtime_wake_for_agent(agent_id)
+            {
+                return Err(format!(
+                    "Runtime cognition wake identity unavailable for agent {agent_id}"
+                ));
+            }
             return Ok(false);
         };
         let had_recovery = self

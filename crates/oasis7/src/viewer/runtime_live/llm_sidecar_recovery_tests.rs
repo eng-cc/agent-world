@@ -52,6 +52,448 @@ fn provider_terminal_marker_requires_complete_identity() {
     );
 }
 
+#[test]
+fn restored_active_context_session_only_mismatch_is_quarantined() {
+    let path = std::env::temp_dir().join(format!(
+        "oasis7-provider-session-mismatch-{}-{}.json",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+    let agent_id = "agent-session-mismatch";
+    let marker = test_provider_context(
+        agent_id,
+        "turn-session-mismatch",
+        "request-session-mismatch",
+        1,
+    );
+    let mut conflicting = marker.clone();
+    conflicting.request_context.agent_session_id = "session-conflicting-only".to_string();
+    conflicting.turn_context.agent_session_id = "session-conflicting-only".to_string();
+
+    let mut first = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    first.configure_provider_lineage_store(path.clone());
+    first.provider_agent_ids.insert(agent_id.to_string());
+    first
+        .provider_active_turns
+        .insert(agent_id.to_string(), marker.clone());
+    first
+        .provider_contexts
+        .insert(agent_id.to_string(), conflicting);
+    first
+        .persist_provider_lineage()
+        .expect("persist session-only identity mismatch");
+
+    let mut restored = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    restored.configure_provider_lineage_store(path.clone());
+    restored
+        .restore_provider_lineage(&RuntimeWorld::default())
+        .expect("restore session-only identity mismatch");
+    assert_eq!(
+        restored
+            .provider_recovery_pending
+            .get(agent_id)
+            .map(|pending| pending.active.request_context.agent_session_id.as_str()),
+        Some("session-test"),
+        "Runtime marker must remain the quarantined identity"
+    );
+    assert!(
+        restored.provider_transport_exhausted.contains(agent_id),
+        "session-only mismatch must remain fenced until Runtime terminalization"
+    );
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn restored_active_context_digest_only_mismatch_is_quarantined() {
+    let path = std::env::temp_dir().join(format!(
+        "oasis7-provider-digest-mismatch-{}-{}.json",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+    let agent_id = "agent-digest-mismatch";
+    let marker = test_provider_context(
+        agent_id,
+        "turn-digest-mismatch",
+        "request-digest-mismatch",
+        1,
+    );
+    let mut conflicting = marker.clone();
+    let digest =
+        crate::simulator::h_v1("oasis7.test.digest-only-mismatch.v1", &"conflicting-digest");
+    conflicting.request_context.request_digest = digest.clone();
+    conflicting.turn_context.request_digest = digest;
+
+    let mut first = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    first.configure_provider_lineage_store(path.clone());
+    first.provider_agent_ids.insert(agent_id.to_string());
+    first
+        .provider_active_turns
+        .insert(agent_id.to_string(), marker.clone());
+    first
+        .provider_contexts
+        .insert(agent_id.to_string(), conflicting);
+    first
+        .persist_provider_lineage()
+        .expect("persist digest-only identity mismatch");
+
+    let mut restored = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    restored.configure_provider_lineage_store(path.clone());
+    restored
+        .restore_provider_lineage(&RuntimeWorld::default())
+        .expect("restore digest-only identity mismatch");
+    assert_eq!(
+        restored
+            .provider_recovery_pending
+            .get(agent_id)
+            .map(|pending| pending.active.request_context.request_digest.to_string()),
+        Some(marker.request_context.request_digest.to_string()),
+        "Runtime marker digest must remain the quarantined identity"
+    );
+    assert!(restored.provider_transport_exhausted.contains(agent_id));
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn wake_digest_only_collision_is_not_selected_for_handoff() {
+    let agent_id = "agent-wake-digest-collision";
+    let context = test_provider_context(
+        agent_id,
+        "turn-wake-digest-collision",
+        "request-wake-digest-collision",
+        1,
+    );
+    let conflicting_digest = crate::simulator::h_v1(
+        "oasis7.test.wake-digest-collision.v1",
+        &"conflicting-wake-digest",
+    );
+    let wake: crate::runtime::SchedulerWakeV1 = serde_json::from_value(serde_json::json!({
+        "schema_version": "scheduler-wake.v1",
+        "wake_id": "wake-digest-collision",
+        "continuation_id": "continuation-digest-collision",
+        "world_id": "world",
+        "branch_id": "main",
+        "finality_epoch": 0,
+        "finality_block_hash": null,
+        "finality_status": "pending",
+        "reorg_epoch": 0,
+        "runtime_manifest_hash": "manifest",
+        "agent_id": agent_id,
+        "agent_session_id": context.request_context.agent_session_id,
+        "agent_turn_id": context.request_context.agent_turn_id,
+        "decision_request_id": context.request_context.decision_request_id,
+        "request_digest": conflicting_digest,
+        "next_wake_tick": 0,
+        "eligible_since_tick": 0,
+        "starvation_deadline_tick": 1,
+        "initial_priority": 0,
+        "wake_seq": 1,
+        "retry_seq": 0,
+        "status": "pending",
+        "pending_reason": "capacity_available"
+    }))
+    .expect("wake digest collision fixture");
+    let mut sidecar = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    sidecar
+        .pending_runtime_wakes
+        .insert(wake.wake_id.clone(), wake);
+    sidecar.record_provider_terminal_state(
+        agent_id,
+        &context,
+        "failed",
+        None,
+        Some("terminal-wake-digest-collision".to_string()),
+    );
+    assert_eq!(
+        sidecar.pending_runtime_wake_id_for_context(agent_id, &context),
+        None,
+        "same session/turn/request with another digest must not select the wake"
+    );
+    assert_eq!(
+        sidecar.pending_runtime_wake_id_for_terminal(agent_id),
+        None,
+        "terminal wake lookup must reject a digest-only collision"
+    );
+}
+
+#[test]
+fn wake_recovery_cleanup_checkpoint_failure_retains_identity_for_retry() {
+    let path = std::env::temp_dir().join(format!(
+        "oasis7-provider-wake-cleanup-failure-{}-{}.json",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+    let agent_id = "agent-wake-cleanup-failure";
+    let context = test_provider_context(
+        agent_id,
+        "turn-wake-cleanup-failure",
+        "request-wake-cleanup-failure",
+        1,
+    );
+    let mut sidecar = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    sidecar.configure_provider_lineage_store(path.clone());
+    sidecar.provider_agent_ids.insert(agent_id.to_string());
+    sidecar
+        .provider_contexts
+        .insert(agent_id.to_string(), context.clone());
+    sidecar
+        .provider_active_turns
+        .insert(agent_id.to_string(), context.clone());
+    sidecar
+        .provider_transport_exhausted
+        .insert(agent_id.to_string());
+    sidecar.provider_wake_recovery_pending.insert(
+        agent_id.to_string(),
+        lineage_persistence::ProviderWakeRecoveryPending {
+            active: context.clone(),
+            status: crate::runtime::ContinuationStatusV1::Completed,
+            reason: "wake_cleanup_checkpoint_failure_test".to_string(),
+        },
+    );
+    sidecar
+        .persist_provider_lineage()
+        .expect("persist wake cleanup recovery fixture");
+    sidecar
+        .install_test_provider_lineage_checkpoint_blocker()
+        .expect("install checkpoint blocker");
+    assert!(
+        sidecar.complete_provider_wake_recovery(agent_id).is_err(),
+        "checkpoint failure must be surfaced"
+    );
+    assert!(sidecar.provider_wake_recovery_pending(agent_id).is_some());
+    assert!(sidecar.provider_contexts.contains_key(agent_id));
+    assert!(sidecar.provider_active_turns.contains_key(agent_id));
+
+    let backup = path.with_extension(format!("blocked-backup-{}", std::process::id()));
+    std::fs::remove_dir(&path).expect("remove checkpoint blocker");
+    std::fs::rename(&backup, &path).expect("restore checkpoint after blocker");
+    sidecar
+        .complete_provider_wake_recovery(agent_id)
+        .expect("wake cleanup retries after checkpoint recovery");
+    let checkpoint: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(&path).expect("read retried wake cleanup checkpoint"),
+    )
+    .expect("decode retried wake cleanup checkpoint");
+    assert!(
+        checkpoint["provider_wake_recovery_pending"]
+            .as_object()
+            .is_some_and(serde_json::Map::is_empty)
+    );
+    assert!(!sidecar.provider_contexts.contains_key(agent_id));
+    assert!(!sidecar.provider_active_turns.contains_key(agent_id));
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn restore_reconciles_committed_runtime_record_without_sidecar_terminal_marker() {
+    let path = std::env::temp_dir().join(format!(
+        "oasis7-provider-committed-recovery-{}-{}.json",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+    let agent_id = "agent-committed-recovery";
+    let mut world = RuntimeWorld::new();
+    world
+        .bind_cognition_runtime("world", "main", 0, None, "pending", 0)
+        .expect("Runtime cognition binding");
+    let binding = world
+        .current_cognition_runtime_binding()
+        .expect("Runtime binding");
+    let mut context = test_provider_context(
+        agent_id,
+        "turn-committed-recovery",
+        "request-committed-recovery",
+        1,
+    );
+    context.request_context.runtime_binding = binding.clone();
+    let digest = crate::simulator::h_v1(
+        "oasis7.test.committed-recovery-context.v1",
+        &"committed-recovery",
+    );
+    context.request_context.observation_digest = digest.clone();
+    context.request_context.capability_catalog_digest = digest.clone();
+    context.request_context.capability_invocation_context_digest = digest.clone();
+    context.request_context.memory_snapshot_digest = digest.clone();
+    context.request_context.goal_snapshot_digest = digest.clone();
+    context.request_context.continuation_digest = digest;
+    context.request_context.request_digest = context.request_context.request_digest();
+    context.turn_context.request_digest = context.request_context.request_digest.clone();
+    let request = crate::runtime::RuntimeCognitionCommitRequestV1 {
+        agent_id: agent_id.to_string(),
+        agent_session_id: context.request_context.agent_session_id.clone(),
+        agent_turn_id: context.request_context.agent_turn_id.clone(),
+        decision_request_id: context.request_context.decision_request_id.clone(),
+        retry_seq: context.request_context.retry_seq,
+        transport_attempt: context.request_context.transport_attempt,
+        request_digest: context.request_context.request_digest.to_string(),
+        observation_digest: context.request_context.observation_digest.to_string(),
+        context_digest:
+            crate::viewer::runtime_live::control_plane::llm_sidecar::runtime_provider_context_digest(
+                &context.request_context,
+            ),
+        capability_snapshot_hash: crate::simulator::h_v1(
+            "oasis7.test.committed-recovery-capability.v1",
+            &"capability",
+        )
+        .to_string(),
+        authority_context_hash: crate::simulator::h_v1(
+            "oasis7.test.committed-recovery-authority.v1",
+            &"authority",
+        )
+        .to_string(),
+        captured_base_binding: crate::runtime::RuntimeCognitionBaseBindingV1 {
+            world_id: binding.world_id.clone(),
+            branch_id: binding.branch_id.clone(),
+            finality_epoch: binding.finality_epoch,
+            finality_block_hash: binding
+                .finality_block_hash
+                .as_ref()
+                .map(ToString::to_string),
+            finality_status: binding.finality_status.clone(),
+            base_tick: binding.base_tick,
+            base_world_hash: binding.base_world_hash.to_string(),
+            reorg_epoch: binding.reorg_epoch,
+            runtime_manifest_hash: binding.runtime_manifest_hash.to_string(),
+        },
+    };
+    let mut artifact = crate::runtime::RuntimeCognitionResponseArtifactV1 {
+        schema_version: 1,
+        context_discriminator:
+            crate::runtime::RuntimeCognitionResponseArtifactV1::CONTEXT_DISCRIMINATOR.to_string(),
+        context_version: crate::runtime::RuntimeCognitionResponseArtifactV1::CONTEXT_VERSION,
+        agent_session_id: request.agent_session_id.clone(),
+        agent_turn_id: request.agent_turn_id.clone(),
+        decision_request_id: request.decision_request_id.clone(),
+        retry_seq: request.retry_seq,
+        transport_attempt: request.transport_attempt,
+        request_digest: request.request_digest.clone(),
+        response_digest: crate::simulator::h_v1(
+            "oasis7.test.committed-recovery-response.v1",
+            &"response",
+        )
+        .to_string(),
+        artifact_digest: String::new(),
+    };
+    artifact.refresh_artifact_digest();
+    let idempotent_request = request.clone();
+    let idempotent_artifact = artifact.clone();
+    world
+        .commit_cognition_action(
+            request,
+            RuntimeAction::RegisterAgent {
+                agent_id: agent_id.to_string(),
+                pos: GeoPos::new(0, 0, 0),
+            },
+            artifact,
+        )
+        .expect("Runtime committed response");
+
+    let mut first = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    first.configure_provider_lineage_store(path.clone());
+    first.provider_agent_ids.insert(agent_id.to_string());
+    first
+        .provider_active_turns
+        .insert(agent_id.to_string(), context.clone());
+    first
+        .provider_contexts
+        .insert(agent_id.to_string(), context.clone());
+    first
+        .provider_completed_decisions
+        .push_back(async_support::RuntimeLlmDecision {
+            agent_id: "agent-committed-recovery-sibling".to_string(),
+            decision: AgentDecision::Wait,
+            decision_trace: None,
+            cognition: None,
+            memory_write_intents: Vec::new(),
+            continuation_admitted: false,
+        });
+    let queued = async_support::RuntimeLlmDecision {
+        agent_id: agent_id.to_string(),
+        decision: AgentDecision::Wait,
+        decision_trace: None,
+        cognition: None,
+        memory_write_intents: Vec::new(),
+        continuation_admitted: false,
+    };
+    first.provider_completed_decisions.push_back(queued.clone());
+    first
+        .provider_held_decisions
+        .insert(agent_id.to_string(), queued);
+    first
+        .persist_provider_lineage()
+        .expect("persist pre-track sidecar checkpoint");
+
+    let mut restored = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    restored.configure_provider_lineage_store(path.clone());
+    restored
+        .restore_provider_lineage(&world)
+        .expect("restore committed Runtime response");
+    world
+        .commit_cognition_action(
+            idempotent_request,
+            RuntimeAction::RegisterAgent {
+                agent_id: agent_id.to_string(),
+                pos: GeoPos::new(0, 0, 0),
+            },
+            idempotent_artifact,
+        )
+        .expect("Runtime commit must be idempotent after restore");
+    assert_eq!(
+        world.cognition()["commit_records"]
+            .as_array()
+            .expect("commit records")
+            .iter()
+            .filter(|record| record["agent_id"] == agent_id)
+            .count(),
+        1,
+        "restore/retry must preserve exactly one Runtime effect"
+    );
+    assert!(
+        restored.provider_terminal_matches_request(agent_id, &context.request_context),
+        "Runtime committed record must synthesize an exact sidecar terminal marker"
+    );
+    assert_eq!(
+        restored
+            .provider_terminal_states
+            .get(agent_id)
+            .map(|terminal| terminal.status.as_str()),
+        Some("committed")
+    );
+    assert!(
+        !restored.provider_transport_exhausted.contains(agent_id),
+        "a committed Runtime response must not become a failed transport fence"
+    );
+    assert!(
+        !restored
+            .provider_completed_decisions
+            .iter()
+            .any(|decision| decision.agent_id == agent_id)
+            && !restored.provider_held_decisions.contains_key(agent_id),
+        "Runtime commit marker must suppress queued legacy decision replay"
+    );
+    assert!(
+        restored
+            .provider_completed_decisions
+            .iter()
+            .any(|decision| decision.agent_id == "agent-committed-recovery-sibling"),
+        "committed recovery for Agent A must preserve sibling B progress"
+    );
+    assert!(!restored.provider_active_turns.contains_key(agent_id));
+    assert!(!restored.provider_contexts.contains_key(agent_id));
+    let _ = std::fs::remove_file(path);
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 fn assert_terminal_marker_suppresses_queued_provider_decision(decision: AgentDecision) {
     let decision_kind = match &decision {

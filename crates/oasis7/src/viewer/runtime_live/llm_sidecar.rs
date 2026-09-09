@@ -790,9 +790,7 @@ impl RuntimeLlmSidecar {
                     .provider_active_turns
                     .get(wake.agent_id.as_str())
                     .is_some_and(|context| {
-                        context.request_context.agent_turn_id == wake.agent_turn_id
-                            && context.request_context.decision_request_id
-                                == wake.decision_request_id
+                        lineage_persistence::provider_context_matches_wake(context, &wake)
                     })
             {
                 // A process-local async runner cannot survive restart. Keep
@@ -823,6 +821,40 @@ impl RuntimeLlmSidecar {
         self.pending_runtime_wakes
             .values()
             .filter(|wake| wake.agent_id == agent_id)
+            .min_by_key(|wake| (wake.wake_seq, wake.wake_id.as_str()))
+            .map(|wake| wake.wake_id.as_str())
+    }
+
+    pub(in crate::viewer::runtime_live) fn pending_runtime_wake_id_for_context(
+        &self,
+        agent_id: &str,
+        context: &cognition_context::ProviderContextState,
+    ) -> Option<&str> {
+        self.pending_runtime_wakes
+            .values()
+            .filter(|wake| {
+                wake.agent_id == agent_id
+                    && lineage_persistence::provider_context_matches_wake(context, wake)
+            })
+            .min_by_key(|wake| (wake.wake_seq, wake.wake_id.as_str()))
+            .map(|wake| wake.wake_id.as_str())
+    }
+
+    pub(in crate::viewer::runtime_live) fn pending_runtime_wake_id_for_terminal(
+        &self,
+        agent_id: &str,
+    ) -> Option<&str> {
+        let terminal = self.provider_terminal_states.get(agent_id)?;
+        self.pending_runtime_wakes
+            .values()
+            .filter(|wake| {
+                wake.agent_id == agent_id
+                    && wake.agent_session_id == terminal.agent_session_id
+                    && wake.agent_turn_id == terminal.agent_turn_id
+                    && wake.decision_request_id == terminal.decision_request_id
+                    && !wake.request_digest.is_empty()
+                    && wake.request_digest == terminal.request_digest
+            })
             .min_by_key(|wake| (wake.wake_seq, wake.wake_id.as_str()))
             .map(|wake| wake.wake_id.as_str())
     }

@@ -406,6 +406,7 @@ impl RuntimeLlmSidecar {
                     context.request_context.agent_session_id.as_str(),
                     context.request_context.agent_turn_id.as_str(),
                     context.request_context.decision_request_id.as_str(),
+                    context.request_context.request_digest.to_string().as_str(),
                 ) {
                     let message = error.to_string();
                     if !message.contains("unknown pending Runtime turn") {
@@ -697,6 +698,7 @@ impl RuntimeLlmSidecar {
                 context.request_context.agent_session_id.as_str(),
                 context.request_context.agent_turn_id.as_str(),
                 context.request_context.decision_request_id.as_str(),
+                context.request_context.request_digest.to_string().as_str(),
             );
         }
     }

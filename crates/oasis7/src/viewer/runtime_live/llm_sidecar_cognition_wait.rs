@@ -152,6 +152,7 @@ fn compensate_provider_wait_admission(
             request.agent_session_id.as_str(),
             actor_turn_id.as_str(),
             request.decision_request_id.as_str(),
+            request.request_digest.to_string().as_str(),
         );
         match actor_result {
             Ok(()) if fault == ProviderWaitFault::Actor => compensation_errors
@@ -294,6 +295,24 @@ fn compensate_provider_wait_admission(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+fn provider_wait_continuation_identity_matches(
+    continuation: &crate::runtime::AgentContinuation,
+    agent_id: &str,
+    agent_session_id: &str,
+    agent_turn_id: &str,
+    decision_request_id: &str,
+    request_digest: &str,
+    proposal_id: &str,
+) -> bool {
+    continuation.agent_id == agent_id
+        && continuation.agent_session_id == agent_session_id
+        && continuation.agent_turn_id == agent_turn_id
+        && continuation.decision_request_id == decision_request_id
+        && continuation.origin_request_digest == request_digest
+        && continuation.continuation_proposal_id == proposal_id
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn retry_pending_provider_wait_compensation(
     sidecar: &mut RuntimeLlmSidecar,
     world: &mut RuntimeWorld,
@@ -321,12 +340,18 @@ fn retry_pending_provider_wait_compensation(
         world.cognition_continuations(),
     )
     .map_err(|error| format!("provider Wait recovery continuation decode failed: {error}"))?;
+    let request = &context.request_context;
+    let request_digest = request.request_digest.to_string();
     let Some(admitted) = continuations.into_iter().find(|continuation| {
-        continuation.agent_id == agent_id
-            && continuation.agent_session_id == context.request_context.agent_session_id
-            && continuation.agent_turn_id == context.request_context.agent_turn_id
-            && continuation.decision_request_id == context.request_context.decision_request_id
-            && continuation.continuation_proposal_id == proposal_id
+        provider_wait_continuation_identity_matches(
+            continuation,
+            agent_id.as_str(),
+            request.agent_session_id.as_str(),
+            request.agent_turn_id.as_str(),
+            request.decision_request_id.as_str(),
+            request_digest.as_str(),
+            proposal_id.as_str(),
+        )
     }) else {
         return Ok(false);
     };
@@ -543,6 +568,7 @@ pub(in crate::viewer::runtime_live::control_plane::llm_sidecar) fn admit_provide
                     request.agent_session_id.as_str(),
                     release_turn_id.as_str(),
                     request.decision_request_id.as_str(),
+                    request.request_digest.to_string().as_str(),
                 )
                 .err()
                 .map(|error| format!("provider Wait actor turn release failed: {error}"))
@@ -639,5 +665,69 @@ impl RuntimeLlmSidecar {
         cognition: &RuntimeProviderActionContext,
     ) -> Result<(), String> {
         admit_provider_wait_continuation(self, world, kernel, cognition)
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn provider_wait_recovery_rejects_digest_only_mismatch() {
+        let digest = crate::simulator::h_v1("oasis7.test.wait-recovery-digest.v1", &"request");
+        let conflicting_digest =
+            crate::simulator::h_v1("oasis7.test.wait-recovery-digest.v1", &"conflicting");
+        let continuation = crate::runtime::AgentContinuation {
+            schema_version: "continuation.v1".to_string(),
+            continuation_id: "continuation-digest-test".to_string(),
+            wake_id: "wake-digest-test".to_string(),
+            world_id: "world".to_string(),
+            branch_id: "main".to_string(),
+            finality_epoch: 0,
+            finality_block_hash: None,
+            finality_status: "pending".to_string(),
+            reorg_epoch: 0,
+            runtime_manifest_hash: "manifest".to_string(),
+            agent_id: "agent-digest-test".to_string(),
+            agent_session_id: "session-digest-test".to_string(),
+            agent_turn_id: "turn-digest-test".to_string(),
+            decision_request_id: "request-digest-test".to_string(),
+            origin_turn_id: "turn-digest-test".to_string(),
+            origin_request_digest: digest.to_string(),
+            continuation_proposal_id: "proposal-digest-test".to_string(),
+            proposal_digest: "proposal-digest".to_string(),
+            action_or_envelope_digest: None,
+            wake_conditions: Vec::new(),
+            next_wake_tick: Some(1),
+            remaining_budget: crate::runtime::ContinuationBudgetV1 {
+                unit: "ticks".to_string(),
+                value: 1,
+            },
+            valid_until_tick: Some(2),
+            precondition_digest: "precondition".to_string(),
+            wake_seq: 1,
+            logical_tick: 0,
+            status: crate::runtime::ContinuationStatusV1::Scheduled,
+            continuation_status_digest: None,
+            terminal_disposition: None,
+        };
+        assert!(provider_wait_continuation_identity_matches(
+            &continuation,
+            "agent-digest-test",
+            "session-digest-test",
+            "turn-digest-test",
+            "request-digest-test",
+            digest.as_str(),
+            "proposal-digest-test",
+        ));
+        assert!(!provider_wait_continuation_identity_matches(
+            &continuation,
+            "agent-digest-test",
+            "session-digest-test",
+            "turn-digest-test",
+            "request-digest-test",
+            conflicting_digest.as_str(),
+            "proposal-digest-test",
+        ));
     }
 }

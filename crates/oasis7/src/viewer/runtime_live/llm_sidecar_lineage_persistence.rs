@@ -1,5 +1,5 @@
 use super::*;
-use crate::runtime::World as RuntimeWorld;
+use crate::runtime::{World as RuntimeWorld, WorldCommitRecordV1};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::simulator::AsyncAgentTurnOutcome;
 use serde::{Deserialize, Serialize};
@@ -56,6 +56,32 @@ pub(in crate::viewer::runtime_live) struct ProviderWakeRecoveryPending {
     pub(in crate::viewer::runtime_live) active: cognition_context::ProviderContextState,
     pub(in crate::viewer::runtime_live) status: crate::runtime::ContinuationStatusV1,
     pub(in crate::viewer::runtime_live) reason: String,
+}
+
+/// Compare the complete provider request identity carried by two sidecar
+/// contexts. Map keys are only routing hints: a restored context is safe to
+/// reuse only when every Runtime correlation field agrees.
+pub(super) fn provider_context_identity_matches(
+    left: &cognition_context::ProviderContextState,
+    right: &cognition_context::ProviderContextState,
+) -> bool {
+    left.request_context.agent_subject == right.request_context.agent_subject
+        && left.request_context.agent_session_id == right.request_context.agent_session_id
+        && left.request_context.agent_turn_id == right.request_context.agent_turn_id
+        && left.request_context.decision_request_id == right.request_context.decision_request_id
+        && left.request_context.request_digest == right.request_context.request_digest
+}
+
+pub(super) fn provider_context_matches_wake(
+    context: &cognition_context::ProviderContextState,
+    wake: &crate::runtime::SchedulerWakeV1,
+) -> bool {
+    context.request_context.agent_subject == wake.agent_id
+        && context.request_context.agent_session_id == wake.agent_session_id
+        && context.request_context.agent_turn_id == wake.agent_turn_id
+        && context.request_context.decision_request_id == wake.decision_request_id
+        && !wake.request_digest.is_empty()
+        && context.request_context.request_digest.to_string() == wake.request_digest
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -127,6 +153,53 @@ fn decode_provider_lineage_checkpoint(
     let checkpoint = serde_json::from_value(value)
         .map_err(|error| format!("provider lineage checkpoint decode failed: {error}"))?;
     Ok((checkpoint, migrated))
+}
+
+fn committed_runtime_record_for_request(
+    world: &RuntimeWorld,
+    request: &crate::simulator::ContinuousAgentRequestContextV1,
+) -> Result<Option<WorldCommitRecordV1>, String> {
+    let Some(values) = world
+        .cognition()
+        .get("commit_records")
+        .and_then(Value::as_array)
+    else {
+        return Ok(None);
+    };
+    for value in values {
+        let marker: WorldCommitRecordV1 =
+            serde_json::from_value(value.clone()).map_err(|error| {
+                format!(
+                    "Runtime cognition commit record decode failed during provider restore: {error}"
+                )
+            })?;
+        if marker.status == "committed"
+            && marker.agent_id == request.agent_subject
+            && marker.agent_session_id == request.agent_session_id
+            && marker.agent_turn_id == request.agent_turn_id
+            && marker.decision_request_id == request.decision_request_id
+            && marker.request_digest == request.request_digest.to_string()
+        {
+            return Ok(Some(marker));
+        }
+    }
+    Ok(None)
+}
+
+fn decision_matches_commit_record(
+    decision: &async_support::RuntimeLlmDecision,
+    marker: &WorldCommitRecordV1,
+) -> bool {
+    let Some(cognition) = decision.cognition.as_ref() else {
+        return false;
+    };
+    let request = &cognition.request.request_context;
+    marker.agent_id == decision.agent_id
+        && marker.agent_id == request.agent_subject
+        && marker.agent_session_id == request.agent_session_id
+        && marker.agent_turn_id == request.agent_turn_id
+        && marker.decision_request_id == request.decision_request_id
+        && marker.request_digest == request.request_digest.to_string()
 }
 
 /// V1 checkpoints predate the explicit provider/tool budget limits.  A
@@ -385,6 +458,68 @@ impl RuntimeLlmSidecar {
         self.provider_lineage_restored = true;
         self.provider_lineage_recovery_pending = None;
 
+        // Runtime's committed marker is authoritative over the sidecar's
+        // checkpoint. A process can stop after Runtime commits the response
+        // but before `track_action` or terminal feedback is persisted. In
+        // that crash prefix, synthesize the exact terminal identity from the
+        // Runtime marker and discard every stale sidecar mirror so the old
+        // provider request cannot be admitted again.
+        let mut committed_recovery = false;
+        let candidate_agents = self
+            .provider_active_turns
+            .keys()
+            .cloned()
+            .chain(self.provider_contexts.keys().cloned())
+            .collect::<BTreeSet<_>>();
+        for agent_id in candidate_agents {
+            let request = self
+                .provider_active_turns
+                .get(agent_id.as_str())
+                .or_else(|| self.provider_contexts.get(agent_id.as_str()))
+                .map(|context| context.request_context.clone());
+            let Some(request) = request else { continue };
+            let Some(marker) = committed_runtime_record_for_request(world, &request)? else {
+                continue;
+            };
+            self.provider_terminal_states.insert(
+                agent_id.clone(),
+                ProviderTerminalState {
+                    agent_id: marker.agent_id.clone(),
+                    agent_session_id: marker.agent_session_id.clone(),
+                    agent_turn_id: marker.agent_turn_id.clone(),
+                    decision_request_id: marker.decision_request_id.clone(),
+                    request_digest: marker.request_digest.clone(),
+                    status: marker.status.clone(),
+                    reject_reason: marker.abort_reason.clone(),
+                    feedback_id: (!marker.feedback_id.is_empty())
+                        .then_some(marker.feedback_id.clone()),
+                },
+            );
+            self.provider_completed_decisions.retain(|decision| {
+                !decision_matches_commit_record(decision, &marker)
+                    && !(decision.cognition.is_none() && decision.agent_id == marker.agent_id)
+            });
+            self.provider_held_decisions.retain(|_, decision| {
+                !decision_matches_commit_record(decision, &marker)
+                    && !(decision.cognition.is_none() && decision.agent_id == marker.agent_id)
+            });
+            self.provider_active_turns.remove(agent_id.as_str());
+            self.provider_contexts.remove(agent_id.as_str());
+            self.provider_retry_contexts.remove(agent_id.as_str());
+            self.provider_recovery_pending.remove(agent_id.as_str());
+            self.provider_wake_recovery_pending
+                .remove(agent_id.as_str());
+            self.provider_wait_until.remove(agent_id.as_str());
+            self.pending_actions
+                .retain(|_, pending| pending.agent_id != agent_id);
+            self.provider_continuation_proposals
+                .retain(|_, proposal| proposal.agent_id != agent_id);
+            self.provider_continuation_recovery_pending
+                .remove(agent_id.as_str());
+            self.provider_transport_exhausted.remove(agent_id.as_str());
+            committed_recovery = true;
+        }
+
         // A response that was already accepted or is waiting for its
         // scheduled terminal feedback must stay occupied. An orphaned active
         // marker, however, represents an interrupted request; its complete
@@ -414,11 +549,7 @@ impl RuntimeLlmSidecar {
                     .filter_map(|wake| {
                         self.provider_contexts
                             .get(wake.agent_id.as_str())
-                            .filter(|context| {
-                                context.request_context.agent_turn_id == wake.agent_turn_id
-                                    && context.request_context.decision_request_id
-                                        == wake.decision_request_id
-                            })
+                            .filter(|context| provider_context_matches_wake(context, &wake))
                             .map(|_| wake.agent_id)
                     }),
             )
@@ -428,13 +559,8 @@ impl RuntimeLlmSidecar {
             .iter()
             .map(|(agent_id, active)| {
                 let context = self.provider_contexts.get(agent_id.as_str());
-                let same_identity = context.is_some_and(|context| {
-                    context.request_context.agent_turn_id == active.request_context.agent_turn_id
-                        && context.request_context.decision_request_id
-                            == active.request_context.decision_request_id
-                        && context.request_context.request_digest
-                            == active.request_context.request_digest
-                });
+                let same_identity = context
+                    .is_some_and(|context| provider_context_identity_matches(context, active));
                 (
                     agent_id.clone(),
                     active.clone(),
@@ -547,7 +673,7 @@ impl RuntimeLlmSidecar {
             self.provider_continuation_recovery_pending
                 .remove(agent_id.as_str());
         }
-        if recovered_orphan || recovered_retry || checkpoint_migrated {
+        if committed_recovery || recovered_orphan || recovered_retry || checkpoint_migrated {
             // Persist the active-marker removal and retry/exhaustion decision
             // before the next Runtime tick, so a restart cannot strand the
             // same identity again. Persist an explicit schema upgrade too,
