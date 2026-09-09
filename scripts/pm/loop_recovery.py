@@ -238,7 +238,7 @@ def reconcile(common, uid, root, tool_root=None, *, reservation_fd=None):
                              'contract_digest': contract_digest(expected),
                              'publication_ref': {'issue_number': number, 'comment_id': comment['id']},
                              'consumed_clauses': [c for ref in expected['content_refs'] for c in ref['clauses']]}
-                checked = validate_contracts(root, root, {**binding, 'input_contracts': [reference]}, authority)
+                checked = validate_contracts(root, root, {**binding, 'input_contracts': [reference]}, authority, purpose='new_tasks')
                 if checked['status'] == 'passed': evidence = {'publication_ref': reference['publication_ref'], 'validation': checked}
         if evidence:
             record_action(common, uid, {**action, 'reconciled': True, 'readback_evidence': evidence})

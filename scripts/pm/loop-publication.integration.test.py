@@ -33,6 +33,15 @@ print(json.dumps(result))
 
 class PublicationIntegration(unittest.TestCase):
     def test_publish_and_retry_use_one_comment_and_resolved_journal(self):
+        self.assert_publication(in_flight=True, lose_response=True)
+
+    def test_new_only_output_publication_resolves_journal(self):
+        self.assert_publication(in_flight=False, lose_response=False)
+
+    def test_new_only_output_lost_response_recovers_and_retries(self):
+        self.assert_publication(in_flight=False, lose_response=True)
+
+    def assert_publication(self, *, in_flight, lose_response):
         with tempfile.TemporaryDirectory() as tmp:
             temp = Path(tmp)
             root = temp / 'repo'
@@ -59,6 +68,8 @@ class PublicationIntegration(unittest.TestCase):
             binary = temp / 'bin'; binary.mkdir(); gh = binary / 'gh'; gh.write_text(FAKE); gh.chmod(0o755)
             env = dict(os.environ, PATH=str(binary) + os.pathsep + os.environ['PATH'], GH_FIXTURE=str(state), PYTHONDONTWRITEBYTECODE='1')
             contract = dict(schema='oasis7.loop-contract/v1', contract_id='S', revision=1, owner_loop='system', source_head=base, merged_head=base, approval_ref={'repository': 'eng-cc/oasis7', 'pr_number': 2}, content_refs=[{'path': 'doc/engineering/spec.md', 'sha256': 'sha256:' + hashlib.sha256(spec.read_bytes()).hexdigest(), 'clauses': ['a']}], upstream_contracts=[], scope=['pilot'], eligibility={'new_tasks': True, 'in_flight': True, 'release': True})
+            contract['eligibility']['in_flight'] = in_flight
+            contract['eligibility']['release'] = in_flight
             source = temp / 'contract.json'; source.write_text(json.dumps(contract))
             command = ['python3', str(trusted / 'scripts/pm/loop.py'), 'publish-contract', '--repo-root', str(root), '--tool-root', str(trusted), '--task-uid', UID, '--manual-request-ref', 'user-2', '--contract', str(source), '--json']
             for failure in ('owner', 'digest'):
@@ -88,6 +99,15 @@ class PublicationIntegration(unittest.TestCase):
             self.assertEqual(list((root / '.git/oasis7-loop-recovery').glob('*.actions.jsonl')),[])
             current['comments'] = []; state.write_text(json.dumps(current))
             source.write_text(json.dumps(contract))
+            if not lose_response:
+                for _ in range(2):
+                    result = subprocess.run(command, env=env, text=True, capture_output=True)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(len(json.loads(state.read_text())['comments']), 1)
+                journal = next((root / '.git/oasis7-loop-recovery').glob('*.actions.jsonl'))
+                events = [json.loads(line) for line in journal.read_text().splitlines()]
+                self.assertTrue(events[-1]['reconciled'])
+                return
             lost = subprocess.run(command, env=dict(env,GH_LOSE_POST='1'),text=True,capture_output=True)
             self.assertNotEqual(lost.returncode,0,lost.stdout)
             self.assertEqual(len(json.loads(state.read_text())['comments']),1)

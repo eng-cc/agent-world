@@ -303,7 +303,7 @@ def publish_contract(tool_root,target_repo_root,binding,contract,authority_reade
             return upstream
         publication=(reader.publish(binding,contract,before_write=before_write) if before_write is not None else reader.publish(binding,contract))
         reference={"contract_id":contract["contract_id"],"revision":contract["revision"],"contract_digest":contract_digest(contract),"publication_ref":publication,"consumed_clauses":[c for item in contract["content_refs"] for c in item["clauses"]]}
-        checked=validate_contracts(tool_root,target_repo_root,{**binding,"input_contracts":[reference]},reader)
+        checked=validate_contracts(tool_root,target_repo_root,{**binding,"input_contracts":[reference]},reader,purpose="new_tasks")
         return {**checked,"publication_ref":publication,"input_contract":reference}
     except (ValueError,OSError,KeyError,TypeError) as exc:
         return result([str(exc)])

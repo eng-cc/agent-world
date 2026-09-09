@@ -234,7 +234,16 @@ def selected_live(repository,uid,issue,number,check_name,app,allow_ready_pr=Fals
             check,proof=verified_run(repository,uid,number,base,head,selected["id"],app)
             if current_request(repository,uid,number,base,head,pr['base']['ref'])!=selected:
                 raise ValueError('current request changed during integration verification')
-            return pr,{**check,'_integration':proof},base,head
+            fresh=gh('api',f'repos/{repository}/pulls/{number}')
+            if (fresh.get('state')!='open' or fresh.get('merged')
+                or (not allow_ready_pr and not fresh.get('draft'))
+                or f'Refs #{issue}' not in (fresh.get('body') or '')
+                or f'Task: {uid}' not in (fresh.get('body') or '')
+                or fresh.get('base',{}).get('sha')!=base
+                or fresh.get('base',{}).get('ref')!=pr['base']['ref']
+                or fresh.get('head',{}).get('sha')!=head):
+                raise ValueError('PR identity or admission changed during integration verification')
+            return fresh,{**check,'_integration':proof},base,head
         if integration_run_id is not None:
             raise ValueError('explicit integration locator absent from verified current request range')
     except (ValueError,KeyError,OSError,subprocess.SubprocessError) as exc:

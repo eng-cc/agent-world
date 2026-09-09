@@ -139,6 +139,74 @@ class PolicyTests(unittest.TestCase):
         self.write("doc/product/a.md", "changed")
         self.assertEqual(self.check()["status"], "blocked")
 
+    def test_scope_globs_respect_components_and_recursive_exclusions(self):
+        self.binding.update(loop="code", write_scope=["scripts/pm/*.py"])
+        self.write("scripts/pm/nested/deeper/a.py", "candidate")
+        result = self.check()
+        self.assertTrue(any("outside declared write scope" in b for b in result["blockers"]), result)
+        head = self.git("rev-parse", "HEAD")
+        for allow, deny, expected in [
+            (["scripts/pm/**/*.py"], [], "passed"),
+            (["scripts/pm/**"], ["scripts/pm/*.py"], "passed"),
+            (["scripts/pm/**"], ["scripts/pm/**/*.py"], "blocked"),
+        ]:
+            with self.subTest(allow=allow, deny=deny):
+                self.binding.update(write_scope=allow, out_of_scope=deny)
+                actual = self.api.validate_scope(self.root, self.root, self.binding, self.base, head)
+                self.assertEqual(actual["status"], expected, actual)
+
+    def test_policy_glob_components_and_recursive_zero_depth(self):
+        cases = [
+            ("scripts/pm/*.py", "scripts/pm/a.py", True),
+            ("scripts/pm/*.py", "scripts/pm/nested/a.py", False),
+            ("scripts/pm/**.py", "scripts/pm/nested/a.py", False),
+            ("scripts/pm/**/*.py", "scripts/pm/a.py", True),
+            ("scripts/pm/**/*.py", "scripts/pm/a/b/c.py", True),
+            ("scripts/pm/**", "scripts/pm/a/b/c.py", True),
+            ("**/AGENTS.md", "AGENTS.md", True),
+            ("**/AGENTS.md", "doc/deep/AGENTS.md", True),
+            ("scripts/pm/?.py", "scripts/pm/a.py", True),
+            ("scripts/pm/[ab].py", "scripts/pm/a.py", True),
+            ("scripts/pm/[!a].py", "scripts/pm/b.py", True),
+            ("scripts/pm/[!a].py", "scripts/pm/a.py", False),
+            ("scripts/pm/[!a]*.py", "scripts/pm/b/c.py", False),
+            ("scripts/pm", "scripts/pm/a.py", False),
+        ]
+        for pattern, path, expected in cases:
+            with self.subTest(pattern=pattern, path=path):
+                policy = {"denied": [], "rules": [{"pattern": pattern, "loop": "code"}]}
+                self.assertEqual(self.api.classify_path(path, policy), "code" if expected else None)
+                policy.update(denied=[pattern], rules=[{"pattern": "**", "loop": "code"}])
+                self.assertEqual(self.api.classify_path(path, policy), None if expected else "code")
+
+    def test_scope_glob_checks_both_same_loop_rename_endpoints(self):
+        direct, nested = "scripts/pm/a.py", "scripts/pm/nested/a.py"
+        self.write(direct, "original")
+        self.git("add", ".")
+        self.git("commit", "-qm", "rename baseline")
+        self.binding.update(loop="code", write_scope=["scripts/pm/*.py"])
+        (self.root / "scripts/pm/nested").mkdir()
+        for source, target in [(direct, nested), (nested, direct)]:
+            base = self.git("rev-parse", "HEAD")
+            self.git("mv", source, target)
+            self.git("commit", "-qm", "rename")
+            actual = self.api.validate_scope(self.root, self.root, self.binding, base,
+                                             self.git("rev-parse", "HEAD"))
+            self.assertIn("outside declared write scope: " + nested, actual["blockers"], actual)
+
+    def test_real_policy_globs_keep_precedence_and_boundaries(self):
+        policy = json.loads((HERE / "loop-policy.v1.json").read_text())
+        for path, expected in [
+            ("doc/game/gameplay/a.prd.md", "product"),
+            ("doc/game/gameplay/nested/a.prd.md", "system"),
+            ("doc/product/deep/AGENTS.md", "code"),
+            ("doc/product/deep/a.md", "product"),
+            ("third_party/deep/a.rs", None),
+            (".pm/deep/a.py", None),
+        ]:
+            with self.subTest(path=path):
+                self.assertEqual(self.api.classify_path(path, policy), expected)
+
     def test_executable_source_under_doc_is_not_document(self):
         self.write("doc/product/executable.py", "print('side effect')")
         self.assertEqual(self.check()["status"], "blocked")

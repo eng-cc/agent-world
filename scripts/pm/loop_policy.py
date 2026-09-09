@@ -169,13 +169,28 @@ def load_policy(tool_root, binding):
     return policy
 
 
+def path_matches(path, pattern):
+    """Match a whole POSIX path; only a standalone ** crosses components."""
+    parts = path.split("/")
+    positions = {0}
+    for component in pattern.split("/"):
+        if component == "**":
+            positions = set(range(min(positions), len(parts) + 1))
+        else:
+            positions = {i + 1 for i in positions if i < len(parts)
+                         and fnmatch.fnmatchcase(parts[i], component)}
+        if not positions:
+            return False
+    return len(parts) in positions
+
+
 def classify_path(path, policy):
-    if not safe_path(path) or any(fnmatch.fnmatchcase(path, p) for p in policy["denied"]):
+    if not safe_path(path) or any(path_matches(path, p) for p in policy["denied"]):
         return None
     if path in policy.get("mixed_documents", []):
         return None
     for rule in policy["rules"]:
-        if fnmatch.fnmatchcase(path, rule["pattern"]):
+        if path_matches(path, rule["pattern"]):
             if rule["loop"] in {"product","system"} and PurePosixPath(path).suffix.lower() not in policy["document_extensions"]:
                 return None
             return rule["loop"]
@@ -216,7 +231,7 @@ def validate_scope(tool_root, target_repo_root, binding, base, head):
             paths.append({"path": path, "loop": owner})
             if owner != binding["loop"]:
                 errors.append(f"loop ownership mismatch or unknown path: {path}")
-            if not any(fnmatch.fnmatchcase(path, p) for p in binding["write_scope"]) or any(fnmatch.fnmatchcase(path, p) for p in binding["out_of_scope"]):
+            if not any(path_matches(path, p) for p in binding["write_scope"]) or any(path_matches(path, p) for p in binding["out_of_scope"]):
                 errors.append(f"outside declared write scope: {path}")
             for revision in (base, head):
                 entry = git(target_repo_root, "ls-tree", "-z", revision, "--", path)
