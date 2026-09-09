@@ -3,6 +3,7 @@
 import argparse
 import base64
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -12,6 +13,22 @@ import tempfile
 
 def run(*args):
     return subprocess.check_output(args, text=True).strip()
+
+
+def project_read_environment(repository):
+    """No runner gh login fallback: provision an explicit read credential."""
+    token = os.environ.get('OASIS7_LOOP_READ_TOKEN')
+    if not token:
+        raise ValueError('loop CI activation requires OASIS7_LOOP_READ_TOKEN with selected Project read access; GITHUB_TOKEN is repository-scoped')
+    environment = {**os.environ, 'GH_TOKEN': token}
+    environment.pop('OASIS7_LOOP_READ_TOKEN', None)
+    probe = subprocess.run(['gh', 'project', 'view', '1', '--owner', repository.split('/')[0], '--format', 'json'], env=environment, capture_output=True, text=True)
+    if probe.returncode:
+        raise ValueError('OASIS7_LOOP_READ_TOKEN cannot read canonical Project 1; verify read-only credential permissions and organization authorization')
+    project = json.loads(probe.stdout)
+    if not isinstance(project, dict) or not project.get('id') or project.get('number') != 1:
+        raise ValueError('canonical Project credential probe identity mismatch')
+    return environment
 
 
 def main():
@@ -59,6 +76,7 @@ def main():
         if binding.get('task_uid') != uid: raise ValueError('loop task UID mismatch')
         commit = binding.get('policy_commit', '')
         if not re.fullmatch(r'[0-9a-f]{40}', commit): raise ValueError('missing immutable effective policy')
+        read_environment = project_read_environment(args.repository)
         subprocess.run(['git', '-C', str(args.repo_root), 'fetch', '--no-tags', 'origin', 'main:refs/remotes/origin/main'], check=True, capture_output=True)
         subprocess.run(['git', '-C', str(args.repo_root), 'merge-base', '--is-ancestor', commit, 'refs/remotes/origin/main'], check=True)
         with tempfile.TemporaryDirectory(prefix='oasis7-loop-tools-') as tmp:
@@ -67,7 +85,7 @@ def main():
             try:
                 # All Python code below is loaded from the verified effective commit.
                 code = 'import json,sys; from pathlib import Path; from loop import validate_task; t,r,b,base,head,repo=sys.argv[1:]; b=json.loads(b); task={**b,"loop_binding":b,"repository":repo}; result=validate_task(Path(r),task,Path(t),base,head); print(json.dumps(result)); sys.exit(0 if result["status"]=="passed" else 2)'
-                result = subprocess.run([sys.executable, '-c', code, str(tool_root), str(args.repo_root.resolve()), json.dumps(binding), args.base, args.head, args.repository], cwd=tool_root / 'scripts/pm')
+                result = subprocess.run([sys.executable, '-c', code, str(tool_root), str(args.repo_root.resolve()), json.dumps(binding), args.base, args.head, args.repository], cwd=tool_root / 'scripts/pm', env=read_environment)
                 return result.returncode
             finally:
                 subprocess.run(['git', '-C', str(args.repo_root), 'worktree', 'remove', str(tool_root)], check=True, capture_output=True)

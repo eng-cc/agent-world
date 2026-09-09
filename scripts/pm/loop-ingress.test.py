@@ -33,5 +33,13 @@ class IngressTests(unittest.TestCase):
         self.assertNotIn('from loop_gate import admission', script)
         self.assertIn("'trusted helper bytes mismatch'", script)
 
+    def test_read_credential_is_scoped_to_trusted_admission_step(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/rust.yml').read_text()
+        admission, planner = workflow.split('      - id: scope', 1)
+        self.assertIn('OASIS7_LOOP_READ_TOKEN: ${{ secrets.OASIS7_LOOP_READ_TOKEN }}', admission)
+        self.assertNotIn('OASIS7_LOOP_READ_TOKEN', planner)
+        self.assertIn('issues: read', admission)
+        self.assertIn('pull-requests: read', admission)
+
 
 if __name__ == '__main__': unittest.main()

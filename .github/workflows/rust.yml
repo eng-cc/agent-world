@@ -62,6 +62,10 @@ jobs:
   required-gate:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
     outputs:
       run_operational_contracts: ${{ steps.scope.outputs.run_operational_contracts }}
       run_site_contract_tests: ${{ steps.scope.outputs.run_site_contract_tests }}
@@ -69,10 +73,11 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - id: scope
-        name: Plan required gate scope
+      - name: Validate trusted loop admission
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
+          OASIS7_LOOP_READ_TOKEN: ${{ secrets.OASIS7_LOOP_READ_TOKEN }}
         run: |
           base_ref=""
           head_ref="${GITHUB_SHA}"
@@ -111,6 +116,20 @@ jobs:
               ;;
           esac
 
+      - id: scope
+        name: Plan required gate scope
+        run: |
+          base_ref=""
+          head_ref="${GITHUB_SHA}"
+          case "${GITHUB_EVENT_NAME}" in
+            pull_request)
+              base_ref="${{ github.event.pull_request.base.sha }}"
+              head_ref="${{ github.event.pull_request.head.sha }}"
+              ;;
+            push)
+              base_ref="${{ github.event.before }}"
+              ;;
+          esac
           ./scripts/plan-rust-required-scope.sh \
             --event-name "${GITHUB_EVENT_NAME}" \
             --base-ref "${base_ref}" \
