@@ -1,5 +1,6 @@
 import { For, Show } from "solid-js";
 import { compareUnsignedDecimal } from "./world_feed_state.js";
+import { pixelWorldMajorEventPresentation } from "./pixel_world_presentation.js";
 
 function readFeed(props) {
   return typeof props.feed === "function" ? props.feed() : props.feed || {};
@@ -90,17 +91,8 @@ function eventKindLabel(event, locale, tr) {
 }
 
 function majorEventStatusCopy(event, locale, tr) {
-  const lifecycle = {
-    active: ["进行中", "active"],
-    resolved: ["已解决", "resolved"],
-    timed_out: ["已超时", "timed out"],
-  }[event?.major_event?.lifecycle];
-  if (!lifecycle) return null;
-  return tr(
-    locale,
-    `危机${lifecycle[0]} · 严重度 ${event.major_event.severity}`,
-    `Crisis ${lifecycle[1]} · severity ${event.major_event.severity}`,
-  );
+  const presentation = pixelWorldMajorEventPresentation(event?.major_event, locale);
+  return typeof tr === "function" ? presentation.label : presentation.label;
 }
 
 function WorldFeedPanel(props) {
@@ -115,6 +107,7 @@ function WorldFeedPanel(props) {
   const status = () => String(feed().status || "unavailable");
   const statusLabel = () => statusCopy(locale(), tr, status());
   const summaryStatusLabel = () => statusBadgeLabel(locale(), tr, status());
+  const latestEvent = () => presentationEvents().at(-1) || null;
   const shouldReload = () => status() !== "unavailable"
     && Boolean(feed().snapshotReloadRequired || status() === "gap");
 
@@ -127,7 +120,10 @@ function WorldFeedPanel(props) {
       data-world-feed-status={status()}
       aria-live="polite"
     >
-      <summary class="panel__header panel__header--stack world-feed__summary">
+      <summary
+        class="panel__header panel__header--stack world-feed__summary"
+        data-world-feed-latest={latestEvent()?.event_seq == null ? undefined : String(latestEvent().event_seq)}
+      >
         <div class="panel__eyebrow">{tr(locale(), "环境上下文", "Ambient Context")}</div>
         <div class="world-feed__summary-line">
           <div class="panel__title">{tr(locale(), "World Feed", "World Feed")}</div>
@@ -136,6 +132,22 @@ function WorldFeedPanel(props) {
         <div class="panel__meta-copy">
           {tr(locale(), "只读的运行时环境投影；不会替代 Action Receipt，也不会证明玩家动作成功。", "Read-only runtime context; it never replaces Action Receipt or proves a player action succeeded.")}
         </div>
+        <Show
+          when={latestEvent()}
+          fallback={(
+            <div class="world-feed__latest world-feed__latest--empty" data-world-feed-latest-empty="true">
+              {status() === "loading"
+                ? tr(locale(), "等待最新环境动态。", "Waiting for the latest ambient activity.")
+                : status() === "unavailable"
+                  ? tr(locale(), "最新环境动态不可用。", "The latest ambient activity is unavailable.")
+                  : tr(locale(), "暂无最新环境动态。", "No latest ambient activity is available.")}
+            </div>
+          )}
+        >
+          <div class="world-feed__latest" data-world-feed-latest="true">
+            <span class="world-feed__latest-copy">{`${tr(locale(), "最新", "Latest")}: ${latestEvent().summary} · ${eventKindLabel(latestEvent(), locale(), tr)}`}</span>
+          </div>
+        </Show>
       </summary>
       <div class="panel__body world-feed__body">
         <div class="world-feed__status-row">
@@ -194,7 +206,7 @@ function WorldFeedPanel(props) {
             <For each={presentationEvents()}>
               {(event) => (
                 <article
-                  class="event-card world-feed__event"
+                  class={`event-card world-feed__event${event.major_event ? ` world-feed__event--major ${pixelWorldMajorEventPresentation(event.major_event, locale()).shape.split(" ").map((token) => `world-feed__event--${token}`).join(" ")}` : ""}`}
                   data-world-feed-event={event.event_seq}
                   data-world-feed-major-event={event.major_event ? event.event_seq : undefined}
                   data-major-event-category={event.major_event?.category}
@@ -206,8 +218,13 @@ function WorldFeedPanel(props) {
                     <span class="badge">{`#${event.event_seq}`}</span>
                   </div>
                   <div class="event-card__meta">{eventKindLabel(event, locale(), tr)}</div>
-                  <Show when={event.major_event?.freshness === "current" && status() === "ready"}>
-                    <div class="feedback-detail" role="status" aria-live="polite">
+                  <Show when={event.major_event}>
+                    <div
+                      class="feedback-detail world-feed__major-event-status"
+                      data-major-event-status={pixelWorldMajorEventPresentation(event.major_event, locale()).shape}
+                      role={event.major_event.freshness === "current" && status() === "ready" ? "status" : undefined}
+                      aria-live={event.major_event.freshness === "current" && status() === "ready" ? "polite" : undefined}
+                    >
                       {majorEventStatusCopy(event, locale(), tr)}
                     </div>
                   </Show>

@@ -88,6 +88,7 @@ export function PixelWorldHotspot(props) {
       class="pixel-world-hotspot"
       data-hotspot-kind={hotspot().kind}
       data-hotspot-hit-target="44"
+      data-renderer-target={props.rendererProjection ? 'true' : undefined}
       disabled={!visible()}
       tabIndex={visible() ? 0 : -1}
       aria-hidden={!visible()}
@@ -96,8 +97,8 @@ export function PixelWorldHotspot(props) {
         display: visible() ? undefined : "none",
         "--hotspot-projected-x": props.style?.left,
         "--hotspot-projected-y": props.style?.top,
-        left: `clamp(22px, ${props.style?.left || "50%"}, calc(100% - 22px))`,
-        top: `clamp(22px, ${props.style?.top || "50%"}, calc(100% - 22px))`,
+        left: props.rendererProjection ? props.style?.left : `clamp(22px, ${props.style?.left || "50%"}, calc(100% - 22px))`,
+        top: props.rendererProjection ? props.style?.top : `clamp(22px, ${props.style?.top || "50%"}, calc(100% - 22px))`,
       }}
       title={`${hotspot().kind}:${hotspot().label}`}
       aria-label={pixelWorldHotspotAccessibleLabel(props.locale, hotspot())}

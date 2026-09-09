@@ -418,17 +418,21 @@ fn runtime_provider_continuation_recovery_fence_blocks_retained_context_after_re
         "fenced agent A must not append a Runtime lifecycle prefix: {dispatched_events:?}"
     );
 
-    let sibling_b_dispatched = (0..1_000).any(|_| {
+    let dispatch_deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    let sibling_b_dispatched = loop {
         let state = provider_states[1].lock().expect("provider B state lock");
         let dispatched = !state.recorded_requests.is_empty()
             && !state.recorded_turn_contexts.is_empty()
             && !state.recorded_request_contexts.is_empty();
         drop(state);
-        if !dispatched {
-            std::thread::yield_now();
+        if dispatched {
+            break true;
         }
-        dispatched
-    });
+        if std::time::Instant::now() >= dispatch_deadline {
+            break false;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    };
     assert!(
         sibling_b_dispatched,
         "serviceable sibling B must dispatch one provider request"

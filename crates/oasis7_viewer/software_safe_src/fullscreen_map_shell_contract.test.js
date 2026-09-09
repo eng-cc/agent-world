@@ -159,6 +159,26 @@ describe("fullscreen map shell contract", () => {
     );
   });
 
+  it("keeps the mobile Feed band below top chrome and outside the decision band", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    expect(terminalShellCss).toMatch(
+      /@media\s*\(max-width:\s*640px\)[\s\S]*?\.stack\s*>\s*\[data-viewer-overlay="feed"\]\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?top:\s*132px;[\s\S]*?bottom:\s*auto;[\s\S]*?max-height:\s*min\(20dvh,\s*128px\)/i,
+    );
+    expect(terminalShellCss).toMatch(
+      /@media\s*\(max-width:\s*640px\)[\s\S]*?\.pixel-world-decision-area\s*\{[\s\S]*?max-height:\s*calc\(100dvh\s*-\s*276px\);[\s\S]*?align-content:\s*start;/i,
+    );
+  });
+
+  it("leaves a mobile gap between navigation, Cinematic, and Feed", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    expect(terminalShellCss).toMatch(
+      /@media\s*\(max-width:\s*640px\)[\s\S]*?\.secondary-viewer-nav\s*\{[\s\S]*?top:\s*56px;[\s\S]*?\[data-viewer-overlay="cinematic-entry"\]\s*\{[\s\S]*?top:\s*80px;/i,
+    );
+    expect(terminalShellCss).toMatch(
+      /@media\s*\(max-width:\s*640px\)[\s\S]*?\.stack\s*>\s*\[data-viewer-overlay="feed"\]\s*\{[\s\S]*?top:\s*132px;/i,
+    );
+  });
+
   it("bounds short-landscape Next Move content inside its receipt-safe band", async () => {
     const { terminalShellCss } = await readViewerHtml();
     expect(terminalShellCss).toMatch(
@@ -317,10 +337,11 @@ describe("fullscreen map shell contract", () => {
     const { terminalShellCss } = await readViewerHtml();
     const mobileBlock = terminalShellCss.match(/@media\s*\(max-width:\s*640px\)[\s\S]*$/i)?.[0] || "";
     const entryTop = Number(mobileBlock.match(/\[data-viewer-overlay=["']cinematic-entry["']\][^{]*\{[^}]*top:\s*(\d+)px/i)?.[1]);
-    const readoutTop = Number(mobileBlock.match(/\[data-viewer-shell=["']player-fullscreen["']\] \.pixel-world-readout[^{}]*\{[^}]*top:\s*(\d+)px/i)?.[1]);
+    const readoutRule = findRule(mobileBlock, /\[data-viewer-shell=["']player-fullscreen["']\]\s+\.pixel-world-readout/);
+    const readoutTop = Number(readoutRule?.declarations.match(/top\s*:\s*(\d+)px/i)?.[1]);
     expect(Number.isFinite(entryTop)).toBe(true);
-    expect(Number.isFinite(readoutTop)).toBe(true);
-    expect(readoutTop).toBeGreaterThanOrEqual(entryTop + 44);
+    expect(Number.isFinite(readoutTop) || hasDeclaration(readoutRule, "position", /static/)).toBe(true);
+    if (Number.isFinite(readoutTop)) expect(readoutTop).toBeGreaterThanOrEqual(entryTop + 44);
   });
 
   it("does not leave the low-priority mobile readout under the Feed overlay", async () => {
@@ -335,6 +356,7 @@ describe("fullscreen map shell contract", () => {
     expect(feedRule, "mobile Feed must have an explicit safe-area policy").not.toBeNull();
 
     const readoutIsHidden = hasDeclaration(readoutRule, "display", /none/);
+    const readoutIsStatic = hasDeclaration(readoutRule, "position", /static/);
     const readoutTop = Number(readoutRule?.declarations.match(/top\s*:\s*(\d+)px/i)?.[1]);
     const feedTop = Number(feedRule?.declarations.match(/top\s*:\s*(\d+)px/i)?.[1]);
     const bandsAreSeparated = Number.isFinite(readoutTop)
@@ -342,7 +364,7 @@ describe("fullscreen map shell contract", () => {
       && feedTop >= readoutTop + 44;
 
     expect(
-      readoutIsHidden || bandsAreSeparated,
+      readoutIsHidden || readoutIsStatic || bandsAreSeparated,
       "mobile Feed and the low-priority world readout must be hidden or occupy disjoint vertical bands",
     ).toBe(true);
   });
@@ -353,6 +375,28 @@ describe("fullscreen map shell contract", () => {
     const safeAreaSource = await readFile("software_safe_src/pixel_world_mobile_safe_area.js", "utf8");
     expect(safeAreaSource).toContain("commandTop - SAFE_AREA_GAP_PX - markerBottom");
     expect(safeAreaSource).toContain("feedBottom + SAFE_AREA_GAP_PX - markerTop");
+  });
+
+  it("keeps mobile selection, Feed, legend, and status surfaces in distinct presentation bands", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    const mobileBlock = terminalShellCss.match(/@media\s*\(max-width:\s*640px\)[\s\S]*$/i)?.[0] || "";
+    expect(mobileBlock).toMatch(
+      /\[data-viewer-overlay=["']world-hud["']\]\s+\.pixel-world-canvas__selection\s*\{[^}]*top:\s*264px/i,
+    );
+    expect(mobileBlock).toMatch(
+      /\.pixel-world-decision-area\s+\.pixel-world-canvas__legend\s*\{[^}]*margin:\s*0\s+0\s+0\s+auto/i,
+    );
+    expect(mobileBlock).toMatch(
+      /\[data-viewer-shell=["']player-fullscreen["']\]\s+\.pixel-world-readout\s*\{[^}]*position:\s*static[^}]*display:\s*flex/i,
+    );
+    expect(terminalShellCss).toMatch(/\.pixel-world-canvas__sparse-guidance\s*\{/i);
+  });
+
+  it("uses severity width and lifecycle line styles as truthful crisis shape cues", async () => {
+    const { terminalShellCss } = await readViewerHtml();
+    expect(terminalShellCss).toMatch(/\.world-feed__event--severity-4\s*\{[^}]*border-left-color/i);
+    expect(terminalShellCss).toMatch(/\.world-feed__event--lifecycle-resolved\s*\{[^}]*border-left-style:\s*dashed/i);
+    expect(terminalShellCss).toMatch(/\.world-feed__event--lifecycle-timed_out\s*\{[^}]*border-left-style:\s*dotted/i);
   });
 
   it("keeps the narrow Command context row sticky while the route panel scrolls independently", async () => {
@@ -430,8 +474,8 @@ describe("fullscreen map shell contract", () => {
     const { terminalShellCss } = await readViewerHtml();
     const mobileBlock = terminalShellCss.match(/@media\s*\(max-width:\s*640px\)[\s\S]*$/i)?.[0] || "";
     expect(mobileBlock).toMatch(/\[data-viewer-overlay=["']feed["']\][^{]*\{[^}]*top:\s*104px/i);
-    expect(mobileBlock).toMatch(/\[data-viewer-overlay=["']renderer-unavailable["']\][^{]*\{[^}]*top:\s*158px/i);
-    expect(mobileBlock).toMatch(/\.pixel-world-render-diagnostics\[data-renderer-state=["']unavailable["']\][^{]*\{[^}]*top:\s*232px/i);
+    expect(mobileBlock).toMatch(/\[data-viewer-overlay=["']renderer-unavailable["']\][^{]*\{[^}]*top:\s*calc\(132px \+ min\(20dvh, 128px\) \+ 8px\)/i);
+    expect(mobileBlock).toMatch(/\.pixel-world-render-diagnostics\[data-renderer-state=["']unavailable["']\][^{]*\{[^}]*top:\s*calc\(132px \+ min\(20dvh, 128px\) \+ 120px\)/i);
   });
 
   it("keeps a mobile More route for secondary Diagnostics without a narrow-screen hide rule", async () => {

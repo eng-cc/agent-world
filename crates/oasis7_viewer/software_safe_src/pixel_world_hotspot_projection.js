@@ -42,6 +42,7 @@ export function pixelWorldHotspotStyle(
   worldBounds,
   index = 0,
   cameraState,
+  stageSize = { width: PIXEL_WORLD_CANVAS_WIDTH, height: PIXEL_WORLD_CANVAS_HEIGHT },
 ) {
   const fallback = {
     left: `${20 + ((index % 4) * 16)}%`,
@@ -57,11 +58,11 @@ export function pixelWorldHotspotStyle(
     };
   }
 
-  const point = toCanvasPoint(position, worldBounds, PIXEL_WORLD_CANVAS_WIDTH, PIXEL_WORLD_CANVAS_HEIGHT, cameraState);
+  const point = toCanvasPoint(position, worldBounds, stageSize.width, stageSize.height, cameraState);
 
   return {
-    left: `${(point.x / PIXEL_WORLD_CANVAS_WIDTH) * 100}%`,
-    top: `${(point.y / PIXEL_WORLD_CANVAS_HEIGHT) * 100}%`,
+    left: `${(point.x / stageSize.width) * 100}%`,
+    top: `${(point.y / stageSize.height) * 100}%`,
     width: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
     height: `${PIXEL_WORLD_HOTSPOT_TOUCH_TARGET_PX}px`,
     transform: "translate(-50%, -50%)",
