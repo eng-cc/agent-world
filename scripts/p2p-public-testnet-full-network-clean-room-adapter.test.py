@@ -2238,6 +2238,42 @@ class FullNetworkCleanRoomAdapterTests(unittest.TestCase):
                 )
         self.assertIn("rebuild:storage-205", transport.rollback_started)
 
+    def test_first_mutation_journal_failure_does_not_invent_rollback_candidate(self) -> None:
+        authority = self._authority(apply_authorized=True)
+        transport = ApplyTransport(self.adapter, self.plan)
+        stop_index = self.plan["global_order"].index("stop:storage-205")
+        original_write = self.adapter._write_journal
+        injected = False
+
+        def write(path, record):
+            nonlocal injected
+            if (not injected and record["status"] == "in-flight"
+                    and record["next_operation_index"] == stop_index):
+                injected = True
+                raise self.adapter.AdapterError("injected first mutation journal failure")
+            original_write(path, record)
+
+        def verifier(plan, receipt):
+            return {"verified": True, "bindings": receipt["bindings"],
+                    "verifier_id": self.adapter.CANONICAL_VERIFIER_ID,
+                    "trust_root_id": self.adapter.CANONICAL_TRUST_ROOT_ID,
+                    "signer_id": "governance-signer"}
+
+        journal = Path(self._test_directory.name) / "unattempted-mutation.json"
+        with mock.patch.object(self.adapter, "_write_journal", side_effect=write):
+            with self.assertRaises(self.adapter.AdapterError):
+                self.adapter.execute(self.plan, authority, journal_path=journal,
+                    ledger_path=self.ledger_path, transport=transport,
+                    dry_run=False, provenance_verifier=verifier)
+        self.assertTrue(injected)
+        self.assertEqual(transport.operations, self.plan["global_order"][:stop_index])
+        self.assertEqual(transport.rollback_reobservations, [])
+        self.assertEqual(transport.rollback_operations, [])
+        self.assertEqual(transport.rollback_started, [])
+        record = json.loads(journal.read_text(encoding="utf-8"))
+        self.assertEqual(record["status"], "terminal-failure")
+        self.assertEqual(record["rollback_status"], "not-needed")
+
     def test_journal_write_failure_rolls_back_current_started_operation(self) -> None:
         authority = self._authority(apply_authorized=True)
 

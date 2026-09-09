@@ -4051,10 +4051,13 @@ def _execute_unlocked(
                     ),
                 )
                 _fail("forensic backup failed; no clean-redeploy rollback is required")
-            if not rollback_candidates and _read_only_operation(operation):
-                # A failed preflight/verify/probe/health has no provider
-                # mutation to reconcile.  Never call re-observe or rollback
-                # transports for a read-only failure with an empty set.
+            if not rollback_candidates and (
+                _read_only_operation(operation) or not in_flight_journal_written
+            ):
+                # No mutation callback was admitted.  In particular, failure
+                # to persist the first destructive operation's in-flight record
+                # cannot create a mutation candidate.  Earlier admitted
+                # mutations already populate rollback_candidates.
                 rollback_status = "not-needed"
                 _persist_terminal(
                     Path(journal_path),
@@ -4076,7 +4079,7 @@ def _execute_unlocked(
                         backup_status=backup_status,
                     ),
                 )
-                _fail("read-only provider operation failed; no rollback is required")
+                _fail("provider operation failed before mutation; no rollback is required")
             if not rollback_candidates and not _read_only_operation(operation):
                 # A consumer-impact mismatch at the pre-callback boundary is
                 # fail-closed.  Preserve the durable in-flight journal and do
@@ -4084,11 +4087,6 @@ def _execute_unlocked(
                 # re-observation or clean-redeploy rollback.
                 if in_flight_journal_written:
                     _fail("provider mutation was blocked before callback; governed reconciliation is required")
-                # If the in-flight journal itself could not be written, retain
-                # the pre-existing rollback contract: reconcile a possible
-                # earlier provider transition before reporting the failure.
-                if _rollback_candidate(operation):
-                    rollback_candidates.append(operation)
             try:
                 validate_authority(
                     plan,

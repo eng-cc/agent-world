@@ -1353,6 +1353,53 @@ class IdentityV2SigningToolContractTests(unittest.TestCase):
         self.assertTrue(verified.is_file())
         self.assertTrue(receipt.is_file())
 
+    def test_prepare_and_sign_second_publication_failure_preserves_pair(self) -> None:
+        from unittest.mock import patch
+        for command in ("prepare", "sign"):
+            for existing in (False, True):
+                with self.subTest(command=command, existing=existing):
+                    stem = f"publication-{command}-{existing}"
+                    if command == "prepare":
+                        first, second = self._prepare(stem)
+                        args = self._prepare_args(first, second)
+                    else:
+                        payload, manifest = self._prepare(stem)
+                        first, second = self._sign(payload, manifest, stem)
+                        args = ["sign", "--payload", str(payload), "--manifest", str(manifest),
+                            "--provider-registry", str(self.registry), "--provider-ref", PROVIDER_ID,
+                            "--signature-out", str(first), "--attestation-out", str(second)]
+                    if existing:
+                        # A byte-distinct retained output detects replacement
+                        # even when this deterministic fixture reissues a payload.
+                        first.write_bytes(first.read_bytes() + b"\n")
+                        previous = (first.read_bytes(), second.read_bytes())
+                    else:
+                        first.unlink()
+                        second.unlink()
+                    injection = '''
+original_replace = tool.os.replace
+publication_failed = False
+def fail_second_replace(source, destination):
+    global publication_failed
+    if not publication_failed and str(destination) == %r:
+        publication_failed = True
+        raise OSError("injected second publication failure")
+    return original_replace(source, destination)
+tool.os.replace = fail_second_replace
+''' % str(second)
+                    harness = CHILD_HARNESS.replace("raise SystemExit(tool.main", injection + "raise SystemExit(tool.main")
+                    self.assertNotEqual(harness, CHILD_HARNESS)
+                    with patch.dict(globals(), {"CHILD_HARNESS": harness}):
+                        result = self._run(*args)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(b"cannot write", result.stderr)
+                    if existing:
+                        self.assertEqual(second.read_bytes(), previous[1])
+                        self.assertEqual(first.read_bytes(), previous[0])
+                    else:
+                        self.assertFalse(second.exists())
+                        self.assertFalse(first.exists())
+
     def test_verify_second_publication_failure_preserves_existing_pair(self) -> None:
         from unittest.mock import patch
         _, _, _, _, envelope = self._prepare_sign_assemble("pair-publication")

@@ -1148,8 +1148,10 @@ def command_prepare(args: argparse.Namespace) -> None:
         "verifier_executable_sha256": registry["verifier"]["executable_sha256"],
         "network_id": template["network_id"],
     }
-    _atomic_write(args.payload_out, payload, "payload")
-    _atomic_write(args.manifest_out, canonical(manifest), "prepare manifest")
+    _publish_verification_pair((
+        (Path(args.payload_out), payload),
+        (Path(args.manifest_out), canonical(manifest)),
+    ))
 
 
 def command_sign(args: argparse.Namespace) -> None:
@@ -1231,8 +1233,10 @@ def command_sign(args: argparse.Namespace) -> None:
         _provider_attestation(attestation, request, signature, payload, public_key)
         if not verify_ed25519(public_key, payload, signature):
             fail("provider signature failed independent Ed25519 verification")
-        _atomic_write(args.signature_out, signature.hex().encode("ascii"), "signature")
-        _atomic_write(args.attestation_out, canonical(attestation), "provider attestation")
+        _publish_verification_pair((
+            (Path(args.signature_out), signature.hex().encode("ascii")),
+            (Path(args.attestation_out), canonical(attestation)),
+        ))
 
 
 def _payload_from_file(payload_path: Path, manifest: dict[str, Any]) -> dict[str, Any]:
