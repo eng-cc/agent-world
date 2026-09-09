@@ -39,9 +39,11 @@ def main():
             matches = []
             for candidate in candidates:
                 item = json.loads(run('gh', 'api', f'repos/{args.repository}/issues/{candidate}'))
-                candidate_uids = re.findall(r'^task_uid: (task_[0-9a-f]{32})$', item.get('body') or '', re.MULTILINE)
+                candidate_body = (item.get('body') or '').replace('\r\n', '\n')
+                candidate_fields = re.findall(r'^task_uid:[^\n]*$', candidate_body, re.MULTILINE)
+                candidate_uids = re.findall(r'^task_uid: (task_[0-9a-f]{32})$', candidate_body, re.MULTILINE)
                 if uid in candidate_uids:
-                    if candidate_uids != [uid]: raise ValueError('ambiguous canonical Issue UID')
+                    if candidate_fields != ['task_uid: ' + uid] or candidate_uids != [uid]: raise ValueError('ambiguous canonical Issue UID')
                     matches.append(candidate)
             if len(matches) != 1: raise ValueError('live task Issue is ambiguous or missing')
             number = matches[0]
@@ -50,8 +52,10 @@ def main():
             if uids or len(refs) != 1: raise ValueError('PR must identify exactly one canonical task Issue')
             number, uid = int(next(iter(refs))), None
         issue = json.loads(run('gh', 'api', f'repos/{args.repository}/issues/{number}'))
-        body = issue.get('body', '')
+        body = (issue.get('body') or '').replace('\r\n', '\n')
+        issue_fields = re.findall(r'^task_uid:[^\n]*$', body, re.MULTILINE)
         issue_uids = re.findall(r'^task_uid: (task_[0-9a-f]{32})$', body, re.MULTILINE)
+        if len(issue_fields) != 1 or len(issue_uids) != 1: raise ValueError('Issue UID missing or ambiguous')
         if uid is None:
             if len(issue_uids) != 1: raise ValueError('Issue UID missing')
             uid = issue_uids[0]

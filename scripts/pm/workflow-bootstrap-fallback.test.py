@@ -80,6 +80,11 @@ class BootstrapFallback(unittest.TestCase):
     def test_legacy_unique_ref_preserved(self):
         self.execute('Refs #3644')
 
+    def test_malformed_second_uid_blocks_all_identity_routes(self):
+        for pr_body in (UID, UID+'\nRefs #3644', 'Refs #3644'):
+            with self.subTest(pr_body=pr_body), self.assertRaises(SystemExit):
+                self.execute(pr_body,issue_body=f'task_uid: {UID}\ntask_uid: malformed\n- pr_number: `3645`')
+
     def test_legacy_multiple_refs_rejected(self):
         with self.assertRaises(SystemExit):
             self.execute('Refs #3644\nRefs #3647')

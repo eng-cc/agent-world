@@ -134,9 +134,11 @@ jobs:
               matches=[]
               for candidate in candidates:
                   item=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/issues/{candidate}'],text=True))
-                  candidate_uids=re.findall(r'^task_uid: (task_[0-9a-f]{32})$',item.get('body') or '',re.M)
+                  candidate_body=(item.get('body') or '').replace('\r\n','\n')
+                  candidate_fields=re.findall(r'^task_uid:[^\n]*$',candidate_body,re.M)
+                  candidate_uids=re.findall(r'^task_uid: (task_[0-9a-f]{32})$',candidate_body,re.M)
                   if uid in candidate_uids:
-                      if candidate_uids!=[uid]: raise SystemExit('ambiguous canonical Issue UID')
+                      if candidate_fields!=['task_uid: '+uid] or candidate_uids!=[uid]: raise SystemExit('ambiguous canonical Issue UID')
                       matches.append(candidate)
               if len(matches)!=1: raise SystemExit('live task Issue is ambiguous or missing')
               issue_number=matches[0]
@@ -145,9 +147,10 @@ jobs:
               if uids or len(refs)!=1: raise SystemExit('missing unique live task Issue identity')
               issue_number,uid=next(iter(refs)),None
           issue=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/issues/{issue_number}'],text=True))
-          body=issue.get('body','')
+          body=(issue.get('body') or '').replace('\r\n','\n')
+          issue_fields=re.findall(r'^task_uid:[^\n]*$',body,re.M)
           issue_uids=re.findall(r'^task_uid: (task_[0-9a-f]{32})$',body,re.M)
-          if len(issue_uids)!=1 or (uid is not None and issue_uids!=[uid]): raise SystemExit('task UID identity mismatch')
+          if len(issue_fields)!=1 or len(issue_uids)!=1 or (uid is not None and issue_uids!=[uid]): raise SystemExit('task UID identity mismatch')
           if re.findall(r'^- pr_number: `([0-9]+)`$',body,re.M)!=[number]: raise SystemExit('task PR identity mismatch')
           if 'loop_binding_b64:' in body: raise SystemExit('effective base lacks loop admission; activation blocked')
           pages=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/issues/{issue_number}/comments','--paginate','--slurp'],text=True))

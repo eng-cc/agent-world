@@ -476,9 +476,10 @@ def github_issue_record(repo: str, task_uid: str) -> dict[str, Any] | None:
         candidate = json.loads(run_text(["gh", "issue", "view", str(number), "-R", repo,
                                          "--json", "body,number,title,url,state,stateReason"]))
         candidate_body = str(candidate.get("body") or "").replace("\r\n", "\n")
+        fields = re.findall(r"^task_uid:[^\n]*$", candidate_body, re.MULTILINE)
         uids = re.findall(r"^task_uid:\s*(task_[0-9a-f]{32})$", candidate_body, re.MULTILINE)
         if task_uid in uids:
-            if uids != [task_uid]:
+            if fields != ["task_uid: " + task_uid] or uids != [task_uid]:
                 die("task Issue has ambiguous canonical UID")
             matches.append((hit, candidate))
     if len(matches) > 1:
@@ -491,7 +492,7 @@ def github_issue_record(repo: str, task_uid: str) -> dict[str, Any] | None:
     if not issue_number:
         return None
     body = str(issue.get("body") or "").replace("\r\n", "\n")
-    if re.findall(r"^task_uid:\s*(task_[0-9a-f]{32})$", body, re.MULTILINE) != [task_uid]:
+    if re.findall(r"^task_uid:[^\n]*$", body, re.MULTILINE) != ["task_uid: " + task_uid]:
         return None
     record = issue_task_fields(body)
     title = str(issue.get("title") or hits[0].get("title") or "")

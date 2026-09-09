@@ -28,6 +28,34 @@ class AdmissionTests(unittest.TestCase):
             with self.assertRaises(BaseException):
                 task.github_issue_record('eng-cc/oasis7', UID)
 
+    def test_bind_loop_requires_one_exact_canonical_issue_uid_before_mutation(self):
+        for extra in ('', '\ntask_uid: malformed', '\ntask_uid: '+UID):
+            with self.subTest(extra=extra), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                binding = {'task_uid':UID,'bootstrap_epoch':1,'owner_role':'repository_health_engineer'}
+                path=root/'binding.json'; path.write_text(json.dumps(binding))
+                record=dict(issue_number=1,owner_role='repository_health_engineer',worktree_hint=str(root),
+                            canonical_worktree=str(root),bootstrap_base_oid='b'*40,loop_binding=binding,project_item_id='ITEM')
+                args=task.build_parser().parse_args(['bind-loop',str(root),'--task-uid',UID,
+                    '--loop-binding',str(path),'--manual-request-ref','message:1'])
+                import base64
+                encoded=base64.urlsafe_b64encode(json.dumps(binding).encode()).decode()
+                body=(f'task_uid: {UID}{extra}\n- owner_role: `repository_health_engineer`\n'
+                      f'- worktree_hint: `{root}`\n- loop_binding_b64: `{encoded}`')
+                def read(command):
+                    if command[1:3]==['issue','list']: return json.dumps([{'number':1}])
+                    return json.dumps({'number':1,'body':body})
+                with patch.object(task,'require_record',return_value=(root/'mapping',None,record)), \
+                     patch.object(task,'run_text',side_effect=read), patch.object(task,'validate_loop_inputs'), \
+                     patch.object(task,'update_issue_body') as issue_write, \
+                     patch.object(task,'update_project_fields',side_effect=RuntimeError('mutation sentinel')) as write:
+                    with self.assertRaises(BaseException) as caught: task.command_bind_loop(args)
+                    issue_write.assert_not_called()
+                    if extra: write.assert_not_called()
+                    else:
+                        self.assertEqual(str(caught.exception),'mutation sentinel')
+                        write.assert_called_once()
+
     def test_ambiguous_canonical_and_failed_read_block(self):
         for body in [f'task_uid: {UID}', f'task_uid: {UID}\ntask_uid: {UID}', None]:
             def read(args):

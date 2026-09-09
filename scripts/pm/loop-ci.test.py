@@ -28,6 +28,18 @@ class CIGateTests(unittest.TestCase):
     def test_live_legacy_passes(self):
         self.assertEqual(self.invoke(''), 0)
 
+    def test_exact_uid_fields_across_search_refs_and_legacy(self):
+        for pr_body in (UID, UID+'\nRefs #1', 'Refs #1'):
+            for extra in ('', 'task_uid: malformed', 'task_uid: '+UID):
+                with self.subTest(pr_body=pr_body,extra=extra):
+                    def live(*args):
+                        if args[1:3] == ('issue','list'): return json.dumps([{'number':1}])
+                        if '/pulls/' in args[2]: return json.dumps({'body':pr_body,'head':{'sha':'b'*40}})
+                        if args[2].endswith('/comments'): return '[]'
+                        return json.dumps({'body':f'task_uid: {UID}\n{extra}\n- pr_number: `2`'})
+                    with patch.object(module,'run',side_effect=live), patch('sys.argv',['loop-ci.py','--repository','fixture/repo','--pr-number','2','--base','a'*40,'--head','b'*40]), patch('sys.stdout',new_callable=io.StringIO):
+                        self.assertEqual(module.main(),2 if extra else 0)
+
     def test_direct_refs_identity_cases(self):
         for second_uid, reverse, expected in [('task_' + 'c' * 32, '2', 0), (UID, '2', 2), ('task_' + 'c' * 32, '3', 2)]:
             with self.subTest(second_uid=second_uid, reverse=reverse):
