@@ -133,4 +133,22 @@ class SelectionTests(unittest.TestCase):
   self.runs=[run(20,conclusion='failure'),run(10),self.stale('task_'+'d'*32)]
   with self.assertRaisesRegex(SystemExit,'current request not successful'):self.check()
 
+ def test_exact_request_wrong_execution_ref_blocks_old_green(self):
+  for field,value in [('head_sha','e'*40),('head_branch','other')]:
+   with self.subTest(field=field):
+    bad=run(20,conclusion='failure');bad[field]=value;self.runs=[bad,run(10)]
+    with self.assertRaisesRegex(SystemExit,'trusted workflow ref'):self.check()
+    with self.assertRaisesRegex(SystemExit,'trusted workflow ref'):self.check(10)
+ def test_new_correct_request_supersedes_old_wrong_execution_ref(self):
+  for field,value in [('head_sha','e'*40),('head_branch','other')]:
+   with self.subTest(field=field):
+    old=run(10);old[field]=value;self.runs=[run(20),old]
+    self.assertEqual(self.check()[1]['id'],20)
+    self.assertEqual(self.check(20)[1]['id'],20)
+ def test_unrelated_request_wrong_execution_ref_is_not_current(self):
+  for field,value in [('head_sha','e'*40),('head_branch','other')]:
+   other=run(20,uid='task_'+'d'*32,conclusion='failure');other[field]=value
+   self.runs=[other,run(10)]
+   self.assertEqual(self.check(10)[1]['id'],10)
+
 if __name__=='__main__':unittest.main()

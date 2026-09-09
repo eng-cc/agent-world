@@ -197,6 +197,7 @@ run_operational_contract_tests() {
   run env PYTHONDONTWRITEBYTECODE=1 python3 ./scripts/pm/loop-publication.integration.test.py
   run python3 ./scripts/pm/loop-recovery.test.py
   run python3 ./scripts/pm/github-project-loop.test.py
+  run python3 ./scripts/pm/github-project-admission.test.py
   run python3 ./scripts/pm/loop-bootstrap.test.py
   run env PYTHONDONTWRITEBYTECODE=1 python3 ./scripts/pm/loop-bootstrap.integration.test.py
   run ./scripts/ci-required-scope-audit-contract.test.sh

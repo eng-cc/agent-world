@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 import re
 from pathlib import Path
 import subprocess
@@ -47,6 +48,29 @@ def prepare_request(journal_root, request, root):
         base = fetch_base(root)
         saved.update(request=request, base_oid=base)
         return base
+
+def preparation_purpose(common, request, repository, task):
+    # A pinned base precedes worktree/Issue creation. Only a completed creation
+    # journal plus matching live task proves this is an in-flight continuation.
+    scratch = os.environ.get('OASIS7_PM_TEST_SCRATCH', '')
+    if scratch and not Path(scratch).is_absolute():
+        raise ValueError('OASIS7_PM_TEST_SCRATCH must be absolute')
+    directory = Path(scratch) / 'bootstrap-journal' if scratch else common / 'oasis7-bootstrap-journal'
+    key = hashlib.sha256('\0'.join((repository, 'manual-request', request['request_key'])).encode()).hexdigest()
+    path = directory / (key + '.json')
+    journal = json.loads(path.read_text()) if path.exists() else {}
+    if journal.get('state') != 'completed':
+        return 'new_tasks'
+    binding = request['binding']
+    recorded = journal.get('immutable_request') or journal.get('request') or {}
+    if (journal.get('task_uid') != binding['task_uid'] or recorded.get('repo') != repository
+            or recorded.get('request_key') != request['request_key'] or recorded.get('loop_binding') != binding
+            or recorded.get('worktree_hint') != request['worktree']):
+        raise ValueError('completed manual bootstrap creation request mismatch')
+    live = task.github_issue_record(repository, binding['task_uid'])
+    if not live or live.get('loop_binding') != binding or live.get('worktree_hint') != request['worktree']:
+        raise ValueError('completed manual bootstrap live binding/worktree mismatch')
+    return 'in_flight'
 
 def resume(args):
     task = load('github-project-task')
@@ -109,8 +133,8 @@ def main():
         raise ValueError('manual request differs from frozen binding')
     common = (args.root / Path(git(args.root, 'rev-parse', '--git-common-dir'))).resolve()
     request = dict(request_key=args.request_key, binding=binding, worktree=str(Path(args.worktree).resolve()), branch=args.branch)
-    journal = common / 'oasis7-loop-bootstrap-requests' / (hashlib.sha256(args.request_key.encode()).hexdigest() + '.json')
-    load('github-project-task').validate_loop_inputs(args.root, binding, args.repository, 'in_flight' if journal.exists() else 'new_tasks')
+    task = load('github-project-task')
+    task.validate_loop_inputs(args.root, binding, args.repository, preparation_purpose(common, request, args.repository, task))
     print(prepare_request(common / 'oasis7-loop-bootstrap-requests', request, args.root))
 
 if __name__ == '__main__':

@@ -48,4 +48,19 @@ class IngressTests(unittest.TestCase):
         self.assertLess(promotion.index('loop-local-gate.py'), promotion.index('gh pr ready'))
 
 
+    def test_direct_local_legacy_gate_requires_canonical_uid(self):
+        import importlib.util, json, sys, io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+        path=Path(__file__).with_name('loop-local-gate.py')
+        spec=importlib.util.spec_from_file_location('local_gate_test',path)
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        uid='task_'+'a'*32
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);mapping=root/'.pm/github-project-sync/tasks.json';mapping.parent.mkdir(parents=True)
+            mapping.write_text(json.dumps({'tasks':{uid:{'task_uid':uid,'repository':'owner/repo','issue_number':1}}}))
+            for body in ['old '+uid,'task_uid: task_'+'b'*32+'\nold '+uid,'task_uid: '+uid+'\ntask_uid: '+uid,'task_uid: '+uid]:
+                with self.subTest(body=body),patch.object(sys,'argv',['gate','--root',str(root),'--task-uid',uid,'--base','base','--head','head']),patch.object(module,'run',side_effect=[json.dumps({'body':body}),'[]']),redirect_stdout(io.StringIO()):
+                    self.assertEqual(module.main(),0 if body=='task_uid: '+uid else 2)
+
 if __name__ == '__main__': unittest.main()

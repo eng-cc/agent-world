@@ -36,7 +36,7 @@ def current_request(repository,uid,number,base,head,branch):
     """Select request identity before outcome; absence requires complete coverage."""
     matches=[]
     seen=set()
-    legacy_cannot_integrate=None
+    legacy_cannot_integrate={}
     for page in range(1,DISCOVERY_MAX_PAGES+1):
         response=gh('api',f'repos/{repository}/actions/workflows/rust.yml/runs?event=workflow_dispatch&per_page={DISCOVERY_PAGE_SIZE}&page={page}')
         batch=response.get('workflow_runs')
@@ -49,16 +49,14 @@ def current_request(repository,uid,number,base,head,branch):
                 raise ValueError('integration discovery workflow provenance uncertain')
             if not OID.fullmatch(str(run.get('head_sha',''))) or not isinstance(run.get('head_branch'),str):
                 raise ValueError('integration discovery ref identity uncertain')
-            if run['head_branch']!=branch or run['head_sha']!=base:
-                continue
             parts=str(run.get('display_title','')).split('|')
             if len(parts)!=7 or parts[:2]!=['oasis7-ci','workflow_dispatch']:
-                if legacy_cannot_integrate is None:
-                    source=gh('api',f'repos/{repository}/contents/{WORKFLOW}?ref={base}')
+                if run['head_sha'] not in legacy_cannot_integrate:
+                    source=gh('api',f"repos/{repository}/contents/{WORKFLOW}?ref={run['head_sha']}")
                     if source.get('type')!='file' or source.get('path')!=WORKFLOW or source.get('encoding')!='base64':
                         raise ValueError('integration effective workflow readback unavailable')
-                    legacy_cannot_integrate='integration_revalidation' not in base64.b64decode(source['content'],validate=False).decode()
-                if legacy_cannot_integrate: continue
+                    legacy_cannot_integrate[run['head_sha']]='integration_revalidation' not in base64.b64decode(source['content'],validate=False).decode()
+                if legacy_cannot_integrate[run['head_sha']]: continue
                 raise ValueError('integration current request identity unavailable before outcome')
             _,_,mode,request_uid,request_pr,request_base,request_head=parts
             if mode in ('full_escalation','newapi_bridge_package'): continue
@@ -68,16 +66,19 @@ def current_request(repository,uid,number,base,head,branch):
             if (request_uid==uid)!=(int(request_pr)==int(number)):
                 raise ValueError('integration request task/PR identity conflicts')
             if request_uid==uid and int(request_pr)==int(number):
-                if request_base!=run['head_sha']:
-                    raise ValueError('integration request base differs from trusted workflow ref')
                 attempt=run.get('run_attempt')
                 when=run.get('created_at')
                 if type(attempt) is not int or attempt<1 or not isinstance(when,str): raise ValueError('integration attempt identity unavailable')
                 try: timestamp=datetime.datetime.fromisoformat(when.replace('Z','+00:00')).timestamp()
                 except ValueError as exc: raise ValueError('integration request time malformed') from exc
-                matches.append({'id':run_id,'run_attempt':attempt,'requested_at':timestamp})
+                matches.append({'id':run_id,'run_attempt':attempt,'requested_at':timestamp,
+                                'execution_sha':run['head_sha'],'execution_branch':run['head_branch']})
         if len(batch)<DISCOVERY_PAGE_SIZE:
-            return max(matches,key=lambda item:(item['requested_at'],item['id'],item['run_attempt'])) if matches else None
+            if not matches: return None
+            selected=max(matches,key=lambda item:(item['requested_at'],item['id'],item['run_attempt']))
+            if selected.pop('execution_sha')!=base or selected.pop('execution_branch')!=branch:
+                raise ValueError('integration request base differs from trusted workflow ref')
+            return selected
     raise ValueError('integration discovery range exhausted; current request coverage incomplete')
 
 def identity(repository,uid,number,base,head):

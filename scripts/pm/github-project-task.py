@@ -437,24 +437,30 @@ def github_issue_record(repo: str, task_uid: str) -> dict[str, Any] | None:
         ]
     )
     hits = json.loads(search_payload)
-    if not isinstance(hits, list) or len(hits) != 1:
+    if not isinstance(hits, list) or len(hits) >= 5:
+        die("task Issue discovery incomplete; cannot establish canonical identity")
+    matches = []
+    for hit in hits:
+        number = int(hit.get("number") or 0)
+        if not number:
+            die("task Issue discovery returned invalid identity")
+        candidate = json.loads(run_text(["gh", "issue", "view", str(number), "-R", repo,
+                                         "--json", "body,number,title,url,state,stateReason"]))
+        candidate_body = str(candidate.get("body") or "").replace("\r\n", "\n")
+        uids = re.findall(r"^task_uid:\s*(task_[0-9a-f]{32})$", candidate_body, re.MULTILINE)
+        if task_uid in uids:
+            if uids != [task_uid]:
+                die("task Issue has ambiguous canonical UID")
+            matches.append((hit, candidate))
+    if len(matches) > 1:
+        die("multiple canonical task Issues; reconcile before creation")
+    if not matches:
         return None
-    issue_number = int(hits[0].get("number") or 0)
+    hit, issue = matches[0]
+    hits = [hit]
+    issue_number = int(hit.get("number") or 0)
     if not issue_number:
         return None
-    issue_payload = run_text(
-        [
-            "gh",
-            "issue",
-            "view",
-            str(issue_number),
-            "-R",
-            repo,
-            "--json",
-            "body,number,title,url,state,stateReason",
-        ]
-    )
-    issue = json.loads(issue_payload)
     body = str(issue.get("body") or "").replace("\r\n", "\n")
     if re.findall(r"^task_uid:\s*(task_[0-9a-f]{32})$", body, re.MULTILINE) != [task_uid]:
         return None
@@ -881,6 +887,32 @@ def command_bind_loop(args: argparse.Namespace) -> int:
     if live.get("status") in {"done", "deferred"} or live.get("workflow_phase") in TERMINAL_WORKFLOW_PHASES:
         die("terminal task cannot be rebound")
     updated = {**record, **live, "loop_binding": binding, "bootstrap_epoch": binding["bootstrap_epoch"]}
+    if args.migrate_epoch:
+        snapshot_path = pathlib.Path(record["canonical_worktree"]) / ".pm/scratch" / args.task_uid / "bootstrap-task-snapshot.json"
+        source = pathlib.Path(__file__).with_name("bootstrap-task-snapshot.py")
+        spec = importlib.util.spec_from_file_location("bootstrap_snapshot", source)
+        snapshot = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(snapshot)
+        try:
+            saved = json.loads(snapshot_path.read_text())
+            if saved.get("digest") != snapshot.digest(saved):
+                die("cannot migrate corrupt bootstrap snapshot")
+            old_epoch = saved["task"].get("bootstrap_epoch", 1)
+            if old_epoch not in (binding["bootstrap_epoch"] - 1, binding["bootstrap_epoch"]):
+                die("bootstrap snapshot epoch gap; reconcile existing task")
+            if saved["task"]["uid"] != args.task_uid:
+                die("bootstrap snapshot task identity mismatch")
+            if old_epoch == binding["bootstrap_epoch"] and (live.get("loop_binding") != binding or saved["task"].get("loop_binding") != binding):
+                die("bootstrap snapshot binding does not match migrated live task")
+            saved["request"]["identity"]
+            snapshot_base = saved["git"]["base"]["oid"]
+            if updated.get("bootstrap_base_oid") and updated["bootstrap_base_oid"] != snapshot_base:
+                die("bootstrap snapshot base differs from cached immutable base")
+            archive = snapshot_path.with_name(f"bootstrap-task-snapshot.epoch-{old_epoch}.json")
+            if old_epoch != binding["bootstrap_epoch"] and archive.exists() and json.loads(archive.read_text()) != saved:
+                die("bootstrap snapshot epoch archive mismatch")
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            die("bootstrap snapshot migration preflight failed: " + str(error))
     if not updated.get("bootstrap_base_oid"):
         snapshot_path = pathlib.Path(record["canonical_worktree"]) / ".pm/scratch" / args.task_uid / "bootstrap-task-snapshot.json"
         try:

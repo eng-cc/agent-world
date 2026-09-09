@@ -15,7 +15,7 @@ def live_binding(task):
         raise ValueError('loop admission requires live task Issue identity')
     issue = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo}/issues/{number}'], text=True))
     body = issue.get('body', '')
-    if str(task['task_uid']) not in body:
+    if re.findall(r'^task_uid:[^\r\n]*', body, re.MULTILINE) != ['task_uid: ' + str(task['task_uid'])]:
         raise ValueError('live Issue task UID mismatch')
     matches = re.findall(r'^- loop_binding_b64: `([^`]+)`$', body, re.MULTILINE)
     if 'loop_binding_b64:' not in body:

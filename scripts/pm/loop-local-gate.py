@@ -33,7 +33,7 @@ def main():
         number = task['issue_number']
         issue = json.loads(run('gh', 'api', f'repos/{repository}/issues/{number}'))
         body = issue.get('body', '')
-        if args.task_uid not in body: raise ValueError('live task Issue identity mismatch')
+        if re.findall(r'^task_uid:[^\r\n]*', body, re.MULTILINE) != ['task_uid: ' + args.task_uid]: raise ValueError('live task Issue identity mismatch')
         if 'loop_binding_b64:' not in body:
             if task.get('loop_binding') is not None: raise ValueError('live loop binding disappeared')
             pages = json.loads(run('gh', 'api', f'repos/{repository}/issues/{number}/comments', '--paginate', '--slurp'))
