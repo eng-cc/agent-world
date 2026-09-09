@@ -20,12 +20,28 @@ class CIGateTests(unittest.TestCase):
         self.assertIn('validate_ci_content', source)
 
     def invoke(self, body, head='b' * 40, history=None):
-        responses = [json.dumps({'body': UID, 'head': {'sha': head}}), json.dumps([{'number': 1}]), json.dumps({'body': UID + '\n- pr_number: `2`\n' + body}), json.dumps(history or [])]
+        issue = json.dumps({'body': 'task_uid: ' + UID + '\n- pr_number: `2`\n' + body})
+        responses = [json.dumps({'body': UID, 'head': {'sha': head}}), json.dumps([{'number': 1}]), issue, issue, json.dumps(history or [])]
         with patch.object(module, 'run', side_effect=responses), patch('sys.argv', ['loop-ci.py', '--repository', 'fixture/repo', '--pr-number', '2', '--base', 'a' * 40, '--head', 'b' * 40]), patch('sys.stdout', new_callable=io.StringIO):
             return module.main()
 
     def test_live_legacy_passes(self):
         self.assertEqual(self.invoke(''), 0)
+
+    def test_direct_refs_identity_cases(self):
+        for second_uid, reverse, expected in [('task_' + 'c' * 32, '2', 0), (UID, '2', 2), ('task_' + 'c' * 32, '3', 2)]:
+            with self.subTest(second_uid=second_uid, reverse=reverse):
+                def live(*args):
+                    if args[1:3] == ('issue', 'list'):
+                        raise AssertionError('direct Refs must not require search')
+                    endpoint = args[2]
+                    if '/pulls/' in endpoint:
+                        return json.dumps({'body': UID + '\nRefs #1\nRefs #9', 'head': {'sha': 'b' * 40}})
+                    if endpoint.endswith('/comments'): return '[]'
+                    selected = UID if endpoint.endswith('/1') else second_uid
+                    return json.dumps({'body': f'task_uid: {selected}\n- pr_number: `{reverse}`'})
+                with patch.object(module, 'run', side_effect=live), patch('sys.argv', ['loop-ci.py', '--repository', 'fixture/repo', '--pr-number', '2', '--base', 'a' * 40, '--head', 'b' * 40]), patch('sys.stdout', new_callable=io.StringIO):
+                    self.assertEqual(module.main(), expected)
 
     def test_live_head_drift_blocks(self):
         self.assertEqual(self.invoke('', head='c' * 40), 2)

@@ -18,7 +18,7 @@ WORKFLOW = Path(__file__).resolve().parents[2] / '.github/workflows/rust.yml'
 
 
 class BootstrapFallback(unittest.TestCase):
-    def execute(self, pr_body, *, hits=None, issue_body=None, comments=None):
+    def execute(self, pr_body, *, hits=None, issue_body=None, comments=None, second_uid=OTHER):
         source = WORKFLOW.read_text()
         code = re.search(r"<<'PY'\n(.*?)\n          PY", source, re.S)[1]
         code = '\n'.join(line[10:] for line in code.splitlines())
@@ -33,6 +33,8 @@ class BootstrapFallback(unittest.TestCase):
                 return json.dumps({'body': pr_body})
             if endpoint.endswith('/comments'):
                 return json.dumps([comments or []])
+            if endpoint.endswith('/issues/3647'):
+                return json.dumps({'body': f'task_uid: {second_uid}\n- pr_number: `3648`'})
             if endpoint.endswith('/issues/3644'):
                 return json.dumps({'body': issue_body if issue_body is not None else
                                    f'task_uid: {UID}\n- pr_number: `3645`'})
@@ -54,7 +56,18 @@ class BootstrapFallback(unittest.TestCase):
     def test_unresolved_and_ambiguous_uid_rejected(self):
         for hits in ([], [{'number': 3644}, {'number': 3647}]):
             with self.subTest(hits=hits), self.assertRaises(SystemExit):
-                self.execute(f'{UID}\nRefs #3644', hits=hits)
+                self.execute(f'{UID}', hits=hits, second_uid=UID)
+
+    def test_two_canonical_refs_rejected(self):
+        with self.assertRaises(SystemExit):
+            self.execute(f'{UID}\nRefs #3644\nRefs #3647', second_uid=UID)
+
+    def test_search_incidental_reference_filtered(self):
+        self.execute(UID, hits=[{'number': 3647}, {'number': 3644}])
+
+    def test_search_budget_exhaustion_blocks(self):
+        with self.assertRaises(SystemExit):
+            self.execute(UID, hits=[{'number': 3644}] * 5)
 
     def test_wrong_uid_reverse_binding_rejected(self):
         with self.assertRaises(SystemExit):
@@ -87,7 +100,11 @@ class BootstrapFallback(unittest.TestCase):
 
     def test_read_failure_does_not_fallback_to_refs(self):
         with self.assertRaises(AssertionError):
-            self.execute(f'{UID}\nRefs #3644', hits=[{'number': 9999}])
+            self.execute(f'{UID}', hits=[{'number': 9999}])
+
+    def test_refs_work_when_search_empty(self):
+        calls = self.execute(f'{UID}\nRefs #3647\nRefs #3644', hits=[])
+        self.assertFalse(any(call[1:3] == ['issue', 'list'] for call in calls))
 
     def test_fallback_has_no_candidate_execution(self):
         calls = self.execute(f'{UID}\nRefs #3644')

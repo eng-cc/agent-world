@@ -123,9 +123,23 @@ jobs:
           uids=set(re.findall(r'task_[0-9a-f]{32}',pr.get('body') or ''))
           if len(uids)==1:
               uid=next(iter(uids))
-              hits=json.loads(subprocess.check_output(['gh','issue','list','-R',repo,'--state','all','--search',uid+' in:body','--json','number','--limit','5'],text=True))
-              if not isinstance(hits,list) or len(hits)!=1: raise SystemExit('live task Issue is ambiguous or missing')
-              issue_number=hits[0]['number']
+              refs=set(re.findall(r'(?:Refs|Fixes|Closes)\s+#(\d+)',pr.get('body') or '',re.I))
+              if len(refs)>20: raise SystemExit('task reference discovery budget exhausted')
+              if refs:
+                  candidates=sorted(refs)
+              else:
+                  hits=json.loads(subprocess.check_output(['gh','issue','list','-R',repo,'--state','all','--search',uid+' in:body','--json','number','--limit','5'],text=True))
+                  if not isinstance(hits,list) or len(hits)>=5: raise SystemExit('task search discovery incomplete')
+                  candidates=[hit['number'] for hit in hits]
+              matches=[]
+              for candidate in candidates:
+                  item=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/issues/{candidate}'],text=True))
+                  candidate_uids=re.findall(r'^task_uid: (task_[0-9a-f]{32})$',item.get('body') or '',re.M)
+                  if uid in candidate_uids:
+                      if candidate_uids!=[uid]: raise SystemExit('ambiguous canonical Issue UID')
+                      matches.append(candidate)
+              if len(matches)!=1: raise SystemExit('live task Issue is ambiguous or missing')
+              issue_number=matches[0]
           else:
               refs=set(re.findall(r'(?:Refs|Fixes|Closes)\s+#(\d+)',pr.get('body') or '',re.I))
               if uids or len(refs)!=1: raise SystemExit('missing unique live task Issue identity')

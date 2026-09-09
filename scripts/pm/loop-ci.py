@@ -28,9 +28,23 @@ def main():
         uids = set(re.findall(r'task_[0-9a-f]{32}', pr.get('body') or ''))
         if len(uids) == 1:
             uid = next(iter(uids))
-            hits = json.loads(run('gh', 'issue', 'list', '-R', args.repository, '--state', 'all', '--search', uid + ' in:body', '--json', 'number', '--limit', '5'))
-            if len(hits) != 1: raise ValueError('live task Issue is ambiguous or missing')
-            number = hits[0]['number']
+            refs = set(re.findall(r'(?:Refs|Fixes|Closes)\s+#(\d+)', pr.get('body') or '', re.I))
+            if len(refs) > 20: raise ValueError('task reference discovery budget exhausted')
+            if refs:
+                candidates = sorted(refs)
+            else:
+                hits = json.loads(run('gh', 'issue', 'list', '-R', args.repository, '--state', 'all', '--search', uid + ' in:body', '--json', 'number', '--limit', '5'))
+                if not isinstance(hits, list) or len(hits) >= 5: raise ValueError('task search discovery incomplete')
+                candidates = [hit['number'] for hit in hits]
+            matches = []
+            for candidate in candidates:
+                item = json.loads(run('gh', 'api', f'repos/{args.repository}/issues/{candidate}'))
+                candidate_uids = re.findall(r'^task_uid: (task_[0-9a-f]{32})$', item.get('body') or '', re.MULTILINE)
+                if uid in candidate_uids:
+                    if candidate_uids != [uid]: raise ValueError('ambiguous canonical Issue UID')
+                    matches.append(candidate)
+            if len(matches) != 1: raise ValueError('live task Issue is ambiguous or missing')
+            number = matches[0]
         else:
             refs = set(re.findall(r'(?:Refs|Fixes|Closes)\s+#(\d+)', pr.get('body') or '', re.I))
             if uids or len(refs) != 1: raise ValueError('PR must identify exactly one canonical task Issue')
@@ -41,7 +55,7 @@ def main():
         if uid is None:
             if len(issue_uids) != 1: raise ValueError('Issue UID missing')
             uid = issue_uids[0]
-        if uid not in body: raise ValueError('Issue UID mismatch')
+        if issue_uids != [uid]: raise ValueError('Issue UID mismatch')
         bound_pr = re.findall(r'^- pr_number: `([0-9]+)`$', body, re.MULTILINE)
         if bound_pr != [str(args.pr_number)]:
             raise ValueError('live task Issue does not bind this PR number; refresh task PR identity')
