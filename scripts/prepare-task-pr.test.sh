@@ -93,6 +93,14 @@ if [[ "${1:-}" == "api" && "${2:-}" == repos/* && "$*" == *"--jq .default_branch
   exit 0
 fi
 
+if [[ "${1:-}" == "api" && "${2:-}" == repos/*/issues/*/comments ]]; then
+  python3 - "${TEST_GH_ISSUE_VIEW_JSON:?}" <<'PY'
+import json,sys
+print(json.dumps([json.load(open(sys.argv[1])).get('comments',[])]))
+PY
+  exit 0
+fi
+
 if [[ "${1:-}" == "api" && "${2:-}" == repos/*/issues/* ]]; then
   cat "${TEST_GH_ISSUE_BODY_JSON:?}"
   exit 0

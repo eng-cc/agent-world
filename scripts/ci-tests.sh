@@ -188,6 +188,8 @@ run_operational_contract_tests() {
   run python3 ./scripts/pm/loop.test.py
   run python3 ./scripts/pm/loop-gate.test.py
   run python3 ./scripts/pm/loop-ci.test.py
+  run python3 ./scripts/pm/loop-ci-content.test.py
+  run python3 ./scripts/pm/pr-lifecycle-loop.test.py
   run python3 ./scripts/pm/loop-ingress.test.py
   run env PYTHONDONTWRITEBYTECODE=1 python3 ./scripts/pm/loop-publication.integration.test.py
   run python3 ./scripts/pm/loop-recovery.test.py

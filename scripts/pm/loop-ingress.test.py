@@ -33,13 +33,19 @@ class IngressTests(unittest.TestCase):
         self.assertNotIn('from loop_gate import admission', script)
         self.assertIn("'trusted helper bytes mismatch'", script)
 
-    def test_read_credential_is_scoped_to_trusted_admission_step(self):
+    def test_hosted_checks_use_only_repository_token(self):
         workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/rust.yml').read_text()
         admission, planner = workflow.split('      - id: scope', 1)
-        self.assertIn('OASIS7_LOOP_READ_TOKEN: ${{ secrets.OASIS7_LOOP_READ_TOKEN }}', admission)
-        self.assertNotIn('OASIS7_LOOP_READ_TOKEN', planner)
+        self.assertNotIn('OASIS7_LOOP_READ_TOKEN', workflow)
+        self.assertNotIn('secrets.', workflow)
+        self.assertIn('GH_TOKEN: ${{ github.token }}', admission)
         self.assertIn('issues: read', admission)
         self.assertIn('pull-requests: read', admission)
+
+    def test_promotion_rechecks_local_admission_before_ready(self):
+        source = (Path(__file__).resolve().parents[1] / 'prepare-task-pr.sh').read_text()
+        promotion = source[source.index('promote_draft ci_ready_receipt authority does not match'):]
+        self.assertLess(promotion.index('loop-local-gate.py'), promotion.index('gh pr ready'))
 
 
 if __name__ == '__main__': unittest.main()

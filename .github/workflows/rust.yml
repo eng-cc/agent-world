@@ -73,11 +73,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Validate trusted loop admission
+      - name: Validate trusted loop repository scope and content
         if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-          OASIS7_LOOP_READ_TOKEN: ${{ secrets.OASIS7_LOOP_READ_TOKEN }}
         run: |
           base_ref=""
           head_ref="${GITHUB_SHA}"

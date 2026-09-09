@@ -282,6 +282,7 @@ class FinalTrustRed(unittest.TestCase):
     def test_live_rebuild_preserves_default_inactive_normal_watch_hold(self) -> None:
         task_uid = "task_" + "1" * 32
         live = clean_pr()
+        live.update({"baseRefOid": "a" * 40, "headRefOid": "b" * 40})
         live.update({"number": 2198, "reviewDecision": "APPROVED",
                      "statusCheckRollup": [], "required_status_checks": [],
                      "policy_discovery": {"status": "resolved", "required_status_checks": []}})
@@ -299,6 +300,8 @@ class FinalTrustRed(unittest.TestCase):
             argv = ["pr-lifecycle-gate.py", "2198", "--root", str(root),
                     "--task-uid", task_uid, "--json"]
             with mock.patch.object(gate, "load_live", return_value=live), \
+                 mock.patch.object(gate, "local_loop_admission", return_value=None), \
+                 mock.patch.object(gate, "read_pr_identity", return_value=live), \
                  mock.patch.object(gate, "rebuild_issue_evidence", return_value={
                      "comment_dispositions": [], "review_dispositions": []}), \
                  mock.patch.object(sys, "argv", argv):

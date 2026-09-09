@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import os
 import datetime as dt
 import hashlib
 import json
@@ -281,7 +283,7 @@ def discover_required_policy(repo: str, branch: str) -> dict[str, Any]:
 
 
 def load_live(selector: str) -> dict[str, Any]:
-    fields = "number,url,state,mergeable,mergeStateStatus,reviewDecision,headRefName,headRefOid,baseRefName"
+    fields = "number,url,state,mergeable,mergeStateStatus,reviewDecision,headRefName,headRefOid,baseRefName,baseRefOid"
     raw = subprocess.check_output(["gh", "pr", "view", selector, "--json", fields], text=True)
     payload = json.loads(raw)
     repo = json.loads(subprocess.check_output(["gh", "repo", "view", "--json", "nameWithOwner"], text=True))["nameWithOwner"]
@@ -412,12 +414,78 @@ def decision(data: dict[str, Any], admin_authorized: bool, *, evidence_mode: str
     return result
 
 
+def read_pr_identity(repository, number):
+    return json.loads(subprocess.check_output([
+        'gh', 'pr', 'view', str(number), '--repo', repository,
+        '--json', 'number,baseRefOid,headRefOid'], text=True))
+
+
+def local_loop_admission(root, uid, base, head, tool_root):
+    """Verify the effective ingress bytes before executing any loop helper."""
+    root = Path(root).resolve()
+    task = json.loads((root / '.pm/github-project-sync/tasks.json').read_text())['tasks'][uid]
+    issue = json.loads(subprocess.check_output([
+        'gh', 'api', f"repos/{task['repository']}/issues/{task['issue_number']}"], text=True))
+    body = issue.get('body', '')
+    matches = re.findall(r'^- loop_binding_b64: `([^`]+)`$', body, re.MULTILINE)
+    binding = task.get('loop_binding')
+    if matches:
+        if len(matches) != 1: raise ValueError('ambiguous live loop binding')
+        binding = json.loads(base64.urlsafe_b64decode(matches[0] + '=' * (-len(matches[0]) % 4)))
+    effective = Path(tool_root or os.environ.get('OASIS7_LOOP_TOOL_ROOT') or Path(__file__).resolve().parents[2]).resolve()
+    relative = 'scripts/pm/loop-local-gate.py'
+    helper = effective / relative
+    if binding is not None:
+        commit = binding.get('policy_commit', '')
+        if not re.fullmatch(r'[0-9a-f]{40}', commit): raise ValueError('invalid effective policy commit')
+        def git(checkout, *arguments):
+            return subprocess.check_output(['git', '-C', str(checkout), *arguments], text=True).strip()
+        if git(effective, 'rev-parse', 'HEAD') != commit:
+            raise ValueError('effective tool root HEAD differs from policy commit')
+        if git(effective, 'rev-parse', '--path-format=absolute', '--git-common-dir') != git(root, 'rev-parse', '--path-format=absolute', '--git-common-dir'):
+            raise ValueError('effective helper belongs to a different repository')
+        subprocess.run(['git', '-C', str(root), 'fetch', '--no-tags', 'origin', 'main:refs/remotes/origin/main'], check=True, capture_output=True)
+        subprocess.run(['git', '-C', str(root), 'merge-base', '--is-ancestor', commit, 'refs/remotes/origin/main'], check=True, capture_output=True)
+        expected = subprocess.check_output(['git', '-C', str(effective), 'show', f'{commit}:{relative}'])
+        if helper.read_bytes() != expected: raise ValueError('effective local gate bytes differ from policy commit')
+        if subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip() != head:
+            raise ValueError('canonical worktree HEAD differs from current PR head')
+    command = [sys.executable, '-I', str(helper), '--root', str(root), '--task-uid', uid,
+               '--base', base, '--head', head, '--tool-root', str(effective), '--json']
+    completed = subprocess.run(command, text=True, capture_output=True)
+    if completed.returncode:
+        raise ValueError((completed.stdout or completed.stderr).strip() or 'live loop admission failed')
+    result = json.loads(completed.stdout)
+    if result.get('status') not in ('passed', 'legacy'):
+        raise ValueError('live loop admission did not pass')
+
+
+def production_decision(data, admin_authorized, root, uid, tool_root):
+    # Never create a production receipt before fresh local authority admission.
+    result = decision(data, admin_authorized, evidence_mode='pending_live_loop')
+    if not result['ready_for_merge']: return result
+    try:
+        base, head = data.get('baseRefOid', ''), data.get('headRefOid', '')
+        if not all(re.fullmatch(r'[0-9a-f]{40}', value) for value in (base, head)):
+            raise ValueError('current PR base/head OIDs unavailable')
+        local_loop_admission(root, uid, base, head, tool_root)
+        fresh = read_pr_identity(data['repository'], data['number'])
+        if any(fresh.get(key) != data.get(key) for key in ('number', 'baseRefOid', 'headRefOid')):
+            raise ValueError('PR base/head changed during live loop admission; rerun gate')
+    except (ValueError, KeyError, OSError, subprocess.SubprocessError) as exc:
+        result.update(ready_for_merge=False, status='blocked', use_admin_merge=False)
+        result['blockers'].append('live loop admission: ' + str(exc))
+        return result
+    return decision(data, admin_authorized, evidence_mode='production')
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("pr", nargs="?", default="")
     parser.add_argument("--fixture")
     parser.add_argument("--root", default=".")
     parser.add_argument("--task-uid")
+    parser.add_argument("--tool-root", help="effective loop helper checkout (default: OASIS7_LOOP_TOOL_ROOT or this script checkout)")
     parser.add_argument("--merge-hold", choices=["normal_pr_ci_watch", *sorted(HOLDS)])
     parser.add_argument("--admin-merge-authorized", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--json", action="store_true")
@@ -457,7 +525,8 @@ def main() -> int:
         evidence_mode = "production"
         if args.merge_hold:
             parser.error("--merge-hold is fixture-only; live hold truth is rebuilt from the GitHub task issue")
-    result = decision(data, args.admin_merge_authorized, evidence_mode=evidence_mode)
+    result = (decision(data, args.admin_merge_authorized, evidence_mode=evidence_mode) if args.fixture else
+              production_decision(data, args.admin_merge_authorized, Path(args.root), args.task_uid, args.tool_root))
     print(json.dumps(result, indent=2, sort_keys=True) if args.json else ("ready_for_merge" if result["ready_for_merge"] else "\n".join(result["blockers"])))
     return 0 if result["ready_for_merge"] else 3
 

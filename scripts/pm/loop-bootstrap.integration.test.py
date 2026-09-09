@@ -134,5 +134,11 @@ class BootstrapEndToEnd(unittest.TestCase):
             again = subprocess.run(facade,cwd=trusted,env=env,text=True,capture_output=True)
             self.assertEqual(again.returncode,0,again.stdout+again.stderr)
             self.assertEqual(json.loads(state.read_text())['creates'],1)
+            local_gate = ['python3',str(trusted/'scripts/pm/loop-local-gate.py'),'--root',str(target),'--task-uid',UID,'--base',base,'--head',base,'--tool-root',str(trusted),'--json']
+            admitted = subprocess.run(local_gate,cwd=trusted,env=env,text=True,capture_output=True)
+            self.assertEqual(admitted.returncode,0,admitted.stdout+admitted.stderr)
+            stale = local_gate.copy(); stale[stale.index('--head')+1]='0'*40
+            rejected = subprocess.run(stale,cwd=trusted,env=env,text=True,capture_output=True)
+            self.assertNotEqual(rejected.returncode,0)
 
 if __name__=='__main__': unittest.main()
