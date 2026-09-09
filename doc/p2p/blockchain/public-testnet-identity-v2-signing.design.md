@@ -328,14 +328,18 @@ small-order keys or forged `R=identity,S=0` signatures are rejected.
 
 All trust-config, provider-registry, public-key, custody-adapter, and
 independent-verifier files are deployment-owned regular non-symlink artifacts.
-The operator-local owner must be the account running admission, and neither
-the artifact nor any ancestor may be writable by group/other accounts. Public
+The operator-local owner must be the account running admission. Artifacts must
+not be writable by group/other accounts; ancestors follow the same rule except
+for root-owned sticky directories. Ancestor symlinks are rejected except for
+the fixed `/var` and `/tmp` system aliases used on macOS. Public
 metadata and public keys are not secrets: owner-readable `0644` is permitted
 when those write bits are absent. Adapter/verifier artifacts additionally
 require owner execute. Authority reads use an `O_NOFOLLOW` descriptor with
 pre/post `fstat` identity checks; the adapter/verifier digest is rechecked
-around its subprocess before outputs are promoted. Thus the contract closes
-replacement/TOCTOU without imposing unsupported `0600` modes on public files.
+around its subprocess before outputs are promoted. These protected reads and
+pre/post checks do not guarantee atomic execution against a hostile same-owner
+process that replaces and restores an executable between checks. Public files
+do not require `0600` modes under this contract.
 
 Before any derived-output preflight, each output path is rejected if it aliases
 an input, authority artifact, another output, or a code-owned deployment path.
