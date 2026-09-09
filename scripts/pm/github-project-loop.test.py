@@ -91,6 +91,7 @@ class LoopTransport(unittest.TestCase):
                      mock.patch.object(TASK, 'ensure_loop_history'), \
                      mock.patch.object(TASK, 'authoritative_repository_identity', return_value={}), \
                      mock.patch.object(TASK, 'github_issue_record', side_effect=lambda *a:dict(live) if live else None), \
+                     mock.patch.object(TASK, 'require_supplied_uid_absent'), \
                      mock.patch.object(TASK, 'create_issue', side_effect=create) as creates, \
                      mock.patch.object(TASK, 'add_project_item', return_value='ITEM'), \
                      mock.patch.object(TASK, 'update_project_fields', return_value=2), \

@@ -418,6 +418,35 @@ def issue_task_fields(body: str) -> dict[str, Any]:
     return fields
 
 
+def require_supplied_uid_absent(repo: str, task_uid: str) -> None:
+    """Search indexing cannot prove absence for a predetermined task identity."""
+    seen_ids, seen_numbers = set(), set()
+    for page in range(1, 101):
+        issues = json.loads(run_text(['gh', 'api',
+            f'repos/{repo}/issues?state=all&sort=created&direction=asc&per_page=100&page={page}']))
+        if not isinstance(issues, list) or len(issues) > 100:
+            die('repository Issue enumeration incomplete or malformed')
+        for issue in issues:
+            if (not isinstance(issue, dict) or type(issue.get('id')) is not int or issue['id'] < 1
+                    or type(issue.get('number')) is not int or issue['number'] < 1
+                    or 'body' not in issue or (issue['body'] is not None and not isinstance(issue['body'], str))):
+                die('repository Issue enumeration missing canonical identity/body')
+            if issue['id'] in seen_ids or issue['number'] in seen_numbers:
+                die('repository Issue enumeration pagination ambiguous')
+            seen_ids.add(issue['id']); seen_numbers.add(issue['number'])
+            if 'pull_request' in issue:
+                if not isinstance(issue['pull_request'], dict):
+                    die('repository Issue enumeration malformed pull request record')
+                continue
+            body = (issue['body'] or '').replace('\r\n', '\n')
+            uids = re.findall(r'^task_uid:\s*(task_[0-9a-f]{32})$', body, re.MULTILINE)
+            if task_uid in uids:
+                die('manual task UID already exists in repository Issues; use explicit existing-task resume')
+        if len(issues) < 100:
+            return
+    die('repository Issue enumeration limit exhausted; absence unproven')
+
+
 def github_issue_record(repo: str, task_uid: str) -> dict[str, Any] | None:
     search_payload = run_text(
         [
@@ -1117,6 +1146,8 @@ def _command_new_task(args: argparse.Namespace) -> int:
     if not issue_url:
         if journal_existed and journal.get("creation_outcome") not in {"never_attempted", "confirmed_no_write"}:
             die("bootstrap Issue creation outcome uncertain; retain pending intent and reconcile exact live identity before retry")
+        if binding:
+            require_supplied_uid_absent(args.repo, task_uid)
         # Persist before the non-idempotent remote attempt. Neither an empty
         # search nor an exception proves that GitHub rejected the write.
         attempted = False

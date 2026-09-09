@@ -34,6 +34,8 @@ elif a[:2] in (['issue','create'],['issue','edit']):
 elif a[:2]==['issue','view']: emit({'number':1,'url':url,'title':'[PM] fixture','state':'OPEN','stateReason':None,'body':s['body']})
 elif a[:2]==['issue','comment']:
  comments=s.setdefault('comments',[]); comments.append({'id':len(comments)+1,'body':pathlib.Path(val('--body-file')).read_text()}); emit(url+'#issuecomment-'+str(len(comments)))
+elif a[:1]==['api'] and a[1].startswith('repos/eng-cc/oasis7/issues?'):
+ emit([{'id':1,'number':1,'body':s['body']}] if s.get('body') else [])
 elif a[:2]==['api','repos/eng-cc/oasis7/issues/1/comments']: emit([s.get('comments',[])])
 elif a[:2]==['api','repos/eng-cc/oasis7/issues/1']: emit({'number':1,'body':s['body'],'url':url})
 elif a[:1]==['api'] and a[1].startswith('repos/eng-cc/oasis7/issues/comments/'): emit(s['comments'][int(a[1].rsplit('/',1)[1])-1])
