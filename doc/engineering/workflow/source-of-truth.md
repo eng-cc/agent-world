@@ -1,14 +1,14 @@
 # Engineering Workflow Source of Truth
-Version: **v1.14.1**
-Last Updated: **2026-09-04**
-
+Version: **v1.15.0**
+Last Updated: **2026-09-09**
 ## 0. Purpose
 This file is the **only normative workflow specification** for engineering task execution in oasis7.
-
 Mandatory rule:
 1. Any workflow change must be edited in this file first.
 2. After this file is updated, sync all related scripts/docs/skills to match.
-3. PRs that change workflow scripts without updating this file are invalid.
+3. PRs that change workflow scripts without updating this file are invalid, except a code-only projection of an independently reviewed and merged normative revision: task evidence must bind that immutable source commit, consumed clauses, declared scope, and unchanged normative semantics; any semantic gap requires a separately approved normative revision before implementation proceeds.
+
+<a id="manual-three-loop-transition"></a>**Manual three-loop transition (not activated):** The [design companion](./local-codex-three-loop.design.md) describes pending interfaces, not installed capabilities. After compatible helpers, PM roundtrips, trusted scope/contract gates, legacy and negative tests, and actual client/GitHub verification pass and the user enables the entry through the existing upgrade process, each new leaf binds one `product`, `system`, or `code` loop, owner, UID, canonical worktree/branch and PR chain to an explicit manual request and immutable approved inputs; `change_id` links delivery obligations without a second task ledger. Product owns player promises/rules; system owns human-readable technical contracts; code owns implementation assets and executable agent instructions. Final leaf PRs may not mix these ownership classes. Existing tasks remain legacy unless explicitly migrated with a new evidence epoch. For the activated manual entry, the stable-wait rule below stops at yielding control: record resumable facts and return without heartbeat, scheduling, background continuation, or starting another task; only an explicit user continuation resumes that identity. A request may authorize all stages of the same task, subject to unchanged review, CI, hold, merge and terminal gates. Publication, CI completion, comments and dependency changes never authorize another task. Neither this transition nor activation unlocks the production supervisor or proves execution isolation; candidate policy/helper changes cannot authorize themselves.
 
 ### GitHub query budget and terminal defaults
 
