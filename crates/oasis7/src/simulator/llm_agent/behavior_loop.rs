@@ -1,7 +1,8 @@
+use super::super::cognition_response_identity::cognition_response_digest;
 use super::super::continuous_agent_harness::{
-    COGNITION_RESPONSE_DIGEST_DOMAIN, CONTINUOUS_AGENT_CONTEXT_DISCRIMINATOR,
-    CONTINUOUS_AGENT_CONTEXT_VERSION, ContinuousAgentRequestContextV1,
-    ContinuousAgentResponseContextV1, ContinuousAgentTurnContextV1, h_v1,
+    CONTINUOUS_AGENT_CONTEXT_DISCRIMINATOR, CONTINUOUS_AGENT_CONTEXT_VERSION,
+    ContinuousAgentRequestContextV1, ContinuousAgentResponseContextV1,
+    ContinuousAgentTurnContextV1,
 };
 use super::super::decision_provider::{DecisionResponse, ProviderDiagnostics};
 use super::behavior_budget::{BudgetTraceState, budget_diagnostics};
@@ -52,7 +53,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
             memory_write_intents: Vec::new(),
         };
         self.continuous_context.pending_response_context = Some(ContinuousAgentResponseContextV1 {
-            response_digest: h_v1(COGNITION_RESPONSE_DIGEST_DOMAIN, &response),
+            response_digest: cognition_response_digest(&response),
             base_decision_response: response,
             context_discriminator: CONTINUOUS_AGENT_CONTEXT_DISCRIMINATOR.to_string(),
             context_version: CONTINUOUS_AGENT_CONTEXT_VERSION,

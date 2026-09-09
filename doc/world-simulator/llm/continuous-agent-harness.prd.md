@@ -191,6 +191,18 @@ domain `oasis7.cognition.request.v1`；response outer 中回显的 request diges
 
 同一 `decision_request_id + request_digest` 的重试必须得到同一逻辑结果或同一结构化失败；同一 request id 搭配不同 digest 是 `request_identity_collision`，必须 fail closed，不能覆盖旧结果。timeout 不能再单独构成幂等 identity。Runtime action/module envelope 的 `envelope_digest/envelope_idempotency_key` 是另一条 runtime-owned identity，必须在 paired runtime docs 定义，不能复用 `provider_invocation_key`。
 
+Response digest follows an independently versioned semantic contract:
+`response_digest = H_v1("oasis7.cognition.response.v2", canonical(decision, module_command, provider_error, memory_write_intents))`.
+Provider diagnostics and trace
+payload, including latency/token/cost observations, never enter this digest. The previous
+full-`DecisionResponse` value is classified as legacy domain
+`oasis7.cognition.response.v1`; target response validation rejects it with
+`legacy_response_digest_unsupported`. The local bridge persists response lineage under a bumped
+state schema and rejects old state on load, because the stored legacy digest is not
+self-describing and the response body is not persisted for safe recomputation. Any future
+migration must explicitly rewrite the complete response/artifact lineage; target adapters never
+silently reinterpret a V1 full-response digest as the V2 semantic digest.
+
 Harness 与 Runtime 的 canonical wire mapping 使用 paired runtime PRD 的
 `Cross-contract identity mapping`：`agent_subject == agent_id`，session/turn/request 使用
 `agent_session_id/agent_turn_id/decision_request_id`，`runtime_binding` 完整映射 world、

@@ -14,7 +14,7 @@ use crate::simulator::{
     COGNITION_CAPABILITY_INVOCATION_CONTEXT_DOMAIN, ContinuousAgentRequestContextV1,
     ContinuousAgentResponseContextV1, ContinuousAgentTurnContextV1, Digest32, FeedbackEnvelopeV1,
     FinalityBindingV1, GoalSnapshotV1, MemoryContextSnapshotV1, MemoryWriteIntentV1,
-    RuntimeBindingV1, h_v1,
+    RuntimeBindingV1, cognition_response_digest, h_v1,
 };
 use oasis7_wasm_abi::AgentCommandResponse;
 use serde_json::{Value, json};
@@ -899,10 +899,7 @@ fn production_outer_context_preserves_retry_transport_and_runtime_binding() {
     assert_eq!(response.transport_attempt, prepared.transport_attempt);
     assert_eq!(
         response.response_digest,
-        h_v1(
-            "oasis7.cognition.response.v1",
-            &response.base_decision_response
-        )
+        cognition_response_digest(&response.base_decision_response)
     );
     let artifact_identity = response.response_artifact_identity();
     response

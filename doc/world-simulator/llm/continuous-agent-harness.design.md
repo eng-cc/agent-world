@@ -127,6 +127,18 @@ ContinuousAgentResponseContextV1 {
 完整匹配。provider 回传不同 identity、缺字段或未知 version 时，Harness 产生稳定
 `response_identity_mismatch`，不尝试从自然语言或旧 response 推断动作。
 
+Response identity has an independent digest version. The target semantic digest uses
+`H_v1("oasis7.cognition.response.v2", canonical(decision, module_command, provider_error, memory_write_intents))`;
+`diagnostics` and `trace_payload` are observability only and are excluded, including measured
+latency, token and cost fields. The pre-fix full-`DecisionResponse` digest remains named
+`oasis7.cognition.response.v1` only for explicit legacy classification. Target response validation
+rejects that digest with `legacy_response_digest_unsupported`, and the local bridge feedback-state
+schema is bumped so an old persisted state cannot be loaded as current lineage. There is no
+automatic migration: the old stored digest has no self-describing version and response content is
+not persisted, so a future migration must be an explicit, reviewed rewrite of the complete
+response/artifact lineage. The outer context schema remains V1 because its fields are unchanged;
+the response digest domain carries the independent algorithm version.
+
 既有 inner DTO 的字段映射为：`observation`、`action_catalog`、`provider_config_ref`、
 `timeout_budget` 保持在 `base_decision_request`；`decision/action_ref/args`、
 `provider_error/diagnostics/trace_payload` 与 `memory_write_intents` 保持在
