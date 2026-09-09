@@ -15,6 +15,7 @@ on:
         default: full_escalation
         type: choice
         options:
+          - integration_revalidation
           - full_escalation
           - newapi_bridge_package
       newapi_bridge_build_profile:
@@ -35,6 +36,10 @@ on:
         type: string
       expected_head:
         description: "Required for full_escalation: exact checked-out commit SHA"
+        required: false
+        type: string
+      integration_base:
+        description: "Exact current target OID for integration_revalidation"
         required: false
         type: string
       escalation_reason:
@@ -60,7 +65,7 @@ env:
 
 jobs:
   required-gate:
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_mode == 'integration_revalidation')
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -73,25 +78,44 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - id: integration
+        name: Prepare exact manual integration from trusted default workflow
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'integration_revalidation'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INTEGRATION_BASE: ${{ inputs.integration_base }}
+          INTEGRATION_HEAD: ${{ inputs.expected_head }}
+          INTEGRATION_UID: ${{ inputs.task_uid }}
+          INTEGRATION_PR: ${{ inputs.pr_number }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/integration-planner"
+          cp scripts/plan-rust-required-scope.py scripts/ci-required-scope.v2.json scripts/ci-tests.sh "${RUNNER_TEMP}/integration-planner/"
+          cp scripts/pm/integration_ci.py "${RUNNER_TEMP}/integration_ci.py"
+          python3 -I "${RUNNER_TEMP}/integration_ci.py" prepare --repository "${{ github.repository }}" \
+            --task-uid "${INTEGRATION_UID}" --pr-number "${INTEGRATION_PR}" \
+            --base "${INTEGRATION_BASE}" --head "${INTEGRATION_HEAD}" --output "${RUNNER_TEMP}/integration.json"
+          echo "identity=$(cat "${RUNNER_TEMP}/integration.json")" >>"${GITHUB_OUTPUT}"
       - name: Validate trusted loop repository scope and content
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_mode == 'integration_revalidation')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           base_ref=""
           head_ref="${GITHUB_SHA}"
           case "${GITHUB_EVENT_NAME}" in
-            pull_request)
-              base_ref="${{ github.event.pull_request.base.sha }}"
-              head_ref="${{ github.event.pull_request.head.sha }}"
+            pull_request|workflow_dispatch)
+              base_ref="${{ github.event.pull_request.base.sha || inputs.integration_base }}"
+              head_ref="${{ github.event.pull_request.head.sha || inputs.expected_head }}"
               if git show "${base_ref}:scripts/pm/loop-ci.py" >"${RUNNER_TEMP}/oasis7-loop-ci.py"; then
                 python3 "${RUNNER_TEMP}/oasis7-loop-ci.py" --repository "${{ github.repository }}" \
-                  --pr-number "${{ github.event.pull_request.number }}" \
+                  --pr-number "${{ github.event.pull_request.number || inputs.pr_number }}" \
                   --base "${base_ref}" --head "${head_ref}"
               else
                 # Bootstrap compatibility: old base has no loop admission. Only
                 # a reciprocal live legacy task may pass; never run candidate helpers.
-                python3 - "${{ github.repository }}" "${{ github.event.pull_request.number }}" <<'PY'
+                python3 - "${{ github.repository }}" "${{ github.event.pull_request.number || inputs.pr_number }}" <<'PY'
           import json,re,subprocess,sys
           repo,number=sys.argv[1:]
           pr=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/pulls/{number}'],text=True))
@@ -125,11 +149,19 @@ jobs:
               base_ref="${{ github.event.pull_request.base.sha }}"
               head_ref="${{ github.event.pull_request.head.sha }}"
               ;;
+            workflow_dispatch)
+              base_ref="${{ inputs.integration_base }}"
+              head_ref="${{ inputs.expected_head }}"
+              ;;
             push)
               base_ref="${{ github.event.before }}"
               ;;
           esac
-          ./scripts/plan-rust-required-scope.sh \
+          planner=(./scripts/plan-rust-required-scope.sh)
+          if [[ "${GITHUB_EVENT_NAME}" == workflow_dispatch ]]; then
+            planner=(python3 -I "${RUNNER_TEMP}/integration-planner/plan-rust-required-scope.py")
+          fi
+          "${planner[@]}" \
             --event-name "${GITHUB_EVENT_NAME}" \
             --base-ref "${base_ref}" \
             --head-ref "${head_ref}" \
@@ -172,9 +204,10 @@ jobs:
           PLAN_JSON: ${{ toJSON(steps.scope.outputs) }}
           REPOSITORY: ${{ github.repository }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
+          INTEGRATION_JSON: ${{ steps.integration.outputs.identity }}
         run: |
           mkdir -p output/required-plan
-          python3 - <<'PY'
+          python3 -I - <<'PY'
           import json, os, pathlib
           source=json.loads(os.environ["PLAN_JSON"])
           fields=(
@@ -200,6 +233,8 @@ jobs:
               "check_name":"required-gate",
               "planner":planner,
           }
+          if os.environ.get("INTEGRATION_JSON"):
+              payload.update(json.loads(os.environ["INTEGRATION_JSON"]))
           pathlib.Path("output/required-plan/oasis7-required-plan-v1.json").write_text(
               json.dumps(payload,sort_keys=True,separators=(",",":"))+"\n",encoding="utf-8"
           )
@@ -316,11 +351,36 @@ jobs:
           execution_bridge_real_tests::real_execution_bridge::tests
 
   windows-package-rollout-behavior:
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
     needs: required-gate
-    if: github.event_name == 'pull_request' && needs.required-gate.outputs.run_operational_contracts == 'true'
+    if: (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_mode == 'integration_revalidation')) && needs.required-gate.outputs.run_operational_contracts == 'true'
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: integration
+        name: Prepare exact manual integration from trusted default workflow
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'integration_revalidation'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INTEGRATION_BASE: ${{ inputs.integration_base }}
+          INTEGRATION_HEAD: ${{ inputs.expected_head }}
+          INTEGRATION_UID: ${{ inputs.task_uid }}
+          INTEGRATION_PR: ${{ inputs.pr_number }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/integration-planner"
+          cp scripts/plan-rust-required-scope.py scripts/ci-required-scope.v2.json scripts/ci-tests.sh "${RUNNER_TEMP}/integration-planner/"
+          cp scripts/pm/integration_ci.py "${RUNNER_TEMP}/integration_ci.py"
+          python3 -I "${RUNNER_TEMP}/integration_ci.py" prepare --repository "${{ github.repository }}" \
+            --task-uid "${INTEGRATION_UID}" --pr-number "${INTEGRATION_PR}" \
+            --base "${INTEGRATION_BASE}" --head "${INTEGRATION_HEAD}" --output "${RUNNER_TEMP}/integration.json"
+          echo "identity=$(cat "${RUNNER_TEMP}/integration.json")" >>"${GITHUB_OUTPUT}"
       - name: Run disposable Windows PowerShell rollout behavior fixture
         shell: bash
         env:
@@ -330,18 +390,47 @@ jobs:
           bash ./scripts/p2p-public-testnet-package-rollout.test.sh
 
   testnet-packages-macos-arm64-contract:
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
     needs: required-gate
-    if: github.event_name == 'pull_request' && needs.required-gate.outputs.run_operational_contracts == 'true'
+    if: (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_mode == 'integration_revalidation')) && needs.required-gate.outputs.run_operational_contracts == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: integration
+        name: Prepare exact manual integration from trusted default workflow
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'integration_revalidation'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INTEGRATION_BASE: ${{ inputs.integration_base }}
+          INTEGRATION_HEAD: ${{ inputs.expected_head }}
+          INTEGRATION_UID: ${{ inputs.task_uid }}
+          INTEGRATION_PR: ${{ inputs.pr_number }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/integration-planner"
+          cp scripts/plan-rust-required-scope.py scripts/ci-required-scope.v2.json scripts/ci-tests.sh "${RUNNER_TEMP}/integration-planner/"
+          cp scripts/pm/integration_ci.py "${RUNNER_TEMP}/integration_ci.py"
+          python3 -I "${RUNNER_TEMP}/integration_ci.py" prepare --repository "${{ github.repository }}" \
+            --task-uid "${INTEGRATION_UID}" --pr-number "${INTEGRATION_PR}" \
+            --base "${INTEGRATION_BASE}" --head "${INTEGRATION_HEAD}" --output "${RUNNER_TEMP}/integration.json"
+          echo "identity=$(cat "${RUNNER_TEMP}/integration.json")" >>"${GITHUB_OUTPUT}"
       - name: Verify additive macOS arm64 package contract
         shell: bash
         run: bash ./scripts/testnet-packages-macos-arm64-contract.test.sh
 
   public-testnet-fleet-health-contract:
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
     needs: required-gate
-    if: github.event_name == 'pull_request' && needs.required-gate.outputs.run_operational_contracts == 'true'
+    if: (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.run_mode == 'integration_revalidation')) && needs.required-gate.outputs.run_operational_contracts == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -349,6 +438,27 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: integration
+        name: Prepare exact manual integration from trusted default workflow
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'integration_revalidation'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INTEGRATION_BASE: ${{ inputs.integration_base }}
+          INTEGRATION_HEAD: ${{ inputs.expected_head }}
+          INTEGRATION_UID: ${{ inputs.task_uid }}
+          INTEGRATION_PR: ${{ inputs.pr_number }}
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/integration-planner"
+          cp scripts/plan-rust-required-scope.py scripts/ci-required-scope.v2.json scripts/ci-tests.sh "${RUNNER_TEMP}/integration-planner/"
+          cp scripts/pm/integration_ci.py "${RUNNER_TEMP}/integration_ci.py"
+          python3 -I "${RUNNER_TEMP}/integration_ci.py" prepare --repository "${{ github.repository }}" \
+            --task-uid "${INTEGRATION_UID}" --pr-number "${INTEGRATION_PR}" \
+            --base "${INTEGRATION_BASE}" --head "${INTEGRATION_HEAD}" --output "${RUNNER_TEMP}/integration.json"
+          echo "identity=$(cat "${RUNNER_TEMP}/integration.json")" >>"${GITHUB_OUTPUT}"
       - name: Verify fleet-health collection contract
         run: python scripts/p2p-public-testnet-fleet-health.test.py
 

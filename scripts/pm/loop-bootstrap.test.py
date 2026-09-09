@@ -3,11 +3,59 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+import subprocess
 from unittest.mock import patch
 
 PATH = Path(__file__).with_name('loop-bootstrap.py')
 
 class ManualBase(unittest.TestCase):
+    def test_two_requests_and_historical_contract_fetch_pin_their_advertised_main(self):
+        spec = importlib.util.spec_from_file_location('loop_bootstrap', PATH)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        contract_spec = importlib.util.spec_from_file_location('loop_contracts', PATH.with_name('loop_contracts.py'))
+        contracts = importlib.util.module_from_spec(contract_spec); contract_spec.loader.exec_module(contracts)
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory); author = temp/'author'; author.mkdir()
+            def git(root,*args): return subprocess.check_output(['git','-C',str(root),*args],text=True,stderr=subprocess.PIPE).strip()
+            git(author,'init','-q','-b','main'); git(author,'config','user.email','fixture@example.invalid'); git(author,'config','user.name','Fixture')
+            (author/'base.txt').write_text('base'); git(author,'add','.'); git(author,'commit','-qm','base')
+            git(author,'switch','-c','historical')
+            (author/'contract.md').write_text('approved'); git(author,'add','.'); git(author,'commit','-qm','historical contract')
+            source = git(author,'rev-parse','HEAD')
+            git(author,'switch','main'); git(author,'merge','--squash','historical'); git(author,'commit','-qm','squashed contract')
+            initial = git(author,'rev-parse','HEAD')
+            remote=temp/'origin.git'; subprocess.run(['git','init','--bare','-q',str(remote)],check=True)
+            git(author,'remote','add','origin',str(remote)); git(author,'push','origin','main',source+':refs/pull/7/head')
+            subprocess.run(['git','--git-dir',str(remote),'symbolic-ref','HEAD','refs/heads/main'],check=True)
+            git(author,'branch','-D','historical')
+            root=temp/'shared-source'
+            subprocess.run(['git','clone','--quiet','--no-local','--single-branch',str(remote),str(root)],check=True)
+            canonical='https://github.com/eng-cc/oasis7.git'
+            git(root,'remote','set-url','origin',canonical); git(root,'config','url.'+str(remote)+'.insteadOf',canonical)
+            self.assertNotEqual(subprocess.run(['git','-C',str(root),'cat-file','-e',source+'^{commit}'],capture_output=True).returncode,0)
+            git(root,'fetch','origin','main')
+            fetch_head_before=(root/'.git/FETCH_HEAD').read_bytes()
+            journal=temp/'requests'; original=module.git; nested=[]; state={'fetches':0}
+            request=lambda key: {'request_key':key,'binding':{'loop':'code'},'worktree':'/'+key,'branch':'codex/'+key}
+            def interleave(checkout,*args):
+                result=original(checkout,*args)
+                if args[0]=='fetch':
+                    state['fetches']+=1
+                    if state['fetches']==1:
+                        (author/'next.txt').write_text('new default head'); git(author,'add','.'); git(author,'commit','-qm','main advances'); git(author,'push','origin','main')
+                        state['next']=git(author,'rev-parse','HEAD')
+                        nested.append(module.prepare_request(journal,request('second'),root))
+                    elif state['fetches']==2:
+                        contracts.ensure_contract_objects(root,{'source_head':source,'merged_head':initial,'approval_ref':{'pr_number':7}})
+                return result
+            with patch.object(module,'git',side_effect=interleave):
+                first=module.prepare_request(journal,request('first'),root)
+            self.assertEqual(first,initial,'first request must retain its advertised main, not shared FETCH_HEAD')
+            self.assertEqual(nested,[state['next']],'second request must pin its own advertised main')
+            self.assertEqual((root/'.git/FETCH_HEAD').read_bytes(),fetch_head_before,'bootstrap and contract fetches must not mutate FETCH_HEAD')
+            self.assertEqual(module.prepare_request(journal,request('first'),root),initial)
+            self.assertEqual(git(root,'rev-parse',source+'^{commit}'),source)
+
     def test_same_request_reuses_fetched_base_and_rejects_scope_drift(self):
         spec = importlib.util.spec_from_file_location('loop_bootstrap', PATH)
         module = importlib.util.module_from_spec(spec)

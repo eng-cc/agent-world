@@ -57,9 +57,9 @@ def ensure_contract_objects(root, contract):
         if key == 'source_head':
             # GitHub retains PR refs after squash/source branch deletion. A
             # moved ref is merely acquisition, never authority for a newer SHA.
-            subprocess.run(['git', '-C', str(root), 'fetch', '--no-tags', 'origin', f"refs/pull/{contract['approval_ref']['pr_number']}/head"], capture_output=True)
+            subprocess.run(['git', '-C', str(root), 'fetch', '--no-write-fetch-head', '--no-tags', 'origin', f"refs/pull/{contract['approval_ref']['pr_number']}/head"], capture_output=True)
         if subprocess.run(['git', '-C', str(root), 'cat-file', '-e', oid + '^{commit}'], capture_output=True).returncode:
-            fetched = subprocess.run(['git', '-C', str(root), 'fetch', '--no-tags', 'origin', oid], capture_output=True)
+            fetched = subprocess.run(['git', '-C', str(root), 'fetch', '--no-write-fetch-head', '--no-tags', 'origin', oid], capture_output=True)
             if fetched.returncode:
                 raise ValueError('approved exact contract object unavailable: ' + oid)
         if subprocess.run(['git', '-C', str(root), 'cat-file', '-e', oid + '^{commit}'], capture_output=True).returncode:

@@ -25,6 +25,10 @@ def review_evidence_identity(receipt: dict[str, Any]) -> dict[str, Any]:
         if not re.fullmatch(r'[0-9a-f]{40,64}', str(receipt.get('scope_base_oid', ''))) or receipt.get('integration_base_oid') != receipt['base_oid']:
             raise ValueError('CI receipt scope/integration authority is incomplete')
         result.update(scope_base_oid=receipt['scope_base_oid'], integration_base_oid=receipt['integration_base_oid'])
+    if 'integration_run_id' in receipt:
+        for key in ('integration_run_id','tested_tree_oid','tested_commit_oid','workflow_sha'):
+            if key not in receipt: raise ValueError('manual integration receipt authority incomplete')
+            result[key]=receipt[key]
     return result
 
 

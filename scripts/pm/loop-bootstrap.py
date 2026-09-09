@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -23,9 +24,17 @@ def fetch_base(root):
     branches = [line.split()[1] for line in advertised.splitlines() if line.startswith('ref: refs/heads/')]
     if len(branches) != 1:
         raise ValueError('cannot establish remote default branch')
-    branch = branches[0]
-    git(root, 'fetch', '--no-tags', 'origin', branch)
-    return git(root, 'rev-parse', 'FETCH_HEAD^{commit}')
+    # Pin the OID from the same advertisement as the default-branch identity.
+    # FETCH_HEAD is shared with other requests and historical contract fetches.
+    heads = [line.split()[0] for line in advertised.splitlines()
+             if re.fullmatch(r'[0-9a-f]{40}(?:[0-9a-f]{24})?\s+HEAD', line)]
+    if len(heads) != 1:
+        raise ValueError('cannot establish exact remote default branch OID')
+    oid = heads[0]
+    git(root, 'fetch', '--no-write-fetch-head', '--no-tags', 'origin', oid)
+    if git(root, 'rev-parse', oid + '^{commit}') != oid:
+        raise ValueError('fetched default branch object does not match advertised OID')
+    return oid
 
 def prepare_request(journal_root, request, root):
     path = journal_root / (hashlib.sha256(request['request_key'].encode()).hexdigest() + '.json')

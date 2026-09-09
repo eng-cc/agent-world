@@ -484,7 +484,7 @@ def live_integration_admission(data, root, uid, tool_root, admission):
         # helpers or a caller-authored receipt as CI authority.
         subprocess.run(['git','-C',str(root),'fetch','--no-tags','origin','main:refs/remotes/origin/main'],check=True,capture_output=True)
         commit = subprocess.check_output(['git','-C',str(root),'rev-parse','refs/remotes/origin/main'],text=True).strip()
-    for name in ('ci-ready-receipt.py', 'ci_ready_receipt_identity.py'):
+    for name in ('ci-ready-receipt.py', 'ci_ready_receipt_identity.py', 'integration_ci.py'):
         relative = 'scripts/pm/' + name
         expected = subprocess.check_output(['git','-C',str(root),'show',commit + ':' + relative])
         path = effective / relative
@@ -501,11 +501,14 @@ def live_integration_admission(data, root, uid, tool_root, admission):
     program = """import importlib.util,json,sys
 from pathlib import Path
 request=json.loads(sys.argv[1]); directory=Path(request['root'])/'scripts/pm'
-for name,filename in [('ci_ready_receipt_identity','ci_ready_receipt_identity.py'),('ci_live','ci-ready-receipt.py')]:
+for name,filename in [('integration_ci','integration_ci.py'),('ci_ready_receipt_identity','ci_ready_receipt_identity.py'),('ci_live','ci-ready-receipt.py')]:
  spec=importlib.util.spec_from_file_location(name,directory/filename); module=importlib.util.module_from_spec(spec); sys.modules[name]=module; spec.loader.exec_module(module)
-pr,run,base,head=module.live(request['repository'],request['uid'],request['issue'],request['pr'],'required-gate',request['app'],allow_ready_pr=True,expected_base_ref=request['base_ref'])
+pr,run,base,head=module.selected_live(request['repository'],request['uid'],request['issue'],request['pr'],'required-gate',request['app'],allow_ready_pr=True,base_ref=request['base_ref'])
 planner=module.planner_for_run(request['repository'],run,base_oid=base,head_oid=head)
-print(json.dumps({'integration_base_oid':base,'head_oid':head,'check_run_id':run['id'],'check_app_id':run['app']['id'],'planner_digest':module.hashlib.sha256(json.dumps(planner,sort_keys=True,separators=(',',':')).encode()).hexdigest()}))
+proof={'integration_base_oid':base,'head_oid':head,'check_run_id':run['id'],'check_app_id':run['app']['id'],'planner_digest':module.hashlib.sha256(json.dumps(planner,sort_keys=True,separators=(',',':')).encode()).hexdigest()}
+if run.get('_integration'):
+ proof.update({key:run['_integration'][key] for key in ('workflow_run_id','workflow_sha','tested_tree_oid','tested_commit_oid')})
+print(json.dumps(proof))
 """
     completed = subprocess.run([sys.executable,'-I','-c',program,json.dumps(request)],text=True,capture_output=True)
     if completed.returncode:

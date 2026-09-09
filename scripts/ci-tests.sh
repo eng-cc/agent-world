@@ -182,6 +182,7 @@ run_packaging_contract_tests() {
 run_operational_contract_tests() {
   run_packaging_contract_tests
   run python3 ./scripts/pm/ci-ready-receipt.test.py
+  run python3 ./scripts/pm/integration-ci.test.py
   run python3 ./scripts/pm/loop-policy.test.py
   run python3 ./scripts/pm/loop-contracts.test.py
   run python3 ./scripts/pm/loop_terminal.test.py

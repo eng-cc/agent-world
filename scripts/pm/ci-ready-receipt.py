@@ -170,7 +170,10 @@ def main():
     p.add_argument("--base-ref", help="require the live PR and check-run base ref to match this branch")
     p.add_argument("--refresh-same-identity",action="store_true",
                    help="refresh only observed_at after complete live identity/planner validation")
-    a=p.parse_args(); pr,run,base_oid,head_oid=live(a.repository,a.task_uid,a.task_issue_number,a.pr_number,a.check_name,a.check_app_id,a.allow_ready_pr,a.base_ref)
+    p.add_argument('--integration-run-id',type=int,help='new trusted manual integration workflow run')
+    a=p.parse_args()
+    existing=json.loads(Path(a.receipt).read_text()) if a.receipt else {}
+    pr,run,base_oid,head_oid=selected_live(a.repository,a.task_uid,a.task_issue_number,a.pr_number,a.check_name,a.check_app_id,a.allow_ready_pr,a.base_ref,a.integration_run_id or existing.get('integration_run_id'))
     old=None
     if a.receipt:
         old=json.loads(Path(a.receipt).read_text(encoding="utf-8"))
@@ -198,6 +201,9 @@ def main():
     if old is None or 'scope_base_oid' in old:
         payload['scope_base_oid'] = scope_base_for_run(a.repository, base_oid, head_oid)
         payload['integration_base_oid'] = base_oid
+    if run.get('_integration'):
+        proof=run['_integration']
+        payload.update(integration_run_id=proof['workflow_run_id'],tested_tree_oid=proof['tested_tree_oid'],tested_commit_oid=proof['tested_commit_oid'],workflow_sha=proof['workflow_sha'])
     payload["review_evidence_digest"]=review_evidence_digest(payload)
     if old is not None:
         for key,val in payload.items():
@@ -210,4 +216,28 @@ def main():
             refreshed = {**refreshed, "review_evidence_digest": payload["review_evidence_digest"]}
         payload = refreshed
     print(json.dumps(payload,sort_keys=True,indent=2 if a.json else None))
+def selected_live(repository,uid,issue,number,check_name,app,allow_ready_pr=False,base_ref=None,integration_run_id=None):
+    if integration_run_id is None:
+        try:
+            return live(repository,uid,issue,number,check_name,app,allow_ready_pr,base_ref)
+        except SystemExit as original:
+            # A rerun of the old event cannot replace its integration base.
+            failure=str(original)
+            if 'stale integration base' not in failure: raise
+    from integration_ci import verified_run
+    pr=gh('api',f'repos/{repository}/pulls/{number}')
+    if (not allow_ready_pr and not pr.get('draft')) or f'Refs #{issue}' not in (pr.get('body') or ''):
+        raise SystemExit('ci-ready-receipt: manual integration task/draft identity mismatch')
+    if base_ref and pr['base']['ref']!=base_ref: raise SystemExit('ci-ready-receipt: manual integration base ref mismatch')
+    base,head=pr['base']['sha'],pr['head']['sha']
+    ids=[integration_run_id] if integration_run_id else [r['id'] for r in gh('api',f'repos/{repository}/actions/workflows/rust.yml/runs?event=workflow_dispatch&per_page=20')['workflow_runs']]
+    for run_id in ids:
+        try:
+            check,proof=verified_run(repository,uid,number,base,head,run_id,app)
+            if check_name!='required-gate': raise ValueError('unsupported manual check')
+            return pr,{**check,'_integration':proof},base,head
+        except (ValueError,KeyError,OSError,subprocess.SubprocessError):
+            continue
+    raise SystemExit('ci-ready-receipt: stale integration base or current integration evidence unavailable; run integration_ci.py dispatch with this task/PR, then validate its new run ID (ordinary rerun is insufficient)')
+
 if __name__=="__main__": main()
