@@ -71,7 +71,7 @@ def current_request(repository,uid,number,base,head,branch):
                 raise ValueError('integration request task/PR identity conflicts')
             if request_uid==uid and int(request_pr)==int(number):
                 attempt=run.get('run_attempt')
-                when=run.get('updated_at') if run.get('status') in ('queued','requested','waiting','pending') and attempt and attempt>1 else run.get('run_started_at') or run.get('created_at')
+                when=run.get('created_at')
                 if type(attempt) is not int or attempt<1 or not isinstance(when,str): raise ValueError('integration attempt identity unavailable')
                 try: timestamp=datetime.datetime.fromisoformat(when.replace('Z','+00:00')).timestamp()
                 except ValueError as exc: raise ValueError('integration request time malformed') from exc

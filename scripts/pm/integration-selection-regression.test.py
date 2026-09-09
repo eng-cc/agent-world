@@ -10,7 +10,7 @@ spec=importlib.util.spec_from_file_location('receipt_selection',P);receipt=impor
 UID='task_'+'a'*32;BASE='b'*40;HEAD='c'*40
 
 def run(n,uid=UID,status='completed',conclusion='success'):
- return {'id':n,'run_attempt':1,'run_started_at':f'2026-09-09T00:{n:02d}:00Z','event':'workflow_dispatch','head_branch':'main','head_sha':BASE,'path':integration.WORKFLOW,'repository':{'full_name':'owner/repo'},'status':status,'conclusion':conclusion,'display_title':f'oasis7-ci|workflow_dispatch|integration_revalidation|{uid}|{12 if uid==UID else 99}|{BASE}|{HEAD}'}
+ return {'id':n,'run_attempt':1,'created_at':f'2026-09-09T00:{n:02d}:00Z','run_started_at':f'2026-09-09T00:{n:02d}:00Z','event':'workflow_dispatch','head_branch':'main','head_sha':BASE,'path':integration.WORKFLOW,'repository':{'full_name':'owner/repo'},'status':status,'conclusion':conclusion,'display_title':f'oasis7-ci|workflow_dispatch|integration_revalidation|{uid}|{12 if uid==UID else 99}|{BASE}|{HEAD}'}
 
 class SelectionTests(unittest.TestCase):
  def setUp(self):
@@ -59,8 +59,8 @@ class SelectionTests(unittest.TestCase):
   with patch.object(integration,'DISCOVERY_MAX_PAGES',1):
    with self.assertRaisesRegex(SystemExit,'range exhausted'):self.check()
  def test_same_run_new_attempt_pending_blocks(self):
-  latest=run(10,status='queued',conclusion=None);latest.update(run_attempt=2,updated_at='2026-09-09T00:40:00Z')
-  self.runs=[run(20),latest]
+  latest=run(20,status='queued',conclusion=None);latest.update(run_attempt=2,updated_at='2026-09-09T00:40:00Z')
+  self.runs=[latest,run(10)]
   with self.assertRaisesRegex(SystemExit,'current request'):self.check()
  def test_new_request_during_verification_blocks(self):
   self.runs=[run(20),run(10)];self.race=True
@@ -75,5 +75,16 @@ class SelectionTests(unittest.TestCase):
  def test_spoofed_title_without_workflow_provenance_blocks(self):
   self.runs[0]['path']='.github/workflows/other.yml'
   with self.assertRaisesRegex(SystemExit,'provenance uncertain'):self.check()
+
+ def test_queue_delay_does_not_make_old_dispatch_newest(self):
+  old=run(10);old.update(created_at='2026-09-09T00:01:00Z',run_started_at='2026-09-09T00:10:00Z')
+  new=run(20,conclusion='failure');new.update(created_at='2026-09-09T00:02:00Z',run_started_at='2026-09-09T00:03:00Z')
+  self.runs=[new,old]
+  with self.assertRaisesRegex(SystemExit,'current request'):self.check()
+
+ def test_old_dispatch_rerun_cannot_override_new_dispatch_failure(self):
+  old=run(10);old.update(run_attempt=2,run_started_at='2026-09-09T00:40:00Z',updated_at='2026-09-09T00:45:00Z')
+  self.runs=[run(20,conclusion='failure'),old]
+  with self.assertRaisesRegex(SystemExit,'current request'):self.check()
 
 if __name__=='__main__':unittest.main()
