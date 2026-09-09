@@ -19,10 +19,17 @@ def emit(v):
  p.write_text(json.dumps(s)); print(json.dumps(v) if not isinstance(v,str) else v)
 def val(k): return a[a.index(k)+1]
 url='https://github.com/eng-cc/oasis7/issues/1'
-if a[:2]==['issue','list']: emit([{'number':1,'url':url,'title':'[PM] fixture','state':'OPEN'}] if s.get('body') else [])
+if a[:2]==['issue','list']:
+ if s.get('lost') and os.environ.get('FAKE_SEARCH')=='empty': emit([])
+ elif s.get('lost') and os.environ.get('FAKE_SEARCH')=='multiple': emit([{'number':1},{'number':2}])
+ elif s.get('lost') and os.environ.get('FAKE_SEARCH')=='limit': emit([{'number':n} for n in range(1,6)])
+ elif s.get('lost') and os.environ.get('FAKE_SEARCH')=='error': raise SystemExit('read unavailable')
+ else: emit([{'number':1,'url':url,'title':'[PM] fixture','state':'OPEN'}] if s.get('body') else [])
 elif a[:2] in (['issue','create'],['issue','edit']):
  s['body']=pathlib.Path(val('--body-file')).read_text()
  if a[1]=='create': s['creates']+=1
+ if a[1]=='create' and os.environ.get('FAKE_LOSS') and not s.get('lost'):
+  s['lost']=True; p.write_text(json.dumps(s)); raise SystemExit('created but response lost')
  emit(url)
 elif a[:2]==['issue','view']: emit({'number':1,'url':url,'title':'[PM] fixture','state':'OPEN','stateReason':None,'body':s['body']})
 elif a[:2]==['issue','comment']:
@@ -46,7 +53,13 @@ else: raise SystemExit('unsupported fake gh '+repr(a))
 '''
 
 class BootstrapEndToEnd(unittest.TestCase):
-    def test_full_flags_and_explicit_resume_reuse_task(self):
+    def test_pinned_tools_with_newer_task_base(self):
+        self.test_full_flags_and_explicit_resume_reuse_task(advanced=True)
+
+    def test_uncertain_create_never_reposts(self):
+        self.test_full_flags_and_explicit_resume_reuse_task(loss=True)
+
+    def test_full_flags_and_explicit_resume_reuse_task(self, advanced=False, loss=False):
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
             root = temp / 'repo'
@@ -77,16 +90,41 @@ class BootstrapEndToEnd(unittest.TestCase):
                 manual_request_ref='message:1',request_key='request:1',write_scope=['scripts/**'],out_of_scope=[],input_contracts=[],acceptance_refs=['M06'],dependencies=[],
                 target_delivery='fixture',policy_digest='sha256:'+hashlib.sha256((root/'scripts/pm/loop-policy.v1.json').read_bytes()).hexdigest(),policy_commit=base)
             source = temp / 'binding.json'; source.write_text(json.dumps(binding))
+            start = root
+            expected_base = base
+            if advanced:
+                start = temp / 'pinned-tools'
+                git('worktree','add','--detach',str(start),base)
+                (root/'later.txt').write_text('new main base\n')
+                for helper in ['new-task.sh', 'move-task.sh', 'workflow-report.sh', 'bootstrap-task-snapshot.py']:
+                    (root/'scripts/pm'/helper).write_text('#!/bin/sh\necho candidate-helper-executed >&2\nexit 91\n')
+                git('add','.'); git('commit','-qm','candidate base'); git('push','-q','origin','main')
+                expected_base = git('rev-parse','HEAD')
             target = temp / 'task'
             command = ['bash','scripts/new-task-worktree.sh','engineering','loop-test','--path',str(target),'--branch','codex/loop-test',
                 '--pm-owner-role','repository_health_engineer','--pm-title','fixture','--pm-source-ref','fixture','--pm-acceptance','M06',
                 '--pm-loop','code','--pm-loop-binding',str(source),'--pm-request-key','request:1','--pm-manual-request-ref','message:1','--json']
-            result = subprocess.run(command,cwd=root,env=env,text=True,capture_output=True)
+            if loss:
+                env['FAKE_LOSS']='1'
+            result = subprocess.run(command,cwd=start,env=env,text=True,capture_output=True)
+            if loss:
+                self.assertNotEqual(result.returncode,0,result.stdout)
+                self.assertEqual(json.loads(state.read_text())['creates'],1)
+                for mode in ['empty','multiple','limit','error']:
+                    retry = subprocess.run(command,cwd=start,env={**env,'FAKE_SEARCH':mode},text=True,capture_output=True)
+                    self.assertNotEqual(retry.returncode,0,retry.stdout)
+                    self.assertEqual(json.loads(state.read_text())['creates'],1,mode+retry.stderr)
+                recovered = subprocess.run(command,cwd=start,env=env,text=True,capture_output=True)
+                self.assertEqual(recovered.returncode,0,recovered.stderr)
+                self.assertEqual(json.loads(state.read_text())['creates'],1)
+                return
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertEqual(json.loads(state.read_text())['creates'],1)
             snapshot = json.loads((target/'.pm/scratch'/UID/'bootstrap-task-snapshot.json').read_text())
-            self.assertEqual(snapshot['git']['base']['oid'],base)
+            self.assertEqual(snapshot['git']['base']['oid'],expected_base)
             self.assertEqual(snapshot['task']['loop_binding'],binding)
+            if advanced:
+                return
             # A later remote default head must not silently rebase the same request.
             (root/'later.txt').write_text('unrelated upstream change\n')
             git('add','later.txt'); git('commit','-qm','later'); git('push','-q','origin','main')
@@ -114,6 +152,15 @@ class BootstrapEndToEnd(unittest.TestCase):
             facade = ['python3',str(trusted/'scripts/pm/loop.py'),'bind','--repo-root',str(target),
                       '--tool-root',str(trusted),'--task-uid',UID,'--loop-binding',str(source),
                       '--manual-request-ref',revised['manual_request_ref'],'--json']
+            # Actual adapter preflight rejection must leave no mutation intent.
+            preflight_adapter = "import sys,importlib.util; from pathlib import Path; sys.path.insert(0,str(Path(sys.argv[1]).parent)); spec=importlib.util.spec_from_file_location('pm',sys.argv[1]); pm=importlib.util.module_from_spec(spec); sys.modules['pm']=pm; spec.loader.exec_module(pm)\ndef reject(*a,**kw): raise SystemExit('preflight no write')\npm.validate_loop_inputs=reject; raise SystemExit(pm.main(sys.argv[2:]))"
+            preflight_facade = "import sys,subprocess; sys.path.insert(0,sys.argv[1]); import loop; original=subprocess.check_output; injected=sys.argv[2]\ndef fault(args,*a,**kw):\n if 'bind-loop' in args: args=[sys.executable,'-c',injected,args[1],*args[2:]]\n return original(args,*a,**kw)\nsubprocess.check_output=fault; sys.argv=sys.argv[3:]; raise SystemExit(loop.main())"
+            common = Path(git('rev-parse','--path-format=absolute','--git-common-dir'))
+            before_state = state.read_bytes()
+            denied = subprocess.run(['python3','-c',preflight_facade,str(trusted/'scripts/pm'),preflight_adapter,*facade[1:]],cwd=trusted,env=env,text=True,capture_output=True)
+            self.assertNotEqual(denied.returncode,0)
+            self.assertEqual(state.read_bytes(),before_state)
+            self.assertEqual(list((common/'oasis7-loop-recovery').glob('*.actions.jsonl')),[])
             # Run the real adapter to completion, then lose only its response to
             # the facade. Production code and all readbacks remain unchanged.
             inject = "import sys,subprocess; sys.path.insert(0,sys.argv[1]); import loop; original=subprocess.check_output\ndef lost(args,*a,**kw):\n result=original(args,*a,**kw)\n if 'bind-loop' in args: raise subprocess.CalledProcessError(1,args)\n return result\nsubprocess.check_output=lost; sys.argv=sys.argv[2:]; raise SystemExit(loop.main())"
@@ -134,6 +181,41 @@ class BootstrapEndToEnd(unittest.TestCase):
             again = subprocess.run(facade,cwd=trusted,env=env,text=True,capture_output=True)
             self.assertEqual(again.returncode,0,again.stdout+again.stderr)
             self.assertEqual(json.loads(state.read_text())['creates'],1)
+            # Keep the actual adapter alive after killing its facade parent.
+            # The inherited flock must exclude recovery without a second action.
+            import time
+            import signal
+            pidfile = temp/'bind-child.pid'; release = temp/'bind-child.release'
+            pause_adapter = "import sys,os,time,importlib.util; from pathlib import Path; sys.path.insert(0,str(Path(sys.argv[1]).parent)); spec=importlib.util.spec_from_file_location('pm',sys.argv[1]); pm=importlib.util.module_from_spec(spec); sys.modules['pm']=pm; spec.loader.exec_module(pm); original=pm.update_project_fields\ndef pause(*a,**kw):\n Path(os.environ['BIND_PID']).write_text(str(os.getpid()))\n while not Path(os.environ['BIND_RELEASE']).exists(): time.sleep(.02)\n return original(*a,**kw)\npm.update_project_fields=pause; raise SystemExit(pm.main(sys.argv[2:]))"
+            parent = subprocess.Popen(['python3','-c',preflight_facade,str(trusted/'scripts/pm'),pause_adapter,*facade[1:]],cwd=trusted,env=dict(env,BIND_PID=str(pidfile),BIND_RELEASE=str(release)),text=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            child = None
+            try:
+                for _ in range(500):
+                    if pidfile.exists(): break
+                    if parent.poll() is not None: self.fail('bind adapter exited before pause')
+                    time.sleep(.02)
+                self.assertTrue(pidfile.exists())
+                child = int(pidfile.read_text()); parent.kill(); parent.wait(); os.kill(child,0)
+                recovery_command = ['python3',str(trusted/'scripts/pm/loop.py'),'recover','--repo-root',str(target),'--tool-root',str(trusted),'--task-uid',UID,'--manual-request-ref','message:recover-child','--json']
+                denied = subprocess.run(recovery_command,cwd=trusted,env=env,text=True,capture_output=True)
+                self.assertNotEqual(denied.returncode,0)
+                self.assertIn('active OS lock',denied.stdout+denied.stderr)
+                events = [json.loads(line) for line in journals[0].read_text().splitlines()]
+                self.assertEqual(events[-1]['kind'],'bind_loop')
+                self.assertFalse(events[-1].get('reconciled',False))
+                release.touch()
+                for _ in range(500):
+                    recovered = subprocess.run(recovery_command,cwd=trusted,env=env,text=True,capture_output=True)
+                    if 'active OS lock' not in recovered.stdout+recovered.stderr: break
+                    time.sleep(.02)
+                self.assertEqual(recovered.returncode,0,recovered.stdout+recovered.stderr)
+                self.assertEqual(json.loads(recovered.stdout).get('pending_actions'),[])
+            finally:
+                release.touch()
+                if parent.poll() is None: parent.kill(); parent.wait()
+                if child:
+                    try: os.kill(child,signal.SIGTERM)
+                    except ProcessLookupError: pass
             local_gate = ['python3',str(trusted/'scripts/pm/loop-local-gate.py'),'--root',str(target),'--task-uid',UID,'--base',base,'--head',base,'--tool-root',str(trusted),'--json']
             admitted = subprocess.run(local_gate,cwd=trusted,env=env,text=True,capture_output=True)
             self.assertEqual(admitted.returncode,0,admitted.stdout+admitted.stderr)

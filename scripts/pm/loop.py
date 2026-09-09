@@ -196,30 +196,30 @@ def main():
             if result['status'] != 'passed': raise ValueError('; '.join(result['blockers']))
             command = [sys.executable, str(args.tool_root / 'scripts/pm/github-project-task.py'), 'bind-loop', str(root), '--task-uid', args.task_uid, '--loop-binding', str(args.loop_binding.resolve()), '--manual-request-ref', args.manual_request_ref, '--json']
             if args.migrate_epoch is not None: command += ['--migrate-epoch', str(args.migrate_epoch)]
-            with Reservation(common_dir(root), args.task_uid, binding['write_scope']):
+            with Reservation(common_dir(root), args.task_uid, binding['write_scope']) as reservation:
                 expected = json.dumps(binding, sort_keys=True)
                 action = {'action_id': 'bind:' + hashlib.sha256(expected.encode()).hexdigest(), 'kind': 'bind_loop', 'expected': expected,
                           'repository': task['repository'], 'issue_number': task['issue_number'],
                           'previous_binding': task.get('loop_binding'), 'previous_epoch': task.get('bootstrap_epoch', 1),
                           'canonical_worktree': str(root), 'task_branch': task.get('task_branch'), 'project_item_id': task.get('project_item_id')}
-                record_action(common_dir(root), args.task_uid, action)
-                result = json.loads(subprocess.check_output(command, text=True))
+                command += ['--loop-action-json', json.dumps(action, sort_keys=True)]
+                result = json.loads(subprocess.check_output(command, text=True, pass_fds=(reservation.handle.fileno(),)))
                 if result.get('status') == 'bound':
                     record_action(common_dir(root), args.task_uid, {**action, 'reconciled': True, 'readback_evidence': result})
         else:
             if args.command == 'validate-scope' and not args.base: raise ValueError('--base required')
             if args.command == 'recover':
                 task = recovery_task(root, task, args.tool_root)
-                with Reservation(common_dir(root), args.task_uid, (task.get('loop_binding') or {}).get('write_scope', []), recovery=True):
-                    recovery = reconcile(common_dir(root), args.task_uid, root, args.tool_root)
+                with Reservation(common_dir(root), args.task_uid, (task.get('loop_binding') or {}).get('write_scope', []), recovery=True) as reservation:
+                    recovery = reconcile(common_dir(root), args.task_uid, root, args.tool_root, reservation_fd=reservation.handle.fileno())
                 if recovery['pending_actions']:
                     print(json.dumps(recovery, sort_keys=True))
                     return 2
                 task = load_task(root, args.task_uid)
             result = validate_task(root, task, args.tool_root, args.base, args.head)
             if result['status'] in ('passed', 'legacy') and args.command in ('resume-check', 'recover'):
-                with Reservation(common_dir(root), args.task_uid, (task.get('loop_binding') or {}).get('write_scope', []), recovery=args.command == 'recover'):
-                    result.update(reconcile(common_dir(root), args.task_uid, root, args.tool_root) if args.command == 'recover' else recovery_status(common_dir(root), args.task_uid))
+                with Reservation(common_dir(root), args.task_uid, (task.get('loop_binding') or {}).get('write_scope', []), recovery=args.command == 'recover') as reservation:
+                    result.update(reconcile(common_dir(root), args.task_uid, root, args.tool_root, reservation_fd=reservation.handle.fileno()) if args.command == 'recover' else recovery_status(common_dir(root), args.task_uid))
                 # Existing workflow-next checks live issue/snapshot/holds; never execute its next_command.
                 command = [sys.executable, str((args.tool_root or root) / 'scripts/pm/workflow-next.py'), '--repo-root', str(root), '--task-uid', args.task_uid, '--json']
                 observed = subprocess.run(command, text=True, capture_output=True)

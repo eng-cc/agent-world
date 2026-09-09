@@ -456,7 +456,7 @@ def github_issue_record(repo: str, task_uid: str) -> dict[str, Any] | None:
     )
     issue = json.loads(issue_payload)
     body = str(issue.get("body") or "").replace("\r\n", "\n")
-    if not re.search(rf"^task_uid:\s*{re.escape(task_uid)}$", body, re.MULTILINE):
+    if re.findall(r"^task_uid:\s*(task_[0-9a-f]{32})$", body, re.MULTILINE) != [task_uid]:
         return None
     record = issue_task_fields(body)
     title = str(issue.get("title") or hits[0].get("title") or "")
@@ -561,11 +561,13 @@ def issue_body(task: OrderedDict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def create_issue(repo: str, task: OrderedDict[str, Any]) -> str:
+def create_issue(repo: str, task: OrderedDict[str, Any], before_write=None) -> str:
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
         handle.write(issue_body(task))
         body_path = handle.name
     try:
+        if before_write is not None:
+            before_write()
         return run_text(["gh", "issue", "create", "-R", repo, "--title", f"[PM] {task['title']}", "--body-file", body_path])
     finally:
         pathlib.Path(body_path).unlink(missing_ok=True)
@@ -886,11 +888,27 @@ def command_bind_loop(args: argparse.Namespace) -> int:
         except (OSError, ValueError, KeyError):
             die("existing task binding needs its immutable bootstrap snapshot base")
     task = task_from_record(args.task_uid, updated)
+    # The facade's inherited OS reservation covers preflight and this writer.
+    # Register only at the mutation boundary; a preflight error is not an
+    # uncertain remote operation. Recovery already has its original intent.
+    action_json = getattr(args, "loop_action_json", None)
+    action = json.loads(action_json) if action_json else None
+    if action is not None and (action.get("kind") != "bind_loop" or action.get("expected") != json.dumps(binding, sort_keys=True)):
+        die("bind mutation intent differs from the requested binding")
+    intent_written = False
+    def before_write():
+        nonlocal intent_written
+        if action is not None and not intent_written:
+            from loop_recovery import common_dir, record_action
+            record_action(common_dir(args.root.resolve()), args.task_uid, action)
+            intent_written = True
     if live.get("loop_binding") != binding:
+        before_write()
         update_issue_body(args.repo, int(record["issue_number"]), task)
     readback = github_issue_record(args.repo, args.task_uid)
     if not readback or readback.get("loop_binding") != binding:
         die("loop binding Issue write/readback uncertain; reconcile before retry")
+    before_write()
     update_project_fields(args, task, str(record["project_item_id"]))
     ensure_loop_history(args.repo, int(record["issue_number"]), binding)
     merge_task_mapping(mapping_path, args.task_uid, updated)
@@ -1024,7 +1042,7 @@ def _command_new_task(args: argparse.Namespace) -> int:
     if binding:
         validate_loop_inputs(root, binding, args.repo, "new_tasks")
     if not journal:
-        journal = {"version": 2, "task_uid": task_uid, "state": "planned", "next_action": "create_issue",
+        journal = {"version": 2, "task_uid": task_uid, "state": "planned", "creation_outcome": "never_attempted", "next_action": "create_issue",
                    "immutable_request": immutable_request, "immutable_request_digest": immutable_digest,
                    "updated_at": now()}
         atomic_json(journal_path, journal)
@@ -1061,9 +1079,28 @@ def _command_new_task(args: argparse.Namespace) -> int:
                 die("manual bootstrap Issue reconciliation uncertain; retry the same request after readback recovers")
             recovered = None
         issue_url = str((recovered or {}).get("issue_url") or "")
+        if issue_url and binding and ((recovered or {}).get("loop_binding") != binding or
+                                      (recovered or {}).get("worktree_hint") != task["worktree_hint"]):
+            die("manual bootstrap recovered Issue binding/worktree mismatch")
     if not issue_url:
-        issue_url = create_issue(args.repo, task)
-    journal.update({"issue_url": issue_url, "state": "issue_created", "next_action": "add_project_item", "updated_at": now()})
+        if journal_existed and journal.get("creation_outcome") not in {"never_attempted", "confirmed_no_write"}:
+            die("bootstrap Issue creation outcome uncertain; retain pending intent and reconcile exact live identity before retry")
+        # Persist before the non-idempotent remote attempt. Neither an empty
+        # search nor an exception proves that GitHub rejected the write.
+        attempted = False
+        def before_create():
+            nonlocal attempted
+            journal.update({"creation_outcome": "uncertain", "next_action": "reconcile_issue", "updated_at": now()})
+            atomic_json(journal_path, journal)
+            attempted = True
+        try:
+            issue_url = create_issue(args.repo, task, before_write=before_create)
+        except Exception:
+            if not attempted:
+                journal.update({"creation_outcome": "confirmed_no_write", "next_action": "create_issue", "updated_at": now()})
+                atomic_json(journal_path, journal)
+            raise
+    journal.update({"issue_url": issue_url, "creation_outcome": "completed", "state": "issue_created", "next_action": "add_project_item", "updated_at": now()})
     atomic_json(journal_path, journal)
     issue_number = issue_number_from_url(issue_url)
     if binding:
@@ -2082,6 +2119,7 @@ def build_parser() -> argparse.ArgumentParser:
     new_task.set_defaults(func=command_new_task)
 
     bind = subparsers.add_parser("bind-loop")
+    bind.add_argument("--loop-action-json", help=argparse.SUPPRESS)
     add_common(bind)
     bind.add_argument("--task-uid", required=True)
     bind.add_argument("--loop-binding", required=True)

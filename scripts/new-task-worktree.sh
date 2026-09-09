@@ -478,7 +478,7 @@ if [[ -f "$CANONICAL_CONFIG_SOURCE" ]]; then
   CANONICAL_CONFIG_COPIED=1
 fi
 
-if ! CARGO_SHARED_TARGET_DIR="$(cd "$TARGET_PATH" && ./scripts/cargo-dev.sh --print-target-dir)"; then
+if ! CARGO_SHARED_TARGET_DIR="$(cd "$TARGET_PATH" && "$ROOT_DIR/scripts/cargo-dev.sh" --print-target-dir)"; then
   cleanup_bootstrap_failure
   echo "error: failed to resolve shared cargo target dir from target worktree; cleaned up created worktree" >&2
   exit 1
@@ -540,7 +540,7 @@ PM_EXECUTION_LOG_PATH=""
 PM_BOOTSTRAP_SNAPSHOT_PATH=""
 PM_BOOTSTRAP_SNAPSHOT_DIGEST=""
 if [[ "$PM_BOOTSTRAP" == "1" ]]; then
-  NEW_TASK_CMD=(./scripts/pm/new-task.sh
+  NEW_TASK_CMD=(env "PM_ROOT_DIR=$TARGET_PATH" "$ROOT_DIR/scripts/pm/new-task.sh"
     --owner-role "$PM_OWNER_ROLE"
     --title "$PM_TITLE"
     --module "$MODULE_SLUG"
@@ -593,9 +593,9 @@ if [[ "$PM_BOOTSTRAP" == "1" ]]; then
   set +e
   (
     cd "$TARGET_PATH" &&
-    ./scripts/pm/move-task.sh --task-uid "$PM_TASK_UID" --to-status committed >/dev/null &&
-    ./scripts/pm/workflow-report.sh --phase start --role "$PM_OWNER_ROLE" --task-uid "$PM_TASK_UID" >/dev/null &&
-    ./scripts/pm/bootstrap-task-snapshot.py validate-or-create \
+    PM_ROOT_DIR="$TARGET_PATH" "$ROOT_DIR/scripts/pm/move-task.sh" --task-uid "$PM_TASK_UID" --to-status committed >/dev/null &&
+    PM_ROOT_DIR="$TARGET_PATH" "$ROOT_DIR/scripts/pm/workflow-report.sh" --phase start --role "$PM_OWNER_ROLE" --task-uid "$PM_TASK_UID" >/dev/null &&
+    "$ROOT_DIR/scripts/pm/bootstrap-task-snapshot.py" validate-or-create \
       --repo-root "$TARGET_PATH" \
       --task-uid "$PM_TASK_UID" \
       --producer scripts/new-task-worktree.sh >/dev/null
@@ -604,7 +604,7 @@ if [[ "$PM_BOOTSTRAP" == "1" ]]; then
   set -e
   if [[ "$BOOTSTRAP_STATUS" -ne 0 ]]; then
     echo "error: failed to move/start bootstrapped GitHub-backed PM task; preserved worktree/branch for recovery: $TARGET_PATH" >&2
-    echo "resume-bootstrap: cd '$TARGET_PATH' && ./scripts/pm/refresh-task-cache.sh --task-uid '$PM_TASK_UID' --json, then retry move-task/workflow-report/bootstrap-task-snapshot" >&2
+    echo "resume-bootstrap: PM_ROOT_DIR='$TARGET_PATH' '$ROOT_DIR/scripts/pm/refresh-task-cache.sh' --task-uid '$PM_TASK_UID' --json; continue lifecycle helpers from '$ROOT_DIR' with this explicit target" >&2
     exit "$BOOTSTRAP_STATUS"
   fi
   PM_BOOTSTRAP_SNAPSHOT_PATH="$TARGET_PATH/.pm/scratch/$PM_TASK_UID/bootstrap-task-snapshot.json"

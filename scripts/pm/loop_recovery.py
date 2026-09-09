@@ -163,7 +163,7 @@ def recovery_status(common, uid):
             'next_step': 'Read back each recorded remote object or confirm old child termination using its existing action journal; do not repeat the operation.' if pending else None}
 
 
-def reconcile(common, uid, root, tool_root=None):
+def reconcile(common, uid, root, tool_root=None, *, reservation_fd=None):
     """Read back known push/child effects; unknown operations stay blocked."""
     for action in recovery_status(common, uid)['pending_actions']:
         evidence = None
@@ -197,10 +197,10 @@ def reconcile(common, uid, root, tool_root=None):
                                    '--loop-binding', intent.name, '--manual-request-ref', binding['manual_request_ref'], '--json']
                         if action.get('previous_binding', binding) != binding:
                             command += ['--migrate-epoch', str(binding['bootstrap_epoch'])]
-                        repaired = subprocess.run(command, capture_output=True, text=True)
+                        repaired = subprocess.run(command, capture_output=True, text=True, pass_fds=() if reservation_fd is None else (reservation_fd,))
                     if repaired.returncode:
                         continue
-                    refreshed = subprocess.run([sys.executable, str(tool / 'scripts/pm/github-project-task.py'), 'refresh-task', str(root), '--task-uid', uid, '--json'], capture_output=True, text=True)
+                    refreshed = subprocess.run([sys.executable, str(tool / 'scripts/pm/github-project-task.py'), 'refresh-task', str(root), '--task-uid', uid, '--json'], capture_output=True, text=True, pass_fds=() if reservation_fd is None else (reservation_fd,))
                     if refreshed.returncode:
                         continue
                     mapping = json.loads((Path(root) / '.pm/github-project-sync/tasks.json').read_text())['tasks'][uid]

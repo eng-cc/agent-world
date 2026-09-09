@@ -65,7 +65,7 @@ class LoopTransport(unittest.TestCase):
             self.assertEqual(SYNC.load_archived_tasks(root,{'done'})[0]['loop_binding'],BINDING)
 
     def test_manual_create_retry_and_lost_response_do_not_duplicate(self):
-        for lost in (False, True):
+        for lost in (False, True, 'preflight'):
             with self.subTest(lost_response=lost), tempfile.TemporaryDirectory() as directory:
                 root = pathlib.Path(directory)
                 binding = root / 'binding.json'
@@ -74,10 +74,16 @@ class LoopTransport(unittest.TestCase):
                     '--owner-role', BINDING['owner_role'], '--source-ref', 'test', '--acceptance', 'M17',
                     '--loop-binding', str(binding), '--request-key', 'request:1', '--bootstrap-base-oid', 'd' * 40, '--json'])
                 live = {}
-                def create(*unused):
+                preflight_failed = False
+                def create(*unused, before_write=None):
+                    nonlocal preflight_failed
+                    if lost == 'preflight' and not preflight_failed:
+                        preflight_failed = True
+                        raise subprocess.CalledProcessError(1, 'render-before-write')
+                    if before_write: before_write()
                     live.update(task_uid=UID, issue_url='https://github.com/eng-cc/oasis7/issues/17', issue_number=17,
-                                loop_binding=BINDING, status='committed', merge_hold={'active': True})
-                    if lost: raise subprocess.CalledProcessError(1, 'create-response-lost')
+                                loop_binding=BINDING, worktree_hint='', status='committed', merge_hold={'active': True})
+                    if lost is True: raise subprocess.CalledProcessError(1, 'create-response-lost')
                     return live['issue_url']
                 with mock.patch.object(TASK, 'validate_loop_binding', side_effect=lambda b:b), \
                      mock.patch.object(TASK, 'validate_loop_inputs'), \
@@ -95,7 +101,7 @@ class LoopTransport(unittest.TestCase):
                         TASK._command_new_task(args)
                     TASK._command_new_task(args)
                     TASK._command_new_task(args)
-                    self.assertEqual(creates.call_count, 1)
+                    self.assertEqual(creates.call_count, 2 if lost == 'preflight' else 1)
 
     def test_project_fields_missing_cannot_silently_skip(self):
         sync = mock.Mock(SINGLE_SELECT_FIELDS={'Loop'})
