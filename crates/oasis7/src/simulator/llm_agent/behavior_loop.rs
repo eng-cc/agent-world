@@ -4,7 +4,7 @@ use super::super::continuous_agent_harness::{
     ContinuousAgentResponseContextV1, ContinuousAgentTurnContextV1, h_v1,
 };
 use super::super::decision_provider::{DecisionResponse, ProviderDiagnostics};
-use super::behavior_budget::BudgetTraceState;
+use super::behavior_budget::{BudgetTraceState, budget_diagnostics};
 use super::behavior_context::{CognitionBudgetExhausted, builtin_provider_decision};
 use super::*;
 use std::time::Instant;
@@ -111,6 +111,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                             completion_tokens: None,
                             total_tokens: None,
                             retry_count: 0,
+                            ..budget_diagnostics(self.continuous_context.snapshot())
                         }),
                         llm_effect_intents: vec![],
                         llm_effect_receipts: vec![],
@@ -925,6 +926,7 @@ impl<C: LlmCompletionClient> AgentBehavior for LlmAgentBehavior<C> {
                 completion_tokens: has_completion_tokens.then_some(completion_tokens_total),
                 total_tokens: has_total_tokens.then_some(total_tokens_total),
                 retry_count: repair_rounds_used,
+                ..budget_diagnostics(self.continuous_context.snapshot())
             }),
             llm_effect_intents,
             llm_effect_receipts,

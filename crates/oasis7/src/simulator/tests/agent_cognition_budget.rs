@@ -65,6 +65,111 @@ fn cognition_budget_wire_rejects_missing_model_or_tool_limits() {
     }
 }
 
+#[test]
+fn native_budget_diagnostics_capture_success_usage_before_next_request_bind() {
+    let first_request = request_from_value(production_request_fixture(1, 60_000));
+    let mut second_fixture = production_request_fixture(2, 60_000);
+    second_fixture["retry_seq"] = json!(1);
+    let second_request = request_from_value(second_fixture);
+    let calls = Arc::new(AtomicUsize::new(0));
+    let mut behavior = LlmAgentBehavior::new(
+        "agent-1",
+        retry_budget_llm_config(),
+        RetryCountingLlmClient {
+            calls: Arc::clone(&calls),
+        },
+    );
+
+    AgentBehavior::set_continuous_request_context(&mut behavior, Some(&first_request));
+    assert_eq!(
+        behavior.decide(&production_observation("agent-1", 42)),
+        crate::simulator::AgentDecision::Wait
+    );
+    AgentBehavior::set_continuous_request_context(&mut behavior, Some(&second_request));
+    let first_trace = behavior
+        .take_decision_trace()
+        .expect("successful request trace exists");
+
+    assert_eq!(
+        behavior.decide(&production_observation("agent-1", 43)),
+        crate::simulator::AgentDecision::Wait
+    );
+    let second_trace = behavior
+        .take_decision_trace()
+        .expect("next request trace exists");
+
+    let first_diagnostics = first_trace.llm_diagnostics.expect("first diagnostics");
+    assert_eq!(first_diagnostics.max_model_calls, Some(4));
+    assert_eq!(first_diagnostics.model_calls_used, Some(1));
+    assert_eq!(first_diagnostics.max_tool_calls, Some(3));
+    assert_eq!(first_diagnostics.tool_calls_used, Some(0));
+
+    let second_diagnostics = second_trace.llm_diagnostics.expect("second diagnostics");
+    assert_eq!(second_diagnostics.max_model_calls, Some(4));
+    assert_eq!(second_diagnostics.model_calls_used, Some(1));
+    assert_eq!(second_diagnostics.max_tool_calls, Some(3));
+    assert_eq!(second_diagnostics.tool_calls_used, Some(0));
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn native_budget_diagnostics_capture_one_category_exhaustion_before_next_request_bind() {
+    let mut first_fixture = production_request_fixture(1, 60_000);
+    first_fixture["budget_contract"]["max_model_calls"] = json!(1);
+    first_fixture["budget_contract"]["max_tool_calls"] = json!(3);
+    let first_request = request_from_value(first_fixture);
+    let mut second_fixture = production_request_fixture(2, 60_000);
+    second_fixture["retry_seq"] = json!(1);
+    let second_request = request_from_value(second_fixture);
+    let calls = Arc::new(AtomicUsize::new(0));
+    let mut behavior = LlmAgentBehavior::new(
+        "agent-1",
+        retry_budget_llm_config(),
+        SequenceBudgetLlmClient {
+            outputs: Arc::new(vec![
+                r#"{"type":"module_call","module":"agent.modules.list","args":{}}"#.to_string(),
+                r#"{"decision":"wait"}"#.to_string(),
+            ]),
+            calls: Arc::clone(&calls),
+        },
+    );
+
+    AgentBehavior::set_continuous_request_context(&mut behavior, Some(&first_request));
+    assert_eq!(
+        behavior.decide(&production_observation("agent-1", 42)),
+        crate::simulator::AgentDecision::Wait
+    );
+    AgentBehavior::set_continuous_request_context(&mut behavior, Some(&second_request));
+    let first_trace = behavior
+        .take_decision_trace()
+        .expect("exhausted request trace exists");
+    let first_diagnostics = first_trace.llm_diagnostics.expect("exhaustion diagnostics");
+    assert_eq!(first_diagnostics.max_model_calls, Some(1));
+    assert_eq!(first_diagnostics.model_calls_used, Some(1));
+    assert_eq!(first_diagnostics.max_tool_calls, Some(3));
+    assert_eq!(first_diagnostics.tool_calls_used, Some(1));
+    assert!(
+        first_trace
+            .llm_error
+            .as_deref()
+            .is_some_and(|error| error.starts_with("budget_exhausted:"))
+    );
+
+    assert_eq!(
+        behavior.decide(&production_observation("agent-1", 43)),
+        crate::simulator::AgentDecision::Wait
+    );
+    let second_trace = behavior
+        .take_decision_trace()
+        .expect("next request trace exists");
+    let second_diagnostics = second_trace.llm_diagnostics.expect("next diagnostics");
+    assert_eq!(second_diagnostics.max_model_calls, Some(4));
+    assert_eq!(second_diagnostics.model_calls_used, Some(1));
+    assert_eq!(second_diagnostics.max_tool_calls, Some(3));
+    assert_eq!(second_diagnostics.tool_calls_used, Some(0));
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
 #[derive(Clone)]
 struct RetryCountingLlmClient {
     calls: Arc<AtomicUsize>,

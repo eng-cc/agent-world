@@ -1,4 +1,4 @@
-use super::behavior_context::CognitionBudgetExhausted;
+use super::behavior_context::{CognitionBudgetExhausted, CognitionBudgetSnapshot};
 use super::*;
 
 pub(super) struct BudgetTraceState {
@@ -15,6 +15,21 @@ pub(super) struct BudgetTraceState {
     pub(super) trace_outputs: Vec<String>,
     pub(super) llm_step_trace: Vec<LlmStepTrace>,
     pub(super) llm_prompt_section_trace: Vec<LlmPromptSectionTrace>,
+}
+
+pub(super) fn budget_diagnostics(
+    snapshot: Option<CognitionBudgetSnapshot>,
+) -> LlmDecisionDiagnostics {
+    let Some(snapshot) = snapshot else {
+        return LlmDecisionDiagnostics::default();
+    };
+    LlmDecisionDiagnostics {
+        max_model_calls: Some(snapshot.max_model_calls),
+        model_calls_used: Some(snapshot.model_calls_used),
+        max_tool_calls: Some(snapshot.max_tool_calls),
+        tool_calls_used: Some(snapshot.tool_calls_used),
+        ..LlmDecisionDiagnostics::default()
+    }
 }
 
 impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
@@ -58,6 +73,7 @@ impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
                     .then_some(state.completion_tokens_total),
                 total_tokens: state.has_total_tokens.then_some(state.total_tokens_total),
                 retry_count: state.repair_rounds_used,
+                ..budget_diagnostics(self.continuous_context.snapshot())
             }),
             // Exhaustion must not create a new projected effect.  The prior
             // calls remain auditable in input/output and step traces.

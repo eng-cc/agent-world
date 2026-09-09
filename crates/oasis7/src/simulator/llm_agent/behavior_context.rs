@@ -40,6 +40,14 @@ impl CognitionBudgetExhausted {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct CognitionBudgetSnapshot {
+    pub(super) max_model_calls: u32,
+    pub(super) model_calls_used: u32,
+    pub(super) max_tool_calls: u32,
+    pub(super) tool_calls_used: u32,
+}
+
 /// Per-behavior logical-request accounting.  The digest is the stable
 /// request identity, so transport retries with a different attempt number
 /// retain the same counters while a new request starts cleanly.
@@ -82,6 +90,15 @@ impl CognitionBudgetLedger {
         )
     }
 
+    pub(super) fn snapshot(&self, budget: &BudgetContractV1) -> CognitionBudgetSnapshot {
+        CognitionBudgetSnapshot {
+            max_model_calls: budget.max_model_calls,
+            model_calls_used: self.model_calls,
+            max_tool_calls: budget.max_tool_calls,
+            tool_calls_used: self.tool_calls,
+        }
+    }
+
     fn admit(
         kind: CognitionBudgetKind,
         used: &mut u32,
@@ -105,6 +122,16 @@ pub(super) struct ContinuousAgentContext {
     pub(super) request_context: Option<ContinuousAgentRequestContextV1>,
     pub(super) pending_response_context: Option<ContinuousAgentResponseContextV1>,
     pub(super) budget_ledger: CognitionBudgetLedger,
+}
+
+impl ContinuousAgentContext {
+    pub(super) fn snapshot(&self) -> Option<CognitionBudgetSnapshot> {
+        let request_context = self.request_context.as_ref()?;
+        Some(
+            self.budget_ledger
+                .snapshot(&request_context.budget_contract),
+        )
+    }
 }
 
 impl<C: LlmCompletionClient> LlmAgentBehavior<C> {
