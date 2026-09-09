@@ -235,6 +235,7 @@ def validate_contracts(tool_root,target_repo_root,binding,authority_reader=None,
     reader=authority_reader or GitHubAuthority(target_repo_root)
     visited=set()
     active=set()
+    revisions={}
     def inspect(reference):
         if not isinstance(reference,dict):
             errors.append("invalid contract reference")
@@ -258,6 +259,9 @@ def validate_contracts(tool_root,target_repo_root,binding,authority_reader=None,
                 raise ValueError("contract immutable identity mismatch")
             if reference.get("contract_digest")!=contract_digest(contract):
                 raise ValueError("bound contract digest mismatch")
+            digest=reference["contract_digest"]
+            if revisions.setdefault(key,digest)!=digest:
+                raise ValueError("conflicting immutable contract revision")
             errors.extend(validate_contract_record(contract,target_repo_root,record.get("pr",{})))
             if contract.get("eligibility",{}).get(purpose) is not True:
                 errors.append("contract withdrawn or ineligible for "+purpose)

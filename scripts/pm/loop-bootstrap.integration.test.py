@@ -55,13 +55,28 @@ else: raise SystemExit('unsupported fake gh '+repr(a))
 '''
 
 class BootstrapEndToEnd(unittest.TestCase):
+    def test_interrupted_setup_reconciles_missing_artifacts(self):
+        self.test_full_flags_and_explicit_resume_reuse_task(setup='missing')
+
+    def test_interrupted_setup_preserves_custom_config(self):
+        self.test_full_flags_and_explicit_resume_reuse_task(setup='config_only')
+
+    def test_interrupted_setup_preserves_complete_artifacts(self):
+        self.test_full_flags_and_explicit_resume_reuse_task(setup='complete')
+
+    def test_interrupted_setup_rejects_invalid_target(self):
+        self.test_full_flags_and_explicit_resume_reuse_task(setup='invalid_target')
+
+    def test_interrupted_setup_rejects_invalid_config(self):
+        self.test_full_flags_and_explicit_resume_reuse_task(setup='invalid_config')
+
     def test_pinned_tools_with_newer_task_base(self):
         self.test_full_flags_and_explicit_resume_reuse_task(advanced=True)
 
     def test_uncertain_create_never_reposts(self):
         self.test_full_flags_and_explicit_resume_reuse_task(loss=True)
 
-    def test_full_flags_and_explicit_resume_reuse_task(self, advanced=False, loss=False):
+    def test_full_flags_and_explicit_resume_reuse_task(self, advanced=False, loss=False, setup=None):
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
             root = temp / 'repo'
@@ -69,7 +84,8 @@ class BootstrapEndToEnd(unittest.TestCase):
             shutil.copytree(ROOT / 'scripts/pm', root / 'scripts/pm', ignore=shutil.ignore_patterns('__pycache__'))
             for name in ['new-task-worktree.sh', 'worktree-harness-lib.sh']:
                 shutil.copy2(ROOT / 'scripts' / name, root / 'scripts' / name)
-            (root / '.gitignore').write_text('.pm/\ntarget\n__pycache__/\n')
+            (root / '.gitignore').write_text('.pm/\ntarget\nconfig.toml\n__pycache__/\n')
+            (root / 'config.toml').write_text('canonical = true\n')
             cargo = root / 'scripts/cargo-dev.sh'
             cargo.write_text('#!/bin/sh\nprintf "%s\\n" "$TEST_SHARED_TARGET"\n')
             cargo.chmod(0o755)
@@ -108,7 +124,37 @@ class BootstrapEndToEnd(unittest.TestCase):
                 '--pm-loop','code','--pm-loop-binding',str(source),'--pm-request-key','request:1','--pm-manual-request-ref','message:1','--json']
             if loss:
                 env['FAKE_LOSS']='1'
+            if setup:
+                # Fail after the actual worktree add side effect, before setup.
+                real_git = shutil.which('git')
+                wrapper = binary/'git'
+                wrapper.write_text('#!/bin/sh\n"'+real_git+'" "$@"\nstatus=$?\nif [ "$1 $2" = "worktree add" ] && [ "$status" = 0 ]; then exit 97; fi\nexit "$status"\n')
+                wrapper.chmod(0o755)
+                interrupted = subprocess.run(command,cwd=start,env=env,text=True,capture_output=True)
+                self.assertNotEqual(interrupted.returncode,0)
+                self.assertTrue((target/'.git').is_file(),interrupted.stderr)
+                self.assertFalse(state.exists())
+                wrapper.unlink()
+                if setup in ('config_only','complete'):
+                    (target/'config.toml').write_text('custom = true\n')
+                if setup == 'complete':
+                    (temp/'target').mkdir(); (target/'target').symlink_to(temp/'target')
+                if setup == 'invalid_target': (target/'target').mkdir()
+                if setup == 'invalid_config': (target/'config.toml').mkdir()
             result = subprocess.run(command,cwd=start,env=env,text=True,capture_output=True)
+            if setup:
+                if setup.startswith('invalid_'):
+                    self.assertNotEqual(result.returncode,0,result.stdout)
+                    self.assertTrue((target/'.git').is_file())
+                    self.assertTrue((target/('target' if setup == 'invalid_target' else 'config.toml')).is_dir())
+                    self.assertFalse(state.exists())
+                else:
+                    self.assertEqual(result.returncode,0,result.stderr)
+                    self.assertEqual((target/'config.toml').read_text(),'canonical = true\n' if setup == 'missing' else 'custom = true\n')
+                    self.assertTrue((target/'target').is_symlink())
+                    self.assertEqual((target/'target').resolve(),(temp/'target').resolve())
+                    self.assertEqual(json.loads(state.read_text())['creates'],1)
+                return
             if loss:
                 self.assertNotEqual(result.returncode,0,result.stdout)
                 self.assertEqual(json.loads(state.read_text())['creates'],1)

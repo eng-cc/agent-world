@@ -1,5 +1,6 @@
 """Repository-only hosted checks never claim local live admission."""
 import hashlib
+import copy
 import json
 from pathlib import Path
 import shutil
@@ -73,6 +74,39 @@ class ContentTests(unittest.TestCase):
         self.contract['content_refs'][0]['sha256']='sha256:'+'0'*64
         self.reference['contract_digest']=contract_digest(self.contract)
         self.assertEqual(self.check()['status'],'blocked')
+
+    def test_conflicting_revision_cannot_hide_second_upstream_graph(self):
+        bad = copy.deepcopy(self.contract); bad['contract_id'] = 'UP'
+        bad['content_refs'][0]['sha256'] = 'sha256:'+'0'*64
+        upstream = dict(self.reference,contract_id='UP',contract_digest=contract_digest(bad),publication_ref={'issue_number':1,'comment_id':5})
+        second = copy.deepcopy(self.contract); second['upstream_contracts'] = [upstream]
+        self.binding['input_contracts'].append(dict(self.reference,contract_digest=contract_digest(second),publication_ref={'issue_number':1,'comment_id':4}))
+        def reader(repo,path):
+            if path in ('issues/comments/4','issues/comments/5'):
+                contract = second if path.endswith('/4') else bad
+                return {'id':int(path.rsplit('/',1)[1]),'issue_url':'https://api.github.com/repos/eng-cc/oasis7/issues/1',
+                        'body':json.dumps({'marker':MARKER,'contract_digest':contract_digest(contract),'contract':contract})}
+            return self.reader(repo,path)
+        result = validate_ci_content(self.root,self.root,self.binding,self.base,self.base,'eng-cc/oasis7',reader)
+        self.assertEqual(result['status'],'blocked',result)
+
+    def test_equivalent_revision_at_two_publications_remains_valid(self):
+        self.binding['input_contracts'].append(dict(self.reference,publication_ref={'issue_number':1,'comment_id':4}))
+        def reader(repo,path):
+            if path=='issues/comments/4':
+                return dict(self.reader(repo,'issues/comments/3'),id=4)
+            return self.reader(repo,path)
+        result = validate_ci_content(self.root,self.root,self.binding,self.base,self.base,'eng-cc/oasis7',reader)
+        self.assertEqual(result['status'],'passed',result)
+
+    def test_equivalent_revision_rechecks_second_publication_target(self):
+        self.binding['input_contracts'].append(dict(self.reference,publication_ref={'issue_number':1,'comment_id':4}))
+        def reader(repo,path):
+            if path=='issues/comments/4':
+                return dict(self.reader(repo,'issues/comments/3'),id=4,issue_url='https://api.github.com/repos/eng-cc/oasis7/issues/99')
+            return self.reader(repo,path)
+        result = validate_ci_content(self.root,self.root,self.binding,self.base,self.base,'eng-cc/oasis7',reader)
+        self.assertEqual(result['status'],'blocked',result)
 
 
 if __name__=='__main__': unittest.main()

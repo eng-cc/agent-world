@@ -10,9 +10,51 @@ import sys
 from contextlib import redirect_stdout
 import tempfile
 import unittest
+import os
+import shutil
+import textwrap
 
 HERE=Path(__file__).parent
 class IntegrationTests(unittest.TestCase):
+ def test_required_workflow_uses_frozen_driver_and_preflight_on_candidate_root(self):
+  for event in ('workflow_dispatch','pull_request','push'):
+   for candidate_preflight in ('exit 0\n', 'viewer_dependency_preflight() { :; }\n'):
+    with self.subTest(event=event, candidate_preflight=candidate_preflight), tempfile.TemporaryDirectory() as tmp:
+     temp=Path(tmp);candidate=temp/'candidate';scripts=candidate/'scripts';scripts.mkdir(parents=True)
+     frozen=temp/'integration-planner';frozen.mkdir()
+     repo=HERE.parents[1]
+     for name in ('ci-tests.sh','viewer-dependency-preflight.sh'):
+      shutil.copy2(repo/'scripts'/name,frozen/name)
+     marker=temp/'observed'
+     (scripts/'ci-tests.sh').write_text('#!/bin/bash\nprintf candidate > "$OBSERVED"\nexit 0\n')
+     (scripts/'ci-tests.sh').chmod(0o755)
+     (scripts/'viewer-dependency-preflight.sh').write_text(candidate_preflight)
+     (scripts/'doc-governance-check.sh').write_text('#!/bin/bash\npwd > "$OBSERVED"\nexit 37\n')
+     (scripts/'doc-governance-check.sh').chmod(0o755)
+     workflow=(repo/'.github/workflows/rust.yml').read_text()
+     step=workflow.split('      - name: Run required test tier\n',1)[1].split('\n      - name:',1)[0]
+     run=step.split('        run:',1)[1]
+     command=textwrap.dedent(run.split('\n',1)[1]) if run.startswith(' |') else run.strip()
+     env={**os.environ,'RUNNER_TEMP':str(temp),'GITHUB_WORKSPACE':str(candidate),
+          'GITHUB_EVENT_NAME':event,'INTEGRATION_MODE':'integration_revalidation','OBSERVED':str(marker)}
+     result=subprocess.run(['bash','-euo','pipefail','-c',command],cwd=candidate,env=env,text=True,capture_output=True)
+     if event=='workflow_dispatch':
+      self.assertEqual(result.returncode,37,result.stdout+result.stderr)
+      self.assertEqual(marker.read_text().strip(),str(candidate))
+     else:
+      self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+      self.assertEqual(marker.read_text(),'candidate')
+
+ def test_integration_freezes_sourced_preflight_before_checkout(self):
+  workflow=(HERE.parents[1]/'.github/workflows/rust.yml').read_text()
+  before=workflow.split('integration_ci.py" prepare',1)[0]
+  self.assertRegex(before,r'cp[^\n]*scripts/viewer-dependency-preflight\.sh[^\n]*integration-planner')
+
+ def test_required_gate_registers_review_plan_suite(self):
+  driver=(HERE.parents[1]/'scripts/ci-tests.sh').read_text()
+  operational=driver.split('run_operational_contract_tests() {',1)[1].split('\n}',1)[0]
+  self.assertIn('run python3 ./scripts/pm/review-plan.test.py',operational)
+
  def test_real_parallel_merge_keeps_source_and_tests_current_base(self):
   self.assertTrue((HERE/'integration_ci.py').exists(),'manual integration recovery helper missing')
   spec=importlib.util.spec_from_file_location('integration_ci',HERE/'integration_ci.py');api=importlib.util.module_from_spec(spec);spec.loader.exec_module(api)

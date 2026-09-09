@@ -1626,8 +1626,9 @@ task=mapping['tasks'][uid]
 repo=task.get('repository') or mapping.get('project',{}).get('repo')
 number=task['issue_number']
 issue=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/issues/{number}'],text=True))
-body=issue.get('body','')
-if uid not in body: raise SystemExit('local task Issue identity mismatch')
+body=issue.get('body','').replace('\r\n','\n')
+if re.findall(r'^task_uid:[^\n]*$',body,re.M) != ['task_uid: '+uid]:
+    raise SystemExit('local task Issue identity mismatch')
 if 'loop_binding_b64:' in body:
     matches=re.findall(r'^- loop_binding_b64: `([^`]+)`$',body,re.M)
     if len(matches)!=1: raise SystemExit('malformed loop binding')

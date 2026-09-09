@@ -45,16 +45,20 @@ def read_comments(repository, number):
     return [item for page in pages for item in (page if isinstance(page,list) else [page])]
 
 
+def has_unique_task_uid(body, task_uid):
+    fields = re.findall(r'^task_uid:[^\n]*$', str(body or '').replace('\r\n', '\n'), re.MULTILINE)
+    return fields == ['task_uid: ' + task_uid]
+
+
 def validate_terminal_delivery(repository,task_uid,issue_number,issue_reader=None,project_reader=None,comments_reader=None):
     blockers=[]
     try:
         if not re.fullmatch(r'[^/\s]+/[^/\s]+',repository) or not re.fullmatch(r'task_[0-9a-f]{32}',task_uid) or type(issue_number) is not int or issue_number<1:
             raise ValueError('invalid selected terminal identity')
         url=f'https://github.com/{repository}/issues/{issue_number}'
-        marker=rf'^task_uid:\s*{re.escape(task_uid)}\s*$'
         issue=(issue_reader or read_issue)(repository,issue_number)
         if (issue.get('number')!=issue_number or issue.get('html_url',issue.get('url'))!=url
-                or not re.search(marker,str(issue.get('body') or ''),re.MULTILINE)):
+                or not has_unique_task_uid(issue.get('body'),task_uid)):
             raise ValueError('terminal Issue identity mismatch')
         if str(issue.get('state','')).lower()!='closed' or str(issue.get('state_reason',issue.get('stateReason',''))).lower()!='completed':
             raise ValueError('delivery Issue is not closed as completed')
@@ -67,7 +71,7 @@ def validate_terminal_delivery(repository,task_uid,issue_number,issue_reader=Non
         item=matches[0]; context=item.get('project') or {}; content=item.get('content') or {}
         if (not item.get('id') or context.get('number')!=1 or (context.get('owner') or {}).get('login')!=project['owner']
                 or content.get('number')!=issue_number or content.get('url')!=url
-                or not re.search(marker,str(content.get('body') or ''),re.MULTILINE)):
+                or not has_unique_task_uid(content.get('body'),task_uid)):
             raise ValueError('terminal Project item content identity mismatch')
         values=item.get('fieldValues') or {}
         if (values.get('pageInfo') or {}).get('hasNextPage') is not False:

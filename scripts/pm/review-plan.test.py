@@ -27,7 +27,7 @@ class ReviewPlanTests(unittest.TestCase):
         fakebin = self.root / 'fakebin'
         fakebin.mkdir()
         gh = fakebin / 'gh'
-        gh.write_text('#!/usr/bin/env python3\nimport json,sys\nprint(json.dumps([] if any("/comments" in arg for arg in sys.argv) else {"body": "' + TASK + '"}))\n')
+        gh.write_text('#!/usr/bin/env python3\nimport json,sys\nprint(json.dumps([] if any("/comments" in arg for arg in sys.argv) else {"body": "task_uid: ' + TASK + '"}))\n')
         gh.chmod(0o755)
         environment = patch.dict(os.environ, {'PATH': str(fakebin) + os.pathsep + os.environ['PATH']})
         environment.start()

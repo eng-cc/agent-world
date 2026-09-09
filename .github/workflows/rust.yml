@@ -92,7 +92,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p "${RUNNER_TEMP}/integration-planner"
-          cp scripts/plan-rust-required-scope.py scripts/ci-required-scope.v2.json scripts/ci-tests.sh "${RUNNER_TEMP}/integration-planner/"
+          cp scripts/plan-rust-required-scope.py scripts/ci-required-scope.v2.json scripts/ci-tests.sh scripts/viewer-dependency-preflight.sh "${RUNNER_TEMP}/integration-planner/"
           cp scripts/pm/integration_ci.py "${RUNNER_TEMP}/integration_ci.py"
           python3 -I "${RUNNER_TEMP}/integration_ci.py" prepare --repository "${{ github.repository }}" \
             --task-uid "${INTEGRATION_UID}" --pr-number "${INTEGRATION_PR}" \
@@ -339,6 +339,7 @@ jobs:
             libudev-dev
       - name: Run required test tier
         env:
+          INTEGRATION_MODE: ${{ inputs.run_mode }}
           OASIS7_CI_RUN_OASIS7_REQUIRED_TESTS: ${{ steps.scope.outputs.run_oasis7_required_tests }}
           OASIS7_CI_RUN_CONSENSUS_TESTS: ${{ steps.scope.outputs.run_consensus_tests }}
           OASIS7_CI_RUN_DISTFS_TESTS: ${{ steps.scope.outputs.run_distfs_tests }}
@@ -358,7 +359,12 @@ jobs:
           OASIS7_CI_RUN_CODEX_AGENT_CONFIG_VALIDATION: ${{ steps.scope.outputs.run_codex_agent_config_validation }}
           OASIS7_CI_RUN_COMPILE_METRICS_CONTRACT_TESTS: ${{ steps.scope.outputs.run_compile_metrics_contract_tests }}
           OASIS7_CI_RUN_RUST_BASELINE: ${{ steps.scope.outputs.run_rust_baseline }}
-        run: CI_VERBOSE=1 ./scripts/ci-tests.sh required
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${INTEGRATION_MODE}" == "integration_revalidation" ]]; then
+            CI_VERBOSE=1 bash "${RUNNER_TEMP}/integration-planner/ci-tests.sh" required --repo-root "${GITHUB_WORKSPACE}"
+          else
+            CI_VERBOSE=1 ./scripts/ci-tests.sh required
+          fi
       - name: Upload selected Viewer performance evidence
         if: ${{ always() && steps.scope.outputs.run_viewer_perf_smoke == 'true' }}
         uses: actions/upload-artifact@v7

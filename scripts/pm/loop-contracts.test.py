@@ -164,23 +164,59 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             reader(self.ref)
 
-    def check_production_reader_issue(self, body):
+    def check_production_reader_issue(self, body, contracts=None, references=None, comment_overrides=None, permissions=None):
         import json
-        payload = {"marker":self.api.MARKER,"task_uid":self.record["task_uid"],
-                   "contract_digest":self.api.contract_digest(self.contract),"contract":self.contract}
+        contracts = contracts or {123:self.contract}
         def transport(path, body=None, paginate=False):
             if path.endswith('/issues/11'): return issue
-            if path.endswith('/issues/comments/123'):
-                return {"id":123,"issue_url":"https://api.github.com/repos/eng-cc/oasis7/issues/11",
-                        "body":json.dumps(payload),"user":{"login":"owner"}}
-            if path.endswith('/collaborators/owner/permission'): return {"permission":"admin"}
+            if '/issues/comments/' in path:
+                number = int(path.rsplit('/',1)[1]); contract = contracts[number]
+                payload = {"marker":self.api.MARKER,"task_uid":self.record["task_uid"],
+                           "contract_digest":self.api.contract_digest(contract),"contract":contract}
+                return {"id":number,"issue_url":"https://api.github.com/repos/eng-cc/oasis7/issues/11",
+                        "body":json.dumps(payload),"user":{"login":"owner"}, **(comment_overrides or {}).get(number,{})}
+            if '/collaborators/' in path:
+                return {"permission":(permissions or {}).get(path.split('/')[-2],'admin')}
             if path.endswith('/pulls/12'):
                 return {"number":12,"merged":True,"head":{"sha":self.source},"merge_commit_sha":self.merged,
                         "base":{"repo":{"full_name":"eng-cc/oasis7"}}}
             self.fail('unexpected authority request: ' + path)
         issue = {'number':11,'body':'<!-- oasis7-pm-task -->\n'+body}
         with patch.object(self.api.GitHubAuthority, 'api', side_effect=transport):
-            return self.api.validate_contracts(self.root,self.root,{'input_contracts':[self.ref],'target_delivery':'pilot'})
+            return self.api.validate_contracts(self.root,self.root,{'input_contracts':references or [self.ref],'target_delivery':'pilot'})
+
+    def test_conflicting_revision_cannot_hide_second_upstream_graph(self):
+        bad = copy.deepcopy(self.contract); bad['contract_id'] = 'UP'
+        bad['content_refs'][0]['sha256'] = 'sha256:'+'0'*64
+        upstream = dict(self.ref,contract_id='UP',contract_digest=self.api.contract_digest(bad),publication_ref={'issue_number':11,'comment_id':125})
+        second = copy.deepcopy(self.contract); second['upstream_contracts'] = [upstream]
+        second_ref = dict(self.ref,contract_digest=self.api.contract_digest(second),publication_ref={'issue_number':11,'comment_id':124})
+        result = self.check_production_reader_issue('task_uid: '+self.record['task_uid'],
+            {123:self.contract,124:second,125:bad},[self.ref,second_ref])
+        self.assertEqual(result['status'],'blocked',result)
+
+    def test_equivalent_revision_at_two_publications_remains_valid(self):
+        second_ref = dict(self.ref,publication_ref={'issue_number':11,'comment_id':124})
+        result = self.check_production_reader_issue('task_uid: '+self.record['task_uid'],
+            {123:self.contract,124:copy.deepcopy(self.contract)},[self.ref,second_ref])
+        self.assertEqual(result['status'],'passed',result)
+
+    def test_equivalent_revision_rechecks_second_publication_authority(self):
+        second_ref = dict(self.ref,publication_ref={'issue_number':11,'comment_id':124})
+        for override in ({'user':{'login':'other'}}, {'issue_url':'https://api.github.com/repos/eng-cc/oasis7/issues/99'}):
+            with self.subTest(override=override):
+                result = self.check_production_reader_issue('task_uid: '+self.record['task_uid'],
+                    {123:self.contract,124:copy.deepcopy(self.contract)},[self.ref,second_ref],
+                    {124:override},{'other':'write'})
+                self.assertEqual(result['status'],'blocked',result)
+
+    def test_equivalent_revision_rechecks_second_live_eligibility(self):
+        second = copy.deepcopy(self.contract); second['eligibility']['in_flight'] = False
+        self.assertEqual(self.api.contract_digest(second),self.ref['contract_digest'])
+        second_ref = dict(self.ref,publication_ref={'issue_number':11,'comment_id':124})
+        result = self.check_production_reader_issue('task_uid: '+self.record['task_uid'],
+            {123:self.contract,124:second},[self.ref,second_ref])
+        self.assertEqual(result['status'],'blocked',result)
 
     def test_production_contract_reader_accepts_single_canonical_uid(self):
         result = self.check_production_reader_issue('task_uid: '+self.record['task_uid'])

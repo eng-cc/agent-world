@@ -21,6 +21,7 @@ def validate_ci_content(tool_root, root, binding, base, head, repository, reader
     except (ValueError, OSError) as exc:
         blockers.append(str(exc))
     active, visited = set(), set()
+    revisions = {}
 
     def inspect(reference):
         ref = reference['publication_ref']
@@ -36,6 +37,8 @@ def validate_ci_content(tool_root, root, binding, base, head, repository, reader
             raise ValueError('immutable publication identity mismatch')
         if reference['contract_digest'] != contract_digest(contract) or payload.get('contract_digest') != reference['contract_digest']:
             raise ValueError('immutable published contract digest mismatch')
+        if revisions.setdefault(key, reference['contract_digest']) != reference['contract_digest']:
+            raise ValueError('conflicting immutable contract revision')
         pr = read(repository, f"pulls/{contract['approval_ref']['pr_number']}")
         if (pr.get('base', {}).get('repo') or {}).get('full_name') != repository:
             raise ValueError('contract approval repository mismatch')

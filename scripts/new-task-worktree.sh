@@ -461,15 +461,23 @@ TARGET_CARGO_TARGET_PATH="$TARGET_PATH/target"
 CARGO_TARGET_LINKED=0
 
 cleanup_bootstrap_failure() {
+  # A resumed worktree may contain user work; never remove it on setup failure.
+  [[ "$LOOP_RESUME" != "1" ]] || return 0
   git worktree remove --force "$TARGET_PATH" >/dev/null 2>&1 || true
   if [[ "$MODE" == "create_new_branch" ]]; then
     git branch -D "$BRANCH_NAME" >/dev/null 2>&1 || true
   fi
 }
 
-if [[ "$LOOP_RESUME" != "1" ]]; then
 if [[ -f "$CANONICAL_CONFIG_SOURCE" ]]; then
   CANONICAL_CONFIG_EXISTS=1
+fi
+if [[ "$LOOP_RESUME" == "1" && ( -e "$TARGET_CONFIG_PATH" || -L "$TARGET_CONFIG_PATH" ) ]]; then
+  if [[ ! -f "$TARGET_CONFIG_PATH" || -L "$TARGET_CONFIG_PATH" ]]; then
+    echo "error: invalid existing config.toml in resumed worktree: $TARGET_CONFIG_PATH" >&2
+    exit 1
+  fi
+elif [[ "$CANONICAL_CONFIG_EXISTS" == "1" ]]; then
   if ! cp "$CANONICAL_CONFIG_SOURCE" "$TARGET_CONFIG_PATH"; then
     cleanup_bootstrap_failure
     echo "error: failed to copy canonical config.toml into target worktree; cleaned up created worktree" >&2
@@ -485,22 +493,29 @@ if ! CARGO_SHARED_TARGET_DIR="$(cd "$TARGET_PATH" && "$ROOT_DIR/scripts/cargo-de
 fi
 
 if [[ -e "$TARGET_CARGO_TARGET_PATH" || -L "$TARGET_CARGO_TARGET_PATH" ]]; then
-  cleanup_bootstrap_failure
-  echo "error: target worktree already has a target path before shared cargo cache bootstrap: $TARGET_CARGO_TARGET_PATH" >&2
-  exit 1
+  if [[ "$LOOP_RESUME" != "1" || ! -L "$TARGET_CARGO_TARGET_PATH" ]] || \
+    ! "$PYTHON_BIN" - "$TARGET_CARGO_TARGET_PATH" "$CARGO_SHARED_TARGET_DIR" <<'PY'
+import os,sys
+raise SystemExit(0 if os.path.realpath(sys.argv[1]) == os.path.realpath(sys.argv[2]) else 1)
+PY
+  then
+    cleanup_bootstrap_failure
+    echo "error: invalid existing target path before shared cargo cache bootstrap: $TARGET_CARGO_TARGET_PATH" >&2
+    exit 1
+  fi
+  CARGO_TARGET_LINKED=1
 fi
 if ! mkdir -p "$CARGO_SHARED_TARGET_DIR"; then
   cleanup_bootstrap_failure
   echo "error: failed to create shared cargo target dir; cleaned up created worktree: $CARGO_SHARED_TARGET_DIR" >&2
   exit 1
 fi
-if ! ln -s "$CARGO_SHARED_TARGET_DIR" "$TARGET_CARGO_TARGET_PATH"; then
+if [[ "$CARGO_TARGET_LINKED" != "1" ]] && ! ln -s "$CARGO_SHARED_TARGET_DIR" "$TARGET_CARGO_TARGET_PATH"; then
   cleanup_bootstrap_failure
   echo "error: failed to link target worktree cargo target to shared cache; cleaned up created worktree" >&2
   exit 1
 fi
 CARGO_TARGET_LINKED=1
-fi
 
 DOC_PRD_PATH=""
 DOC_PROJECT_PATH=""
