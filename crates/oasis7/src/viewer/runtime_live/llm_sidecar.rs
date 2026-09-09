@@ -782,8 +782,14 @@ impl RuntimeLlmSidecar {
             .iter()
             .map(|wake| wake.wake_id.as_str())
             .collect::<BTreeSet<_>>();
-        self.pending_runtime_wakes
-            .retain(|wake_id, _| live_wake_ids.contains(wake_id.as_str()));
+        let mut pending_runtime_wakes = self.pending_runtime_wakes.clone();
+        let pending_runtime_wakes_migrated =
+            lineage_persistence::hydrate_pending_runtime_wake_identities(
+                &mut pending_runtime_wakes,
+                &wakes,
+                &self.provider_terminal_states,
+            )?;
+        pending_runtime_wakes.retain(|wake_id, _| live_wake_ids.contains(wake_id.as_str()));
         for wake in wakes {
             if !self.provider_lineage_hydrated
                 && self
@@ -798,9 +804,13 @@ impl RuntimeLlmSidecar {
                 // fresh provider dispatch through the recovered wake.
                 self.provider_active_turns.remove(wake.agent_id.as_str());
             }
-            self.pending_runtime_wakes
+            pending_runtime_wakes
                 .entry(wake.wake_id.clone())
                 .or_insert(wake);
+        }
+        self.pending_runtime_wakes = pending_runtime_wakes;
+        if pending_runtime_wakes_migrated {
+            self.persist_provider_lineage_best_effort();
         }
         Ok(())
     }

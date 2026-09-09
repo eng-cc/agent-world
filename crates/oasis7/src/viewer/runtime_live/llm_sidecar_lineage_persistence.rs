@@ -84,6 +84,94 @@ pub(super) fn provider_context_matches_wake(
         && context.request_context.request_digest.to_string() == wake.request_digest
 }
 
+fn wake_identity_without_digest_matches(
+    sidecar: &crate::runtime::SchedulerWakeV1,
+    runtime: &crate::runtime::SchedulerWakeV1,
+) -> bool {
+    sidecar.wake_id == runtime.wake_id
+        && sidecar.continuation_id == runtime.continuation_id
+        && sidecar.world_id == runtime.world_id
+        && sidecar.branch_id == runtime.branch_id
+        && sidecar.finality_epoch == runtime.finality_epoch
+        && sidecar.finality_block_hash == runtime.finality_block_hash
+        && sidecar.finality_status == runtime.finality_status
+        && sidecar.reorg_epoch == runtime.reorg_epoch
+        && sidecar.runtime_manifest_hash == runtime.runtime_manifest_hash
+        && sidecar.agent_id == runtime.agent_id
+        && sidecar.agent_session_id == runtime.agent_session_id
+        && sidecar.agent_turn_id == runtime.agent_turn_id
+        && sidecar.decision_request_id == runtime.decision_request_id
+}
+
+fn wake_matches_terminal_identity(
+    wake: &crate::runtime::SchedulerWakeV1,
+    terminal: &ProviderTerminalState,
+) -> bool {
+    !terminal.agent_id.is_empty()
+        && !terminal.agent_session_id.is_empty()
+        && !terminal.agent_turn_id.is_empty()
+        && !terminal.decision_request_id.is_empty()
+        && !terminal.request_digest.is_empty()
+        && wake.agent_id == terminal.agent_id
+        && wake.agent_session_id == terminal.agent_session_id
+        && wake.agent_turn_id == terminal.agent_turn_id
+        && wake.decision_request_id == terminal.decision_request_id
+}
+
+/// Normalize a legacy sidecar wake's missing request digest from a Runtime
+/// in-flight wake or a complete terminal marker.  Both authorities are
+/// compared on every persisted identity field before hydration; an explicit
+/// digest disagreement is a checkpoint conflict and must fail closed.
+pub(super) fn hydrate_pending_runtime_wake_identities(
+    pending_runtime_wakes: &mut BTreeMap<String, crate::runtime::SchedulerWakeV1>,
+    runtime_wakes: &[crate::runtime::SchedulerWakeV1],
+    terminal_states: &BTreeMap<String, ProviderTerminalState>,
+) -> Result<bool, String> {
+    let mut migrated = false;
+    for wake in pending_runtime_wakes.values_mut() {
+        if let Some(runtime_wake) = runtime_wakes
+            .iter()
+            .find(|runtime_wake| runtime_wake.wake_id == wake.wake_id)
+        {
+            if !wake_identity_without_digest_matches(wake, runtime_wake) {
+                return Err(format!(
+                    "pending Runtime wake identity mismatch for {}",
+                    wake.wake_id
+                ));
+            }
+            if !runtime_wake.request_digest.is_empty() {
+                if wake.request_digest.is_empty() {
+                    *wake = runtime_wake.clone();
+                    migrated = true;
+                } else if wake.request_digest != runtime_wake.request_digest {
+                    return Err(format!(
+                        "pending Runtime wake request_digest conflict for {}",
+                        wake.wake_id
+                    ));
+                }
+                continue;
+            }
+        }
+
+        let terminal = terminal_states
+            .values()
+            .find(|terminal| wake_matches_terminal_identity(wake, terminal));
+        let Some(terminal) = terminal else {
+            continue;
+        };
+        if wake.request_digest.is_empty() {
+            wake.request_digest = terminal.request_digest.clone();
+            migrated = true;
+        } else if wake.request_digest != terminal.request_digest {
+            return Err(format!(
+                "pending Runtime wake terminal identity conflict for {}",
+                wake.wake_id
+            ));
+        }
+    }
+    Ok(migrated)
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct PersistedProviderLineageV1 {
     schema_version: u16,
@@ -449,11 +537,18 @@ impl RuntimeLlmSidecar {
         self.pending_actions = checkpoint.pending_actions;
         self.pending_provider_world_events = checkpoint.pending_provider_world_events;
         self.provider_world_event_quarantine = checkpoint.provider_world_event_quarantine;
-        self.pending_runtime_wakes = checkpoint
+        let mut pending_runtime_wakes = checkpoint
             .pending_runtime_wakes
             .into_values()
             .map(|wake| (wake.wake_id.clone(), wake))
             .collect();
+        let runtime_wakes = world.cognition_in_flight_wakes().unwrap_or_default();
+        let pending_runtime_wakes_migrated = hydrate_pending_runtime_wake_identities(
+            &mut pending_runtime_wakes,
+            &runtime_wakes,
+            &self.provider_terminal_states,
+        )?;
+        self.pending_runtime_wakes = pending_runtime_wakes;
         self.provider_lineage_binding = current_binding.or(checkpoint.runtime_binding);
         self.provider_lineage_restored = true;
         self.provider_lineage_recovery_pending = None;
@@ -673,7 +768,12 @@ impl RuntimeLlmSidecar {
             self.provider_continuation_recovery_pending
                 .remove(agent_id.as_str());
         }
-        if committed_recovery || recovered_orphan || recovered_retry || checkpoint_migrated {
+        if committed_recovery
+            || recovered_orphan
+            || recovered_retry
+            || checkpoint_migrated
+            || pending_runtime_wakes_migrated
+        {
             // Persist the active-marker removal and retry/exhaustion decision
             // before the next Runtime tick, so a restart cannot strand the
             // same identity again. Persist an explicit schema upgrade too,

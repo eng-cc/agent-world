@@ -1,5 +1,7 @@
 use super::*;
 
+#[path = "llm_sidecar_legacy_wake_tests.rs"]
+mod legacy_wake_tests;
 #[path = "llm_sidecar_lineage_http_tests.rs"]
 mod lineage_http_tests;
 #[path = "llm_sidecar_lineage_tests.rs"]
