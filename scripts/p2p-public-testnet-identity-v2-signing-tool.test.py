@@ -1353,6 +1353,37 @@ class IdentityV2SigningToolContractTests(unittest.TestCase):
         self.assertTrue(verified.is_file())
         self.assertTrue(receipt.is_file())
 
+    def test_verify_second_publication_failure_preserves_existing_pair(self) -> None:
+        from unittest.mock import patch
+        _, _, _, _, envelope = self._prepare_sign_assemble("pair-publication")
+        verified, receipt = self._verify(envelope)
+        # Retain an earlier generation; the second attempted publication must
+        # not leave a mixed pair when its destination replacement fails.
+        original_envelope = verified.read_bytes() + b"\n"
+        verified.write_bytes(original_envelope)
+        original_receipt = receipt.read_bytes()
+        injection = r'''
+original_replace = tool.os.replace
+def fail_receipt_replace(source, destination):
+    if str(destination) == sys.argv[sys.argv.index("--verification-out") + 1]:
+        raise OSError("injected second publication failure")
+    return original_replace(source, destination)
+tool.os.replace = fail_receipt_replace
+'''
+        harness = CHILD_HARNESS.replace("raise SystemExit(tool.main", injection + "raise SystemExit(tool.main")
+        self.assertNotEqual(harness, CHILD_HARNESS)
+        with patch.dict(globals(), {"CHILD_HARNESS": harness}):
+            result = self._run("verify", "--mode", "current_admission",
+                "--envelope", str(envelope), "--attestation", str(self.root / "pair-publication.attestation.json"),
+                "--raw-v1", str(self.raw), "--context", str(self.context),
+                "--plan-intent", str(self.intent), "--trust-config", str(self.trust),
+                "--provider-registry", str(self.registry), "--out", str(verified),
+                "--verification-out", str(receipt))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"cannot write", result.stderr)
+        self.assertEqual(receipt.read_bytes(), original_receipt)
+        self.assertEqual(verified.read_bytes(), original_envelope)
+
     def test_verify_rejects_registry_verifier_failure_without_outputs(self) -> None:
         """A failed registry verifier cannot be replaced by local verification."""
         _, _, _, _, envelope = self._prepare_sign_assemble("verifier-failure")

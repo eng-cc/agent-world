@@ -18,6 +18,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import stat
 import subprocess
 import sys
@@ -749,6 +750,54 @@ def _atomic_write(path_value: str | Path, value: bytes, label: str) -> None:
         except (NameError, OSError):
             pass
         fail(f"cannot write {label}: {error.__class__.__name__}")
+
+
+def _publish_verification_pair(outputs: tuple[tuple[Path, bytes], ...]) -> None:
+    """Stage both outputs and undo completed replacements on caught failure.
+
+    This is failure recovery, not crash-atomic visibility across two paths.
+    """
+    staged: list[tuple[Path, Path, Path | None]] = []
+    published: list[tuple[Path, Path | None]] = []
+    directories: list[Path] = []
+    retain_backups = False
+    try:
+        for destination, payload in outputs:
+            if destination.is_symlink():
+                fail("verification output must not be a symlink")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            directory = Path(tempfile.mkdtemp(
+                dir=destination.parent, prefix=f".{destination.name}.pair-"
+            ))
+            directories.append(directory)
+            staged_path = directory / "new"
+            _atomic_write(staged_path, payload, "staged verification output")
+            backup = None
+            if destination.exists():
+                backup = directory / "previous"
+                _atomic_write(backup, destination.read_bytes(), "verification output backup")
+                backup.chmod(stat.S_IMODE(destination.stat().st_mode))
+            staged.append((destination, staged_path, backup))
+        for destination, staged_path, backup in staged:
+            os.replace(staged_path, destination)
+            published.append((destination, backup))
+    except (OSError, ToolError):
+        for destination, backup in reversed(published):
+            try:
+                if backup is None:
+                    destination.unlink(missing_ok=True)
+                else:
+                    os.replace(backup, destination)
+            except OSError:
+                # Retain backups if restoration itself cannot complete.
+                retain_backups = True
+                fail("cannot write verification pair; restoration failed; retained backups require reconciliation")
+        fail("cannot write verification pair; previous outputs restored")
+    finally:
+        for directory in directories:
+            # A restoration failure must retain its recovery artifacts.
+            if not retain_backups:
+                shutil.rmtree(directory)
 
 
 def _code_owned_paths() -> tuple[Path, ...]:
@@ -1527,8 +1576,10 @@ def command_verify(args: argparse.Namespace) -> None:
     }
     external_output, external_receipt = _invoke_registry_verifier(args, verifier_path)
     _assert_registry_verification(output, receipt, external_output, external_receipt)
-    _atomic_write(args.out, canonical(external_output), "verified identity envelope")
-    _atomic_write(args.verification_out, canonical(external_receipt), "verification receipt")
+    _publish_verification_pair((
+        (Path(args.out), canonical(external_output)),
+        (Path(args.verification_out), canonical(external_receipt)),
+    ))
 
 
 def parser() -> argparse.ArgumentParser:

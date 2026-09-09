@@ -330,10 +330,60 @@ class ReceivedPlanOnlyTransport:
 
 
 class FullNetworkCleanRoomAdapterTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.fixture_module = load_module("full_network_clean_room_fixture", PLANNER_TEST_PATH)
+        cls.fixture_module.FullNetworkCleanRoomPlanTests.setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.fixture_module.FullNetworkCleanRoomPlanTests.tearDownClass()
+
+    def test_capture_lease_expiry_before_stop_blocks_callback(self) -> None:
+        authority = self._authority(apply_authorized=True)
+        transport = ApplyTransport(self.adapter, self.plan)
+        original_write = self.adapter._write_journal
+        original_datetime = self.adapter.dt.datetime
+        stop_index = self.plan["global_order"].index("stop:storage-205")
+        expired = False
+
+        class Clock(original_datetime):
+            @classmethod
+            def now(cls, tz=None):
+                if expired:
+                    return original_datetime.fromisoformat(
+                        self.plan["capture_window"]["ends_at"].replace("Z", "+00:00")
+                    ) + self.adapter.dt.timedelta(seconds=1)
+                return original_datetime.now(tz)
+
+        def write(path, record):
+            nonlocal expired
+            original_write(path, record)
+            if record["status"] == "in-flight" and record["next_operation_index"] == stop_index:
+                expired = True
+
+        def verifier(plan, receipt):
+            return {"verified": True, "bindings": receipt["bindings"],
+                    "verifier_id": self.adapter.CANONICAL_VERIFIER_ID,
+                    "trust_root_id": self.adapter.CANONICAL_TRUST_ROOT_ID,
+                    "signer_id": "governance-signer"}
+
+        with mock.patch.object(self.adapter.dt, "datetime", Clock), mock.patch.object(
+            self.adapter, "_write_journal", side_effect=write
+        ):
+            try:
+                self.adapter.execute(self.plan, authority,
+                    journal_path=Path(self._test_directory.name) / "expiry.json",
+                    ledger_path=self.ledger_path, transport=transport,
+                    dry_run=False, provenance_verifier=verifier)
+            except self.adapter.AdapterError:
+                pass
+        self.assertTrue(expired)
+        self.assertEqual(transport.operations, self.plan["global_order"][:stop_index])
+
     def setUp(self) -> None:
         self.planner = load_module("full_network_clean_room", PLANNER_PATH)
         self.adapter = load_module("full_network_clean_room_adapter", ADAPTER_PATH)
-        self.fixture_module = load_module("full_network_clean_room_fixture", PLANNER_TEST_PATH)
         self.fixture = self.fixture_module.FullNetworkCleanRoomPlanTests()
         self.fixture.setUp()
         self._planner_anchor_patch = mock.patch.multiple(
@@ -3289,6 +3339,77 @@ class JournalLedgerAliasTests(unittest.TestCase):
                                         adapter.execute({}, {}, journal_path=journal, ledger_path=ledger, dry_run=dry_run)
                                 lock.assert_not_called()
                             self.assertEqual(ledger.read_bytes(), b"retained nonce history\n")
+
+
+class ReviewFiveBoundaryTests(unittest.TestCase):
+    def test_nonce_replacement_after_lock_cannot_report_reservation(self):
+        import fcntl
+        adapter = load_module("nonce_race_adapter", ADAPTER_PATH)
+        real_flock = fcntl.flock
+        with tempfile.TemporaryDirectory() as directory:
+            ledger = Path(directory) / "ledger"
+            replacement = Path(directory) / "replacement"
+            for path in (ledger, replacement):
+                path.write_text("")
+                path.chmod(0o600)
+            def replace_after_lock(fd, operation):
+                real_flock(fd, operation)
+                if operation == fcntl.LOCK_EX:
+                    os.replace(replacement, ledger)
+            with mock.patch.object(fcntl, "flock", side_effect=replace_after_lock):
+                with self.assertRaises(adapter.AdapterError):
+                    adapter.reserve_nonce(ledger, "transaction-review-five", "nonce-review-five")
+            self.assertEqual(ledger.read_bytes(), b"")
+
+    def test_identity_v2_anchors_are_protected_from_all_journal_outputs(self):
+        adapter = load_module("anchor_alias_adapter", ADAPTER_PATH)
+        planner = load_module("anchor_alias_planner", PLANNER_PATH)
+        adapter._PLANNER_MODULE = planner
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for field in ("IDENTITY_V2_TRUST_CONFIG_PATH", "IDENTITY_V2_PROVIDER_REGISTRY_PATH"):
+                for suffix in ("", ".lock", ".emergency.json"):
+                    with self.subTest(field=field, suffix=suffix):
+                        journal = root / "journal"
+                        anchor = Path(f"{journal}{suffix}")
+                        anchor.write_bytes(b"authority anchor")
+                        anchor.chmod(0o600)
+                        with mock.patch.object(planner, field, anchor):
+                            with self.assertRaises(adapter.AdapterError):
+                                adapter._reject_journal_input_aliases(journal, root / "ledger", {})
+                        self.assertEqual(anchor.read_bytes(), b"authority anchor")
+
+    def test_adapter_fixture_module_is_initialized_once_across_setups(self):
+        # Stop before crypto setup: count the real module lifecycle boundary,
+        # not subprocess timing. Fresh fixture instances remain per-test.
+        class StopSetup(Exception):
+            pass
+        modules = []
+        instances = []
+        real_load = load_module
+        def tracked_load(name, path):
+            module = real_load(name, path)
+            if path == PLANNER_TEST_PATH:
+                modules.append(module)
+                def setup(instance):
+                    instances.append(instance)
+                    instance.mutable_probe = []
+                    raise StopSetup()
+                module.FullNetworkCleanRoomPlanTests.setUp = setup
+            return module
+        with mock.patch.dict(globals(), {"load_module": tracked_load}):
+            FullNetworkCleanRoomAdapterTests.setUpClass()
+            try:
+                for _ in range(2):
+                    case = FullNetworkCleanRoomAdapterTests("runTest")
+                    with self.assertRaises(StopSetup):
+                        case.setUp()
+                instances[0].mutable_probe.append("first-test-only")
+                self.assertEqual(instances[1].mutable_probe, [])
+                self.assertIsNot(instances[0], instances[1])
+                self.assertEqual(len(modules), 1, "planner crypto baseline module reloaded per test")
+            finally:
+                FullNetworkCleanRoomAdapterTests.tearDownClass()
 
 
 if __name__ == "__main__":

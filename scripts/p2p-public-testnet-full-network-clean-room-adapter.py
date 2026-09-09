@@ -1745,6 +1745,10 @@ def _read_ledger(path: Path) -> list[dict[str, Any]]:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError:
         _fail("credential nonce ledger cannot be read")
+    return _parse_ledger_lines(lines)
+
+
+def _parse_ledger_lines(lines: list[str]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for number, line in enumerate(lines, 1):
         if not line.strip():
@@ -1796,7 +1800,19 @@ def reserve_nonce(path: Path, transaction_id: str, nonce: str) -> None:
 
         with path.open("r+", encoding="utf-8") as handle:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-            rows = _read_ledger(path)
+            def check_locked_identity() -> None:
+                locked = os.fstat(handle.fileno())
+                named = _ledger_metadata(path)
+                if (
+                    not stat.S_ISREG(locked.st_mode)
+                    or locked.st_uid != os.getuid()
+                    or stat.S_IMODE(locked.st_mode) != 0o600
+                    or (locked.st_dev, locked.st_ino) != (named.st_dev, named.st_ino)
+                ):
+                    _fail("credential nonce ledger locked inode binding changed")
+
+            check_locked_identity()
+            rows = _parse_ledger_lines(handle.read().splitlines())
             if any(row["nonce"] == nonce for row in rows):
                 _fail("credential nonce has already been consumed")
             row = {
@@ -1811,6 +1827,7 @@ def reserve_nonce(path: Path, transaction_id: str, nonce: str) -> None:
             handle.flush()
             os.fsync(handle.fileno())
             _fsync_parent(path.parent)
+            check_locked_identity()
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
     except AdapterError:
         raise
@@ -3853,7 +3870,13 @@ def _execute_unlocked(
                     # Append only after the exact pre-callback binding check:
                     # if it fails, no provider mutation has begun and the
                     # rollback path must not invoke another callback.
+                    validate_authority(
+                        plan, authority, raw_v1_bytes_by_node=raw_v1_bytes_by_node
+                    )
                     _consumer_impact_locator(plan)
+                    capture_start, capture_end = _capture_window_bounds(plan)
+                    if not capture_start <= dt.datetime.now(dt.timezone.utc) < capture_end:
+                        _fail("provider mutation capture lease is expired or not yet active")
                     if _rollback_candidate(operation) and operation not in rollback_candidates:
                         rollback_candidates.append(operation)
                     raw_receipt = transport.mutate(operation, transport_node)
@@ -4088,6 +4111,15 @@ def _reject_journal_input_aliases(
     arbitrary nested path fields (which can describe remote node state).
     """
     protected = [Path(ledger_path), Path(CANONICAL_TRUST_ROOT_PATH), *input_paths]
+    planner = _load_planner()
+    protected.extend((
+        Path(planner.IDENTITY_V2_TRUST_CONFIG_PATH),
+        Path(planner.IDENTITY_V2_PROVIDER_REGISTRY_PATH),
+        Path(planner.IDENTITY_V2_VERIFY_TOOL_PATH),
+        Path(planner.__file__),
+        Path(__file__),
+        Path(CANONICAL_TRUST_ROOT_FIXTURE_PATH),
+    ))
     declared = plan.get("credential_nonce_ledger")
     if isinstance(declared, dict) and isinstance(declared.get("path"), str):
         protected.append(Path(declared["path"]))
