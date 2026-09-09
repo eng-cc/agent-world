@@ -26,13 +26,39 @@ def artifact_zip(payload=None,filename="oasis7-required-plan-v1.json"):
 
 class ReceiptTest(unittest.TestCase):
   def api(self, r=None, runs=None):
-    return patch.object(M,"gh",side_effect=[r or pr(),{"check_runs":runs if runs is not None else [run()]}])
+    return patch.object(M,"gh",side_effect=[r or pr(),{"check_runs":runs if runs is not None else [run()]},{'merge_base_commit':{'sha':'b'*40}}])
+  def test_scope_query_uses_gh_api_argv(self):
+    with patch.object(M.subprocess,"check_output",return_value=json.dumps({"merge_base_commit":{"sha":"d"*40}})) as call:
+      self.assertEqual(M.scope_base_for_run("eng-cc/oasis7","b"*40,"a"*40),"d"*40)
+      self.assertEqual(call.call_args.args[0][:2],["gh","api"])
+
+  def test_scope_base_is_bound_in_review_digest(self):
+    receipt=self.invoke_verify()
+    receipt.update(scope_base_oid=receipt["base_oid"],integration_base_oid=receipt["base_oid"])
+    original=M.review_evidence_digest(receipt)
+    receipt["scope_base_oid"]="d"*40
+    self.assertNotEqual(original,M.review_evidence_digest(receipt))
+    receipt["integration_base_oid"]="e"*40
+    with self.assertRaisesRegex(ValueError,"scope/integration"):
+      M.review_evidence_digest(receipt)
+
+  def test_new_receipt_records_both_bases(self):
+    planner=M.planner_from_run(run())
+    digest=M.hashlib.sha256(json.dumps(planner,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+    argv=[str(P),"--repository","eng-cc/oasis7","--task-uid",UID,"--task-issue-number","1","--pr-number","7","--check-app-id","42","--planner-digest",digest]
+    output=io.StringIO()
+    with self.api(),patch.object(sys,"argv",argv),redirect_stdout(output): M.main()
+    issued=json.loads(output.getvalue())
+    self.assertEqual(issued["scope_base_oid"],"b"*40)
+    self.assertEqual(issued["integration_base_oid"],issued["base_oid"])
+
   def test_success(self):
     with self.api(): self.assertEqual("a"*40,M.live("eng-cc/oasis7",UID,1,7,"required-gate","42")[3])
-  def test_live_receipt_uses_check_run_base_after_pr_base_moves(self):
+  def test_live_receipt_rejects_stale_integration_after_pr_base_moves(self):
     moved=pr(); moved["base"]["sha"]="c"*40
     with self.api(r=moved):
-      self.assertEqual("b"*40,M.live("eng-cc/oasis7",UID,1,7,"required-gate","42")[2])
+      with self.assertRaisesRegex(SystemExit,"integration.*rerun"):
+        M.live("eng-cc/oasis7",UID,1,7,"required-gate","42")
   def test_expected_base_ref_rejects_same_oid_pr_retarget(self):
     moved=pr(); moved["base"]["ref"]="release"
     moved_run=run(); moved_run["pull_requests"][0]["base"]["ref"]="release"

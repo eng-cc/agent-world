@@ -11,6 +11,7 @@ import os
 import re
 from pathlib import Path
 import subprocess
+import tempfile
 
 
 class Busy(RuntimeError):
@@ -182,13 +183,23 @@ def reconcile(common, uid, root, tool_root=None):
             if len(matches) == 1:
                 binding = json.loads(base64.b64decode(matches[0] + '=' * (-len(matches[0]) % 4), altchars=b'-_', validate=True))
                 if binding == json.loads(action['expected']):
-                    # Refresh verifies the selected live Project item before writing
-                    # its cache. The immutable bootstrap epoch must independently
-                    # agree before a lost successful response can be resolved.
                     if tool_root is None:
                         continue
                     import sys
                     tool = Path(tool_root)
+                    # The facade has validated stable identity and the journal's
+                    # exact old/new transition. Resume the idempotent sanctioned
+                    # writer to finish Project/cache/snapshot/lineage; generic
+                    # refresh correctly refuses a partially migrated epoch.
+                    with tempfile.NamedTemporaryFile(mode='w', suffix='.json') as intent:
+                        json.dump(binding, intent); intent.flush()
+                        command = [sys.executable, str(tool / 'scripts/pm/github-project-task.py'), 'bind-loop', str(root), '--task-uid', uid,
+                                   '--loop-binding', intent.name, '--manual-request-ref', binding['manual_request_ref'], '--json']
+                        if action.get('previous_binding', binding) != binding:
+                            command += ['--migrate-epoch', str(binding['bootstrap_epoch'])]
+                        repaired = subprocess.run(command, capture_output=True, text=True)
+                    if repaired.returncode:
+                        continue
                     refreshed = subprocess.run([sys.executable, str(tool / 'scripts/pm/github-project-task.py'), 'refresh-task', str(root), '--task-uid', uid, '--json'], capture_output=True, text=True)
                     if refreshed.returncode:
                         continue

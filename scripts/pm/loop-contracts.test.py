@@ -13,6 +13,48 @@ from unittest.mock import patch
 HERE = Path(__file__).resolve().parent
 
 class ContractTests(unittest.TestCase):
+    def test_real_squash_contract_acquires_exact_source_in_separate_clean_clone(self):
+        origin = Path(self.tmp.name) / 'remote.git'
+        author = self.root
+        self.git('switch', '-c', 'contract-source')
+        (author / 'spec.md').write_text('real squash content')
+        self.git('add', '.'); self.git('commit', '-qm', 'source delta')
+        source = self.git('rev-parse', 'HEAD')
+        self.git('switch', '--detach', self.merged)
+        self.git('switch', '-C', 'main')
+        self.git('merge', '--squash', 'contract-source')
+        self.git('commit', '-qm', 'actual squash')
+        merged = self.git('rev-parse', 'HEAD')
+        subprocess.run(['git', 'init', '--bare', '-q', str(origin)], check=True)
+        self.git('remote', 'add', 'origin', str(origin))
+        self.git('push', '-q', 'origin', 'main', source + ':refs/pull/12/head')
+        self.git('branch', '-D', 'contract-source')
+        clean = Path(self.tmp.name) / 'clean'
+        subprocess.run(['git', 'clone', '-q', '--no-local', '--single-branch', '--branch', 'main', str(origin), str(clean)], check=True)
+        absent = subprocess.run(['git', '-C', str(clean), 'cat-file', '-e', source + '^{commit}'], capture_output=True)
+        self.assertNotEqual(absent.returncode, 0)
+        subprocess.run(['git', '-C', str(clean), 'remote', 'set-url', 'origin', 'https://github.com/eng-cc/oasis7.git'], check=True)
+        subprocess.run(['git', '-C', str(clean), 'config', 'url.' + str(origin) + '.insteadOf', 'https://github.com/eng-cc/oasis7.git'], check=True)
+        contract = copy.deepcopy(self.contract)
+        contract.update(source_head=source, merged_head=merged)
+        contract['content_refs'][0]['sha256'] = 'sha256:' + hashlib.sha256(b'real squash content').hexdigest()
+        result = self.api.validate_contract_record(contract, clean, {'number': 12, 'merged': True, 'head': source, 'merge_commit': merged})
+        self.assertEqual(result, [])
+        self.assertEqual(subprocess.run(['git', '-C', str(clean), 'cat-file', '-e', source + '^{commit}'], capture_output=True).returncode, 0)
+
+    def test_missing_object_never_fetches_before_approval_identity(self):
+        contract=copy.deepcopy(self.contract);contract['source_head']='a'*40
+        with patch.object(self.api,'ensure_contract_objects') as acquire:
+            errors=self.api.validate_contract_record(contract,self.root,self.record['pr'])
+        self.assertTrue(errors)
+        acquire.assert_not_called()
+
+    def test_missing_object_wrong_origin_fails_closed(self):
+        self.git('remote','add','origin','https://github.com/foreign/repository.git')
+        contract=copy.deepcopy(self.contract);contract['source_head']='a'*40
+        errors=self.api.validate_contract_record(contract,self.root,{'number':12,'merged':True,'head':'a'*40,'merge_commit':self.merged})
+        self.assertTrue(any('origin' in error for error in errors),errors)
+
     def test_default_obligation_uses_terminal_project_and_receipt_reader(self):
         calls = []
         def terminal(repo, uid, number):

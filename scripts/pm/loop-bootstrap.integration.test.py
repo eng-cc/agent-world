@@ -140,5 +140,27 @@ class BootstrapEndToEnd(unittest.TestCase):
             stale = local_gate.copy(); stale[stale.index('--head')+1]='0'*40
             rejected = subprocess.run(stale,cwd=trusted,env=env,text=True,capture_output=True)
             self.assertNotEqual(rejected.returncode,0)
+            # Interrupt the real binding adapter immediately after each durable
+            # transition. Only the documented facade recover command may repair.
+            adapter_inject = "import sys,importlib.util; from pathlib import Path; sys.path.insert(0,str(Path(sys.argv[1]).parent)); spec=importlib.util.spec_from_file_location('pm',sys.argv[1]); pm=importlib.util.module_from_spec(spec); sys.modules['pm']=pm; spec.loader.exec_module(pm); name=sys.argv[2]; original=getattr(pm,name)\ndef stop(*a,**kw):\n result=original(*a,**kw)\n raise SystemExit(91)\nsetattr(pm,name,stop); raise SystemExit(pm.main(sys.argv[3:]))"
+            facade_inject = "import sys,subprocess; sys.path.insert(0,sys.argv[1]); import loop; original=subprocess.check_output; injected=sys.argv[2]; point=sys.argv[3]\ndef interrupt(args,*a,**kw):\n if 'bind-loop' in args: args=[sys.executable,'-c',injected,args[1],point,*args[2:]]\n return original(args,*a,**kw)\nsubprocess.check_output=interrupt; sys.argv=sys.argv[4:]; raise SystemExit(loop.main())"
+            for epoch, point in enumerate(('update_issue_body', 'update_project_fields', 'merge_task_mapping'), 3):
+                revised = dict(revised, bootstrap_epoch=epoch, manual_request_ref='message:epoch-' + str(epoch))
+                source.write_text(json.dumps(revised))
+                migrate = facade.copy()
+                migrate[migrate.index('--manual-request-ref')+1] = revised['manual_request_ref']
+                migrate += ['--migrate-epoch', str(epoch)]
+                failed = subprocess.run(['python3','-c',facade_inject,str(trusted/'scripts/pm'),adapter_inject,point,*migrate[1:]],cwd=trusted,env=env,text=True,capture_output=True)
+                self.assertNotEqual(failed.returncode,0,failed.stdout+failed.stderr)
+                recovered = subprocess.run(['python3',str(trusted/'scripts/pm/loop.py'),'recover','--repo-root',str(target),'--tool-root',str(trusted),'--task-uid',UID,'--manual-request-ref','message:recover-'+str(epoch),'--json'],cwd=trusted,env=env,text=True,capture_output=True)
+                payload = json.loads(recovered.stdout)
+                self.assertEqual(payload.get('pending_actions'),[],recovered.stdout+recovered.stderr)
+                mapping = json.loads((target/'.pm/github-project-sync/tasks.json').read_text())['tasks'][UID]
+                snapshot = json.loads((target/'.pm/scratch'/UID/'bootstrap-task-snapshot.json').read_text())
+                lineage = json.loads((common/'oasis7-loop-lineage'/ (UID+'.json')).read_text())
+                self.assertEqual(mapping['loop_binding'],revised)
+                self.assertEqual(snapshot['task']['loop_binding'],revised)
+                self.assertEqual(lineage['loop_binding'],revised)
+                self.assertEqual(json.loads(state.read_text())['creates'],1)
 
 if __name__=='__main__': unittest.main()

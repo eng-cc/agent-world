@@ -46,6 +46,25 @@ class ContentTests(unittest.TestCase):
         self.assertTrue(result['local_live_admission_required'])
         self.assertEqual(self.calls,['issues/comments/3','pulls/2'])
 
+    def test_real_parallel_target_advance_uses_only_task_scope(self):
+        tools=self.root.parent / (self.root.name+'-tools')
+        self.git('worktree','add','--detach',str(tools),self.base)
+        self.addCleanup(lambda: self.git('worktree','remove','--force',str(tools)))
+        self.git('switch','-c','task')
+        (self.root/'doc/engineering/task.md').write_text('task contract')
+        self.git('add','.');self.git('commit','-qm','task change')
+        head=self.git('rev-parse','HEAD')
+        self.git('switch','--detach',self.base)
+        (self.root/'unrelated.rs').write_text('main only')
+        self.git('add','.');self.git('commit','-qm','parallel target')
+        integration=self.git('rev-parse','HEAD')
+        self.git('update-ref','refs/remotes/origin/main',integration)
+        self.git('switch','task')
+        result=validate_ci_content(tools,self.root,self.binding,integration,head,'eng-cc/oasis7',self.reader)
+        self.assertEqual(result['status'],'passed',result)
+        self.assertEqual(result['scope_context']['scope_base_oid'],self.base)
+        self.assertEqual(result['scope_context']['integration_base_oid'],integration)
+
     def test_changed_publication_content_blocks(self):
         self.contract['content_refs'][0]['sha256']='sha256:'+'0'*64
         self.assertEqual(self.check()['status'],'blocked')

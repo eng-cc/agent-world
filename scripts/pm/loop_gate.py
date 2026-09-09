@@ -31,6 +31,7 @@ def live_binding(task):
 
 
 def admission(root, task, base, head, tool_root=None, reader=None):
+    # Packet/review callers supply their frozen ancestor scope base, not live integration base.
     binding = (reader or live_binding)(task)
     if binding is None:
         return {'status': 'legacy', 'blockers': []}

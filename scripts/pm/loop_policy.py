@@ -164,11 +164,15 @@ def load_policy(tool_root, binding):
         raise ValueError("invalid denied paths")
     if not isinstance(policy.get("document_extensions"),list) or any(not isinstance(x,str) or not x.startswith(".") for x in policy["document_extensions"]):
         raise ValueError("invalid document type policy")
+    if not isinstance(policy.get("mixed_documents", []), list) or any(not safe_path(p) for p in policy.get("mixed_documents", [])):
+        raise ValueError("invalid mixed document policy")
     return policy
 
 
 def classify_path(path, policy):
     if not safe_path(path) or any(fnmatch.fnmatchcase(path, p) for p in policy["denied"]):
+        return None
+    if path in policy.get("mixed_documents", []):
         return None
     for rule in policy["rules"]:
         if fnmatch.fnmatchcase(path, rule["pattern"]):
@@ -176,6 +180,17 @@ def classify_path(path, policy):
                 return None
             return rule["loop"]
     return None
+
+
+def scope_context(root, integration_base, head):
+    """Bind task-owned diff separately from current integration composition."""
+    if not all(isinstance(value, str) and OID.fullmatch(value) for value in (integration_base, head)):
+        raise ValueError('scope context requires immutable integration/head OIDs')
+    bases = git(root, 'merge-base', '--all', integration_base, head).decode().splitlines()
+    if len(bases) != 1:
+        raise ValueError('scope comparison requires one unambiguous merge-base')
+    tree = git(root, 'merge-tree', '--write-tree', integration_base, head).decode().splitlines()[0]
+    return {'scope_base_oid': bases[0], 'integration_base_oid': integration_base, 'source_head_oid': head, 'integration_tree_oid': tree}
 
 
 def validate_scope(tool_root, target_repo_root, binding, base, head):
@@ -195,6 +210,8 @@ def validate_scope(tool_root, target_repo_root, binding, base, head):
             if not raw:
                 continue
             path = raw.decode("utf-8", "strict")
+            if path in policy.get("mixed_documents", []):
+                errors.append(f"mixed document requires separately authorized semantic split/migration: {path}")
             owner = classify_path(path, policy)
             paths.append({"path": path, "loop": owner})
             if owner != binding["loop"]:

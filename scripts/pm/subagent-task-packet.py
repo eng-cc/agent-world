@@ -292,6 +292,11 @@ def review_admission(root: Path, packet_path: Path, plan_path: Path,
         if resolved_comparison != plan.get("comparison_oid"):
             fail("review plan comparison ref moved from its recorded OID")
 
+    integration_base = plan.get("integration_base_oid")
+    if integration_base is not None:
+        if git(root, "merge-base", str(integration_base), str(identity.get("head"))) != identity.get("base_sha"):
+            fail("review plan integration base does not derive packet scope base")
+
     expected_matches = [item for item in expected if isinstance(item, dict)
                         and item.get("role") == packet_role and item.get("slice_id") == packet_slice]
     ref_matches = [item for item in refs if isinstance(item, dict)
@@ -318,6 +323,7 @@ def review_admission(root: Path, packet_path: Path, plan_path: Path,
         "head": identity["head"],
         "comparison_ref": identity["base_ref"],
         "comparison_oid": identity["base_sha"],
+        "integration_base_oid": integration_base,
         "role": packet_role,
         "slice_id": packet_slice,
         "packet_digest": packet["packet_digest"],

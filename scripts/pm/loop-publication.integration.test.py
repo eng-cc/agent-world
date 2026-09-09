@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import copy
 
 HERE = Path(__file__).parent
 UID = 'task_' + 'a' * 32
@@ -22,6 +23,7 @@ elif path.split('?')[0].endswith('/comments'):
  if '--method' in a:
   result={'id':len(s['comments'])+1,'body':json.load(sys.stdin)['body'],'issue_url':'https://api.github.com/repos/eng-cc/oasis7/issues/1','user':{'login':'owner'}}
   s['comments'].append(result); p.write_text(json.dumps(s))
+  if os.environ.get('GH_LOSE_POST'): raise SystemExit('simulated lost POST response')
  else: result=[s['comments']]
 elif path.endswith('/issues/1'): result=s['issue']
 else: raise SystemExit('unexpected fake request '+repr(a))
@@ -59,6 +61,53 @@ class PublicationIntegration(unittest.TestCase):
             contract = dict(schema='oasis7.loop-contract/v1', contract_id='S', revision=1, owner_loop='system', source_head=base, merged_head=base, approval_ref={'repository': 'eng-cc/oasis7', 'pr_number': 2}, content_refs=[{'path': 'doc/engineering/spec.md', 'sha256': 'sha256:' + hashlib.sha256(spec.read_bytes()).hexdigest(), 'clauses': ['a']}], upstream_contracts=[], scope=['pilot'], eligibility={'new_tasks': True, 'in_flight': True, 'release': True})
             source = temp / 'contract.json'; source.write_text(json.dumps(contract))
             command = ['python3', str(trusted / 'scripts/pm/loop.py'), 'publish-contract', '--repo-root', str(root), '--tool-root', str(trusted), '--task-uid', UID, '--manual-request-ref', 'user-2', '--contract', str(source), '--json']
+            for failure in ('owner', 'digest'):
+                invalid = copy.deepcopy(contract)
+                if failure == 'owner': invalid['owner_loop'] = 'product'
+                else: invalid['content_refs'][0]['sha256'] = 'sha256:' + '0' * 64
+                source.write_text(json.dumps(invalid))
+                rejected = subprocess.run(command, env=env, text=True, capture_output=True)
+                self.assertNotEqual(rejected.returncode, 0, rejected.stdout)
+                self.assertEqual(json.loads(state.read_text())['comments'], [])
+                journals = list((root / '.git/oasis7-loop-recovery').glob('*.actions.jsonl'))
+                self.assertEqual(journals, [], 'side-effect-free preflight must not leave pending actions')
+            upstream = copy.deepcopy(contract)
+            upstream.update(contract_id='UP', owner_loop='product')
+            upstream['eligibility']['new_tasks'] = False
+            immutable = {k:v for k,v in upstream.items() if k != 'eligibility'}
+            digest = 'sha256:' + hashlib.sha256(json.dumps(immutable,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
+            current = json.loads(state.read_text())
+            current['comments'] = [{'id':1,'body':json.dumps({'marker':'oasis7-loop-contract','task_uid':UID,'contract':upstream,'contract_digest':digest}),'issue_url':'https://api.github.com/repos/eng-cc/oasis7/issues/1','user':{'login':'owner'}}]
+            state.write_text(json.dumps(current))
+            invalid = copy.deepcopy(contract)
+            invalid['upstream_contracts'] = [{'contract_id':'UP','revision':1,'contract_digest':digest,'publication_ref':{'issue_number':1,'comment_id':1},'consumed_clauses':['a']}]
+            source.write_text(json.dumps(invalid))
+            rejected = subprocess.run(command, env=env, text=True, capture_output=True)
+            self.assertNotEqual(rejected.returncode,0,rejected.stdout)
+            self.assertIn('new_tasks',rejected.stdout)
+            self.assertEqual(list((root / '.git/oasis7-loop-recovery').glob('*.actions.jsonl')),[])
+            current['comments'] = []; state.write_text(json.dumps(current))
+            source.write_text(json.dumps(contract))
+            lost = subprocess.run(command, env=dict(env,GH_LOSE_POST='1'),text=True,capture_output=True)
+            self.assertNotEqual(lost.returncode,0,lost.stdout)
+            self.assertEqual(len(json.loads(state.read_text())['comments']),1)
+            blocked = subprocess.run(command,env=env,text=True,capture_output=True)
+            self.assertNotEqual(blocked.returncode,0,blocked.stdout)
+            self.assertIn('unresolved action',blocked.stdout)
+            recovery = command.copy(); recovery[2] = 'recover'
+            helper = trusted / 'scripts/pm/loop_contracts.py'
+            original = helper.read_bytes()
+            sentinel = temp / 'untrusted-validator-ran'
+            helper.write_text('from pathlib import Path\nPath(' + repr(str(sentinel)) + ').touch()\n')
+            journal = next((root / '.git/oasis7-loop-recovery').glob('*.actions.jsonl'))
+            before = journal.read_bytes()
+            denied = subprocess.run(recovery,env=env,text=True,capture_output=True)
+            self.assertNotEqual(denied.returncode,0,denied.stdout)
+            self.assertFalse(sentinel.exists())
+            self.assertEqual(journal.read_bytes(),before)
+            helper.write_bytes(original)
+            recovered = subprocess.run(recovery,env=env,text=True,capture_output=True)
+            self.assertEqual(json.loads(recovered.stdout).get('pending_actions'),[],recovered.stdout+recovered.stderr)
             for _ in range(2):
                 result = subprocess.run(command, env=env, text=True, capture_output=True)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

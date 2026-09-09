@@ -6,6 +6,7 @@ import unittest
 import hashlib
 import shutil
 import subprocess
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -15,6 +16,29 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
 class LoopTests(unittest.TestCase):
+    def test_recovery_rejects_tampered_transition_identity(self):
+        uid = 'task_' + 'a' * 32
+        old = {'task_uid':uid,'owner_role':'repository_health_engineer','bootstrap_epoch':1}
+        new = dict(old,bootstrap_epoch=2)
+        expected = json.dumps(new,sort_keys=True)
+        task = {'task_uid':uid,'owner_role':old['owner_role'],'repository':'eng-cc/oasis7','issue_number':1,'loop_binding':old}
+        action = {'task_uid':uid,'repository':task['repository'],'issue_number':1,'kind':'bind_loop','expected':expected,
+                  'action_id':'bind:'+hashlib.sha256(expected.encode()).hexdigest(),'previous_binding':old,'previous_epoch':1}
+        for mutation in ({'action_id':'bind:forged'},{'issue_number':2},{'previous_epoch':0}):
+            with patch.object(module,'common_dir',return_value=Path('/absent')), patch.object(module,'recovery_status',return_value={'pending_actions':[{**action,**mutation}]}), patch.object(module,'_trusted_module') as trusted:
+                with self.assertRaises(ValueError): module.recovery_task(Path('/absent'),task,Path('/trusted'))
+                trusted.assert_not_called()
+
+    def test_recovery_rejects_binding_outside_recorded_transition(self):
+        uid = 'task_' + 'a' * 32
+        old = {'task_uid':uid,'owner_role':'repository_health_engineer','bootstrap_epoch':1}
+        new = dict(old,bootstrap_epoch=2)
+        expected = json.dumps(new,sort_keys=True)
+        task = {'task_uid':uid,'owner_role':old['owner_role'],'repository':'eng-cc/oasis7','issue_number':1,'loop_binding':old}
+        action = {'task_uid':uid,'repository':task['repository'],'issue_number':1,'kind':'bind_loop','expected':expected,'action_id':'bind:'+hashlib.sha256(expected.encode()).hexdigest(),'previous_binding':old,'previous_epoch':1}
+        with patch.object(module,'common_dir',return_value=Path('/absent')), patch.object(module,'recovery_status',return_value={'pending_actions':[action]}), patch.object(module,'live_binding',return_value=dict(new,bootstrap_epoch=3)):
+            with self.assertRaisesRegex(ValueError,'outside journal'): module.recovery_task(Path('/absent'),task,Path('/trusted'))
+
     def test_legacy_passes_without_activation(self):
         self.assertEqual(module.validate_task(Path('.'), {'task_uid': 'x'}, None)['status'], 'legacy')
 

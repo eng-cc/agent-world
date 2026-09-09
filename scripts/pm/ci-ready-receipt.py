@@ -99,6 +99,13 @@ def planner_for_run(repository, check_run, *, base_oid, head_oid):
 
 def now(): return dt.datetime.now(dt.timezone.utc).isoformat()
 
+def scope_base_for_run(repository, integration_base, head):
+    comparison = gh("api", f"repos/{repository}/compare/{integration_base}...{head}")
+    scope_base = (comparison.get('merge_base_commit') or {}).get('sha')
+    if not isinstance(scope_base, str) or not re.fullmatch(r'[0-9a-f]{40,64}', scope_base):
+        raise SystemExit('ci-ready-receipt: exact run comparison merge-base unavailable')
+    return scope_base
+
 def check_run_pull_request_identity(check_run, pr_number, expected_head, expected_base_ref=None):
     matches=[item for item in (check_run.get("pull_requests") or [])
              if int(item.get("number") or 0)==pr_number]
@@ -145,6 +152,8 @@ def live(repository, task_uid, task_issue_number, pr_number, check_name, check_a
     matches.sort(key=lambda x:(x.get("completed_at") or "",int(x.get("id") or 0)),reverse=True)
     run=matches[0]
     base_oid,head_oid=check_run_pull_request_identity(run,pr_number,head_oid,expected_base_ref)
+    if str((pr.get("base") or {}).get("sha") or "") != base_oid:
+        raise SystemExit("ci-ready-receipt: stale integration base; rerun required CI against current target without rebasing source")
     if run.get("status")!="completed": raise SystemExit("ci-ready-receipt: uncertain: check incomplete")
     conclusion=str(run.get("conclusion") or "").lower()
     if conclusion=="cancelled": raise SystemExit("ci-ready-receipt: cancelled")
@@ -186,6 +195,9 @@ def main():
       "task_uid":a.task_uid,"task_issue_number":a.task_issue_number,"pr_number":a.pr_number,"base_oid":base_oid,"head_oid":head_oid,
       "check_name":a.check_name,"check_app_id":(run.get("app") or {}).get("id"),"check_run_id":run.get("id"),
       "planner_digest":trusted_planner_digest,"planner":planner,"planner_config_sha256":planner["planner_config_sha256"],"run_rust_baseline":planner["run_rust_baseline"],"conclusion":"success","observed_at":now()}
+    if old is None or 'scope_base_oid' in old:
+        payload['scope_base_oid'] = scope_base_for_run(a.repository, base_oid, head_oid)
+        payload['integration_base_oid'] = base_oid
     payload["review_evidence_digest"]=review_evidence_digest(payload)
     if old is not None:
         for key,val in payload.items():

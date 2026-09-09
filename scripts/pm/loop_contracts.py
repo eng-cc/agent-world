@@ -42,6 +42,30 @@ def safe_path(path):
     return isinstance(path,str) and bool(path) and not path.startswith("/") and "\\" not in path and not any(ord(c)<32 for c in path) and not any(p in {"", ".", ".."} for p in path.split("/")) and not re.match(r"^[A-Za-z]:",path)
 
 
+def ensure_contract_objects(root, contract):
+    """Acquire only approved exact objects after PR identity validation."""
+    missing = []
+    for key in ('source_head', 'merged_head'):
+        probe = subprocess.run(['git', '-C', str(root), 'cat-file', '-e', contract[key] + '^{commit}'], capture_output=True)
+        if probe.returncode: missing.append(key)
+    if not missing: return
+    origin = git(root, 'config', '--get', 'remote.origin.url').decode().strip()
+    if origin not in ('https://github.com/' + REPOSITORY + '.git', 'https://github.com/' + REPOSITORY, 'git@github.com:' + REPOSITORY + '.git', 'ssh://git@github.com/' + REPOSITORY + '.git'):
+        raise ValueError('missing contract objects require canonical repository origin')
+    for key in missing:
+        oid = contract[key]
+        if key == 'source_head':
+            # GitHub retains PR refs after squash/source branch deletion. A
+            # moved ref is merely acquisition, never authority for a newer SHA.
+            subprocess.run(['git', '-C', str(root), 'fetch', '--no-tags', 'origin', f"refs/pull/{contract['approval_ref']['pr_number']}/head"], capture_output=True)
+        if subprocess.run(['git', '-C', str(root), 'cat-file', '-e', oid + '^{commit}'], capture_output=True).returncode:
+            fetched = subprocess.run(['git', '-C', str(root), 'fetch', '--no-tags', 'origin', oid], capture_output=True)
+            if fetched.returncode:
+                raise ValueError('approved exact contract object unavailable: ' + oid)
+        if subprocess.run(['git', '-C', str(root), 'cat-file', '-e', oid + '^{commit}'], capture_output=True).returncode:
+            raise ValueError('approved exact contract object unavailable after fetch: ' + oid)
+
+
 def validate_contract_record(contract, root, pr):
     errors=[]
     if not isinstance(contract,dict) or contract.get("schema")!=SCHEMA:
@@ -58,6 +82,11 @@ def validate_contract_record(contract, root, pr):
     for key,pr_key in (("source_head","head"),("merged_head","merge_commit")):
         if not isinstance(contract.get(key),str) or not OID.fullmatch(contract[key]) or contract[key]!=pr.get(pr_key):
             errors.append(f"contract {key} does not match merged PR")
+    if not errors:
+        try:
+            ensure_contract_objects(root, contract)
+        except (ValueError, OSError) as exc:
+            errors.append(str(exc))
     eligibility=contract.get("eligibility")
     if not isinstance(eligibility,dict) or any(type(eligibility.get(k)) is not bool for k in ("new_tasks","in_flight","release")):
         errors.append("explicit consumption eligibility required")
@@ -158,7 +187,7 @@ class GitHubAuthority:
         checked = validate_terminal_delivery(REPOSITORY, obligation.get("task_uid"), obligation.get("issue_number"))
         return checked['status'] == 'passed'
 
-    def publish(self,binding,contract):
+    def publish(self,binding,contract,before_write=None):
         number=binding.get("issue_number",contract.get("publication_issue"))
         self.issue(number,binding.get("task_uid"))
         login=self.api("user").get("login")
@@ -186,6 +215,10 @@ class GitHubAuthority:
             raise ValueError("duplicate publication identity; reconcile_required")
         if matches:
             return {"issue_number":number,"comment_id":matches[0]}
+        # All authority checks and duplicate/conflict reads above are read-only.
+        # Persist intent only at the first potentially effectful request.
+        if before_write is not None:
+            before_write()
         created=self.api(f"repos/{REPOSITORY}/issues/{number}/comments",{"body":canonical(payload).decode()})
         if type(created.get("id")) is not int:
             raise ValueError("publication response uncertain; reconcile_required")
@@ -253,7 +286,7 @@ def validate_contracts(tool_root,target_repo_root,binding,authority_reader=None,
     return result(errors, purpose=purpose, contracts_checked=len(visited), authority="injected_test_reader" if authority_reader is not None else "live_github")
 
 
-def publish_contract(tool_root,target_repo_root,binding,contract,authority_reader=None):
+def publish_contract(tool_root,target_repo_root,binding,contract,authority_reader=None,before_write=None):
     reader=authority_reader or GitHubAuthority(target_repo_root)
     try:
         if not isinstance(binding,dict) or not UID.fullmatch(binding.get("task_uid","")) or not binding.get("manual_request_ref"):
@@ -268,7 +301,7 @@ def publish_contract(tool_root,target_repo_root,binding,contract,authority_reade
         upstream=validate_contracts(tool_root,target_repo_root,{**binding,"input_contracts":contract["upstream_contracts"]},reader,purpose="new_tasks")
         if upstream["blockers"]:
             return upstream
-        publication=reader.publish(binding,contract)
+        publication=(reader.publish(binding,contract,before_write=before_write) if before_write is not None else reader.publish(binding,contract))
         reference={"contract_id":contract["contract_id"],"revision":contract["revision"],"contract_digest":contract_digest(contract),"publication_ref":publication,"consumed_clauses":[c for item in contract["content_refs"] for c in item["clauses"]]}
         checked=validate_contracts(tool_root,target_repo_root,{**binding,"input_contracts":[reference]},reader)
         return {**checked,"publication_ref":publication,"input_contract":reference}

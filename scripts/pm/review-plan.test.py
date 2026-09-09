@@ -286,6 +286,19 @@ class ReviewPlanTests(unittest.TestCase):
         self.assertEqual(receipt_base, plan["comparison_oid"])
         self.assertEqual(self.head, plan["frozen_head"])
 
+    def test_divergent_integration_receipt_records_ancestor_scope(self) -> None:
+        self.git("commit", "--allow-empty", "-m", "task source")
+        self.head=self.git("rev-parse","HEAD")
+        integration = self.git("commit-tree", self.comparison_oid + "^{tree}", "-p", self.comparison_oid, "-m", "parallel main")
+        receipt = self.root / "parallel-receipt.json"
+        self.write_receipt(receipt, base_oid=integration, head_oid=self.head)
+        value=json.loads(receipt.read_text())
+        value.update(scope_base_oid=self.comparison_oid,integration_base_oid=integration)
+        receipt.write_text(json.dumps(value))
+        plan=self.receipt_plan(receipt,self.root / "parallel-plan.json")
+        self.assertEqual(self.comparison_oid,plan["comparison_oid"])
+        self.assertEqual(integration,plan["integration_base_oid"])
+
     def test_ci_receipt_head_must_match_frozen_head(self) -> None:
         receipt = self.root / "wrong-head-receipt.json"
         self.write_receipt(receipt, base_oid=self.comparison_oid, head_oid="c" * 40)

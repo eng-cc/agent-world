@@ -392,6 +392,8 @@ def decision(data: dict[str, Any], admin_authorized: bool, *, evidence_mode: str
         blockers.append(f"blocking merge state: {merge_state}")
     observed_at = dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
     epoch_input = {"repository": data.get("repository") or "fixture", "pr_number": data.get("number"), "head_oid": head_oid or "fixture-head", "blockers": blockers, "policy":policy, "hold":hold}
+    if data.get('integration_ci') is not None:
+        epoch_input['integration_ci'] = data['integration_ci']
     gate_epoch = hashlib.sha256(json.dumps(epoch_input, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     result = {
         "ready_for_merge": not blockers,
@@ -458,6 +460,60 @@ def local_loop_admission(root, uid, base, head, tool_root):
     result = json.loads(completed.stdout)
     if result.get('status') not in ('passed', 'legacy'):
         raise ValueError('live loop admission did not pass')
+    return {'status': result['status'], 'tool_root': str(effective),
+            'policy_commit': (binding or {}).get('policy_commit'), 'task': task}
+
+
+def live_integration_admission(data, root, uid, tool_root, admission):
+    """Read selected CI and its frozen planner artifact; never trust a local receipt."""
+    policy = data.get('policy_discovery') or {}
+    required = policy.get('required_status_checks')
+    legacy = isinstance(admission, dict) and admission.get('status') == 'legacy'
+    if legacy and policy.get('status') == 'resolved' and required == []:
+        return None
+    pins = {str(item['app_id']) for item in (required or [])
+            if isinstance(item, dict) and item.get('context') == 'required-gate' and item.get('app_id') is not None}
+    if len(pins) != 1 or not next(iter(pins), '').isdigit():
+        raise ValueError('required-gate needs one unambiguous app pin in live required-check policy; restore the policy binding and rerun')
+    if not isinstance(admission, dict) or not isinstance(admission.get('task'), dict):
+        raise ValueError('trusted local task admission context missing')
+    effective = Path(admission['tool_root'])
+    commit = admission.get('policy_commit')
+    if not commit:
+        # Legacy tasks still use immutable main helper bytes, not candidate
+        # helpers or a caller-authored receipt as CI authority.
+        subprocess.run(['git','-C',str(root),'fetch','--no-tags','origin','main:refs/remotes/origin/main'],check=True,capture_output=True)
+        commit = subprocess.check_output(['git','-C',str(root),'rev-parse','refs/remotes/origin/main'],text=True).strip()
+    for name in ('ci-ready-receipt.py', 'ci_ready_receipt_identity.py'):
+        relative = 'scripts/pm/' + name
+        expected = subprocess.check_output(['git','-C',str(root),'show',commit + ':' + relative])
+        path = effective / relative
+        if path.is_symlink() or path.read_bytes() != expected:
+            raise ValueError('effective CI authority helper bytes differ: ' + name)
+    task = admission['task']
+    if task.get('repository') != data['repository']:
+        raise ValueError('CI task repository identity mismatch')
+    request = {'root': str(effective), 'repository': data['repository'], 'uid': uid,
+               'issue': task['issue_number'], 'pr': data['number'], 'app': next(iter(pins)),
+               'base_ref': data['baseRefName']}
+    # Isolated stdlib loader installs only the two byte-verified modules. No
+    # candidate directory/PYTHONPATH is added to the import search path.
+    program = """import importlib.util,json,sys
+from pathlib import Path
+request=json.loads(sys.argv[1]); directory=Path(request['root'])/'scripts/pm'
+for name,filename in [('ci_ready_receipt_identity','ci_ready_receipt_identity.py'),('ci_live','ci-ready-receipt.py')]:
+ spec=importlib.util.spec_from_file_location(name,directory/filename); module=importlib.util.module_from_spec(spec); sys.modules[name]=module; spec.loader.exec_module(module)
+pr,run,base,head=module.live(request['repository'],request['uid'],request['issue'],request['pr'],'required-gate',request['app'],allow_ready_pr=True,expected_base_ref=request['base_ref'])
+planner=module.planner_for_run(request['repository'],run,base_oid=base,head_oid=head)
+print(json.dumps({'integration_base_oid':base,'head_oid':head,'check_run_id':run['id'],'check_app_id':run['app']['id'],'planner_digest':module.hashlib.sha256(json.dumps(planner,sort_keys=True,separators=(',',':')).encode()).hexdigest()}))
+"""
+    completed = subprocess.run([sys.executable,'-I','-c',program,json.dumps(request)],text=True,capture_output=True)
+    if completed.returncode:
+        raise ValueError((completed.stderr or completed.stdout).strip() or 'fresh integration CI unavailable')
+    proof = json.loads(completed.stdout)
+    if proof.get('integration_base_oid') != data['baseRefOid'] or proof.get('head_oid') != data['headRefOid']:
+        raise ValueError('stale integration CI base/head; rerun required CI against current target without rebasing source')
+    return proof
 
 
 def production_decision(data, admin_authorized, root, uid, tool_root):
@@ -468,7 +524,8 @@ def production_decision(data, admin_authorized, root, uid, tool_root):
         base, head = data.get('baseRefOid', ''), data.get('headRefOid', '')
         if not all(re.fullmatch(r'[0-9a-f]{40}', value) for value in (base, head)):
             raise ValueError('current PR base/head OIDs unavailable')
-        local_loop_admission(root, uid, base, head, tool_root)
+        admission = local_loop_admission(root, uid, base, head, tool_root)
+        integration = live_integration_admission(data, root, uid, tool_root, admission)
         fresh = read_pr_identity(data['repository'], data['number'])
         if any(fresh.get(key) != data.get(key) for key in ('number', 'baseRefOid', 'headRefOid')):
             raise ValueError('PR base/head changed during live loop admission; rerun gate')
@@ -476,7 +533,10 @@ def production_decision(data, admin_authorized, root, uid, tool_root):
         result.update(ready_for_merge=False, status='blocked', use_admin_merge=False)
         result['blockers'].append('live loop admission: ' + str(exc))
         return result
-    return decision(data, admin_authorized, evidence_mode='production')
+    result = decision({**data, 'integration_ci': integration}, admin_authorized, evidence_mode='production')
+    if integration is not None:
+        result['readiness_receipt']['integration_ci'] = integration
+    return result
 
 
 def main() -> int:

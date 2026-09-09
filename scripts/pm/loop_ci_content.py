@@ -3,7 +3,7 @@ import json
 import subprocess
 
 from loop_contracts import MARKER, REPOSITORY, contract_digest, validate_contract_record
-from loop_policy import validate_binding, validate_scope, validate_tool_root
+from loop_policy import scope_context, validate_binding, validate_scope, validate_tool_root
 
 
 def repository_json(repository, path):
@@ -13,8 +13,13 @@ def repository_json(repository, path):
 def validate_ci_content(tool_root, root, binding, base, head, repository, reader=None):
     blockers = []
     read = reader or repository_json
-    for result in (validate_binding(binding), validate_tool_root(tool_root, root, binding), validate_scope(tool_root, root, binding, base, head)):
-        blockers.extend(result['blockers'])
+    context = {}
+    try:
+        context = scope_context(root, base, head)
+        for result in (validate_binding(binding), validate_tool_root(tool_root, root, binding), validate_scope(tool_root, root, binding, context['scope_base_oid'], head)):
+            blockers.extend(result['blockers'])
+    except (ValueError, OSError) as exc:
+        blockers.append(str(exc))
     active, visited = set(), set()
 
     def inspect(reference):
@@ -56,6 +61,7 @@ def validate_ci_content(tool_root, root, binding, base, head, repository, reader
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
         blockers.append(str(exc))
     return {'status': 'blocked' if blockers else 'passed', 'blockers': blockers,
+            'scope_context': context,
             'verification_boundary': 'repository_identity_policy_scope_contract_content',
             'local_live_admission_required': True,
             'not_verified_here': ['Project terminal truth', 'dependency completion', 'contract eligibility and admin provenance', 'merge hold and authorization']}

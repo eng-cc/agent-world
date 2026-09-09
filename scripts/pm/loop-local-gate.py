@@ -66,7 +66,10 @@ def main():
             sys.path.insert(0, str(tool / 'scripts/pm'))
             spec = importlib.util.spec_from_file_location('effective_loop', tool / 'scripts/pm/loop.py')
             module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
-            result = module.validate_task(root, {**task, 'repository': repository}, tool, args.base, args.head)
+            from loop_policy import scope_context
+            context = scope_context(root, args.base, args.head)
+            result = module.validate_task(root, {**task, 'repository': repository}, tool, context['scope_base_oid'], args.head)
+            result['scope_context'] = context
         print(json.dumps(result, sort_keys=True))
         return 0 if result['status'] in ('passed', 'legacy') else 2
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:

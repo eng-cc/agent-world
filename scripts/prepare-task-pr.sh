@@ -1309,7 +1309,7 @@ try:
         for name in names:
             if (tool / name).is_symlink() or (tool / name).read_bytes() != subprocess.check_output(['git', '-C', str(tool), 'show', commit + ':' + name]): fail('trusted helper bytes mismatch')
         if subprocess.check_output(['git', '-C', str(tool), 'ls-files', '--others', '--', 'scripts/pm', ':(exclude)**/__pycache__/**'], text=True).strip(): fail('untracked trusted helper shadow')
-        subprocess.run([sys.executable, str(tool / 'scripts/pm/loop.py'), 'validate-scope', '--repo-root', str(source_worktree), '--tool-root', str(tool), '--task-uid', task_uid, '--base', comparison_head, '--head', source_head, '--json'], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run([sys.executable, '-I', str(tool / 'scripts/pm/loop-local-gate.py'), '--root', str(source_worktree), '--tool-root', str(tool), '--task-uid', task_uid, '--base', comparison_head, '--head', source_head], check=True, stdout=subprocess.DEVNULL)
     elif record.get('loop_binding') is not None:
         fail('live binding disappeared')
     elif any('oasis7-loop-binding-history' in str(item.get('body', '')) for item in comments):
@@ -1358,7 +1358,7 @@ fi
 COMPARISON_COMMIT_REF="${COMPARISON_REF}^{commit}"
 COMPARISON_HEAD="$(git rev-parse "$COMPARISON_COMMIT_REF")"
 
-# Promotion revalidates the review against the immutable CI receipt base OID.
+# Promotion reviews the ancestor scope OID; live admission keeps the CI integration OID.
 # The live receipt validator below remains authoritative for the PR/check
 # identity; this early read only prevents a moving local symbolic ref from
 # shadowing the frozen review range during local role-review selection.
@@ -1374,7 +1374,7 @@ with open(sys.argv[1], encoding="utf-8") as handle:
 PY
 )" || die "promote_draft could not read ci_ready_receipt base identity"
   [[ "$PROMOTE_DRAFT_RECEIPT_BASE_OID" =~ ^[0-9a-f]{40,64}$ ]] || die "promote_draft ci_ready_receipt has invalid base identity"
-  REVIEW_COMPARISON_OID="$PROMOTE_DRAFT_RECEIPT_BASE_OID"
+  REVIEW_COMPARISON_OID="$(python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print(r.get("scope_base_oid",r["base_oid"]))' "$PROMOTE_DRAFT_RECEIPT")"
 fi
 BASE_WORKTREE=""
 if [[ -n "$LOCAL_BASE_REF" ]]; then

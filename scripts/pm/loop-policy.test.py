@@ -11,6 +11,47 @@ import unittest
 HERE = Path(__file__).resolve().parent
 
 class PolicyTests(unittest.TestCase):
+    def test_parallel_disjoint_branch_scope_and_integration_are_separate(self):
+        self.binding.update(loop='code', write_scope=['src/a.rs'])
+        self.git('switch', '-c', 'task')
+        self.write('src/a.rs', 'task edit')
+        self.git('add', '.'); self.git('commit', '-qm', 'task')
+        head = self.git('rev-parse', 'HEAD')
+        self.git('switch', '--detach', self.base)
+        self.write('doc/engineering/a.md', 'unrelated main edit')
+        self.git('add', '.'); self.git('commit', '-qm', 'main advanced')
+        integration = self.git('rev-parse', 'HEAD')
+        context = self.api.scope_context(self.root, integration, head)
+        self.assertEqual(context['scope_base_oid'], self.base)
+        self.assertEqual(context['integration_base_oid'], integration)
+        result = self.api.validate_scope(self.root, self.root, self.binding, context['scope_base_oid'], head)
+        self.assertEqual(result['status'], 'passed', result)
+        self.assertEqual([item['path'] for item in result['paths']], ['src/a.rs'])
+
+    def test_real_gameplay_document_ownership(self):
+        policy=json.loads((HERE / "loop-policy.v1.json").read_text())
+        self.assertEqual(self.api.classify_path("doc/game/gameplay/gameplay-indirect-control-agency-contract.prd.md",policy),"product")
+        self.assertEqual(self.api.classify_path("doc/world-runtime/design.md",policy),"system")
+        self.assertIsNone(self.api.classify_path("doc/game/design.md",policy))
+
+    def test_mixed_document_rename_endpoints_block_every_loop(self):
+        mixed='doc/game/gameplay/gameplay-agent-claim-economy-contract.design.md'
+        self.write(mixed,'mixed semantic authority')
+        self.git('add','.');self.git('commit','-qm','mixed baseline')
+        base=self.git('rev-parse','HEAD')
+        self.git('mv',mixed,'doc/product/moved.md')
+        self.git('commit','-qm','rename')
+        head=self.git('rev-parse','HEAD')
+        for loop in ('product','system','code'):
+            self.binding.update(loop=loop,write_scope=['**'])
+            result=self.api.validate_scope(self.root,self.root,self.binding,base,head)
+            self.assertEqual(result['status'],'blocked')
+            self.assertTrue(any('mixed document' in b for b in result['blockers']),result)
+        self.git('mv','doc/product/moved.md',mixed)
+        self.git('commit','-qm','rename destination')
+        result=self.api.validate_scope(self.root,self.root,self.binding,head,self.git('rev-parse','HEAD'))
+        self.assertTrue(any('mixed document' in b for b in result['blockers']),result)
+
     def setUp(self):
         spec = importlib.util.spec_from_file_location("loop_policy", HERE / "loop_policy.py")
         self.api = importlib.util.module_from_spec(spec)

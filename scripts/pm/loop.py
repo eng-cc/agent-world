@@ -17,7 +17,7 @@ def _git(root, *args):
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 
 
-def load_task(root, uid):
+def load_task(root, uid, *, recovery=False):
     if not re.fullmatch(r'task_[0-9a-f]{32}', uid):
         raise ValueError('invalid task UID')
     task = json.loads((root / '.pm/github-project-sync/tasks.json').read_text())['tasks'][uid]
@@ -29,10 +29,65 @@ def load_task(root, uid):
             raise ValueError('canonical worktree mismatch')
     if task.get('task_branch') and task['task_branch'] != _git(root, 'branch', '--show-current'):
         raise ValueError('canonical branch mismatch')
-    binding = live_binding(task)
-    if binding != task.get('loop_binding'):
-        raise ValueError('live binding differs from cache; refresh-task before continuing')
+    if not recovery:
+        binding = live_binding(task)
+        if binding != task.get('loop_binding'):
+            raise ValueError('live binding differs from cache; refresh-task before continuing')
     return task
+
+
+def recovery_task(root, task, tool_root):
+    """Permit only a recorded old/new binding transition, never generic drift."""
+    uid = task['task_uid']
+    pending = recovery_status(common_dir(root), uid)['pending_actions']
+    transitions = [a for a in pending if a['kind'] == 'bind_loop']
+    if not transitions:
+        observed = load_task(root, uid)
+        if observed.get('loop_binding') is not None:
+            recovery_authority(root, observed['loop_binding'], tool_root)
+        return observed
+    if len(transitions) != 1 or len(pending) != 1:
+        raise ValueError('ambiguous pending binding transition')
+    action = transitions[0]
+    binding = json.loads(action['expected'])
+    if action['action_id'] != 'bind:' + hashlib.sha256(action['expected'].encode()).hexdigest():
+        raise ValueError('binding journal action digest mismatch')
+    if any(action.get(k) != task.get(k) for k in ('task_uid', 'repository', 'issue_number')):
+        raise ValueError('binding journal stable task identity mismatch')
+    previous = action.get('previous_binding', binding)
+    old_epoch = action.get('previous_epoch', binding['bootstrap_epoch'])
+    if binding.get('task_uid') != uid or binding.get('owner_role') != task.get('owner_role'):
+        raise ValueError('binding journal owner/task mismatch')
+    if previous != binding and binding['bootstrap_epoch'] != old_epoch + 1:
+        raise ValueError('binding journal must advance exactly one epoch')
+    if previous is not None and previous.get('bootstrap_epoch') != old_epoch:
+        raise ValueError('binding journal previous epoch mismatch')
+    if action.get('canonical_worktree', str(root)) != str(root) or action.get('task_branch', task.get('task_branch')) != task.get('task_branch'):
+        raise ValueError('binding journal worktree/branch drift')
+    if action.get('project_item_id', task.get('project_item_id')) != task.get('project_item_id'):
+        raise ValueError('binding journal Project identity drift')
+    if task.get('bootstrap_epoch', old_epoch) not in (old_epoch, binding['bootstrap_epoch']):
+        raise ValueError('cached epoch outside binding journal')
+    for observed in (task.get('loop_binding'), live_binding(task)):
+        if observed not in (previous, binding):
+            raise ValueError('binding drift outside journal old/new transition')
+    for path in (root / '.pm/scratch' / uid / 'bootstrap-task-snapshot.json', common_dir(root) / 'oasis7-loop-lineage' / (uid + '.json')):
+        if path.exists():
+            saved = json.loads(path.read_text())
+            observed = saved.get('task', saved).get('loop_binding')
+            if observed not in (previous, binding):
+                raise ValueError('snapshot/lineage drift outside binding journal')
+    recovery_authority(root, binding, tool_root)
+    return {**task, 'loop_binding': binding, 'bootstrap_epoch': binding['bootstrap_epoch']}
+
+
+def recovery_authority(root, binding, tool_root):
+    if tool_root is None:
+        raise ValueError('recovery requires effective trusted --tool-root')
+    policy = _trusted_module(tool_root, root, binding, 'loop_policy')
+    blockers = policy.validate_binding(binding)['blockers'] + policy.validate_tool_root(tool_root, root, binding)['blockers']
+    if blockers: raise ValueError('; '.join(blockers))
+    _trusted_module(tool_root, root, binding, 'loop_contracts')
 
 
 def _trusted_module(root, target, binding, name):
@@ -122,7 +177,7 @@ def main():
     args = parser.parse_args()
     try:
         root = args.repo_root.resolve()
-        task = load_task(root, args.task_uid)
+        task = load_task(root, args.task_uid, recovery=args.command == 'recover')
         if args.tool_root and (task.get('loop_binding') is not None or args.command == 'bind'):
             subprocess.run(['git', '-C', str(root), 'fetch', '--no-tags', 'origin', 'main:refs/remotes/origin/main'], check=True, capture_output=True)
         if args.command in ('bind', 'resume-check', 'recover', 'publish-contract') and not args.manual_request_ref:
@@ -144,13 +199,23 @@ def main():
             with Reservation(common_dir(root), args.task_uid, binding['write_scope']):
                 expected = json.dumps(binding, sort_keys=True)
                 action = {'action_id': 'bind:' + hashlib.sha256(expected.encode()).hexdigest(), 'kind': 'bind_loop', 'expected': expected,
-                          'repository': task['repository'], 'issue_number': task['issue_number']}
+                          'repository': task['repository'], 'issue_number': task['issue_number'],
+                          'previous_binding': task.get('loop_binding'), 'previous_epoch': task.get('bootstrap_epoch', 1),
+                          'canonical_worktree': str(root), 'task_branch': task.get('task_branch'), 'project_item_id': task.get('project_item_id')}
                 record_action(common_dir(root), args.task_uid, action)
                 result = json.loads(subprocess.check_output(command, text=True))
                 if result.get('status') == 'bound':
                     record_action(common_dir(root), args.task_uid, {**action, 'reconciled': True, 'readback_evidence': result})
         else:
             if args.command == 'validate-scope' and not args.base: raise ValueError('--base required')
+            if args.command == 'recover':
+                task = recovery_task(root, task, args.tool_root)
+                with Reservation(common_dir(root), args.task_uid, (task.get('loop_binding') or {}).get('write_scope', []), recovery=True):
+                    recovery = reconcile(common_dir(root), args.task_uid, root, args.tool_root)
+                if recovery['pending_actions']:
+                    print(json.dumps(recovery, sort_keys=True))
+                    return 2
+                task = load_task(root, args.task_uid)
             result = validate_task(root, task, args.tool_root, args.base, args.head)
             if result['status'] in ('passed', 'legacy') and args.command in ('resume-check', 'recover'):
                 with Reservation(common_dir(root), args.task_uid, (task.get('loop_binding') or {}).get('write_scope', []), recovery=args.command == 'recover'):
@@ -168,9 +233,12 @@ def main():
                     expected = json.dumps(contract, sort_keys=True)
                     action = {'action_id': 'publication:' + hashlib.sha256(expected.encode()).hexdigest(), 'kind': 'publish_contract', 'expected': expected,
                               'repository': task['repository'], 'issue_number': task['issue_number'], 'binding': task['loop_binding']}
-                    record_action(common_dir(root), args.task_uid, action)
-                    result = validator.publish_contract(args.tool_root, root, {**task['loop_binding'], 'issue_number': task['issue_number']}, contract)
-                    if result.get('status') == 'passed':
+                    started = []
+                    def before_write():
+                        record_action(common_dir(root), args.task_uid, action)
+                        started.append(True)
+                    result = validator.publish_contract(args.tool_root, root, {**task['loop_binding'], 'issue_number': task['issue_number']}, contract, before_write=before_write)
+                    if result.get('status') == 'passed' and started:
                         record_action(common_dir(root), args.task_uid, {**action, 'reconciled': True, 'readback_evidence': result})
         print(json.dumps(result, sort_keys=True))
         return 0 if result.get('status') in ('passed', 'legacy', 'bound', 'can_continue', 'task_terminal') else 2
