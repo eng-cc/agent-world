@@ -1,5 +1,107 @@
 use super::*;
 
+#[cfg(not(target_arch = "wasm32"))]
+fn assert_queued_provider_decision_survives_restore(decision: AgentDecision) {
+    let decision_kind = match &decision {
+        AgentDecision::Act(_) => "action",
+        AgentDecision::Wait => "wait",
+        _ => "other",
+    };
+    let path = std::env::temp_dir().join(format!(
+        "oasis7-viewer-provider-lineage-queued-completion-{}-{}-{}.json",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos(),
+        decision_kind
+    ));
+    let agent_id = "agent-queued";
+    let context = test_provider_context(agent_id, "turn-queued", "request-queued", 1);
+    let mut first = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    first.configure_provider_lineage_store(path.clone());
+    first.provider_agent_ids.insert(agent_id.to_string());
+    first
+        .provider_contexts
+        .insert(agent_id.to_string(), context.clone());
+    first
+        .provider_active_turns
+        .insert(agent_id.to_string(), context);
+    first
+        .provider_completed_decisions
+        .push_back(async_support::RuntimeLlmDecision {
+            agent_id: agent_id.to_string(),
+            decision: decision.clone(),
+            decision_trace: None,
+            cognition: None,
+            memory_write_intents: Vec::new(),
+            continuation_admitted: false,
+        });
+    first
+        .persist_provider_lineage()
+        .expect("persist queued completed provider decision");
+
+    let mut restored = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    restored.configure_provider_lineage_store(path.clone());
+    restored
+        .restore_provider_lineage(&RuntimeWorld::default())
+        .expect("restore queued completed provider decision");
+    assert!(
+        !restored.provider_transport_exhausted.contains(agent_id),
+        "queued completion must retain the active identity during recovery"
+    );
+
+    let provider = crate::simulator::MockDecisionProvider::new("queued-completion-provider");
+    let provider_state = provider.shared_state();
+    let behavior = crate::simulator::ProviderBackedAgentBehavior::new_legacy_compatibility(
+        agent_id,
+        provider,
+        vec![crate::simulator::ActionCatalogEntry::new("wait", "wait")],
+    );
+    let mut runner = crate::simulator::AsyncAgentRunner::with_default_capacity();
+    runner.register(behavior).expect("register provider actor");
+    restored.runner = Some(RuntimeDecisionRunner::ProviderBacked(runner));
+    let mut world = RuntimeWorld::default();
+    let mut kernel = WorldKernel::new();
+
+    let delivered = restored
+        .next_async_provider_decision(&mut world, &mut kernel, "world")
+        .expect("queued completion must be delivered after restore");
+    assert_eq!(delivered.agent_id, agent_id);
+    assert_eq!(delivered.decision, decision);
+    assert!(restored.provider_held_decisions.contains_key(agent_id));
+    assert!(
+        restored.provider_completed_decisions.is_empty(),
+        "a restored completion must be removed from the queue after one delivery"
+    );
+    assert!(
+        provider_state
+            .lock()
+            .expect("provider state lock")
+            .recorded_requests
+            .is_empty(),
+        "replaying a queued completion must not readmit the provider"
+    );
+    let _ = std::fs::remove_file(path);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn provider_lineage_restore_delivers_queued_action_once_without_readmission() {
+    assert_queued_provider_decision_survives_restore(AgentDecision::Act(
+        crate::simulator::Action::MoveAgent {
+            agent_id: "agent-queued".to_string(),
+            to: "loc-queued".to_string(),
+        },
+    ));
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn provider_lineage_restore_delivers_queued_wait_once_without_readmission() {
+    assert_queued_provider_decision_survives_restore(AgentDecision::Wait);
+}
+
 #[test]
 fn runtime_provider_continuation_recovery_fence_blocks_retained_context_after_restart() {
     let _env_guard = crate::viewer::runtime_live::canonical_runtime_provider_env_lock()

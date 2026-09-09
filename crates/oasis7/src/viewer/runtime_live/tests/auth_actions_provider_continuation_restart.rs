@@ -23,6 +23,196 @@ fn wait_for_provider_phase(
     }
 }
 
+fn assert_provider_wait_post_admission_fault_is_compensated(fault_name: &str, fault_message: &str) {
+    let _guard = runtime_provider_env_lock().lock().expect("env lock");
+    clear_runtime_provider_env();
+    let recorded = Arc::new(Mutex::new(Vec::<RecordedHttpRequest>::new()));
+    let base_url = spawn_runtime_live_mock_http_server(4, {
+        let recorded = Arc::clone(&recorded);
+        move |request| {
+            recorded
+                .lock()
+                .expect("recorded lock")
+                .push(request.clone());
+            if request.path == "/v1/world-simulator/feedback-context" {
+                return MockHttpResponse {
+                    status_code: 200,
+                    body: serde_json::json!({"ok": true}).to_string(),
+                };
+            }
+            let decoded: crate::simulator::ContinuousAgentRequestContextV1 =
+                serde_json::from_slice(request.body.as_slice())
+                    .expect("decode provider decision request");
+            let response = crate::simulator::DecisionResponse {
+                decision: crate::simulator::ProviderDecision::Wait,
+                module_command: None,
+                provider_error: None,
+                diagnostics: crate::simulator::ProviderDiagnostics::default(),
+                trace_payload: crate::simulator::ProviderTraceEnvelope::default(),
+                memory_write_intents: Vec::new(),
+            };
+            MockHttpResponse {
+                status_code: 200,
+                body: serde_json::to_string(&provider_context_response(&decoded, response))
+                    .expect("encode provider response"),
+            }
+        }
+    });
+    // SAFETY: This test/setup code mutates process environment in a controlled scope.
+    unsafe {
+        oasis7::env_mut::set_var(VIEWER_AGENT_PROVIDER_MODE_ENV, "provider_loopback_http");
+        oasis7::env_mut::set_var(VIEWER_AGENT_PROVIDER_URL_ENV, base_url);
+        oasis7::env_mut::set_var(VIEWER_AGENT_PROVIDER_PROFILE_ENV, "oasis7_p0_low_freq_npc");
+        oasis7::env_mut::set_var(VIEWER_AGENT_EXECUTION_LANE_ENV, "player_parity");
+    }
+    let world_id = format!("wait-compensation-{fault_name}");
+    let finality_block_hash =
+        crate::simulator::h_v1("oasis7.viewer.test.finality-block.v1", &world_id).to_string();
+    let lineage_path = std::env::temp_dir().join(format!(
+        "oasis7-runtime-live-provider-wait-compensation-{}-{}.json",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+    let runtime_config = || {
+        ViewerRuntimeLiveServerConfig::new(WorldScenario::Minimal)
+            .with_decision_mode(ViewerLiveDecisionMode::Llm)
+            .with_test_cognition_runtime_binding(
+                "continuation-branch",
+                0,
+                Some(finality_block_hash.clone()),
+                "verified",
+                0,
+            )
+    };
+    let mut server = ViewerRuntimeLiveServer::new(
+        runtime_config().with_provider_lineage_store(lineage_path.clone()),
+    )
+    .expect("runtime server");
+    server.world = server.world.clone().with_cognition_scheduler(
+        serde_json::from_value(serde_json::json!({
+            "schema_version": "scheduler-policy.v1",
+            "max_total_wakes_per_tick": 8,
+            "max_wakes_per_agent_per_tick": 1,
+            "aging_after_ticks": 2,
+            "max_starvation_ticks": 4,
+            "initial_priority": 0,
+            "comparator": "deadline_due_desc,next_wake_tick_asc,effective_priority_desc,starvation_deadline_tick_asc,cursor_distance_asc,agent_id_asc,continuation_id_asc,wake_seq_asc",
+            "service_order": "stable_round_robin"
+        }))
+        .expect("decode continuation scheduler policy"),
+        8,
+    );
+    server
+        .world
+        .install_test_provider_capability_fixture("agent-0")
+        .expect("install Runtime provider capability fixture");
+    // SAFETY: This test holds the canonical provider environment lock.
+    unsafe {
+        oasis7::env_mut::set_var("OASIS7_TEST_PROVIDER_WAIT_FAULT", fault_name);
+    }
+    wait_for_provider_phase(
+        "faulted provider Wait admission",
+        Duration::from_secs(5),
+        || {
+            server.llm_sidecar.request_decision();
+            match server.enqueue_llm_action_from_sidecar() {
+                Err(trace)
+                    if trace
+                        .llm_error
+                        .as_deref()
+                        .is_some_and(|error| error.contains(fault_message)) =>
+                {
+                    Ok(true)
+                }
+                Ok(Some(trace)) => Err(format!(
+                    "faulted provider Wait unexpectedly succeeded: {trace:?}"
+                )),
+                Ok(None) => Ok(false),
+                Err(trace) => Err(format!("unexpected provider Wait fault: {trace:?}")),
+            }
+        },
+    )
+    .expect("fault injection must reach post-admission error path");
+
+    let checkpoint: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(&lineage_path).expect("read compensated provider lineage checkpoint"),
+    )
+    .expect("decode compensated provider lineage checkpoint");
+    for field in [
+        "provider_continuation_proposals",
+        "provider_active_turns",
+        "provider_contexts",
+        "provider_held_decisions",
+        "provider_wait_until",
+    ] {
+        assert!(
+            checkpoint[field]
+                .as_object()
+                .is_some_and(serde_json::Map::is_empty),
+            "compensation must clear {field}"
+        );
+    }
+    assert!(
+        server
+            .world
+            .cognition_in_flight_wakes()
+            .expect("Runtime in-flight wakes")
+            .is_empty(),
+        "compensation must not leave a Runtime wake for compatibility handling"
+    );
+    assert!(
+        server.world.cognition()["continuations"]
+            .as_array()
+            .is_some_and(|continuations| {
+                continuations.iter().all(|continuation| {
+                    matches!(
+                        continuation["status"].as_str(),
+                        Some("rejected")
+                            | Some("cancelled")
+                            | Some("invalidated")
+                            | Some("expired")
+                    )
+                })
+            })
+    );
+    let decision_requests = recorded
+        .lock()
+        .expect("recorded requests")
+        .iter()
+        .filter(|request| request.path == "/v1/world-simulator/decision-context")
+        .count();
+    assert_eq!(
+        decision_requests, 1,
+        "compensation must not schedule another provider call"
+    );
+
+    // SAFETY: This test holds the canonical provider environment lock.
+    unsafe {
+        oasis7::env_mut::remove_var("OASIS7_TEST_PROVIDER_WAIT_FAULT");
+    }
+    let _ = std::fs::remove_file(&lineage_path);
+    clear_runtime_provider_env();
+}
+
+#[test]
+fn runtime_provider_wait_projection_fault_is_compensated_without_double_schedule() {
+    assert_provider_wait_post_admission_fault_is_compensated(
+        "projection",
+        "injected provider Wait Runtime projection failure",
+    );
+}
+
+#[test]
+fn runtime_provider_wait_release_fault_is_compensated_without_double_schedule() {
+    assert_provider_wait_post_admission_fault_is_compensated(
+        "release",
+        "injected provider Wait actor turn release failure",
+    );
+}
+
 #[test]
 fn runtime_provider_backed_wake_resumes_with_fresh_request_and_origin_lineage() {
     let _guard = runtime_provider_env_lock().lock().expect("env lock");

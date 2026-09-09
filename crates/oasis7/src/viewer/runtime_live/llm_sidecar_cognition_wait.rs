@@ -1,5 +1,88 @@
 use super::*;
 
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ProviderWaitFault {
+    None = 0,
+    Projection = 1,
+    Release = 2,
+}
+
+#[cfg(test)]
+fn provider_wait_fault() -> ProviderWaitFault {
+    match std::env::var("OASIS7_TEST_PROVIDER_WAIT_FAULT").as_deref() {
+        Ok("projection") => ProviderWaitFault::Projection,
+        Ok("release") => ProviderWaitFault::Release,
+        _ => ProviderWaitFault::None,
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn compensate_provider_wait_admission(
+    sidecar: &mut RuntimeLlmSidecar,
+    world: &mut RuntimeWorld,
+    request: &crate::simulator::ContinuousAgentRequestContextV1,
+    admitted: &crate::runtime::AgentContinuation,
+    proposal_id: &str,
+    reason: impl Into<String>,
+) -> String {
+    let reason = reason.into();
+    let mut compensation_errors = Vec::new();
+    if let Err(error) = world.transition_cognition_continuation(
+        admitted.continuation_id.as_str(),
+        crate::runtime::ContinuationStatusV1::Rejected,
+        world.state().time,
+    ) {
+        compensation_errors.push(format!("Runtime rejection failed: {error:?}"));
+    }
+    if let Some(runner) = sidecar
+        .runner
+        .as_mut()
+        .and_then(RuntimeDecisionRunner::async_runner_mut)
+    {
+        if let Err(error) = runner.invalidate_continuation_for_agent(
+            request.agent_subject.as_str(),
+            crate::simulator::ContinuationInvalidationReason::Rejected,
+        ) {
+            compensation_errors.push(format!("Harness invalidation failed: {error}"));
+        }
+        if let Err(error) = runner.expire_runtime_turn(
+            request.agent_subject.as_str(),
+            request.agent_session_id.as_str(),
+            request.agent_turn_id.as_str(),
+            request.decision_request_id.as_str(),
+        ) {
+            compensation_errors.push(format!("actor turn cleanup failed: {error}"));
+        }
+    }
+    sidecar.provider_continuation_proposals.remove(proposal_id);
+    sidecar
+        .provider_active_turns
+        .remove(request.agent_subject.as_str());
+    sidecar
+        .provider_contexts
+        .remove(request.agent_subject.as_str());
+    sidecar
+        .provider_held_decisions
+        .remove(request.agent_subject.as_str());
+    sidecar
+        .provider_wait_until
+        .remove(request.agent_subject.as_str());
+    if let Err(error) = sidecar.persist_provider_lineage() {
+        compensation_errors.push(format!(
+            "provider Wait lineage cleanup persistence failed: {error}"
+        ));
+    }
+    if compensation_errors.is_empty() {
+        format!("{reason}; Runtime continuation rejected and provider Wait state compensated")
+    } else {
+        format!(
+            "{reason}; provider Wait compensation incomplete: {}",
+            compensation_errors.join("; ")
+        )
+    }
+}
+
 /// Admit a provider Wait through the production Harness and Runtime seams.
 /// The local Viewer timer is deliberately not a fallback: a wait is a durable
 /// continuation only after both authorities accept the exact current
@@ -138,31 +221,63 @@ pub(in crate::viewer::runtime_live::control_plane::llm_sidecar) fn admit_provide
             return Err(format!("provider Wait Runtime admission failed: {error:?}"));
         }
     };
-    if let Some(runner) = sidecar
+    let admitted_for_compensation = admitted.clone();
+    #[cfg(test)]
+    if provider_wait_fault() == ProviderWaitFault::Projection {
+        return Err(compensate_provider_wait_admission(
+            sidecar,
+            world,
+            request,
+            &admitted_for_compensation,
+            proposal_id.as_str(),
+            "injected provider Wait Runtime projection failure",
+        ));
+    }
+    let post_admission_error = if let Some(runner) = sidecar
         .runner
         .as_mut()
         .and_then(RuntimeDecisionRunner::async_runner_mut)
     {
-        runner
-            .apply_runtime_continuation_projection_with_current_context(
-                request.agent_subject.as_str(),
-                admitted,
-                &current,
-            )
-            .map_err(|error| {
-                format!(
-                    "provider Wait Runtime projection failed after admission: {error} (Harness handle {})",
-                    handle.chain_id
-                )
-            })?;
-        runner
-            .release_runtime_turn_for_continuation(
-                request.agent_subject.as_str(),
-                request.agent_session_id.as_str(),
-                request.agent_turn_id.as_str(),
-                request.decision_request_id.as_str(),
-            )
-            .map_err(|error| format!("provider Wait actor turn release failed: {error}"))?;
+        if let Err(error) = runner.apply_runtime_continuation_projection_with_current_context(
+            request.agent_subject.as_str(),
+            admitted,
+            &current,
+        ) {
+            Some(format!(
+                "provider Wait Runtime projection failed after admission: {error} (Harness handle {})",
+                handle.chain_id
+            ))
+        } else {
+            #[cfg(test)]
+            let release_injected = provider_wait_fault() == ProviderWaitFault::Release;
+            #[cfg(not(test))]
+            let release_injected = false;
+            if release_injected {
+                Some("injected provider Wait actor turn release failure".to_string())
+            } else {
+                runner
+                    .release_runtime_turn_for_continuation(
+                        request.agent_subject.as_str(),
+                        request.agent_session_id.as_str(),
+                        request.agent_turn_id.as_str(),
+                        request.decision_request_id.as_str(),
+                    )
+                    .err()
+                    .map(|error| format!("provider Wait actor turn release failed: {error}"))
+            }
+        }
+    } else {
+        None
+    };
+    if let Some(error) = post_admission_error {
+        return Err(compensate_provider_wait_admission(
+            sidecar,
+            world,
+            request,
+            &admitted_for_compensation,
+            proposal_id.as_str(),
+            error,
+        ));
     }
     sidecar
         .provider_active_turns

@@ -294,6 +294,11 @@ impl RuntimeLlmSidecar {
             .keys()
             .cloned()
             .chain(
+                self.provider_completed_decisions
+                    .iter()
+                    .map(|decision| decision.agent_id.clone()),
+            )
+            .chain(
                 self.pending_actions
                     .values()
                     .map(|pending| pending.agent_id.clone()),
