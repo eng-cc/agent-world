@@ -1,11 +1,15 @@
 use super::*;
 
-#[cfg(test)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ProviderWaitFault {
     None = 0,
     Projection = 1,
     Release = 2,
+    Runtime = 3,
+    Harness = 4,
+    Actor = 5,
+    Persistence = 6,
+    PersistenceBlocker = 7,
 }
 
 #[cfg(test)]
@@ -13,8 +17,18 @@ fn provider_wait_fault() -> ProviderWaitFault {
     match std::env::var("OASIS7_TEST_PROVIDER_WAIT_FAULT").as_deref() {
         Ok("projection") => ProviderWaitFault::Projection,
         Ok("release") => ProviderWaitFault::Release,
+        Ok("runtime") => ProviderWaitFault::Runtime,
+        Ok("harness") => ProviderWaitFault::Harness,
+        Ok("actor") => ProviderWaitFault::Actor,
+        Ok("persistence") => ProviderWaitFault::Persistence,
+        Ok("persistence_blocker") => ProviderWaitFault::PersistenceBlocker,
         _ => ProviderWaitFault::None,
     }
+}
+
+#[cfg(not(test))]
+fn provider_wait_fault() -> ProviderWaitFault {
+    ProviderWaitFault::None
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -27,51 +41,247 @@ fn compensate_provider_wait_admission(
     reason: impl Into<String>,
 ) -> String {
     let reason = reason.into();
+    let fault = provider_wait_fault();
     let mut compensation_errors = Vec::new();
-    if let Err(error) = world.transition_cognition_continuation(
-        admitted.continuation_id.as_str(),
-        crate::runtime::ContinuationStatusV1::Rejected,
-        world.state().time,
-    ) {
-        compensation_errors.push(format!("Runtime rejection failed: {error:?}"));
+    let mut runtime_already_terminal =
+        world
+            .cognition_continuations()
+            .as_array()
+            .is_some_and(|continuations| {
+                continuations.iter().any(|continuation| {
+                    continuation["continuation_id"] == admitted.continuation_id
+                        && matches!(
+                            continuation["status"].as_str(),
+                            Some("rejected")
+                                | Some("cancelled")
+                                | Some("invalidated")
+                                | Some("expired")
+                        )
+                })
+            });
+    if fault == ProviderWaitFault::Runtime {
+        let fault_continuation_id = format!("{}-fault", admitted.continuation_id);
+        match world.transition_cognition_continuation(
+            fault_continuation_id.as_str(),
+            crate::runtime::ContinuationStatusV1::Rejected,
+            world.state().time,
+        ) {
+            Ok(_) => compensation_errors.push(
+                "Runtime rejection returned error injection did not return an error".to_string(),
+            ),
+            Err(error) => {
+                compensation_errors.push(format!("Runtime rejection returned error: {error:?}"))
+            }
+        }
+    } else if !runtime_already_terminal {
+        match world.transition_cognition_continuation(
+            admitted.continuation_id.as_str(),
+            crate::runtime::ContinuationStatusV1::Rejected,
+            world.state().time,
+        ) {
+            Ok(_) => runtime_already_terminal = true,
+            Err(error) => {
+                // A retry can observe a terminal Runtime continuation after
+                // another recovery pass committed it. Treat that exact
+                // terminal state as idempotent; any other error remains a
+                // recoverable compensation failure.
+                let terminal_after_error =
+                    world
+                        .cognition_continuations()
+                        .as_array()
+                        .is_some_and(|continuations| {
+                            continuations.iter().any(|continuation| {
+                                continuation["continuation_id"] == admitted.continuation_id
+                                    && matches!(
+                                        continuation["status"].as_str(),
+                                        Some("rejected")
+                                            | Some("cancelled")
+                                            | Some("invalidated")
+                                            | Some("expired")
+                                    )
+                            })
+                        });
+                if terminal_after_error {
+                    runtime_already_terminal = true;
+                } else {
+                    compensation_errors.push(format!("Runtime rejection failed: {error:?}"));
+                }
+            }
+        }
     }
     if let Some(runner) = sidecar
         .runner
         .as_mut()
         .and_then(RuntimeDecisionRunner::async_runner_mut)
     {
-        if let Err(error) = runner.invalidate_continuation_for_agent(
+        if fault == ProviderWaitFault::Harness {
+            let harness_fault_result = runner.validate_active_continuation_with_authority(
+                request.agent_subject.as_str(),
+                &crate::simulator::ContinuationAuthorityContextV1 {
+                    baseline_observation_digest: String::new(),
+                    goal_digest: String::new(),
+                    policy_digest: String::new(),
+                    precondition_digest: String::new(),
+                },
+                admitted,
+            );
+            match harness_fault_result {
+                Ok(()) => compensation_errors.push(
+                    "Harness validation returned error injection did not return an error"
+                        .to_string(),
+                ),
+                Err(error) => {
+                    compensation_errors.push(format!("Harness validation returned error: {error}"))
+                }
+            }
+        }
+        let harness_result = runner.invalidate_continuation_for_agent(
             request.agent_subject.as_str(),
             crate::simulator::ContinuationInvalidationReason::Rejected,
-        ) {
+        );
+        if let Err(error) = harness_result {
             compensation_errors.push(format!("Harness invalidation failed: {error}"));
         }
-        if let Err(error) = runner.expire_runtime_turn(
+        let actor_turn_id = if fault == ProviderWaitFault::Actor {
+            format!("{}-fault", request.agent_turn_id)
+        } else {
+            request.agent_turn_id.clone()
+        };
+        let actor_result = runner.expire_runtime_turn(
             request.agent_subject.as_str(),
             request.agent_session_id.as_str(),
-            request.agent_turn_id.as_str(),
+            actor_turn_id.as_str(),
             request.decision_request_id.as_str(),
-        ) {
-            compensation_errors.push(format!("actor turn cleanup failed: {error}"));
+        );
+        match actor_result {
+            Ok(()) if fault == ProviderWaitFault::Actor => compensation_errors
+                .push("actor turn cleanup failed injection did not return an error".to_string()),
+            Ok(()) => {}
+            Err(error) => {
+                if fault == ProviderWaitFault::Actor
+                    || !runtime_already_terminal
+                    || !error.to_string().contains("unknown pending Runtime turn")
+                {
+                    compensation_errors.push(format!("actor turn cleanup failed: {error}"));
+                }
+            }
         }
     }
-    sidecar.provider_continuation_proposals.remove(proposal_id);
-    sidecar
+
+    // Keep every identity map intact until all authority compensation succeeds.
+    // If the final checkpoint write fails, restore these values so the prior
+    // durable checkpoint still describes the same recoverable request.
+    let proposal_backup = sidecar
+        .provider_continuation_proposals
+        .get(proposal_id)
+        .cloned();
+    let active_backup = sidecar
         .provider_active_turns
-        .remove(request.agent_subject.as_str());
-    sidecar
+        .get(request.agent_subject.as_str())
+        .cloned();
+    let context_backup = sidecar
         .provider_contexts
-        .remove(request.agent_subject.as_str());
-    sidecar
+        .get(request.agent_subject.as_str())
+        .cloned();
+    let held_backup = sidecar
         .provider_held_decisions
-        .remove(request.agent_subject.as_str());
-    sidecar
+        .get(request.agent_subject.as_str())
+        .cloned();
+    let wait_backup = sidecar
         .provider_wait_until
-        .remove(request.agent_subject.as_str());
-    if let Err(error) = sidecar.persist_provider_lineage() {
-        compensation_errors.push(format!(
-            "provider Wait lineage cleanup persistence failed: {error}"
-        ));
+        .get(request.agent_subject.as_str())
+        .copied();
+    let recovery_backup = sidecar
+        .provider_continuation_recovery_pending
+        .get(request.agent_subject.as_str())
+        .cloned();
+
+    if compensation_errors.is_empty() {
+        #[cfg(test)]
+        if matches!(
+            fault,
+            ProviderWaitFault::Persistence | ProviderWaitFault::PersistenceBlocker
+        ) {
+            if let Err(error) = sidecar.install_test_provider_lineage_checkpoint_blocker() {
+                compensation_errors.push(format!(
+                    "provider Wait test checkpoint blocker setup failed: {error}"
+                ));
+            }
+        }
+    }
+    if compensation_errors.is_empty() {
+        sidecar.provider_continuation_proposals.remove(proposal_id);
+        sidecar
+            .provider_active_turns
+            .remove(request.agent_subject.as_str());
+        sidecar
+            .provider_contexts
+            .remove(request.agent_subject.as_str());
+        sidecar
+            .provider_held_decisions
+            .remove(request.agent_subject.as_str());
+        sidecar
+            .provider_wait_until
+            .remove(request.agent_subject.as_str());
+        sidecar
+            .provider_continuation_recovery_pending
+            .remove(request.agent_subject.as_str());
+        let persistence_result = sidecar.persist_provider_lineage();
+        if let Err(error) = persistence_result {
+            compensation_errors.push(format!(
+                "provider Wait lineage cleanup persistence failed: {error}"
+            ));
+        }
+    }
+    if !compensation_errors.is_empty() {
+        if let Some(proposal) = proposal_backup {
+            sidecar
+                .provider_continuation_proposals
+                .insert(proposal_id.to_string(), proposal);
+        }
+        if let Some(context) = active_backup.clone() {
+            sidecar
+                .provider_active_turns
+                .insert(request.agent_subject.to_string(), context);
+        }
+        if let Some(context) = context_backup.clone() {
+            sidecar
+                .provider_contexts
+                .insert(request.agent_subject.to_string(), context);
+        }
+        if let Some(decision) = held_backup {
+            sidecar
+                .provider_held_decisions
+                .insert(request.agent_subject.to_string(), decision);
+        }
+        if let Some(wait_until) = wait_backup {
+            sidecar
+                .provider_wait_until
+                .insert(request.agent_subject.to_string(), wait_until);
+        }
+        if let Some(recovery) = recovery_backup {
+            sidecar
+                .provider_continuation_recovery_pending
+                .insert(request.agent_subject.to_string(), recovery);
+        } else {
+            sidecar.provider_continuation_recovery_pending.insert(
+                request.agent_subject.to_string(),
+                format!("{reason}; compensation identity retained"),
+            );
+        }
+        if let Some(context) = context_backup.as_ref().or(active_backup.as_ref()) {
+            sidecar
+                .provider_active_turns
+                .entry(request.agent_subject.to_string())
+                .or_insert_with(|| context.clone());
+            sidecar
+                .provider_contexts
+                .entry(request.agent_subject.to_string())
+                .or_insert_with(|| context.clone());
+        }
+        // A persistence error leaves the previous checkpoint untouched;
+        // best-effort logging must not erase the in-memory recovery record.
+        sidecar.persist_provider_lineage_best_effort();
     }
     if compensation_errors.is_empty() {
         format!("{reason}; Runtime continuation rejected and provider Wait state compensated")
@@ -81,6 +291,56 @@ fn compensate_provider_wait_admission(
             compensation_errors.join("; ")
         )
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn retry_pending_provider_wait_compensation(
+    sidecar: &mut RuntimeLlmSidecar,
+    world: &mut RuntimeWorld,
+) -> Result<bool, String> {
+    let Some((agent_id, reason)) = sidecar
+        .provider_continuation_recovery_pending
+        .iter()
+        .next()
+        .map(|(agent_id, reason)| (agent_id.clone(), reason.clone()))
+    else {
+        return Ok(false);
+    };
+    let Some(context) = sidecar.provider_contexts.get(&agent_id).cloned() else {
+        return Ok(false);
+    };
+    let Some(proposal_id) = sidecar
+        .provider_continuation_proposals
+        .iter()
+        .find(|(_, proposal)| proposal.agent_id == agent_id)
+        .map(|(proposal_id, _)| proposal_id.clone())
+    else {
+        return Ok(false);
+    };
+    let continuations = serde_json::from_value::<Vec<crate::runtime::AgentContinuation>>(
+        world.cognition_continuations(),
+    )
+    .map_err(|error| format!("provider Wait recovery continuation decode failed: {error}"))?;
+    let Some(admitted) = continuations.into_iter().find(|continuation| {
+        continuation.agent_id == agent_id
+            && continuation.agent_session_id == context.request_context.agent_session_id
+            && continuation.agent_turn_id == context.request_context.agent_turn_id
+            && continuation.decision_request_id == context.request_context.decision_request_id
+            && continuation.continuation_proposal_id == proposal_id
+    }) else {
+        return Ok(false);
+    };
+    let _ = compensate_provider_wait_admission(
+        sidecar,
+        world,
+        &context.request_context,
+        &admitted,
+        proposal_id.as_str(),
+        reason,
+    );
+    Ok(!sidecar
+        .provider_continuation_recovery_pending
+        .contains_key(&agent_id))
 }
 
 /// Admit a provider Wait through the production Harness and Runtime seams.
@@ -223,14 +483,34 @@ pub(in crate::viewer::runtime_live::control_plane::llm_sidecar) fn admit_provide
     };
     let admitted_for_compensation = admitted.clone();
     #[cfg(test)]
-    if provider_wait_fault() == ProviderWaitFault::Projection {
+    if matches!(
+        provider_wait_fault(),
+        ProviderWaitFault::Projection
+            | ProviderWaitFault::Runtime
+            | ProviderWaitFault::Harness
+            | ProviderWaitFault::Actor
+            | ProviderWaitFault::Persistence
+            | ProviderWaitFault::PersistenceBlocker
+    ) {
         return Err(compensate_provider_wait_admission(
             sidecar,
             world,
             request,
             &admitted_for_compensation,
             proposal_id.as_str(),
-            "injected provider Wait Runtime projection failure",
+            match provider_wait_fault() {
+                ProviderWaitFault::Projection => {
+                    "provider Wait Runtime projection compensation failure"
+                }
+                ProviderWaitFault::Runtime => "Runtime compensation operation failure",
+                ProviderWaitFault::Harness => "Harness compensation operation failure",
+                ProviderWaitFault::Actor => "actor compensation operation failure",
+                ProviderWaitFault::Persistence => "provider Wait checkpoint persistence failure",
+                ProviderWaitFault::PersistenceBlocker => {
+                    "real provider Wait lineage checkpoint blocker"
+                }
+                _ => "provider Wait compensation failure",
+            },
         ));
     }
     let post_admission_error = if let Some(runner) = sidecar
@@ -249,22 +529,23 @@ pub(in crate::viewer::runtime_live::control_plane::llm_sidecar) fn admit_provide
             ))
         } else {
             #[cfg(test)]
-            let release_injected = provider_wait_fault() == ProviderWaitFault::Release;
+            let release_fault = provider_wait_fault() == ProviderWaitFault::Release;
             #[cfg(not(test))]
-            let release_injected = false;
-            if release_injected {
-                Some("injected provider Wait actor turn release failure".to_string())
+            let release_fault = false;
+            let release_turn_id = if release_fault {
+                format!("{}-fault", request.agent_turn_id)
             } else {
-                runner
-                    .release_runtime_turn_for_continuation(
-                        request.agent_subject.as_str(),
-                        request.agent_session_id.as_str(),
-                        request.agent_turn_id.as_str(),
-                        request.decision_request_id.as_str(),
-                    )
-                    .err()
-                    .map(|error| format!("provider Wait actor turn release failed: {error}"))
-            }
+                request.agent_turn_id.clone()
+            };
+            runner
+                .release_runtime_turn_for_continuation(
+                    request.agent_subject.as_str(),
+                    request.agent_session_id.as_str(),
+                    release_turn_id.as_str(),
+                    request.decision_request_id.as_str(),
+                )
+                .err()
+                .map(|error| format!("provider Wait actor turn release failed: {error}"))
         }
     } else {
         None
@@ -294,6 +575,63 @@ pub(in crate::viewer::runtime_live::control_plane::llm_sidecar) fn admit_provide
 
 #[cfg(not(target_arch = "wasm32"))]
 impl RuntimeLlmSidecar {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(in crate::viewer::runtime_live) fn provider_wait_recovery_agent(&self) -> Option<String> {
+        self.provider_continuation_recovery_pending
+            .keys()
+            .next()
+            .cloned()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(in crate::viewer::runtime_live) fn provider_wait_recovery_requires_attention(
+        &self,
+    ) -> Option<String> {
+        let agent_id = self.provider_wait_recovery_agent()?;
+        let compatible_sibling_exists = self.provider_agent_ids.iter().any(|candidate| {
+            candidate != &agent_id
+                && !self.provider_recovery_pending.contains_key(candidate)
+                && !self
+                    .provider_continuation_recovery_pending
+                    .contains_key(candidate)
+                && !self.provider_transport_exhausted.contains(candidate)
+        });
+        (!compatible_sibling_exists).then_some(agent_id)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(in crate::viewer::runtime_live) fn has_provider_wait_recovery(
+        &self,
+        agent_id: &str,
+    ) -> bool {
+        self.provider_continuation_recovery_pending
+            .contains_key(agent_id)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(in crate::viewer::runtime_live) fn retry_provider_wait_compensation(
+        &mut self,
+        world: &mut RuntimeWorld,
+    ) -> Result<bool, String> {
+        retry_pending_provider_wait_compensation(self, world)
+    }
+
+    pub(in crate::viewer::runtime_live) fn recover_pending_provider_wait(
+        &mut self,
+        world: &mut RuntimeWorld,
+    ) -> Result<(), String> {
+        let Some(agent_id) = self.provider_wait_recovery_agent() else {
+            return Ok(());
+        };
+        match self.retry_provider_wait_compensation(world) {
+            Ok(true) => Ok(()),
+            Ok(false) => Err(format!(
+                "provider Wait continuation recovery remains pending for {agent_id}"
+            )),
+            Err(error) => Err(error),
+        }
+    }
+
     pub(in crate::viewer::runtime_live::control_plane::llm_sidecar) fn admit_provider_wait_continuation(
         &mut self,
         world: &mut RuntimeWorld,

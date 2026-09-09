@@ -73,6 +73,10 @@ impl RuntimeLlmSidecar {
                 "provider lineage recovery fenced; durable checkpoint must be repaired before dispatch: {error}"
             ));
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Err(error) = self.recover_pending_provider_wait(world) {
+            tracing::warn!(error, "provider Wait recovery remains pending");
+        }
         let provider_settings = provider_settings_from_env()?;
         let runtime_binding = world.current_runtime_binding(world_id)?;
         self.provider_lineage_binding = Some(runtime_binding.clone());

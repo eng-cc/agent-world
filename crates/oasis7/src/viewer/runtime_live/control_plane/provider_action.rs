@@ -42,11 +42,31 @@ impl ViewerRuntimeLiveServer {
         // `pending` disposition.
         self.drain_provider_feedback_outbox();
         let Some(decision) = decision else {
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Some(agent_id) = self.llm_sidecar.provider_wait_recovery_requires_attention() {
+                return Err(wake_handoff_error_trace(
+                    agent_id.as_str(),
+                    self.world.state().time,
+                    "provider Wait continuation recovery remains pending".to_string(),
+                ));
+            }
             return Ok(None);
         };
         let decision_trace = decision.decision_trace.clone();
         if let Some(agent_id) = self.llm_sidecar.take_provider_transport_exhausted_agent() {
             return Err(self.finish_provider_transport_exhaustion(agent_id, decision_trace));
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(trace) = decision_trace.as_ref() {
+            if self
+                .llm_sidecar
+                .has_provider_wait_recovery(decision.agent_id.as_str())
+            {
+                // A failed continuation compensation owns the exact request
+                // identity until its durable recovery pass succeeds. Do not
+                // let the generic provider-error path release that identity.
+                return Err(trace.clone());
+            }
         }
         if let Some(trace) = decision_trace.as_ref() {
             if trace.llm_error.is_some()
@@ -408,15 +428,6 @@ impl ViewerRuntimeLiveServer {
         prior_trace: Option<AgentDecisionTrace>,
     ) -> AgentDecisionTrace {
         let reason = "failed_provider: provider transport retry budget exhausted";
-        if let Some(feedback) = self.llm_sidecar.fail_provider_turn_with_feedback(
-            agent_id.as_str(),
-            "failed",
-            "failed_provider",
-        ) {
-            self.deliver_provider_feedback_best_effort(feedback);
-        }
-        self.llm_sidecar
-            .clear_provider_transport_exhausted(agent_id.as_str());
         let mut trace = prior_trace.unwrap_or_else(|| AgentDecisionTrace {
             agent_id: agent_id.clone(),
             time: self.world.state().time,
@@ -444,6 +455,87 @@ impl ViewerRuntimeLiveServer {
             })
             .to_string(),
         );
+
+        // Runtime owns the cognition lifecycle. Close the persisted
+        // RequestDispatched prefix before releasing any sidecar identity; a
+        // restart fence without this transition leaves the Agent permanently
+        // in flight. The exact request context is retained in the sidecar so
+        // this call is idempotent across repeated control passes.
+        if let Err(error) = self.llm_sidecar.fail_provider_cognition_turn(
+            &mut self.world,
+            trace.agent_id.as_str(),
+            "failed_provider",
+        ) {
+            if let Some(context) = self
+                .llm_sidecar
+                .provider_recovery_context(trace.agent_id.as_str())
+            {
+                self.llm_sidecar.retain_provider_recovery_pending(
+                    trace.agent_id.as_str(),
+                    &context,
+                    format!("Runtime terminalization pending: {error}"),
+                );
+            }
+            trace.llm_error = Some(format!(
+                "{reason}; Runtime cognition terminalization failed: {error}"
+            ));
+            return trace;
+        }
+
+        let Some(feedback) = self.llm_sidecar.provider_failure_feedback(
+            trace.agent_id.as_str(),
+            "failed",
+            "failed_provider",
+        ) else {
+            if let Some(context) = self
+                .llm_sidecar
+                .provider_recovery_context(trace.agent_id.as_str())
+            {
+                self.llm_sidecar.retain_provider_recovery_pending(
+                    trace.agent_id.as_str(),
+                    &context,
+                    "terminal feedback context unavailable",
+                );
+            }
+            trace.llm_error = Some(format!("{reason}; terminal feedback context unavailable"));
+            return trace;
+        };
+        if let Err(error) =
+            self.allocate_runtime_feedback(feedback, RuntimeFeedbackProjectionV1::default())
+        {
+            if let Some(context) = self
+                .llm_sidecar
+                .provider_recovery_context(trace.agent_id.as_str())
+            {
+                self.llm_sidecar.retain_provider_recovery_pending(
+                    trace.agent_id.as_str(),
+                    &context,
+                    format!("terminal feedback allocation pending: {error}"),
+                );
+            }
+            trace.llm_error = Some(format!(
+                "{reason}; Runtime feedback allocation failed: {error}"
+            ));
+            return trace;
+        }
+        self.drain_provider_feedback_outbox();
+        if let Err(error) = self
+            .llm_sidecar
+            .release_provider_turn_checked(trace.agent_id.as_str())
+        {
+            if let Some(context) = self
+                .llm_sidecar
+                .provider_recovery_context(trace.agent_id.as_str())
+            {
+                self.llm_sidecar.retain_provider_recovery_pending(
+                    trace.agent_id.as_str(),
+                    &context,
+                    format!("provider release pending: {error}"),
+                );
+            }
+            trace.llm_error = Some(format!("{reason}; provider release failed: {error}"));
+            return trace;
+        }
         if let Err(error) = self.handoff_runtime_wake_for_agent(
             trace.agent_id.as_str(),
             crate::runtime::ContinuationStatusV1::Rejected,

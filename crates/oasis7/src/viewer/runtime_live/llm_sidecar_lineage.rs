@@ -148,13 +148,43 @@ impl RuntimeLlmSidecar {
         self.provider_transport_exhausted_agent()
     }
 
-    pub(in crate::viewer::runtime_live) fn clear_provider_transport_exhausted(
+    pub(in crate::viewer::runtime_live) fn provider_recovery_context(
+        &self,
+        agent_id: &str,
+    ) -> Option<cognition_context::ProviderContextState> {
+        self.provider_recovery_pending
+            .get(agent_id)
+            .map(|pending| pending.active.clone())
+            .or_else(|| self.provider_contexts.get(agent_id).cloned())
+            .or_else(|| self.provider_active_turns.get(agent_id).cloned())
+    }
+
+    /// Keep an exact interrupted request fenced until every Runtime/Harness
+    /// recovery step has completed. This record is intentionally additive to
+    /// the transport exhaustion marker so a failed checkpoint write cannot
+    /// turn a known identity into an eligible fresh request.
+    pub(in crate::viewer::runtime_live) fn retain_provider_recovery_pending(
         &mut self,
         agent_id: &str,
+        context: &cognition_context::ProviderContextState,
+        reason: impl Into<String>,
     ) {
-        if self.provider_transport_exhausted.remove(agent_id) {
-            self.persist_provider_lineage_best_effort();
-        }
+        self.provider_recovery_pending.insert(
+            agent_id.to_string(),
+            lineage_persistence::ProviderRecoveryPending {
+                active: context.clone(),
+                reason: reason.into(),
+            },
+        );
+        self.provider_transport_exhausted
+            .insert(agent_id.to_string());
+        self.provider_active_turns
+            .entry(agent_id.to_string())
+            .or_insert_with(|| context.clone());
+        self.provider_contexts
+            .entry(agent_id.to_string())
+            .or_insert_with(|| context.clone());
+        self.persist_provider_lineage_best_effort();
     }
 }
 

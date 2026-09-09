@@ -349,10 +349,87 @@ impl RuntimeLlmSidecar {
         agent_id: &str,
         reason: &str,
     ) -> Result<(), String> {
-        let Some(context) = self.provider_contexts.get(agent_id) else {
-            return Ok(());
+        let Some(context) = self.provider_recovery_context(agent_id) else {
+            return Err(format!(
+                "provider recovery context missing for agent {agent_id}"
+            ));
         };
-        super::async_support::runtime_provider_failure(world, context, reason)
+        super::async_support::runtime_provider_failure(world, &context, reason)
+    }
+
+    /// Release a provider identity only after the Runtime failure has been
+    /// durably accepted. If sidecar persistence fails, restore the in-memory
+    /// identity so the next pass can retry the same terminal transition.
+    pub(in crate::viewer::runtime_live) fn release_provider_turn_checked(
+        &mut self,
+        agent_id: &str,
+    ) -> Result<(), String> {
+        let context = self
+            .provider_contexts
+            .get(agent_id)
+            .cloned()
+            .or_else(|| self.provider_recovery_context(agent_id));
+        if let Some(context) = context.as_ref() {
+            if let Some(runner) = self
+                .runner
+                .as_mut()
+                .and_then(RuntimeDecisionRunner::async_runner_mut)
+            {
+                if let Err(error) = runner.expire_runtime_turn(
+                    context.request_context.agent_subject.as_str(),
+                    context.request_context.agent_session_id.as_str(),
+                    context.request_context.agent_turn_id.as_str(),
+                    context.request_context.decision_request_id.as_str(),
+                ) {
+                    let message = error.to_string();
+                    if !message.contains("unknown pending Runtime turn") {
+                        return Err(format!("provider actor release failed: {error}"));
+                    }
+                }
+            }
+        }
+
+        let context_backup = self.provider_contexts.get(agent_id).cloned();
+        let active_backup = self.provider_active_turns.get(agent_id).cloned();
+        let wait_backup = self.provider_wait_until.get(agent_id).copied();
+        let held_backup = self.provider_held_decisions.get(agent_id).cloned();
+        let recovery_backup = self.provider_recovery_pending.get(agent_id).cloned();
+        let exhausted_backup = self.provider_transport_exhausted.contains(agent_id);
+        self.provider_contexts.remove(agent_id);
+        self.provider_active_turns.remove(agent_id);
+        self.provider_wait_until.remove(agent_id);
+        self.provider_held_decisions.remove(agent_id);
+        self.provider_recovery_pending.remove(agent_id);
+        self.provider_transport_exhausted.remove(agent_id);
+        if let Err(error) = self.persist_provider_lineage() {
+            if let Some(context) = context_backup {
+                self.provider_contexts.insert(agent_id.to_string(), context);
+            }
+            if let Some(context) = active_backup {
+                self.provider_active_turns
+                    .insert(agent_id.to_string(), context);
+            }
+            if let Some(wait_until) = wait_backup {
+                self.provider_wait_until
+                    .insert(agent_id.to_string(), wait_until);
+            }
+            if let Some(decision) = held_backup {
+                self.provider_held_decisions
+                    .insert(agent_id.to_string(), decision);
+            }
+            if let Some(recovery) = recovery_backup {
+                self.provider_recovery_pending
+                    .insert(agent_id.to_string(), recovery);
+            }
+            if exhausted_backup {
+                self.provider_transport_exhausted
+                    .insert(agent_id.to_string());
+            }
+            return Err(format!(
+                "provider lineage release persistence failed: {error}"
+            ));
+        }
+        Ok(())
     }
 
     /// Create a typed terminal disposition for a provider request that never
@@ -397,6 +474,39 @@ impl RuntimeLlmSidecar {
         self.provider_held_decisions.remove(agent_id);
         self.release_provider_turn(agent_id);
         feedback
+    }
+
+    /// Build a stable terminal feedback envelope without releasing the
+    /// provider identity. Recovery callers must enqueue/deliver this envelope
+    /// and persist the sidecar release as separate, checked transitions.
+    pub(in crate::viewer::runtime_live) fn provider_failure_feedback(
+        &mut self,
+        agent_id: &str,
+        status: &str,
+        reject_reason: &str,
+    ) -> Option<FeedbackEnvelopeV1> {
+        if !matches!(status, "rejected" | "failed") {
+            return None;
+        }
+        let context = self.provider_contexts.get(agent_id).cloned()?;
+        let feedback_id = self
+            .provider_terminal_states
+            .get(agent_id)
+            .filter(|terminal| {
+                terminal.agent_turn_id == context.request_context.agent_turn_id
+                    && terminal.decision_request_id == context.request_context.decision_request_id
+                    && terminal.status == status
+                    && terminal.reject_reason.as_deref() == Some(reject_reason)
+            })
+            .and_then(|terminal| terminal.feedback_id.clone());
+        Some(self.provider_feedback_for_request(
+            &context.request_context,
+            None,
+            status,
+            None,
+            feedback_id,
+            Some(reject_reason.to_string()),
+        ))
     }
 
     pub(in crate::viewer::runtime_live) fn provider_feedback(

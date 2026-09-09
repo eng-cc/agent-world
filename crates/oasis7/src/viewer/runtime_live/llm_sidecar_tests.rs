@@ -4,6 +4,8 @@ use super::*;
 mod lineage_http_tests;
 #[path = "llm_sidecar_lineage_tests.rs"]
 mod lineage_tests;
+#[path = "llm_sidecar_recovery_tests.rs"]
+mod recovery_tests;
 
 struct ProviderEnvSnapshot {
     previous: Vec<(&'static str, Option<std::ffi::OsString>)>,

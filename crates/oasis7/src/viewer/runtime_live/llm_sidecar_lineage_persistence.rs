@@ -159,6 +159,33 @@ impl RuntimeLlmSidecar {
         self.provider_lineage_store = Some(path.into());
     }
 
+    #[cfg(test)]
+    pub(in crate::viewer::runtime_live) fn install_test_provider_lineage_checkpoint_blocker(
+        &self,
+    ) -> Result<(), String> {
+        let Some(path) = self.provider_lineage_store.as_deref() else {
+            return Err("provider lineage checkpoint path is not configured".to_string());
+        };
+        if path.is_dir() {
+            return Ok(());
+        }
+        let backup_path = path.with_extension(format!("blocked-backup-{}", std::process::id()));
+        fs::rename(path, &backup_path).map_err(|error| {
+            format!(
+                "provider lineage checkpoint blocker could not move {}: {error}",
+                path.display()
+            )
+        })?;
+        if let Err(error) = fs::create_dir(path) {
+            let _ = fs::rename(&backup_path, path);
+            return Err(format!(
+                "provider lineage checkpoint blocker could not create {}: {error}",
+                path.display()
+            ));
+        }
+        Ok(())
+    }
+
     pub(in crate::viewer::runtime_live) fn restore_provider_lineage(
         &mut self,
         world: &RuntimeWorld,
