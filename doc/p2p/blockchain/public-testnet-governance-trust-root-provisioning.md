@@ -90,15 +90,19 @@ endpoint, arbitrary command, or credential.
 The identity-v2 filesystem policy is intentionally narrower than an
 owner-only-secret policy. Every trust-config, registry, public-key, adapter,
 and verifier artifact must be a regular non-symlink file owned by the
-operator-local account that runs admission; group/other write bits are
-forbidden on the artifact and every ancestor. Public metadata and public keys
+operator-local account that runs admission. Group/other write bits are forbidden
+on artifacts and ancestors, except for root-owned sticky ancestor directories.
+Ancestor symlinks are rejected except for the fixed `/var` and `/tmp` system
+aliases used on macOS. Public metadata and public keys
 may remain readable (for example, `0644` is valid when no non-owner write bit
 is present), while adapter and verifier files must have the owner execute bit.
 The tool reads these artifacts through `O_NOFOLLOW` descriptors and binds
 pre/post `fstat` metadata; provider/verifier executable digests are checked
 again after their subprocess returns before any caller output is promoted.
-This is the canonical replacement/TOCTOU boundary; applying `0600` to every
-public artifact is not required by this contract.
+These protected reads and pre/post checks do not guarantee atomic execution
+against a hostile same-owner process that replaces and restores an executable
+between checks. Applying `0600` to every public artifact is not required by
+this contract.
 
 The provider receipt must use the implemented v2 contract:
 `oasis7.identity_v2_provider_attestation.v2` has the exact top-level fields
@@ -116,8 +120,10 @@ same pinned provider public key verifies both payload and proof signatures.
 `proof-v1:<64 lowercase hex>` is a bounded reference; these format checks do
 not prove entropy or exclude covert data.
 
-All deployment artifacts listed above and every ancestor must satisfy the regular
-non-symlink, ownership, and mode policy before use. Identity-v2 verification
+Identity-v2 artifacts and their ancestors must satisfy the filesystem policy
+above, including its explicit ancestor exceptions, before use. The governance
+root uses its separate file and ancestor checks; the identity-v2 ancestor
+write-mode checks above do not describe governance-root enforcement. Identity-v2 verification
 must bind the exact raw-v1 bytes, context digest, pre-receipt plan-intent
 digest, task, frozen HEAD, node/peer tuple, capture window, rotation, and
 trust-config/provider-registry/verifier digests. A receipt with
