@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -999,38 +1000,89 @@ def _identity_v2_evidence_map(
     return evidence, raw_by_node, envelopes_by_node
 
 
-def _identity_v2_pin_file(path_value: Path, expected_sha256: str | None, label: str) -> Path:
+def _identity_v2_anchor_identity(metadata: os.stat_result) -> tuple[int, ...]:
+    return (
+        metadata.st_dev, metadata.st_ino, metadata.st_size, metadata.st_mode,
+        metadata.st_uid, metadata.st_gid, metadata.st_mtime_ns, metadata.st_ctime_ns,
+    )
+
+
+def _identity_v2_pin_file(
+    path_value: Path, expected_sha256: str | None, label: str,
+    *, identities: dict[str, tuple[int, ...]] | None = None,
+) -> Path:
     """Validate one code-owned identity-v2 admission anchor before execution."""
     path = Path(path_value)
     if not path.is_absolute() or path.is_symlink() or not path.is_file():
         die(f"identity-v2 {label} is not a regular code-owned file")
     if expected_sha256 is None or HEX64_RE.fullmatch(expected_sha256) is None:
         die(f"identity-v2 {label} digest pin is not provisioned")
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    if not nofollow or not hasattr(os, "getuid"):
+        die(f"identity-v2 {label} platform cannot enforce protected authority reads")
     try:
-        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        ancestor = path.parent
+        while True:
+            # Match the signing tool's fixed macOS system aliases only.
+            if ancestor.is_symlink() and ancestor not in {Path("/var"), Path("/tmp")}:
+                die(f"identity-v2 {label} has a symlinked ancestor")
+            metadata = ancestor.stat()
+            if not stat.S_ISDIR(metadata.st_mode):
+                die(f"identity-v2 {label} has a non-directory ancestor")
+            sticky_root = bool(metadata.st_mode & stat.S_ISVTX) and metadata.st_uid == 0
+            if metadata.st_mode & 0o022 and not sticky_root:
+                die(f"identity-v2 {label} has an unauthorized-writable ancestor")
+            if ancestor.parent == ancestor:
+                break
+            ancestor = ancestor.parent
+        descriptor = os.open(path, os.O_RDONLY | nofollow)
+        try:
+            before = os.fstat(descriptor)
+            if not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid():
+                die(f"identity-v2 {label} is not an operator-owned regular authority file")
+            if before.st_mode & 0o022:
+                die(f"identity-v2 {label} is writable by a non-owner account")
+            if label == "verify tool" and not before.st_mode & stat.S_IXUSR:
+                die(f"identity-v2 {label} is not owner-executable")
+            with os.fdopen(descriptor, "rb", closefd=False) as stream:
+                actual = hashlib.sha256(stream.read()).hexdigest()
+            identity = _identity_v2_anchor_identity(before)
+            if identity != _identity_v2_anchor_identity(os.fstat(descriptor)):
+                die(f"identity-v2 {label} changed during authority read")
+            if identity != _identity_v2_anchor_identity(os.stat(path, follow_symlinks=False)):
+                die(f"identity-v2 {label} was replaced during authority read")
+        finally:
+            os.close(descriptor)
     except OSError as error:
         die(f"identity-v2 {label} cannot be read: {error.__class__.__name__}")
     if actual != expected_sha256.lower():
         die(f"identity-v2 {label} digest pin does not match its bytes")
+    if identities is not None:
+        identities[label] = identity
     return path
 
 
-def _identity_v2_admission_anchors() -> tuple[Path, Path, Path]:
+def _identity_v2_admission_anchors(
+    identities: dict[str, tuple[int, ...]] | None = None,
+) -> tuple[Path, Path, Path]:
     """Return independently pinned verifier, trust, and provider paths."""
     tool = _identity_v2_pin_file(
         IDENTITY_V2_VERIFY_TOOL_PATH,
         IDENTITY_V2_VERIFY_TOOL_SHA256,
         "verify tool",
+        identities=identities,
     )
     trust = _identity_v2_pin_file(
         IDENTITY_V2_TRUST_CONFIG_PATH,
         IDENTITY_V2_TRUST_CONFIG_SHA256,
         "trust config",
+        identities=identities,
     )
     registry = _identity_v2_pin_file(
         IDENTITY_V2_PROVIDER_REGISTRY_PATH,
         IDENTITY_V2_PROVIDER_REGISTRY_SHA256,
         "provider registry",
+        identities=identities,
     )
     return tool, trust, registry
 
@@ -1049,7 +1101,15 @@ def _independently_verify_identity_v2_entries(
     anchors.  Temporary verifier outputs are never promoted to admission
     artifacts.
     """
-    tool, trust, registry = _identity_v2_admission_anchors()
+    initial_identities: dict[str, tuple[int, ...]] = {}
+    tool, trust, registry = _identity_v2_admission_anchors(initial_identities)
+
+    def require_unchanged_anchors() -> None:
+        current: dict[str, tuple[int, ...]] = {}
+        paths = _identity_v2_admission_anchors(current)
+        if paths != (tool, trust, registry) or current != initial_identities:
+            die("identity-v2 admission authority identity changed around verifier execution")
+
     entries = evidence.get("entries")
     if not isinstance(entries, list):
         die("identity-v2 evidence entries are not a list")
@@ -1096,6 +1156,7 @@ def _independently_verify_identity_v2_entries(
                 "--verification-out",
                 str(fresh_receipt_path),
             ]
+            require_unchanged_anchors()
             try:
                 result = subprocess.run(
                     command,
@@ -1107,6 +1168,9 @@ def _independently_verify_identity_v2_entries(
                 )
             except (OSError, subprocess.TimeoutExpired) as error:
                 die(f"identity-v2 independent verifier failed for {name}: {error.__class__.__name__}")
+            # Match the governed pre/post execution contract. This is not
+            # atomic execution against an adversarial same-owner process.
+            require_unchanged_anchors()
             if result.returncode != 0:
                 detail = result.stderr.strip().splitlines()[-1] if result.stderr.strip() else "no diagnostic"
                 die(f"identity-v2 independent verifier rejected {name}: {detail[:240]}")

@@ -2753,5 +2753,161 @@ class PlannerOutputAliasTests(unittest.TestCase):
                     self.assertEqual({path: path.read_bytes() for path in before}, before)
 
 
+class IdentityV2AdmissionAnchorTests(unittest.TestCase):
+    """Exercise the planner's filesystem boundary without signing fixtures."""
+
+    def setUp(self) -> None:
+        self.module = load_module()
+        self.directory = tempfile.TemporaryDirectory(prefix="oasis7-anchor-test-")
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name).resolve()
+        self.root.chmod(0o700)
+        self.anchors = {}
+        for prefix in ("VERIFY_TOOL", "TRUST_CONFIG", "PROVIDER_REGISTRY"):
+            path = self.root / prefix
+            path.write_bytes(b"# fixture authority\n")
+            path.chmod(0o700 if prefix == "VERIFY_TOOL" else 0o644)
+            self.anchors[prefix] = path
+            setattr(self.module, f"IDENTITY_V2_{prefix}_PATH", path)
+            setattr(self.module, f"IDENTITY_V2_{prefix}_SHA256", _fixture_digest(path))
+        self.receipt = {
+            "verified": True, "mode": "current_admission",
+            "historical_only": False, "apply_authorized": True,
+        }
+        self.envelope = {"authenticated": True, "verified": True}
+        self.entry = {"node_name": "fixture-node"}
+        for field, value in (("raw_v1", {}), ("signed_envelope", self.envelope),
+                             ("provider_attestation", {}), ("verification", self.receipt)):
+            path = self.root / f"{field}.json"
+            _write_fixture_json(path, value)
+            path.chmod(0o600)
+            self.entry[field] = _fixture_descriptor(path)
+        # Control: public 0644 metadata and the platform's protected temp
+        # ancestry must admit before each targeted unsafe mutation is applied.
+        with patch.object(self.module.subprocess, "run", side_effect=self._successful_child):
+            self.assertEqual(set(self._verify()), {"fixture-0"})
+
+    def _verify(self, count: int = 1) -> object:
+        entries = [dict(self.entry, node_name=f"fixture-{index}") for index in range(count)]
+        return self.module._independently_verify_identity_v2_entries(
+            {"entries": entries}, self.root / "context", self.root / "intent"
+        )
+
+    def _successful_child(self, command, **kwargs):
+        # This child deliberately mirrors retained claims; the parent must
+        # establish executable identity before trusting such matching output.
+        _write_fixture_json(Path(command[command.index("--out") + 1]), self.envelope)
+        _write_fixture_json(Path(command[command.index("--verification-out") + 1]), self.receipt)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    def test_anchor_rejects_non_owner_write_permissions(self) -> None:
+        for name, path in self.anchors.items():
+            for mode in (0o720, 0o702):
+                with self.subTest(anchor=name, mode=oct(mode)):
+                    path.chmod(mode)
+                    try:
+                        with self.assertRaises(SystemExit):
+                            self.module._identity_v2_admission_anchors()
+                    finally:
+                        path.chmod(0o700 if name == "VERIFY_TOOL" else 0o644)
+
+    def test_anchor_rejects_wrong_operator_owner(self) -> None:
+        with patch.object(os, "getuid", return_value=os.getuid() + 1):
+            with self.assertRaises(SystemExit):
+                self.module._identity_v2_admission_anchors()
+
+    def test_anchor_rejects_non_executable_verifier(self) -> None:
+        self.anchors["VERIFY_TOOL"].chmod(0o644)
+        with self.assertRaises(SystemExit):
+            self.module._identity_v2_admission_anchors()
+
+    def test_anchor_rejects_writable_ancestor(self) -> None:
+        self.root.chmod(0o777)  # Not sticky: not the supported root-owned /tmp exception.
+        with self.assertRaises(SystemExit):
+            self.module._identity_v2_admission_anchors()
+
+    def test_anchor_rejects_symlink_ancestor(self) -> None:
+        alias = self.root / "alias"
+        alias.symlink_to(self.root, target_is_directory=True)
+        self.module.IDENTITY_V2_VERIFY_TOOL_PATH = alias / "VERIFY_TOOL"
+        with self.assertRaises(SystemExit):
+            self.module._identity_v2_admission_anchors()
+
+    def test_anchor_rejects_replacement_during_read(self) -> None:
+        tool = self.anchors["VERIFY_TOOL"]
+        real_read, real_fstat = Path.read_bytes, os.fstat
+        original_inode = tool.stat().st_ino
+        replaced = False
+
+        def replace():
+            nonlocal replaced
+            if not replaced:
+                replacement = self.root / "replacement"
+                replacement.write_bytes(b"# replaced verifier\n")
+                replacement.chmod(0o700)
+                replacement.replace(tool)
+                replaced = True
+
+        def read(path):
+            raw = real_read(path)
+            if path == tool:
+                replace()
+            return raw
+
+        def fstat(descriptor):
+            metadata = real_fstat(descriptor)
+            if metadata.st_ino == original_inode:
+                replace()
+            return metadata
+
+        with patch.object(Path, "read_bytes", side_effect=read, autospec=True), patch.object(os, "fstat", side_effect=fstat):
+            with self.assertRaises(SystemExit):
+                self.module._identity_v2_admission_anchors()
+        self.assertTrue(replaced)
+
+    def test_anchor_mutation_after_initial_pin_before_child_is_rejected(self) -> None:
+        original_descriptor = self.module._evidence_descriptor
+        for name, path in self.anchors.items():
+            with self.subTest(anchor=name):
+                original = path.read_bytes()
+                changed = False
+
+                def descriptor(*args):
+                    nonlocal changed
+                    result = original_descriptor(*args)
+                    if not changed:
+                        path.write_bytes(b"# changed before child\n")
+                        changed = True
+                    return result
+
+                try:
+                    with patch.object(self.module, "_evidence_descriptor", side_effect=descriptor), patch.object(self.module.subprocess, "run", side_effect=self._successful_child) as child:
+                        with self.assertRaises(SystemExit):
+                            self._verify()
+                        child.assert_not_called()
+                finally:
+                    path.write_bytes(original)
+
+    def test_anchor_mutation_during_child_is_rejected_before_next_entry(self) -> None:
+        for name, path in self.anchors.items():
+            with self.subTest(anchor=name):
+                original = path.read_bytes()
+                calls = []
+
+                def child(command, **kwargs):
+                    calls.append(command)
+                    result = self._successful_child(command, **kwargs)
+                    path.write_bytes(b"# changed during child\n")
+                    return result
+
+                try:
+                    with patch.object(self.module.subprocess, "run", side_effect=child):
+                        with self.assertRaises(SystemExit):
+                            self._verify(count=2)
+                    self.assertEqual(len(calls), 1, "reject before dispatching another node")
+                finally:
+                    path.write_bytes(original)
+
+
 if __name__ == "__main__":
     unittest.main()
