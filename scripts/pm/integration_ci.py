@@ -64,12 +64,12 @@ def current_request(repository,uid,number,base,head,branch):
             if mode in ('full_escalation','newapi_bridge_package'): continue
             if mode!='integration_revalidation' or not re.fullmatch(r'task_[0-9a-f]{32}',request_uid) or not request_pr.isdigit() or not OID.fullmatch(request_base) or not OID.fullmatch(request_head):
                 raise ValueError('integration current request identity malformed')
-            if request_base!=run['head_sha']:
-                raise ValueError('integration request base differs from trusted workflow ref')
             if request_base!=base or request_head!=head: continue
             if (request_uid==uid)!=(int(request_pr)==int(number)):
                 raise ValueError('integration request task/PR identity conflicts')
             if request_uid==uid and int(request_pr)==int(number):
+                if request_base!=run['head_sha']:
+                    raise ValueError('integration request base differs from trusted workflow ref')
                 attempt=run.get('run_attempt')
                 when=run.get('created_at')
                 if type(attempt) is not int or attempt<1 or not isinstance(when,str): raise ValueError('integration attempt identity unavailable')

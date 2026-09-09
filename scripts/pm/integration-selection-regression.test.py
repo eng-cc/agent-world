@@ -87,4 +87,31 @@ class SelectionTests(unittest.TestCase):
   self.runs=[run(20,conclusion='failure'),old]
   with self.assertRaisesRegex(SystemExit,'current request'):self.check()
 
+ def stale(self,uid):
+  value=run(5,uid=uid,conclusion='failure')
+  value['display_title']=value['display_title'].replace('|'+BASE+'|','|'+'e'*40+'|')
+  return value
+ def test_prepare_rejects_dispatch_base_race_before_git_mutation(self):
+  prior='e'*40
+  pr={**self.pr,'base':{'sha':prior,'ref':'main','repo':{'full_name':'owner/repo'}},'head':{'sha':HEAD,'repo':{'full_name':'owner/repo'}}}
+  def api(*args):
+   return pr if '/pulls/' in args[-1] else {'default_branch':'main'}
+  with patch.object(integration,'gh',side_effect=api),patch.dict(integration.os.environ,{'GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_REF':'refs/heads/main','GITHUB_SHA':BASE,'GITHUB_WORKFLOW_SHA':BASE}),patch.object(integration,'git') as git:
+   with self.assertRaisesRegex(ValueError,'immutable current default-branch authority'):
+    integration.prepare(Path('/unused'), 'owner/repo',UID,12,prior,HEAD)
+   git.assert_not_called()
+ def test_other_task_stale_dispatch_does_not_block_normal_ci(self):
+  self.runs=[self.stale('task_'+'d'*32)]
+  self.assertEqual(self.check()[1]['id'],1)
+ def test_other_task_stale_dispatch_allows_new_and_explicit_request(self):
+  self.runs=[run(20),self.stale('task_'+'d'*32)]
+  self.assertEqual(self.check()[1]['id'],20)
+  self.assertEqual(self.check(20)[1]['id'],20)
+ def test_same_task_stale_base_allows_correct_retry(self):
+  self.runs=[run(20),self.stale(UID)]
+  self.assertEqual(self.check(20)[1]['id'],20)
+ def test_stale_dispatch_does_not_hide_exact_current_failure(self):
+  self.runs=[run(20,conclusion='failure'),run(10),self.stale('task_'+'d'*32)]
+  with self.assertRaisesRegex(SystemExit,'current request not successful'):self.check()
+
 if __name__=='__main__':unittest.main()
