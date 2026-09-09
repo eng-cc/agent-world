@@ -94,7 +94,7 @@ nodes with convenient receipts.
    `schema_version`, `network_id`, `task_uid`, `head_oid`, `capture_window_id`,
    `capture_start`, `capture_end`, `rotation_epoch`, `issued_at`, and
    `expires_at`. Plan intent is exact `oasis7.clean_room_plan_intent.v1` with
-   `context_digest`, `adapter_action`, and sorted node/reset-surface entries.
+   `schema_version`, `context_digest`, `adapter_action`, and `nodes`. Each node has exactly `node_name`, `node_id`, `peer_id`, `role`, and `reset_surface_ids`; nodes and reset-surface IDs are sorted and unique.
    The order is context -> context digest -> plan intent -> plan digest ->
    payload -> signature -> verification receipt -> final plan; final-plan
    digest never flows upstream.
@@ -114,7 +114,7 @@ nodes with convenient receipts.
    Synthetic fake-provider, fake-transport, or test-only module-cache harness receipts are orphan evidence and cannot satisfy this
    production provisioning gate.
 The nested proof envelope is exactly `oasis7.rebuild_proof.v1`:
-`signer_id`, `signer_public_key_hex`, `signed_payload_sha256`, and `signature_hex`.
+`schema_version`, `signer_id`, `signer_public_key_hex`, `signed_payload_sha256`, and `signature_hex`.
 Before projection into any legacy capture shape, an independent verifier must
 verify the complete response claims. The deployed runtime writes a separate
 `oasis7.rebuild_proof_verification.v1` receipt:

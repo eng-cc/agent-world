@@ -166,6 +166,7 @@ others:
   "signer_id": "<allowlisted-id>",
   "verifier_id": "governed-receipt-verifier",
   "trust_root_id": "<governed-root-id>",
+  "network_id": "oasis7-public-testnet-governed-20260606",
   "task_uid": "<task-uid>",
   "head_oid": "<frozen-head-oid>",
   "frozen_head_oid": "<frozen-head-oid>",
@@ -232,7 +233,7 @@ host-specific `key_path`. The v2 envelope does not expose `key_path`; the raw
 digest binds it without making it a direct admission field.
 
 Signed fields are every field in the payload object, including signer,
-verifier, root, task/head/plan, freshness, node/peer, key tuple, and raw-byte
+verifier, root, governed network ID, task/head/plan, freshness, node/peer, key tuple, and raw-byte
 digest. `signature_hex`, `canonical_digest`, `authenticated`, and `verified`
 are not signed. `signature_hex` is the lowercase 128-hex Ed25519 result;
 `canonical_digest` is SHA-256 of canonical envelope JSON omitting only
