@@ -357,12 +357,19 @@ def main() -> int:
         else:
             comparison_oid = resolve_comparison_ref(root, comparison_ref, args.comparison_oid)
         require_comparison_ancestor(root, comparison_oid, args.head)
+        from loop_gate import mapped_admission
+        try:
+            loop_admission = mapped_admission(root, args.task_uid, comparison_oid, args.head)
+        except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
+            raise ContractError(str(exc)) from exc
         roles = selector_roles(args)
         slices = expected_slices(args.task_uid, args.head, evidence_digest, comparison_ref, comparison_oid, roles)
         batch, batch_reused = ensure_batch(root, args.task_uid, args.head, evidence_digest, slices)
         epoch = str(batch["epoch"])
         identity = plan_identity(args.task_uid, args.head, evidence_digest,
                                  comparison_ref, comparison_oid, roles, slices)
+        if loop_admission['status'] != 'legacy':
+            identity['loop_binding'] = loop_admission['loop_binding']
         plan_path = (Path(args.out).resolve() if args.out else
                      root / ".pm" / "scratch" / args.task_uid / "review-plans" / f"{epoch}.json")
         preflight_result: dict[str, object] | None = None

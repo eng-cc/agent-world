@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 SCRIPT = Path(__file__).with_name("review-plan.py")
@@ -19,6 +21,17 @@ class ReviewPlanTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
+        mapping = self.root / '.pm/github-project-sync'
+        mapping.mkdir(parents=True)
+        (mapping / 'tasks.json').write_text(json.dumps({'tasks': {TASK: {'task_uid': TASK, 'repository': 'fixture/repo', 'issue_number': 1}}}))
+        fakebin = self.root / 'fakebin'
+        fakebin.mkdir()
+        gh = fakebin / 'gh'
+        gh.write_text('#!/usr/bin/env python3\nimport json,sys\nprint(json.dumps([] if any("/comments" in arg for arg in sys.argv) else {"body": "' + TASK + '"}))\n')
+        gh.chmod(0o755)
+        environment = patch.dict(os.environ, {'PATH': str(fakebin) + os.pathsep + os.environ['PATH']})
+        environment.start()
+        self.addCleanup(environment.stop)
         self.git("init", "-b", "main")
         self.git("config", "user.email", "test@example.invalid")
         self.git("config", "user.name", "Test")

@@ -1290,6 +1290,33 @@ if git_rev("rev-parse", "--verify", f"refs/heads/{source_branch}^{{commit}}") !=
 if git_rev("rev-parse", "--verify", f"{comparison_ref}^{{commit}}") != comparison_head:
     fail("comparison ref differs from the frozen comparison head")
 
+try:
+    import base64
+    live_issue = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo_name}/issues/{issue_number}'], text=True))
+    live_body = live_issue.get('body', '')
+    matches = re.findall(r'^- loop_binding_b64: `([^`]+)`$', live_body, re.MULTILINE)
+    if 'loop_binding_b64:' in live_body:
+        if len(matches) != 1: fail('malformed live loop binding')
+        binding = json.loads(base64.b64decode(matches[0] + '=' * (-len(matches[0]) % 4), altchars=b'-_', validate=True))
+        if record.get('loop_binding') != binding: fail('loop cache differs from live Issue')
+        tool = Path(os.environ.get('OASIS7_LOOP_TOOL_ROOT', '')).resolve()
+        commit = binding.get('policy_commit', '')
+        if not re.fullmatch(r'[0-9a-f]{40}', commit): fail('missing immutable effective policy')
+        subprocess.run(['git', '-C', str(source_worktree), 'fetch', '--no-tags', 'origin', 'main:refs/remotes/origin/main'], check=True, capture_output=True)
+        subprocess.run(['git', '-C', str(source_worktree), 'merge-base', '--is-ancestor', commit, 'refs/remotes/origin/main'], check=True, capture_output=True)
+        if subprocess.check_output(['git', '-C', str(tool), 'rev-parse', 'HEAD'], text=True).strip() != commit: fail('trusted tool HEAD mismatch')
+        names = subprocess.check_output(['git', '-C', str(tool), 'ls-tree', '-r', '--name-only', commit, '--', 'scripts/pm'], text=True).splitlines()
+        for name in names:
+            if (tool / name).is_symlink() or (tool / name).read_bytes() != subprocess.check_output(['git', '-C', str(tool), 'show', commit + ':' + name]): fail('trusted helper bytes mismatch')
+        if subprocess.check_output(['git', '-C', str(tool), 'ls-files', '--others', '--', 'scripts/pm', ':(exclude)**/__pycache__/**'], text=True).strip(): fail('untracked trusted helper shadow')
+        subprocess.run([sys.executable, str(tool / 'scripts/pm/loop.py'), 'validate-scope', '--repo-root', str(source_worktree), '--tool-root', str(tool), '--task-uid', task_uid, '--base', comparison_head, '--head', source_head, '--json'], check=True, stdout=subprocess.DEVNULL)
+    elif record.get('loop_binding') is not None:
+        fail('live binding disappeared')
+    elif any('oasis7-loop-binding-history' in str(item.get('body', '')) for item in comments):
+        fail('live binding deleted after immutable history')
+except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
+    fail(str(exc))
+
 print(task_uid)
 print(issue_url)
 print(issue_number)

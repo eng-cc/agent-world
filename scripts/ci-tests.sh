@@ -182,6 +182,18 @@ run_packaging_contract_tests() {
 run_operational_contract_tests() {
   run_packaging_contract_tests
   run python3 ./scripts/pm/ci-ready-receipt.test.py
+  run python3 ./scripts/pm/loop-policy.test.py
+  run python3 ./scripts/pm/loop-contracts.test.py
+  run python3 ./scripts/pm/loop_terminal.test.py
+  run python3 ./scripts/pm/loop.test.py
+  run python3 ./scripts/pm/loop-gate.test.py
+  run python3 ./scripts/pm/loop-ci.test.py
+  run python3 ./scripts/pm/loop-ingress.test.py
+  run env PYTHONDONTWRITEBYTECODE=1 python3 ./scripts/pm/loop-publication.integration.test.py
+  run python3 ./scripts/pm/loop-recovery.test.py
+  run python3 ./scripts/pm/github-project-loop.test.py
+  run python3 ./scripts/pm/loop-bootstrap.test.py
+  run env PYTHONDONTWRITEBYTECODE=1 python3 ./scripts/pm/loop-bootstrap.integration.test.py
   run ./scripts/ci-required-scope-audit-contract.test.sh
   run ./scripts/game-world-state-sync-commit-module-required.test.sh
   run ./scripts/state-sync-closure-evidence-template.test.sh

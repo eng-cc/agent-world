@@ -93,6 +93,11 @@ if [[ "${1:-}" == "api" && "${2:-}" == repos/* && "$*" == *"--jq .default_branch
   exit 0
 fi
 
+if [[ "${1:-}" == "api" && "${2:-}" == repos/*/issues/* ]]; then
+  cat "${TEST_GH_ISSUE_BODY_JSON:?}"
+  exit 0
+fi
+
 if [[ "${1:-}" == "pr" && "${2:-}" == "create" ]]; then
   printf 'https://github.com/example/oasis7/pull/999\n'
   exit 0

@@ -145,6 +145,13 @@ def validate_packet(root: Path, packet: dict[str, object]) -> None:
     base_binding = str(identity.get("base_binding") or "live_ref")
     frozen_base_oid = str(identity.get("base_sha")) if base_binding == "immutable_oid" else None
     facts = current_facts(root, task, str(identity.get("base_ref") or ""), frozen_base_oid)
+    from loop_gate import admission
+    try:
+        admission(root, task, facts['base_sha'], facts['head'])
+    except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
+        fail(str(exc))
+    if packet.get('loop_binding') != task.get('loop_binding'):
+        fail('packet loop binding differs from canonical task')
     for field in ("worktree", "branch", "base_sha", "head"):
         if identity.get(field) != facts[field]:
             fail(f"stale or mismatched packet {field}: expected {facts[field]}, got {identity.get(field)}")
@@ -384,6 +391,8 @@ def main() -> int:
 
     task = load_task(root, args.task_uid)
     facts = current_facts(root, task, args.base, args.frozen_base_oid)
+    from loop_gate import admission
+    loop_admission = admission(root, task, facts['base_sha'], facts['head'])
     governance = [repo_reference(root, item, "governance-ref") for item in args.governance_ref]
     scoped = [repo_reference(root, item, "scoped-ref") for item in args.scoped_ref]
     packet: dict[str, object] = {
@@ -417,6 +426,8 @@ def main() -> int:
         args.full_history_escalation_reason,
         "slice.full_history_escalation_reason",
     ) if args.context_delivery_mode == "full_history_escalation" else ""
+    if loop_admission['status'] != 'legacy':
+        packet['loop_binding'] = task['loop_binding']
     packet["packet_digest"] = canonical_digest(packet)
     validate_packet(root, packet)
     packet_dir = (root / f".pm/scratch/{args.task_uid}/slice-packets").resolve()
