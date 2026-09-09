@@ -6,6 +6,8 @@ Status: **non-normative design companion; implementation and activation pending*
 
 The normative authority is the [proposed completion contract](./source-of-truth.md#three-loop-completion-proposal), alongside the existing [ready/done gates](./source-of-truth.md#ready-and-done) and [terminal runbook](./source-of-truth.md#terminal-runbook). This independent documentation change defines subsequent work. It does not change executable policy, migrate gameplay documents, authorize external operations, release held PR #3645, or activate its candidate helpers. Current production behavior below is distinguished from proposed admission semantics.
 
+The companion [role-adaptation proposal](./three-loop-role-adaptation.design.md) separates professional ownership and slice duties from loop and completion mode. Role text alone does not enable the empty-scope or accepted-dependency capabilities specified here; their producer/consumer validation prerequisites remain unchanged.
+
 ## 1. Three ownership loops, two existing completion routes
 
 Loop ownership answers what professional authority a task may change. Completion route answers what proof finishes that task. They are independent dimensions; research does not create a fourth loop, and a deployment without repository edits does not become a repository PR merely to obtain a completion receipt.
