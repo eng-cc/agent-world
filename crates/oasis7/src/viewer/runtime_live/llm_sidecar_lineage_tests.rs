@@ -423,8 +423,11 @@ fn provider_lineage_persists_and_restores_pending_lifecycle_markers() {
     first.provider_terminal_states.insert(
         "agent-0".to_string(),
         super::lineage_persistence::ProviderTerminalState {
+            agent_id: "agent-0".to_string(),
+            agent_session_id: "session-7".to_string(),
             agent_turn_id: "turn-1".to_string(),
             decision_request_id: "request-1".to_string(),
+            request_digest: crate::simulator::Digest32::default().to_string(),
             status: "rejected".to_string(),
             reject_reason: Some("no_effect".to_string()),
             feedback_id: Some("feedback-1".to_string()),
@@ -1096,6 +1099,18 @@ fn provider_lineage_restore_quarantines_missing_or_mismatched_active_identity() 
             .get("agent-mismatch")
             .map(|record| record.reason.as_str()),
         Some("active_context_identity_mismatch")
+    );
+    assert!(
+        restored
+            .provider_transport_exhausted
+            .contains("agent-missing"),
+        "missing active identity must enter the durable Runtime terminalization path"
+    );
+    assert!(
+        restored
+            .provider_transport_exhausted
+            .contains("agent-mismatch"),
+        "mismatched active identity must enter the durable Runtime terminalization path"
     );
     assert!(restored.provider_contexts.contains_key("agent-mismatch"));
     assert!(

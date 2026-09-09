@@ -13,8 +13,16 @@ const PROVIDER_LINEAGE_SCHEMA_VERSION: u16 = 2;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(super) struct ProviderTerminalState {
+    /// The map key is an optimization only; retain the subject in the
+    /// terminal record so comparisons cannot accidentally cross Agent lanes.
+    #[serde(default)]
+    pub(super) agent_id: String,
+    #[serde(default)]
+    pub(super) agent_session_id: String,
     pub(super) agent_turn_id: String,
     pub(super) decision_request_id: String,
+    #[serde(default)]
+    pub(super) request_digest: String,
     pub(in crate::viewer::runtime_live) status: String,
     pub(super) reject_reason: Option<String>,
     pub(super) feedback_id: Option<String>,
@@ -39,6 +47,17 @@ pub(super) struct ProviderRecoveryPending {
     pub(super) reason: String,
 }
 
+/// Durable identity retained after provider finalization until the Runtime
+/// scheduler accepts the corresponding wake terminal disposition.  Runtime
+/// owns the wake; this record only makes a failed handoff retryable without
+/// allocating a new provider turn.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub(in crate::viewer::runtime_live) struct ProviderWakeRecoveryPending {
+    pub(in crate::viewer::runtime_live) active: cognition_context::ProviderContextState,
+    pub(in crate::viewer::runtime_live) status: crate::runtime::ContinuationStatusV1,
+    pub(in crate::viewer::runtime_live) reason: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct PersistedProviderLineageV1 {
     schema_version: u16,
@@ -57,6 +76,8 @@ struct PersistedProviderLineageV1 {
     provider_continuation_recovery_pending: BTreeMap<String, String>,
     #[serde(default)]
     provider_recovery_pending: BTreeMap<String, ProviderRecoveryPending>,
+    #[serde(default)]
+    provider_wake_recovery_pending: BTreeMap<String, ProviderWakeRecoveryPending>,
     provider_wait_until: BTreeMap<String, u64>,
     provider_feedback_seq: BTreeMap<String, u64>,
     #[serde(default)]
@@ -149,6 +170,51 @@ fn migrate_legacy_budget_contracts(value: &mut Value) -> Result<(), String> {
 }
 
 impl RuntimeLlmSidecar {
+    /// Return true when a queued provider decision carries the exact identity
+    /// already closed by Runtime. A legacy decision may omit its cognition
+    /// envelope, so use the durable sidecar context for that compatibility
+    /// shape while still requiring the complete terminal identity.
+    pub(super) fn provider_decision_is_terminalized(
+        &self,
+        decision: &async_support::RuntimeLlmDecision,
+    ) -> bool {
+        let context = decision
+            .cognition
+            .as_ref()
+            .map(|cognition| &cognition.request)
+            .or_else(|| self.provider_contexts.get(&decision.agent_id));
+        context.is_some_and(|context| {
+            self.provider_terminal_matches_request(
+                decision.agent_id.as_str(),
+                &context.request_context,
+            )
+        })
+    }
+
+    /// Compare a persisted terminal marker with a full request identity. New
+    /// fields deliberately fail closed when loading a legacy marker that did
+    /// not contain them; an incomplete marker must not suppress a later turn.
+    pub(super) fn provider_terminal_matches_request(
+        &self,
+        agent_id: &str,
+        request: &crate::simulator::ContinuousAgentRequestContextV1,
+    ) -> bool {
+        let Some(terminal) = self.provider_terminal_states.get(agent_id) else {
+            return false;
+        };
+        !terminal.agent_id.is_empty()
+            && !terminal.agent_session_id.is_empty()
+            && !terminal.agent_turn_id.is_empty()
+            && !terminal.decision_request_id.is_empty()
+            && !terminal.request_digest.is_empty()
+            && terminal.agent_id == agent_id
+            && request.agent_subject == agent_id
+            && terminal.agent_session_id == request.agent_session_id
+            && terminal.agent_turn_id == request.agent_turn_id
+            && terminal.decision_request_id == request.decision_request_id
+            && terminal.request_digest == request.request_digest.to_string()
+    }
+
     /// Configure a Viewer-owned durable checkpoint for provider transport and
     /// response lineage. Runtime remains the authority for world state and
     /// binding validation; this file only retains work owned by the adapter.
@@ -246,12 +312,18 @@ impl RuntimeLlmSidecar {
         self.provider_continuation_recovery_pending =
             checkpoint.provider_continuation_recovery_pending;
         self.provider_recovery_pending = checkpoint.provider_recovery_pending;
+        self.provider_wake_recovery_pending = checkpoint.provider_wake_recovery_pending;
         self.provider_wait_until = checkpoint.provider_wait_until;
         self.provider_feedback_seq = checkpoint.provider_feedback_seq;
         self.provider_feedback_seq_by_session = checkpoint.provider_feedback_seq_by_session;
         self.provider_memory_store = checkpoint.provider_memory_store;
         self.provider_completed_decisions = checkpoint.provider_completed_decisions;
         self.provider_transport_exhausted = checkpoint.provider_transport_exhausted;
+        self.provider_terminal_states = checkpoint.provider_terminal_states;
+        self.provider_completed_decisions = std::mem::take(&mut self.provider_completed_decisions)
+            .into_iter()
+            .filter(|decision| !self.provider_decision_is_terminalized(decision))
+            .collect();
         // A retry context is an interrupted logical request whose actor-local
         // budget ledger is absent after restart.  Do not carry it into the
         // normal retry selector: fence the identity for terminal feedback and
@@ -286,6 +358,9 @@ impl RuntimeLlmSidecar {
                 self.provider_transport_exhausted.insert(agent_id);
                 continue;
             }
+            if self.provider_decision_is_terminalized(&decision) {
+                continue;
+            }
             if !self
                 .provider_completed_decisions
                 .iter()
@@ -297,7 +372,6 @@ impl RuntimeLlmSidecar {
             self.provider_held_decisions.insert(agent_id, decision);
         }
         self.provider_stale_replans = checkpoint.provider_stale_replans;
-        self.provider_terminal_states = checkpoint.provider_terminal_states;
         self.provider_late_response_diagnostics = checkpoint.provider_late_response_diagnostics;
         self.pending_actions = checkpoint.pending_actions;
         self.pending_provider_world_events = checkpoint.pending_provider_world_events;
@@ -331,6 +405,7 @@ impl RuntimeLlmSidecar {
                     .map(|pending| pending.agent_id.clone()),
             )
             .chain(self.provider_wait_until.keys().cloned())
+            .chain(self.provider_wake_recovery_pending.keys().cloned())
             .chain(
                 world
                     .cognition_in_flight_wakes()
@@ -388,6 +463,11 @@ impl RuntimeLlmSidecar {
                     },
                 );
                 self.provider_active_turns.remove(agent_id.as_str());
+                // Route the durable quarantine through the same Runtime
+                // terminalization pass as an exhausted transport. Keeping the
+                // marker only in `provider_recovery_pending` would silently
+                // fence the agent forever with no actionable Runtime event.
+                self.provider_transport_exhausted.insert(agent_id);
                 recovered_orphan = true;
                 continue;
             }
@@ -446,9 +526,11 @@ impl RuntimeLlmSidecar {
             .provider_terminal_states
             .iter()
             .filter_map(|(agent_id, terminal)| {
+                if self.provider_wake_recovery_pending.contains_key(agent_id) {
+                    return None;
+                }
                 let context = self.provider_contexts.get(agent_id)?;
-                (context.request_context.agent_turn_id == terminal.agent_turn_id
-                    && context.request_context.decision_request_id == terminal.decision_request_id)
+                self.provider_terminal_matches_request(agent_id, &context.request_context)
                     .then_some(agent_id.clone())
             })
             .collect::<Vec<_>>();
@@ -493,6 +575,7 @@ impl RuntimeLlmSidecar {
                 .provider_continuation_recovery_pending
                 .clone(),
             provider_recovery_pending: self.provider_recovery_pending.clone(),
+            provider_wake_recovery_pending: self.provider_wake_recovery_pending.clone(),
             provider_wait_until: self.provider_wait_until.clone(),
             provider_feedback_seq: self.provider_feedback_seq.clone(),
             provider_feedback_seq_by_session: self.provider_feedback_seq_by_session.clone(),
@@ -553,11 +636,34 @@ impl RuntimeLlmSidecar {
         reject_reason: Option<String>,
         feedback_id: Option<String>,
     ) {
+        self.record_provider_terminal_state_for_request(
+            agent_id,
+            &context.request_context,
+            status,
+            reject_reason,
+            feedback_id,
+        );
+    }
+
+    /// Persist a terminal marker from the exact request used by Runtime. This
+    /// path is needed when restoration quarantines an active marker while the
+    /// sidecar's provider context is absent or belongs to another identity.
+    pub(super) fn record_provider_terminal_state_for_request(
+        &mut self,
+        agent_id: &str,
+        request: &crate::simulator::ContinuousAgentRequestContextV1,
+        status: &str,
+        reject_reason: Option<String>,
+        feedback_id: Option<String>,
+    ) {
         self.provider_terminal_states.insert(
             agent_id.to_string(),
             ProviderTerminalState {
-                agent_turn_id: context.request_context.agent_turn_id.clone(),
-                decision_request_id: context.request_context.decision_request_id.clone(),
+                agent_id: agent_id.to_string(),
+                agent_session_id: request.agent_session_id.clone(),
+                agent_turn_id: request.agent_turn_id.clone(),
+                decision_request_id: request.decision_request_id.clone(),
+                request_digest: request.request_digest.to_string(),
                 status: status.to_string(),
                 reject_reason,
                 feedback_id,

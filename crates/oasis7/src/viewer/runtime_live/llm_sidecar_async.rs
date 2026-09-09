@@ -130,17 +130,11 @@ impl RuntimeLlmSidecar {
             let _ = runner.take_completed();
         }
         for outcome in completed {
-            if self
-                .provider_terminal_states
-                .get(outcome.agent_id.as_str())
-                .is_some_and(|terminal| {
-                    outcome
-                        .prepared_request_context
-                        .as_ref()
-                        .is_some_and(|request| {
-                            request.agent_turn_id == terminal.agent_turn_id
-                                && request.decision_request_id == terminal.decision_request_id
-                        })
+            if outcome
+                .prepared_request_context
+                .as_ref()
+                .is_some_and(|request| {
+                    self.provider_terminal_matches_request(outcome.agent_id.as_str(), request)
                 })
             {
                 self.record_late_provider_response(&outcome);
@@ -156,7 +150,15 @@ impl RuntimeLlmSidecar {
         if !self.provider_completed_decisions.is_empty() {
             self.persist_provider_lineage_best_effort();
         }
-        if let Some(decision) = self.provider_completed_decisions.pop_front() {
+        while let Some(decision) = self.provider_completed_decisions.pop_front() {
+            if self.provider_decision_is_terminalized(&decision) {
+                // A terminal marker is authoritative even when a crash left
+                // the same response in the completed queue. Drop only the
+                // exact old identity; a later request for this Agent remains
+                // eligible because it carries a different turn/request pair.
+                self.persist_provider_lineage_best_effort();
+                continue;
+            }
             self.provider_held_decisions
                 .insert(decision.agent_id.clone(), decision.clone());
             self.persist_provider_lineage_best_effort();

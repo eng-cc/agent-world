@@ -13,6 +13,20 @@ impl ViewerRuntimeLiveServer {
         &mut self,
     ) -> Result<Option<AgentDecisionTrace>, AgentDecisionTrace> {
         self.drain_provider_feedback_outbox();
+        // A failed wake retry fences only its own Agent. Keep the error for
+        // an actionable no-decision result while allowing a healthy sibling
+        // to use this same control pass.
+        let wake_recovery_error = self
+            .llm_sidecar
+            .provider_wake_recovery_pending_agent()
+            .and_then(|agent_id| {
+                self.retry_provider_wake_recovery()
+                    .err()
+                    .map(|error| (agent_id, error))
+            });
+        let unresolved_wake_agent = wake_recovery_error
+            .as_ref()
+            .map(|(agent_id, _)| agent_id.as_str());
         if let Some(agent_id) = self.llm_sidecar.provider_stale_replan_exhausted_agent() {
             let mut trace = stale_replan_exhausted_trace(&self.world, agent_id.as_str());
             if let Err(error) = self.handoff_runtime_wake_for_agent(
@@ -27,7 +41,10 @@ impl ViewerRuntimeLiveServer {
             }
             return Err(trace);
         }
-        if let Some(agent_id) = self.llm_sidecar.take_provider_transport_exhausted_agent() {
+        if let Some(agent_id) = self
+            .llm_sidecar
+            .provider_transport_exhausted_agent_excluding(unresolved_wake_agent)
+        {
             return Err(self.finish_provider_transport_exhaustion(agent_id, None));
         }
         let decision = self.llm_sidecar.next_llm_decision(
@@ -42,6 +59,13 @@ impl ViewerRuntimeLiveServer {
         // `pending` disposition.
         self.drain_provider_feedback_outbox();
         let Some(decision) = decision else {
+            if let Some((agent_id, error)) = wake_recovery_error {
+                return Err(wake_handoff_error_trace(
+                    agent_id.as_str(),
+                    self.world.state().time,
+                    format!("Runtime wake recovery remains pending: {error}"),
+                ));
+            }
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(agent_id) = self.llm_sidecar.provider_wait_recovery_requires_attention() {
                 return Err(wake_handoff_error_trace(
@@ -53,7 +77,10 @@ impl ViewerRuntimeLiveServer {
             return Ok(None);
         };
         let decision_trace = decision.decision_trace.clone();
-        if let Some(agent_id) = self.llm_sidecar.take_provider_transport_exhausted_agent() {
+        if let Some(agent_id) = self
+            .llm_sidecar
+            .provider_transport_exhausted_agent_excluding(unresolved_wake_agent)
+        {
             return Err(self.finish_provider_transport_exhaustion(agent_id, decision_trace));
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -137,6 +164,13 @@ impl ViewerRuntimeLiveServer {
                         ) {
                             Ok(()) => {}
                             Err(error) => {
+                                if error.is_wake_handoff() {
+                                    return Err(wake_handoff_error_trace(
+                                        cognition.request.request_context.agent_subject.as_str(),
+                                        self.world.state().time,
+                                        error.reason(),
+                                    ));
+                                }
                                 let stale_base = error.is_stale_base();
                                 let reason = error.reason();
                                 if stale_base {
@@ -427,6 +461,7 @@ impl ViewerRuntimeLiveServer {
         agent_id: String,
         prior_trace: Option<AgentDecisionTrace>,
     ) -> AgentDecisionTrace {
+        let wake_recovery_context = self.llm_sidecar.provider_recovery_context(&agent_id);
         let reason = "failed_provider: provider transport retry budget exhausted";
         let mut trace = prior_trace.unwrap_or_else(|| AgentDecisionTrace {
             agent_id: agent_id.clone(),
@@ -541,6 +576,14 @@ impl ViewerRuntimeLiveServer {
             crate::runtime::ContinuationStatusV1::Rejected,
             "provider_transport_exhausted",
         ) {
+            if let Some(context) = wake_recovery_context.as_ref() {
+                self.llm_sidecar.retain_provider_wake_recovery_pending(
+                    trace.agent_id.as_str(),
+                    context,
+                    crate::runtime::ContinuationStatusV1::Rejected,
+                    "provider_transport_exhausted",
+                );
+            }
             trace.llm_error = Some(format!(
                 "{}; Runtime wake handoff failed: {error}",
                 trace.llm_error.take().unwrap_or_default()
@@ -820,12 +863,21 @@ impl ViewerRuntimeLiveServer {
         if queued_feedback.is_some() {
             self.drain_provider_feedback_outbox();
         }
-        self.handoff_runtime_wake_for_agent(
+        if let Err(error) = self.handoff_runtime_wake_for_agent(
             cognition.request.request_context.agent_subject.as_str(),
             crate::runtime::ContinuationStatusV1::Completed,
             "provider_action_committed",
-        )
-        .map_err(ProviderRuntimeActionCommitError::Message)?;
+        ) {
+            self.llm_sidecar.retain_provider_wake_recovery_pending(
+                cognition.request.request_context.agent_subject.as_str(),
+                &cognition.request,
+                crate::runtime::ContinuationStatusV1::Completed,
+                "provider_action_committed",
+            );
+            return Err(ProviderRuntimeActionCommitError::WakeHandoff(format!(
+                "Runtime wake handoff failed: {error}"
+            )));
+        }
         Ok(())
     }
 }
@@ -958,6 +1010,7 @@ fn provider_cognition_commit_inputs(
 
 enum ProviderRuntimeActionCommitError {
     StaleBase,
+    WakeHandoff(String),
     Message(String),
 }
 
@@ -966,9 +1019,14 @@ impl ProviderRuntimeActionCommitError {
         matches!(self, Self::StaleBase)
     }
 
+    fn is_wake_handoff(&self) -> bool {
+        matches!(self, Self::WakeHandoff(_))
+    }
+
     fn reason(&self) -> String {
         match self {
             Self::StaleBase => CognitionCommitRejectReasonV1::StaleBase.code().to_string(),
+            Self::WakeHandoff(reason) => reason.clone(),
             Self::Message(reason) => reason.clone(),
         }
     }

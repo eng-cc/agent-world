@@ -259,6 +259,11 @@ pub(in crate::viewer::runtime_live) struct RuntimeLlmSidecar {
     /// the marker durable prevents a restart from silently losing identity
     /// evidence and issuing a duplicate provider call.
     provider_recovery_pending: BTreeMap<String, lineage_persistence::ProviderRecoveryPending>,
+    /// A Runtime wake handoff may fail after the provider action is terminal.
+    /// Retain the exact context and disposition until Runtime accepts that
+    /// wake so retry cannot allocate a duplicate provider turn.
+    provider_wake_recovery_pending:
+        BTreeMap<String, lineage_persistence::ProviderWakeRecoveryPending>,
     provider_wait_until: BTreeMap<String, u64>,
     provider_feedback_seq: BTreeMap<String, u64>,
     /// Compatibility feedback sequencing is partitioned by Agent session;
@@ -341,6 +346,7 @@ impl RuntimeLlmSidecar {
             provider_continuation_proposals: BTreeMap::new(),
             provider_continuation_recovery_pending: BTreeMap::new(),
             provider_recovery_pending: BTreeMap::new(),
+            provider_wake_recovery_pending: BTreeMap::new(),
             provider_wait_until: BTreeMap::new(),
             provider_feedback_seq: BTreeMap::new(),
             provider_feedback_seq_by_session: BTreeMap::new(),

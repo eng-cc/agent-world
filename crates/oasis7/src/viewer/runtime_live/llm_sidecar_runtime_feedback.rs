@@ -104,14 +104,10 @@ impl RuntimeLlmSidecar {
         // later ActionAccepted callback is an informational replay and must
         // not resurrect an already terminal single-flight action.
         if let Some(cognition) = pending.cognition.as_ref()
-            && self
-                .provider_terminal_states
-                .get(pending.agent_id.as_str())
-                .is_some_and(|terminal| {
-                    terminal.agent_turn_id == cognition.request.request_context.agent_turn_id
-                        && terminal.decision_request_id
-                            == cognition.request.request_context.decision_request_id
-                })
+            && self.provider_terminal_matches_request(
+                pending.agent_id.as_str(),
+                &cognition.request.request_context,
+            )
         {
             self.persist_provider_lineage_best_effort();
             return;
@@ -203,6 +199,24 @@ impl RuntimeLlmSidecar {
                 feedback.reject_reason.clone(),
                 Some(feedback.feedback_id.clone()),
             );
+            if self.has_pending_runtime_wake_for_agent(pending.agent_id.as_str()) {
+                let status = if feedback.status == "committed" {
+                    crate::runtime::ContinuationStatusV1::Completed
+                } else {
+                    crate::runtime::ContinuationStatusV1::Rejected
+                };
+                self.provider_wake_recovery_pending.insert(
+                    pending.agent_id.clone(),
+                    lineage_persistence::ProviderWakeRecoveryPending {
+                        active: cognition.request.clone(),
+                        status,
+                        reason: feedback
+                            .reject_reason
+                            .clone()
+                            .unwrap_or_else(|| feedback.status.clone()),
+                    },
+                );
+            }
         }
         self.provider_held_decisions
             .remove(pending.agent_id.as_str());
@@ -364,11 +378,23 @@ impl RuntimeLlmSidecar {
         &mut self,
         agent_id: &str,
     ) -> Result<(), String> {
-        let context = self
-            .provider_contexts
-            .get(agent_id)
-            .cloned()
-            .or_else(|| self.provider_recovery_context(agent_id));
+        let context = self.provider_recovery_context(agent_id);
+        // Establish the wake recovery record before actor release. If the
+        // actor authority itself returns an error, the Runtime wake and the
+        // exact provider identity still need a durable retry path.
+        if !self.provider_wake_recovery_pending.contains_key(agent_id)
+            && self.has_pending_runtime_wake_for_agent(agent_id)
+            && let Some(context) = context.as_ref()
+        {
+            self.provider_wake_recovery_pending.insert(
+                agent_id.to_string(),
+                lineage_persistence::ProviderWakeRecoveryPending {
+                    active: context.clone(),
+                    status: crate::runtime::ContinuationStatusV1::Rejected,
+                    reason: "provider_release_waiting_runtime_wake".to_string(),
+                },
+            );
+        }
         if let Some(context) = context.as_ref() {
             if let Some(runner) = self
                 .runner
@@ -383,6 +409,7 @@ impl RuntimeLlmSidecar {
                 ) {
                     let message = error.to_string();
                     if !message.contains("unknown pending Runtime turn") {
+                        self.persist_provider_lineage_best_effort();
                         return Err(format!("provider actor release failed: {error}"));
                     }
                 }
@@ -394,6 +421,7 @@ impl RuntimeLlmSidecar {
         let wait_backup = self.provider_wait_until.get(agent_id).copied();
         let held_backup = self.provider_held_decisions.get(agent_id).cloned();
         let recovery_backup = self.provider_recovery_pending.get(agent_id).cloned();
+        let wake_recovery_backup = self.provider_wake_recovery_pending.get(agent_id).cloned();
         let exhausted_backup = self.provider_transport_exhausted.contains(agent_id);
         self.provider_contexts.remove(agent_id);
         self.provider_active_turns.remove(agent_id);
@@ -421,6 +449,12 @@ impl RuntimeLlmSidecar {
                 self.provider_recovery_pending
                     .insert(agent_id.to_string(), recovery);
             }
+            if let Some(wake_recovery) = wake_recovery_backup {
+                self.provider_wake_recovery_pending
+                    .insert(agent_id.to_string(), wake_recovery);
+            } else {
+                self.provider_wake_recovery_pending.remove(agent_id);
+            }
             if exhausted_backup {
                 self.provider_transport_exhausted
                     .insert(agent_id.to_string());
@@ -445,7 +479,7 @@ impl RuntimeLlmSidecar {
         if !matches!(status, "rejected" | "failed") {
             return None;
         }
-        let context = self.provider_contexts.get(agent_id).cloned();
+        let context = self.provider_recovery_context(agent_id);
         let reject_reason = reject_reason.into();
         let feedback = context.as_ref().map(|context| {
             self.provider_feedback_for_request(
@@ -488,13 +522,12 @@ impl RuntimeLlmSidecar {
         if !matches!(status, "rejected" | "failed") {
             return None;
         }
-        let context = self.provider_contexts.get(agent_id).cloned()?;
+        let context = self.provider_recovery_context(agent_id)?;
         let feedback_id = self
             .provider_terminal_states
             .get(agent_id)
             .filter(|terminal| {
-                terminal.agent_turn_id == context.request_context.agent_turn_id
-                    && terminal.decision_request_id == context.request_context.decision_request_id
+                self.provider_terminal_matches_request(agent_id, &context.request_context)
                     && terminal.status == status
                     && terminal.reject_reason.as_deref() == Some(reject_reason)
             })
@@ -576,19 +609,13 @@ impl RuntimeLlmSidecar {
             provenance: "runtime_authoritative".to_string(),
         };
         if matches!(status, "committed" | "rejected" | "failed") {
-            if let Some(context) = self
-                .provider_contexts
-                .get(request.agent_subject.as_str())
-                .cloned()
-            {
-                self.record_provider_terminal_state(
-                    request.agent_subject.as_str(),
-                    &context,
-                    status,
-                    feedback.reject_reason.clone(),
-                    Some(feedback.feedback_id.clone()),
-                );
-            }
+            self.record_provider_terminal_state_for_request(
+                request.agent_subject.as_str(),
+                request,
+                status,
+                feedback.reject_reason.clone(),
+                Some(feedback.feedback_id.clone()),
+            );
         }
         self.persist_provider_lineage_best_effort();
         feedback
@@ -631,8 +658,22 @@ impl RuntimeLlmSidecar {
     }
 
     fn release_provider_turn(&mut self, agent_id: &str) {
-        if let Some(context) = self.provider_contexts.get(agent_id).cloned() {
-            self.expire_async_runtime_turn(&context);
+        let context = self.provider_recovery_context(agent_id);
+        if let Some(context) = context.as_ref() {
+            self.expire_async_runtime_turn(context);
+        }
+        if !self.provider_wake_recovery_pending.contains_key(agent_id)
+            && self.has_pending_runtime_wake_for_agent(agent_id)
+            && let Some(context) = context
+        {
+            self.provider_wake_recovery_pending.insert(
+                agent_id.to_string(),
+                lineage_persistence::ProviderWakeRecoveryPending {
+                    active: context,
+                    status: crate::runtime::ContinuationStatusV1::Rejected,
+                    reason: "provider_release_waiting_runtime_wake".to_string(),
+                },
+            );
         }
         self.provider_active_turns.remove(agent_id);
         self.provider_wait_until.remove(agent_id);
