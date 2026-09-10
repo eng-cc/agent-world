@@ -1,6 +1,6 @@
 # Engineering Workflow Source of Truth
-Version: **v1.15.0**
-Last Updated: **2026-09-09**
+Version: **v1.15.1**
+Last Updated: **2026-09-10**
 ## 0. Purpose
 This file is the **only normative workflow specification** for engineering task execution in oasis7.
 Mandatory rule:
@@ -737,15 +737,15 @@ diagnostics distinguish absent, non-worktree, unregistered, and common-dir
 mismatch states.
 
 ### 5.5 PR and review chain
-Select every involved reviewer through the
-[specialist review role selection](#specialist-review-role-selection), using
-changed paths, task slice history, user-visible claims, and verification claims.
-Each role returns `findings` or `no_findings` plus `residual_risk`; TPM records
-evidence-backed dispositions. `prepare-task-pr.sh --create` verifies the
-minimum path-inferred role set and the packet below. PR watch, holds, merge
-authority, invalidation, and terminal behavior come only from the
-[canonical gates](#ready-and-done) and
-[terminal order](#canonical-state-machine).
+Select every involved reviewer through the [specialist review role selection](#specialist-review-role-selection), using changed paths, task slice history, user-visible claims, and verification claims. Each role returns `findings` or `no_findings` plus `residual_risk`; TPM records evidence-backed dispositions. `prepare-task-pr.sh --create` verifies the minimum path-inferred role set and the packet below. PR watch, holds, merge authority, invalidation, and terminal behavior come only from the [canonical gates](#ready-and-done) and [terminal order](#canonical-state-machine).
+
+#### Review feedback triage <a id="review-feedback-triage"></a>
+
+Review requires professional assessment, not automatic adoption of every suggestion. Verify each comment against the current diff, effective contract and actual consumers; judge impact, confidence, regression risk, scope and expected benefit relative to implementation and verification cost. A priority label, including `P2`, does not by itself require a change or establish that an issue is safe to leave unresolved. Confirmed correctness defects, material regressions and violations of the actual task or effective contract must be resolved before merge, with focused evidence. Investigate uncertainty proportionately before deciding; a hypothetical concern is not automatically a confirmed blocker. Reject an incorrect or stale premise with concrete evidence. Style preferences and adjacent improvements require a demonstrated benefit rather than automatic acceptance; fix the valid part of a partially valid comment without absorbing unrelated work.
+
+A nonblocking improvement may remain unchanged in this PR when its benefit is low relative to cost, or it falls outside the authorized scope. Record a concise rationale and residual risk in the existing task/review evidence; for material follow-up, identify the responsible role and the condition that would justify revisiting it. Small preferences need no separate task or elaborate follow-up record. Deferral does not authorize another task, and cost or scope cannot excuse a real merge blocker.
+
+Use the existing evidence-backed no-change disposition path before resolving a GitHub thread. For formal role findings, preserve the immutable return and satisfy the role-finding resolution contract below: evidence-backed rejection uses `rejected_with_evidence`; a justified nonblocking no-change decision uses `non_actionable` only when evidence establishes why no change is required for this PR. It must never relabel a real blocker to bypass a gate. This guidance adds no disposition or lifecycle state and changes no resolver permissions. Required checks, requested changes, thread/disposition readback, frozen-head review, holds and merge authorization remain governed by the existing gates; triage alone does not make the PR merge-ready.
 
 #### Pre-PR review packet
 
