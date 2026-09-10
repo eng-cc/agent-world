@@ -287,7 +287,9 @@ class ApplyTransport:
     ) -> dict[str, object]:
         self.rollback_reobservations.append(failed_operation)
         self.failed_operation = failed_operation
-        return self._receipt("reobserve-failed-state", None)
+        receipt = self._receipt("reobserve-failed-state", None)
+        receipt["bindings"]["rollback_candidates"] = list(started)
+        return receipt
 
     def rollback_clean_redeploy(
         self,
@@ -299,7 +301,9 @@ class ApplyTransport:
         self.rollback_started = list(started)
         if self.rollback_failure:
             raise RuntimeError("rollback transport unavailable")
-        return self._receipt("rollback-clean-redeploy", None)
+        receipt = self._receipt("rollback-clean-redeploy", None)
+        receipt["bindings"]["rollback_candidates"] = list(started)
+        return receipt
 
 
 class ReceivedPlanOnlyTransport:
@@ -338,6 +342,99 @@ class FullNetworkCleanRoomAdapterTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.fixture_module.FullNetworkCleanRoomPlanTests.tearDownClass()
+
+    def _recovery_verifier(self, plan, receipt):
+        return {"verified": True, "bindings": receipt["bindings"],
+                "verifier_id": self.adapter.CANONICAL_VERIFIER_ID,
+                "trust_root_id": self.adapter.CANONICAL_TRUST_ROOT_ID,
+                "signer_id": "governance-signer"}
+
+    def test_recovery_receipts_bind_exact_attempted_candidates(self):
+        failed = "rebuild:storage-205"
+        expected = [op for op in self.plan["global_order"][:self.plan["global_order"].index(failed) + 1]
+                    if self.adapter._rollback_candidate(op)]
+        self.assertGreater(len(expected), 1)
+        for phase in ("reobserve", "rollback"):
+            for mutation in ("exact", "omitted", "truncated", "reordered", "duplicated", "substituted"):
+                with self.subTest(phase=phase, mutation=mutation):
+                    self._write_ledger(self.ledger_path)
+                    transport = ApplyTransport(self.adapter, self.plan, side_effect_operation=failed)
+                    method = "reobserve_failed_state" if phase == "reobserve" else "rollback_clean_redeploy"
+                    original = getattr(transport, method)
+                    def response(*args):
+                        receipt = original(*args)
+                        candidates = receipt["bindings"]["rollback_candidates"]
+                        if mutation == "omitted":
+                            del receipt["bindings"]["rollback_candidates"]
+                        elif mutation == "truncated":
+                            receipt["bindings"]["rollback_candidates"] = candidates[:-1]
+                        elif mutation == "reordered":
+                            receipt["bindings"]["rollback_candidates"] = list(reversed(candidates))
+                        elif mutation == "duplicated":
+                            receipt["bindings"]["rollback_candidates"] = candidates + candidates[:1]
+                        elif mutation == "substituted":
+                            receipt["bindings"]["rollback_candidates"] = candidates[:-1] + ["start:macos-observer"]
+                        return receipt
+                    setattr(transport, method, response)
+                    journal = Path(self._test_directory.name) / f"scope-{phase}-{mutation}.json"
+                    with self.assertRaises(self.adapter.AdapterError):
+                        self.adapter.execute(self.plan, self._authority(True), journal_path=journal,
+                            ledger_path=self.ledger_path, transport=transport, dry_run=False,
+                            provenance_verifier=self._recovery_verifier)
+                    record = json.loads(journal.read_text())
+                    self.assertEqual(record["rollback_status"], "completed" if mutation == "exact" else "reconciliation-blocked")
+                    self.assertEqual(record["rollback_candidates"], expected)
+                    if mutation == "exact":
+                        for key in ("rollback_receipt", "rollback_reobservation_receipt"):
+                            self.assertEqual(record[key]["bindings"]["rollback_candidates"], expected)
+                        # Even re-digested local journals cannot omit/alter the
+                        # scope while retaining the signed recovery receipts.
+                        for candidate_scope in (None, expected[:-1], list(reversed(expected)), expected + expected[:1], expected[:-1] + ["start:macos-observer"]):
+                            tampered = copy.deepcopy(record)
+                            if candidate_scope is None:
+                                tampered.pop("rollback_candidates")
+                            else:
+                                tampered["rollback_candidates"] = candidate_scope
+                            self.adapter._write_journal(journal, tampered)
+                            with self.assertRaisesRegex(self.adapter.AdapterError, "rollback candidate"):
+                                self.adapter.resume_transaction(self.plan, self._authority(True), journal,
+                                    ledger_path=self.ledger_path, dry_run=False,
+                                    provenance_verifier=self._recovery_verifier)
+
+    def test_no_backup_expiry_after_side_effect_retains_reconciliation_scope(self):
+        plan = self._no_backup_plan()
+        failed = "stop:storage-205"
+        transport = ApplyTransport(self.adapter, plan)
+        original_datetime = self.adapter.dt.datetime
+        expired = False
+        class Clock(original_datetime):
+            @classmethod
+            def now(cls, tz=None):
+                if expired:
+                    return original_datetime.fromisoformat(plan["forensic_backup"]["expires_at"].replace("Z", "+00:00"))
+                return original_datetime.now(tz)
+        original_mutate = transport.mutate
+        def mutate(operation, node):
+            nonlocal expired
+            receipt = original_mutate(operation, node)
+            if operation == failed:
+                expired = True
+                raise RuntimeError("fixture side effect then expiry")
+            return receipt
+        transport.mutate = mutate
+        journal = Path(self._test_directory.name) / "expired-recovery.json"
+        with mock.patch.object(self.adapter.dt, "datetime", Clock):
+            with self.assertRaises(self.adapter.AdapterError):
+                self.adapter.execute(plan, self._authority(True, plan), journal_path=journal,
+                    ledger_path=self.ledger_path, transport=transport, dry_run=False,
+                    provenance_verifier=self._recovery_verifier)
+        self.assertTrue(expired)
+        self.assertEqual(transport.rollback_operations, [])
+        self.assertEqual(transport.rollback_reobservations, [])
+        record = json.loads(journal.read_text())
+        self.assertEqual(record["rollback_status"], "reconciliation-blocked")
+        self.assertEqual(record["rollback_candidates"], [failed])
+        self.assertIsNone(record["rollback_receipt"])
 
     def test_capture_lease_expiry_before_stop_blocks_callback(self) -> None:
         authority = self._authority(apply_authorized=True)
@@ -2594,6 +2691,8 @@ class FullNetworkCleanRoomAdapterTests(unittest.TestCase):
                 transport=transport,
                 dry_run=True,
             )
+            record = json.loads((Path(directory) / "journal.json").read_text())
+            self.assertEqual(record["rollback_candidates"], [])
         self.assertEqual(result["operations"], self.plan["global_order"])
         self.assertEqual(transport.mutations, [])
         serialized = json.dumps(result, sort_keys=True)

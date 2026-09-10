@@ -236,6 +236,8 @@ def _authority_ancestors(path: Path, label: str) -> None:
         if not stat.S_ISDIR(directory.st_mode):
             fail(f"{label} has a non-directory ancestor")
         mode = stat.S_IMODE(directory.st_mode)
+        if directory.st_uid not in {0, os.getuid()}:
+            fail(f"{label} has a foreign-owned replaceable ancestor")
         sticky_safe = bool(mode & stat.S_ISVTX) and directory.st_uid == 0
         if mode & AUTHORITY_UNAUTHORIZED_WRITE_BITS and not sticky_safe:
             fail(f"{label} has an unauthorized-writable ancestor")
@@ -244,7 +246,10 @@ def _authority_ancestors(path: Path, label: str) -> None:
         current = current.parent
 
 
-def read_authority_bytes(path_value: str | Path, label: str, *, executable: bool = False) -> bytes:
+def read_authority_bytes(
+    path_value: str | Path, label: str, *, executable: bool = False,
+    identities: dict[str, tuple[int, ...]] | None = None,
+) -> bytes:
     """Read one authority artifact through a metadata-bound, no-follow FD.
 
     The descriptor prevents a same-path replacement from changing the bytes
@@ -298,6 +303,8 @@ def read_authority_bytes(path_value: str | Path, label: str, *, executable: bool
             fail(f"cannot restat {label} authority artifact: {error.__class__.__name__}")
         if (path_after.st_dev, path_after.st_ino) != (before.st_dev, before.st_ino):
             fail(f"{label} was replaced while being read")
+        if identities is not None:
+            identities[label] = identity(before)
         return raw
     except ToolError:
         raise

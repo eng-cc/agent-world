@@ -2334,6 +2334,7 @@ def _journal_record(
     nonce_reservation_state: dict[str, Any] | None = None,
     backup_status: str = "not-needed",
     backup_error: str | None = None,
+    rollback_candidates: list[str] | None = None,
 ) -> dict[str, Any]:
     record: dict[str, Any] = {
         "schema_version": JOURNAL_SCHEMA,
@@ -2363,6 +2364,11 @@ def _journal_record(
         "rollback_status": rollback_status,
         "rollback_receipt": copy.deepcopy(rollback_receipt),
         "rollback_reobservation_receipt": copy.deepcopy(rollback_reobservation_receipt),
+        "rollback_candidates": list(
+            rollback_candidates if rollback_candidates is not None else
+            (operation for operation in completed
+             if execution_mode == "apply" and _rollback_candidate(operation))
+        ),
     }
     if error is not None:
         record["terminal_error"] = error
@@ -2573,6 +2579,7 @@ def _validate_provider_receipt(
     verifier: Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]] | None,
     *,
     evidence: dict[str, Any] | None = None,
+    rollback_candidates: list[str] | None = None,
 ) -> dict[str, Any]:
     """Validate and sanitize every provider receipt before phase advance."""
     # A provider callback may return a receipt only after the exact impact
@@ -2676,6 +2683,13 @@ def _validate_provider_receipt(
         "ledger_path": plan["credential_nonce_ledger"]["path"],
         "consumer_impact_record": _consumer_impact_locator(plan),
     }
+    if operation in {"reobserve-failed-state", "rollback-clean-redeploy"}:
+        candidates = _validate_rollback_candidates(plan, rollback_candidates)
+        if not candidates:
+            _fail("recovery receipt rollback candidates must not be empty")
+        if bindings.get("rollback_candidates") != candidates:
+            _fail("recovery receipt rollback candidate binding is not exact")
+        expected_bindings["rollback_candidates"] = candidates
     if evidence is not None:
         expected_bindings["evidence_sha256"] = _remote_evidence_digest(evidence)
     elif phase == "preflight" and "evidence_sha256" in bindings:
@@ -3603,6 +3617,14 @@ def _rollback_candidate(operation: str) -> bool:
     return operation.startswith(("stop:", "delete:", "rebuild:", "start:"))
 
 
+def _validate_rollback_candidates(plan: dict[str, Any], value: Any) -> list[str]:
+    """Candidate scope is a unique, ordered prefix of admitted mutation phases."""
+    order = [operation for operation in plan["global_order"] if _rollback_candidate(operation)]
+    if not isinstance(value, list) or value != order[:len(value)]:
+        _fail("rollback candidates are not an exact ordered mutation prefix")
+    return list(value)
+
+
 def _read_only_operation(operation: str) -> bool:
     """Classify phases that cannot have changed provider state."""
     return operation.startswith(("preflight:", "verify:")) or operation in {
@@ -3921,6 +3943,7 @@ def _execute_unlocked(
                     rollback_receipt=rollback_receipt,
                     execution_mode="apply",
                     backup_status=backup_status,
+                    rollback_candidates=rollback_candidates,
                 ),
             )
             in_flight_journal_written = True
@@ -3962,7 +3985,19 @@ def _execute_unlocked(
                     if not capture_start <= dt.datetime.now(dt.timezone.utc) < capture_end:
                         _fail("provider mutation capture lease is expired or not yet active")
                     if _rollback_candidate(operation) and operation not in rollback_candidates:
-                        rollback_candidates.append(operation)
+                        admitted_candidates = [*rollback_candidates, operation]
+                        # Persist the admitted scope before the callback can
+                        # mutate or throw; a crash remains ambiguous, not safe
+                        # to replay. Never reconstruct it from receipt success.
+                        _write_journal(Path(journal_path), _journal_record(
+                            plan, "in-flight", index, completed,
+                            node_receipts=node_receipts, provider_receipts=provider_receipts,
+                            preflight_evidence_receipts=preflight_evidence_receipts,
+                            preflight_status=preflight_status, nonce_reservation_state=nonce_state,
+                            rollback_status=rollback_status, execution_mode="apply",
+                            backup_status=backup_status, rollback_candidates=admitted_candidates,
+                        ))
+                        rollback_candidates = admitted_candidates
                     raw_receipt = _guarded_callback(transport.mutate, operation, transport_node)
                 # A successful start/rebuild callback may have changed the
                 # provider even if its receipt is malformed or the following
@@ -4018,6 +4053,7 @@ def _execute_unlocked(
                     rollback_receipt=rollback_receipt,
                     execution_mode="apply",
                     backup_status=backup_status,
+                    rollback_candidates=rollback_candidates,
                 ),
             )
         except Exception as error:
@@ -4109,6 +4145,7 @@ def _execute_unlocked(
                     None,
                     rollback_reobservation_receipt,
                     provenance_verifier,
+                    rollback_candidates=rollback_candidates,
                 )
                 failed_state_digest = rollback_reobservation_receipt["failed_state_digest"]
                 if rollback_reobservation_receipt["failed_operation"] != failed_operation:
@@ -4125,6 +4162,7 @@ def _execute_unlocked(
                     None,
                     rollback_receipt,
                     provenance_verifier,
+                    rollback_candidates=rollback_candidates,
                 )
                 if (
                     rollback_receipt["failed_operation"] != failed_operation
@@ -4157,6 +4195,7 @@ def _execute_unlocked(
                     preflight_status=preflight_status,
                     nonce_reservation_state=nonce_state,
                     backup_status=backup_status,
+                    rollback_candidates=rollback_candidates,
                 ),
             )
             if rollback_status == "reconciliation-blocked":
@@ -4369,6 +4408,20 @@ def _resume_transaction_unlocked(
         _fail("transaction journal rollback status is unsupported")
     rollback_receipt_raw = record.get("rollback_receipt")
     rollback_reobservation_raw = record.get("rollback_reobservation_receipt")
+    rollback_candidates = _validate_rollback_candidates(plan, record.get("rollback_candidates"))
+    completed_scope = record.get("completed_operations")
+    if not isinstance(completed_scope, list) or not all(isinstance(op, str) for op in completed_scope):
+        _fail("journal rollback candidate progress is malformed")
+    completed_candidates = [op for op in completed_scope if not dry_run and _rollback_candidate(op)]
+    possible_scopes = [completed_candidates]
+    index = record.get("next_operation_index")
+    if (not dry_run and isinstance(index, int) and not isinstance(index, bool)
+            and 0 <= index < len(plan["global_order"])):
+        current_operation = plan["global_order"][index]
+        if _rollback_candidate(current_operation):
+            possible_scopes.append([*completed_candidates, current_operation])
+    if rollback_candidates not in possible_scopes:
+        _fail("journal rollback candidate scope differs from operation progress")
     if rollback_status == "completed":
         rollback_reobservation = _validate_provider_receipt(
             plan,
@@ -4376,6 +4429,7 @@ def _resume_transaction_unlocked(
             None,
             rollback_reobservation_raw,
             provenance_verifier if not dry_run else None,
+            rollback_candidates=rollback_candidates,
         )
         rollback_receipt = _validate_provider_receipt(
             plan,
@@ -4383,10 +4437,13 @@ def _resume_transaction_unlocked(
             None,
             rollback_receipt_raw,
             provenance_verifier if not dry_run else None,
+            rollback_candidates=rollback_candidates,
         )
         if (
             record.get("failed_operation") != rollback_receipt["failed_operation"]
             or record.get("failed_state_digest") != rollback_receipt["failed_state_digest"]
+            or rollback_reobservation["failed_operation"] != rollback_receipt["failed_operation"]
+            or rollback_reobservation["failed_state_digest"] != rollback_receipt["failed_state_digest"]
         ):
             _fail("transaction journal rollback receipt is not bound to its failed state")
     elif rollback_status == "reconciliation-blocked":
@@ -4399,6 +4456,7 @@ def _resume_transaction_unlocked(
                 None,
                 rollback_reobservation_raw,
                 provenance_verifier if not dry_run else None,
+                rollback_candidates=rollback_candidates,
             )
             if (
                 record.get("failed_operation") != rollback_reobservation["failed_operation"]

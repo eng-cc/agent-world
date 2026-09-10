@@ -1829,5 +1829,38 @@ tool.os.replace = fail_receipt_replace
         self._assert_rejected_no_output(result, payload, manifest)
 
 
+class AuthorityAncestorOwnershipTests(unittest.TestCase):
+    def test_foreign_owned_parent_rejected_with_safe_directory_controls(self):
+        from unittest.mock import patch
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("protected_owner_test", TOOL)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "public-metadata"
+            target.write_bytes(b"public metadata")
+            target.chmod(0o644)
+            real_stat = Path.stat
+            def parent_stat(path, *args, **kwargs):
+                metadata = real_stat(path, *args, **kwargs)
+                if path == root:
+                    values = list(metadata)
+                    values[0] = stat.S_IFDIR | mode
+                    values[4] = owner
+                    return os.stat_result(values)
+                return metadata
+            for owner, mode, allowed in ((os.getuid() + 1, 0o755, False),
+                                         (os.getuid(), 0o777, False),
+                                         (os.getuid(), 0o755, True),
+                                         (0, 0o1777, True)):
+                with self.subTest(owner=owner, mode=mode), patch.object(Path, "stat", parent_stat):
+                    if allowed:
+                        self.assertEqual(module.read_authority_bytes(target, "public metadata"), b"public metadata")
+                    else:
+                        with self.assertRaises(module.ToolError):
+                            module.read_authority_bytes(target, "public metadata")
+
+
 if __name__ == "__main__":
     unittest.main()

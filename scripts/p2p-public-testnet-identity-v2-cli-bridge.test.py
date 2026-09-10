@@ -22,6 +22,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +78,68 @@ V2_ARTIFACT_FIELDS = (
 
 def clean_env() -> dict[str, str]:
     return {"PATH": os.environ.get("PATH", ""), "PYTHONIOENCODING": "utf-8"}
+
+
+class SidecarVerifierBoundaryTests(unittest.TestCase):
+    """Isolated execution-boundary tests; child outputs are synthetic, not custody."""
+
+    def test_verifier_replacement_never_promotes_evidence(self):
+        for phase in ("before", "after"):
+            for replacement in ("inode", "digest", "unsafe-mode"):
+                with self.subTest(phase=phase, replacement=replacement), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory).resolve()
+                    module = load_module("sidecar_boundary", SIDECAR)
+                    signer, verifier = root / "signer", root / "verifier"
+                    for path in (signer, verifier):
+                        path.write_bytes(b"fixture executable")
+                        path.chmod(0o700)
+                    module.IDENTITY_V2_SIGNER_TOOL_PATH = signer
+                    module.IDENTITY_V2_SIGNER_TOOL_SHA256 = digest_bytes(signer.read_bytes())
+                    inputs = {}
+                    for key in ("raw_v1", "template", "context", "plan_intent", "trust_config", "provider_registry"):
+                        inputs[key] = root / key
+                        inputs[key].write_bytes(b"{}")
+                    write_json(inputs["provider_registry"], {"verifier": {
+                        "executable_path": str(verifier), "executable_sha256": digest_bytes(verifier.read_bytes())}})
+                    args = SimpleNamespace(**inputs, signer_tool=signer, verifier_tool=verifier,
+                        provider_ref="fixture", out=root / "output", evidence_map_out=root / "map", evidence_dir=root / "retained")
+                    args.out.write_bytes(b"prior envelope")
+                    args.evidence_map_out.write_bytes(b"prior map")
+                    calls = []
+                    def replace():
+                        if replacement == "inode":
+                            other = root / "replacement"
+                            other.write_bytes(verifier.read_bytes())
+                            other.chmod(0o700)
+                            os.replace(other, verifier)
+                        elif replacement == "unsafe-mode":
+                            verifier.chmod(0o777)
+                        else:
+                            verifier.write_bytes(b"changed executable")
+                    def child(argv, **kwargs):
+                        command = argv[1]
+                        calls.append(command)
+                        if command == "verify":
+                            final = {"authenticated": True, "verified": True,
+                                "network_id": module.CANONICAL_NETWORK_ID, "node_id": "triad-testnet-storage"}
+                            Path(argv[argv.index("--out") + 1]).write_bytes(canonical(final))
+                            Path(argv[argv.index("--verification-out") + 1]).write_bytes(b"{}")
+                            if phase == "after":
+                                replace()
+                        else:
+                            for flag in ("--payload-out", "--manifest-out", "--signature-out", "--attestation-out", "--out"):
+                                if flag in argv:
+                                    Path(argv[argv.index(flag) + 1]).write_bytes(b"{}")
+                            if command == "assemble" and phase == "before":
+                                replace()
+                        return SimpleNamespace(returncode=0, stderr="")
+                    with patch.object(module.subprocess, "run", side_effect=child):
+                        with self.assertRaises(SystemExit):
+                            module._bridge_create(args)
+                    self.assertEqual(args.out.read_bytes(), b"prior envelope")
+                    self.assertEqual(args.evidence_map_out.read_bytes(), b"prior map")
+                    self.assertEqual(list(args.evidence_dir.iterdir()), [])
+                    self.assertEqual(calls.count("verify"), 0 if phase == "before" else 1)
 
 
 class IdentityV2CliBridgeTests(unittest.TestCase):

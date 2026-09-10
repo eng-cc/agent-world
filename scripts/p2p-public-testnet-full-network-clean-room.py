@@ -41,6 +41,8 @@ IDENTITY_V2_TRUST_CONFIG_PATH = Path("/operator/truth/identity-v2-trust-config.j
 IDENTITY_V2_TRUST_CONFIG_SHA256: str | None = None
 IDENTITY_V2_PROVIDER_REGISTRY_PATH = Path("/operator/truth/identity-v2-provider-registry.json")
 IDENTITY_V2_PROVIDER_REGISTRY_SHA256: str | None = None
+# Output protection only: this path never supplies or selects root authority.
+IDENTITY_V2_GOVERNANCE_ROOT_PATH = Path("/operator/truth/governance-root.json")
 DEPLOYMENT_INVENTORY_RECEIPT_FIELDS = frozenset(
     {
         "schema_version",
@@ -1010,6 +1012,7 @@ def _identity_v2_anchor_identity(metadata: os.stat_result) -> tuple[int, ...]:
 def _identity_v2_pin_file(
     path_value: Path, expected_sha256: str | None, label: str,
     *, identities: dict[str, tuple[int, ...]] | None = None,
+    contents: dict[str, bytes] | None = None,
 ) -> Path:
     """Validate one code-owned identity-v2 admission anchor before execution."""
     path = Path(path_value)
@@ -1029,6 +1032,8 @@ def _identity_v2_pin_file(
             metadata = ancestor.stat()
             if not stat.S_ISDIR(metadata.st_mode):
                 die(f"identity-v2 {label} has a non-directory ancestor")
+            if metadata.st_uid not in {0, os.getuid()}:
+                die(f"identity-v2 {label} has a foreign-owned replaceable ancestor")
             sticky_root = bool(metadata.st_mode & stat.S_ISVTX) and metadata.st_uid == 0
             if metadata.st_mode & 0o022 and not sticky_root:
                 die(f"identity-v2 {label} has an unauthorized-writable ancestor")
@@ -1045,7 +1050,8 @@ def _identity_v2_pin_file(
             if label == "verify tool" and not before.st_mode & stat.S_IXUSR:
                 die(f"identity-v2 {label} is not owner-executable")
             with os.fdopen(descriptor, "rb", closefd=False) as stream:
-                actual = hashlib.sha256(stream.read()).hexdigest()
+                raw = stream.read()
+                actual = hashlib.sha256(raw).hexdigest()
             identity = _identity_v2_anchor_identity(before)
             if identity != _identity_v2_anchor_identity(os.fstat(descriptor)):
                 die(f"identity-v2 {label} changed during authority read")
@@ -1059,6 +1065,8 @@ def _identity_v2_pin_file(
         die(f"identity-v2 {label} digest pin does not match its bytes")
     if identities is not None:
         identities[label] = identity
+    if contents is not None:
+        contents[label] = raw
     return path
 
 
@@ -2639,7 +2647,11 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def _plan_output_inputs(source: Path, evidence_path: Path, evidence: dict[str, Any]) -> list[Path]:
-    protected = [source, evidence_path]
+    protected = [source, evidence_path, Path(__file__), IDENTITY_V2_VERIFY_TOOL_PATH,
+                 IDENTITY_V2_TRUST_CONFIG_PATH, IDENTITY_V2_PROVIDER_REGISTRY_PATH,
+                 IDENTITY_V2_GOVERNANCE_ROOT_PATH,
+                 Path(__file__).with_name("p2p-public-testnet-full-network-clean-room-adapter.py"),
+                 Path(__file__).with_name("fixtures") / "oasis7-governance-root.v1.json"]
     descriptors = [evidence.get("context"), evidence.get("plan_intent")]
     for entry in evidence.get("entries", []):
         if isinstance(entry, dict):
@@ -2647,6 +2659,48 @@ def _plan_output_inputs(source: Path, evidence_path: Path, evidence: dict[str, A
     for descriptor in descriptors:
         if isinstance(descriptor, dict) and isinstance(descriptor.get("path"), str):
             protected.append(Path(descriptor["path"]))
+    return protected
+
+
+def _plan_authority_output_inputs() -> list[Path]:
+    """Protect typed references from exact pinned bytes, never plan assertions."""
+    contents: dict[str, bytes] = {}
+    protected = []
+    for path, digest, label in (
+        (IDENTITY_V2_VERIFY_TOOL_PATH, IDENTITY_V2_VERIFY_TOOL_SHA256, "verify tool"),
+        (IDENTITY_V2_TRUST_CONFIG_PATH, IDENTITY_V2_TRUST_CONFIG_SHA256, "trust config"),
+        (IDENTITY_V2_PROVIDER_REGISTRY_PATH, IDENTITY_V2_PROVIDER_REGISTRY_SHA256, "provider registry"),
+    ):
+        protected.append(_identity_v2_pin_file(path, digest, label, contents=contents))
+    try:
+        trust = require_object(json.loads(contents["trust config"]), "pinned trust config")
+        registry = require_object(json.loads(contents["provider registry"]), "pinned provider registry")
+    except (UnicodeError, ValueError):
+        die("pinned output authority closure is not valid JSON")
+
+    def reference(value: Any, label: str) -> Path:
+        path = Path(require_string(value, label))
+        if not path.is_absolute():
+            die(f"{label} must be an absolute authority reference")
+        protected.append(path)
+        return path
+
+    registry_trust = reference(registry.get("trust_config_path"), "registry trust_config_path")
+    if registry_trust.resolve() != Path(IDENTITY_V2_TRUST_CONFIG_PATH).resolve():
+        die("registry trust reference differs from the code-owned pinned trust config")
+    providers = registry.get("providers")
+    allowlist = trust.get("allowlist")
+    if not isinstance(providers, list) or not providers or not isinstance(allowlist, list) or not allowlist:
+        die("pinned output authority closure requires providers and trust allowlist")
+    for provider in providers:
+        provider = require_object(provider, "pinned provider entry")
+        for field in ("adapter_path", "public_key_ref"):
+            reference(provider.get(field), f"pinned provider {field}")
+    for entry in allowlist:
+        entry = require_object(entry, "pinned trust allowlist entry")
+        reference(entry.get("public_key_ref"), "pinned trust public_key_ref")
+    verifier = require_object(registry.get("verifier"), "pinned registry verifier")
+    reference(verifier.get("executable_path"), "pinned registry verifier executable_path")
     return protected
 
 
@@ -2658,7 +2712,7 @@ def _reject_plan_output_aliases(output: Path, protected: list[Path]) -> None:
             if output.resolve() == retained.resolve() or (
                 output.exists() and retained.exists() and output.samefile(retained)
             ):
-                die("plan output must not alias input or retained identity evidence")
+                die("plan output must not alias input, retained identity evidence or authority")
     except (OSError, RuntimeError):
         die("cannot establish plan output and retained evidence separation")
 
@@ -2709,6 +2763,8 @@ def main(argv: list[str] | None = None) -> int:
     evidence = load_json(args.identity_v2_evidence_map)
     protected = _plan_output_inputs(args.input, args.identity_v2_evidence_map, evidence)
     if args.out is not None:
+        _reject_plan_output_aliases(args.out.expanduser(), protected)
+        protected.extend(_plan_authority_output_inputs())
         _reject_plan_output_aliases(args.out.expanduser(), protected)
     plan = build_plan(load_json(args.input).copy(), identity_v2_evidence=evidence)
     if args.out is not None:

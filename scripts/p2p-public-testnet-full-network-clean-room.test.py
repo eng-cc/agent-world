@@ -2719,6 +2719,83 @@ class FullNetworkCleanRoomPlanTests(unittest.TestCase):
 
 
 class PlannerOutputAliasTests(unittest.TestCase):
+    def test_governance_root_is_protected_without_opening_it(self):
+        module = load_module()
+        protected = module._plan_output_inputs(Path("/fixture/input"), Path("/fixture/map"), {})
+        for path in (Path("/operator/truth/governance-root.json"),
+                     Path(module.__file__).with_name("p2p-public-testnet-full-network-clean-room-adapter.py"),
+                     Path(module.__file__).with_name("fixtures") / "oasis7-governance-root.v1.json"):
+            with self.subTest(path=path), self.assertRaises(SystemExit):
+                module._reject_plan_output_aliases(path, protected)
+
+    def _authority_fixture(self, module, root):
+        paths = {name: root / name for name in
+                 ("tool", "trust", "registry", "registry-verifier", "trust-key", "provider-key", "provider-adapter")}
+        for path in paths.values():
+            path.write_bytes(b"fixture authority bytes")
+            path.chmod(0o700)
+        paths["trust"].write_text(json.dumps({"allowlist": [{"public_key_ref": str(paths["trust-key"])}]}))
+        paths["registry"].write_text(json.dumps({
+            "trust_config_path": str(paths["trust"]),
+            "providers": [{"public_key_ref": str(paths["provider-key"]), "adapter_path": str(paths["provider-adapter"])}],
+            "verifier": {"executable_path": str(paths["registry-verifier"])},
+        }))
+        for prefix, name in (("VERIFY_TOOL", "tool"), ("TRUST_CONFIG", "trust"), ("PROVIDER_REGISTRY", "registry")):
+            setattr(module, f"IDENTITY_V2_{prefix}_PATH", paths[name])
+            setattr(module, f"IDENTITY_V2_{prefix}_SHA256", _fixture_digest(paths[name]))
+        source, evidence = root / "input.json", root / "map.json"
+        source.write_text("{}")
+        evidence.write_text("{}")
+        return paths, source, evidence
+
+    def test_cli_protects_complete_pinned_authority_closure(self):
+        for name in ("tool", "trust", "registry", "registry-verifier", "trust-key", "provider-key", "provider-adapter"):
+            for alias in ("direct", "resolved", "hardlink"):
+                with self.subTest(name=name, alias=alias), tempfile.TemporaryDirectory() as directory:
+                    module = load_module()
+                    root = Path(directory).resolve()
+                    paths, source, evidence = self._authority_fixture(module, root)
+                    output = paths[name]
+                    if alias == "resolved":
+                        parent = root / "parent-alias"
+                        parent.symlink_to(root, target_is_directory=True)
+                        output = parent / name
+                    elif alias == "hardlink":
+                        output = root / "hardlink"
+                        os.link(paths[name], output)
+                    before = {path: (path.read_bytes(), path.stat()) for path in paths.values()}
+                    entries = set(root.iterdir())
+                    with patch.object(module, "build_plan", return_value={"plan_digest": "test", "execution": {"mode": "plan-only"}}) as build:
+                        with self.assertRaises(SystemExit):
+                            module.main(["--input", str(source), "--identity-v2-evidence-map", str(evidence), "--out", str(output)])
+                        build.assert_not_called()
+                    self.assertEqual(set(root.iterdir()), entries)
+                    for path, (raw, metadata) in before.items():
+                        self.assertEqual(path.read_bytes(), raw)
+                        self.assertEqual(module._identity_v2_anchor_identity(path.stat()), module._identity_v2_anchor_identity(metadata))
+        with tempfile.TemporaryDirectory() as directory:
+            module = load_module()
+            root = Path(directory).resolve()
+            paths, source, evidence = self._authority_fixture(module, root)
+            output = root / "ordinary-plan.json"
+            with patch.object(module, "build_plan", return_value={"plan_digest": "test", "execution": {"mode": "plan-only"}}) as build:
+                self.assertEqual(module.main(["--input", str(source), "--identity-v2-evidence-map", str(evidence), "--out", str(output)]), 0)
+                build.assert_called_once()
+            self.assertEqual(json.loads(output.read_text())["plan_digest"], "test")
+
+    def test_output_closure_rejects_unpinned_reference_bytes_before_build(self):
+        with tempfile.TemporaryDirectory() as directory:
+            module = load_module()
+            root = Path(directory).resolve()
+            paths, source, evidence = self._authority_fixture(module, root)
+            paths["registry"].write_text(json.dumps({"providers": []}))
+            output = root / "new-parent" / "plan.json"
+            with patch.object(module, "build_plan", return_value={"plan_digest": "test", "execution": {"mode": "plan-only"}}) as build:
+                with self.assertRaisesRegex(SystemExit, "pin|digest"):
+                    module.main(["--input", str(source), "--identity-v2-evidence-map", str(evidence), "--out", str(output)])
+                build.assert_not_called()
+            self.assertFalse(output.parent.exists())
+
     def test_atomic_output_preserves_prior_plan_on_replace_failure(self):
         module = load_module()
         with tempfile.TemporaryDirectory() as directory:
@@ -2825,6 +2902,20 @@ class IdentityV2AdmissionAnchorTests(unittest.TestCase):
         self.root.chmod(0o777)  # Not sticky: not the supported root-owned /tmp exception.
         with self.assertRaises(SystemExit):
             self.module._identity_v2_admission_anchors()
+
+    def test_anchor_rejects_foreign_owned_0755_ancestor(self) -> None:
+        real_stat = Path.stat
+        def parent_stat(path, *args, **kwargs):
+            metadata = real_stat(path, *args, **kwargs)
+            if path == self.root:
+                values = list(metadata)
+                values[0] = stat.S_IFDIR | 0o755
+                values[4] = os.getuid() + 1
+                return os.stat_result(values)
+            return metadata
+        with patch.object(Path, "stat", parent_stat):
+            with self.assertRaises(SystemExit):
+                self.module._identity_v2_admission_anchors()
 
     def test_anchor_rejects_symlink_ancestor(self) -> None:
         alias = self.root / "alias"

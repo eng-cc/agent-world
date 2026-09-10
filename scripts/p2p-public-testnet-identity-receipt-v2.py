@@ -325,7 +325,30 @@ def _pinned_tool(
     return path
 
 
-def _registry_verifier_assertion(registry: dict[str, Any], verifier_tool: Path) -> Path:
+def _protected_verifier_identity(path: Path, expected_sha256: str) -> tuple[int, ...]:
+    """Reuse the code-owned protected FD reader, including ancestor policy."""
+    spec = importlib.util.spec_from_file_location(
+        "identity_v2_sidecar_authority_reader",
+        SCRIPT_DIR / "p2p-public-testnet-identity-v2-signing-tool.py",
+    )
+    if spec is None or spec.loader is None:
+        die("protected verifier reader is unavailable")
+    reader = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(reader)
+    identities: dict[str, tuple[int, ...]] = {}
+    try:
+        raw = reader.read_authority_bytes(path, "sidecar verifier", executable=True, identities=identities)
+    except reader.ToolError:
+        die("sidecar verifier protected authority identity is invalid")
+    if hashlib.sha256(raw).hexdigest() != expected_sha256.lower():
+        die("sidecar verifier digest pin does not match its bytes")
+    return identities["sidecar verifier"]
+
+
+def _registry_verifier_assertion(
+    registry: dict[str, Any], verifier_tool: Path,
+    *, identity_out: dict[str, tuple[int, ...]] | None = None,
+) -> Path:
     """Require ``--verifier-tool`` to assert the registry-selected verifier."""
 
     verifier = registry.get("verifier")
@@ -340,14 +363,11 @@ def _registry_verifier_assertion(registry: dict[str, Any], verifier_tool: Path) 
     digest = verifier.get("executable_sha256")
     if not isinstance(digest, str) or HEX64_RE.fullmatch(digest) is None:
         die("provider registry verifier digest is malformed")
-    try:
-        actual = hashlib.sha256(configured.read_bytes()).hexdigest()
-    except OSError as error:
-        die(f"cannot read provider registry verifier: {error.__class__.__name__}")
-    if actual != digest.lower():
-        die("provider registry verifier digest does not match its bytes")
+    identity = _protected_verifier_identity(configured, digest)
     if configured.resolve() != verifier_tool.resolve():
         die("--verifier-tool is not the registry-selected pinned verifier")
+    if identity_out is not None:
+        identity_out["verifier"] = identity
     return configured
 
 
@@ -645,13 +665,23 @@ def _registry_authority_paths(registry: dict[str, Any]) -> list[tuple[Path, str]
     return paths
 
 
-def _run_signing_command(tool: Path, command: str, arguments: list[str]) -> None:
+def _run_signing_command(
+    tool: Path, command: str, arguments: list[str], *,
+    verifier_binding: tuple[str, tuple[int, ...]] | None = None,
+) -> None:
     """Run only the fixed file-oriented signing-tool vocabulary.
 
     The executable is an adapter selected by deployment custody.  This
     sidecar supplies every argument and never accepts a shell command,
     endpoint, environment, or provider-specific argument from the caller.
     """
+    def require_verifier_unchanged() -> None:
+        if verifier_binding is not None:
+            digest, identity = verifier_binding
+            if _protected_verifier_identity(tool, digest) != identity:
+                die("sidecar verifier identity changed around execution")
+
+    require_verifier_unchanged()
     try:
         completed = subprocess.run(
             [str(tool), command, *arguments],
@@ -664,6 +694,7 @@ def _run_signing_command(tool: Path, command: str, arguments: list[str]) -> None
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         die(f"signing-tool {command} failed: {error.__class__.__name__}")
+    require_verifier_unchanged()
     if completed.returncode != 0:
         detail = completed.stderr.strip().splitlines()[-1] if completed.stderr.strip() else "no diagnostic"
         die(f"signing-tool {command} failed: {detail[:240]}")
@@ -687,7 +718,8 @@ def _bridge_create(args: argparse.Namespace) -> dict[str, Any]:
     trust_path = _regular_file(args.trust_config, "trust config")
     registry_path = _regular_file(args.provider_registry, "provider registry")
     registry = _read_json(registry_path, "provider registry")
-    verifier_tool = _registry_verifier_assertion(registry, verifier_tool)
+    verifier_identity: dict[str, tuple[int, ...]] = {}
+    verifier_tool = _registry_verifier_assertion(registry, verifier_tool, identity_out=verifier_identity)
     output_path = Path(args.out)
     evidence_path = Path(args.evidence_map_out)
     protected = [
@@ -762,6 +794,7 @@ def _bridge_create(args: argparse.Namespace) -> dict[str, Any]:
                     "--provider-registry", str(registry_path), "--out", str(verified),
                     "--verification-out", str(verification),
                 ],
+                verifier_binding=(registry["verifier"]["executable_sha256"], verifier_identity["verifier"]),
             )
             final_bytes = verified.read_bytes()
             try:

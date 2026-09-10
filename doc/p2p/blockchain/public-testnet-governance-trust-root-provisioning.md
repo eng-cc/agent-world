@@ -90,8 +90,9 @@ endpoint, arbitrary command, or credential.
 The identity-v2 filesystem policy is intentionally narrower than an
 owner-only-secret policy. Every trust-config, registry, public-key, adapter,
 and verifier artifact must be a regular non-symlink file owned by the
-operator-local account that runs admission. Group/other write bits are forbidden
-on artifacts and ancestors, except for root-owned sticky ancestor directories.
+operator-local account that runs admission. Ancestors must be owned by root or
+that admission account. Group/other write bits are forbidden on artifacts and
+ancestors, except for root-owned sticky ancestor directories.
 Ancestor symlinks are rejected except for the fixed `/var` and `/tmp` system
 aliases used on macOS. Public metadata and public keys
 may remain readable (for example, `0644` is valid when no non-owner write bit
@@ -99,6 +100,9 @@ is present), while adapter and verifier files must have the owner execute bit.
 The tool reads these artifacts through `O_NOFOLLOW` descriptors and binds
 pre/post `fstat` metadata; provider/verifier executable digests are checked
 again after their subprocess returns before any caller output is promoted.
+The sidecar records the registry-selected verifier's initial protected file
+identity and rechecks that identity, protected metadata, and pinned digest
+immediately before and after verifier execution, before promoting evidence.
 These protected reads and pre/post checks do not guarantee atomic execution
 against a hostile same-owner process that replaces and restores an executable
 between checks. Applying `0600` to every public artifact is not required by
