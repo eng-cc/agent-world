@@ -244,6 +244,46 @@ def main() -> None:
         ],
     )
     scenario(
+        "topic-pair-backlink",
+        lambda root: replace(
+            root / "doc/product/agents-world-simulation/agent-conversation-and-prompt-control.design.md",
+            "[`doc/product/agents-world-simulation/agent-conversation-and-prompt-control.prd.md`](agent-conversation-and-prompt-control.prd.md)",
+            "`doc/product/agents-world-simulation/agent-conversation-and-prompt-control.prd.md`",
+        ),
+    )
+    scenario(
+        "topic-pair-backlink",
+        lambda root: replace(
+            root / "doc/product/agents-world-simulation/agent-conversation-and-prompt-control.design.md",
+            "- 配对产品 PRD：[`doc/product/agents-world-simulation/agent-conversation-and-prompt-control.prd.md`](agent-conversation-and-prompt-control.prd.md)",
+            "```markdown\n[`doc/product/agents-world-simulation/agent-conversation-and-prompt-control.prd.md`](agent-conversation-and-prompt-control.prd.md)\n```",
+        ),
+    )
+    scenario(
+        "topic-pair-backlink",
+        lambda root: replace(
+            root / "doc/product/agents-world-simulation/agent-conversation-and-prompt-control.design.md",
+            "- 配对产品 PRD：[`doc/product/agents-world-simulation/agent-conversation-and-prompt-control.prd.md`](agent-conversation-and-prompt-control.prd.md)",
+            "~~~markdown\n[`doc/product/agents-world-simulation/agent-conversation-and-prompt-control.prd.md`](agent-conversation-and-prompt-control.prd.md)\n~~~",
+        ),
+    )
+    scenario(
+        "topic-missing",
+        lambda root: replace(
+            root / "doc/product/world-rules-core-gameplay/prd.md",
+            "(first-session-and-continuation.prd.md)",
+            "(missing-first-session.prd.md)",
+        ),
+    )
+    scenario(
+        "topic-missing",
+        lambda root: replace(
+            root / "doc/product/world-infrastructure/prd.md",
+            "(world-continuity-governance-and-recovery.prd.md)",
+            "(missing-world-continuity.prd.md)",
+        ),
+    )
+    scenario(
         None,
         lambda root: replace(
             root / "doc/core/prd.md",

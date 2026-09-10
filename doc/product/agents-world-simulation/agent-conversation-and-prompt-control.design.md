@@ -86,3 +86,18 @@
 - 本设计不决定 profile schema、默认常量、patch 算法、服务端事件来源或强认证方式。
 - 本设计不要求恢复已退役 Prompt Ops，也不要求所有 surface 暴露 Agent Prompt 修改能力。
 - 技术实现、当前支持范围和验证命令继续由 `world-simulator` 专业文档与证据承载。
+
+## 7. 产品要求与验收映射
+
+本 design 不另造一套产品要求；它为配对 PRD 的 `REQ-PROMPT-*` 提供玩家经历和状态解释。配对 PRD 的 `AC-PROMPT-*` 是验收场景入口，以下映射确保原有设计义务有稳定下钻路径：
+
+| 设计内容 | 配对 PRD 叶子要求 | 验收场景 |
+| --- | --- | --- |
+| 对象确认、控制资格、对话/配置分层 | REQ-PROMPT-001 / REQ-PROMPT-002 | AC-PROMPT-001 / AC-PROMPT-002 |
+| 预设、草稿、默认、override、清除默认 | REQ-PROMPT-002 / REQ-PROMPT-003 | AC-PROMPT-002 / AC-PROMPT-003 |
+| accepted/applied、失败原因与下一步 | REQ-PROMPT-004 / REQ-PROMPT-010 | AC-PROMPT-004 / AC-PROMPT-010 |
+| 过期草稿、控制权丢失优先和信息可见性 | REQ-PROMPT-007 / REQ-PROMPT-008 | AC-PROMPT-007 / AC-PROMPT-008 |
+| 提交时重新校验、竞态与单一结果 | REQ-PROMPT-009 | AC-PROMPT-009 |
+| 响应式、IME、焦点和历史布局边界 | REQ-PROMPT-005 / REQ-PROMPT-006 | AC-PROMPT-005 / AC-PROMPT-006 |
+
+这些链接只表达产品语义和验收追踪；profile schema、协议枚举、patch、鉴权和组件实现仍由本设计开头所列专业 authority 拥有。
