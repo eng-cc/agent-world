@@ -87,6 +87,29 @@ class ProvenanceTests(unittest.TestCase):
   if 'check-runs' in path:return {'check_runs':[{'id':10,'name':'required-gate','app':{'id':42},'conclusion':'success','status':'completed','head_sha':self.base,'details_url':'https://github.com/owner/repo/actions/runs/9/job/10'}]}
   if 'artifacts?' in path:return {'artifacts':[{'id':11,'name':self.api.ARTIFACT,'expired':False,'workflow_run':{'id':9}}]}
   self.fail(path)
+ def test_identity_requires_one_complete_canonical_task_field(self):
+  other='task_'+'d'*32
+  invalid=[
+   '', 'SupersededTask: '+self.uid,
+   'Task: '+other+'\nSupersededTask: '+self.uid,
+   'Task: '+self.uid+'\nTask: '+self.uid,
+   'Task: '+self.uid+'\nTask: '+other,
+   'Task: '+self.uid+' trailing',
+   'Task: '+self.uid+'\nTask: malformed',
+  ]
+  for body in invalid:
+   with self.subTest(body=body), patch.object(self.api,'gh',side_effect=self.read):
+    self.pr['body']=body
+    with self.assertRaisesRegex(ValueError,'task identity'):
+     self.api.identity('owner/repo',self.uid,12,self.base,self.head)
+
+ def test_identity_accepts_exact_task_with_unrelated_history(self):
+  for body in ('Task: '+self.uid+'\nRefs #1', 'Task: '+self.uid+'\r\nRefs #1',
+               'Task: '+self.uid+'\nSupersededTask: task_'+'d'*32):
+   with self.subTest(body=body), patch.object(self.api,'gh',side_effect=self.read):
+    self.pr['body']=body
+    pr,branch=self.api.identity('owner/repo',self.uid,12,self.base,self.head)
+    self.assertEqual(branch,'main');self.assertEqual(pr,self.pr)
  def verify(self):
   raw=io.BytesIO()
   with zipfile.ZipFile(raw,'w') as archive:archive.writestr(self.api.ARTIFACT+'.json',json.dumps(self.payload))

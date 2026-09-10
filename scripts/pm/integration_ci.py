@@ -88,7 +88,12 @@ def identity(repository,uid,number,base,head):
         raise ValueError('PR source/target moved; request a new integration run')
     if pr['base']['repo']['full_name']!=repository or pr['head']['repo']['full_name']!=repository:
         raise ValueError('integration repository identity mismatch')
-    if f'Task: {uid}' not in (pr.get('body') or ''): raise ValueError('PR task identity mismatch')
+    # Only the complete canonical field establishes identity; history and
+    # incidental mentions must not admit a different or ambiguous task.
+    body=(pr.get('body') or '').replace('\r\n','\n')
+    if (not re.fullmatch(r'task_[0-9a-f]{32}',uid)
+            or re.findall(r'^Task:[^\n]*$',body,re.MULTILINE)!=['Task: '+uid]):
+        raise ValueError('PR task identity mismatch')
     repo=gh('api',f'repos/{repository}')
     branch=repo['default_branch']
     if pr['base']['ref']!=branch: raise ValueError('integration target must be default branch')
