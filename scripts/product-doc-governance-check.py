@@ -109,6 +109,24 @@ def markdown_targets(root: Path, source: Path, text: str) -> set[str]:
     return targets
 
 
+def markdown_targets_outside_fenced_code(root: Path, source: Path, text: str) -> set[str]:
+    """Return Markdown targets from prose, excluding fenced code examples."""
+    visible_lines: list[str] = []
+    fence: tuple[str, int] | None = None
+    for line in text.splitlines():
+        if fence:
+            character, length = fence
+            if re.fullmatch(rf" {{0,3}}{re.escape(character)}{{{length},}}[ \t]*", line):
+                fence = None
+            continue
+        opener = re.match(r" {0,3}([`~])\1{2,}", line)
+        if opener:
+            fence = (opener.group(1), len(opener.group(0).lstrip()))
+            continue
+        visible_lines.append(line)
+    return markdown_targets(root, source, "\n".join(visible_lines))
+
+
 def topic_targets_for_section(
     root: Path, module_path: Path, text: str, heading: str
 ) -> set[str]:
@@ -236,6 +254,9 @@ def check(root: Path) -> list[str]:
             topic_path = root / topic
             if topic_path.parent != path.parent:
                 fail(errors, "topic-module-boundary", f"{module.path}: {topic}")
+            if not topic_path.is_file():
+                fail(errors, "topic-missing", f"{module.path}: declared active topic {topic} does not exist")
+                continue
             if metadata(topic_path.read_text(encoding="utf-8"), "生命周期") != "active":
                 fail(errors, "topic-lifecycle", f"active topic must declare active lifecycle: {topic}")
             declared_topics.add(topic)
@@ -245,6 +266,9 @@ def check(root: Path) -> list[str]:
             topic_path = root / topic
             if topic_path.parent != path.parent:
                 fail(errors, "topic-module-boundary", f"{module.path}: {topic}")
+            if not topic_path.is_file():
+                fail(errors, "topic-missing", f"{module.path}: declared migration topic {topic} does not exist")
+                continue
             lifecycle = metadata(topic_path.read_text(encoding="utf-8"), "生命周期")
             if lifecycle not in {"superseded", "retired"}:
                 fail(errors, "topic-lifecycle", f"migration topic must be superseded or retired: {topic}")
@@ -300,8 +324,10 @@ def check(root: Path) -> list[str]:
             )
         for suffix in (".design.md",):
             paired_path = topic_path.with_name(topic_path.name.removesuffix(".prd.md") + suffix)
-            if paired_path.is_file() and topic not in paired_path.read_text(encoding="utf-8"):
-                fail(errors, "topic-pair-backlink", f"{paired_path.relative_to(root)} must reference {topic}")
+            if paired_path.is_file():
+                paired_text = paired_path.read_text(encoding="utf-8")
+                if topic not in markdown_targets_outside_fenced_code(root, paired_path, paired_text):
+                    fail(errors, "topic-pair-backlink", f"{paired_path.relative_to(root)} must link {topic}")
         if metadata(topic_text, "产品层唯一 PRD") not in {None, module_root}:
             fail(errors, "topic-module-authority", f"{topic}: 产品层唯一 PRD must name its module root")
         for authority in TOPIC_PROFESSIONAL_AUTHORITIES.get(topic, ()):
