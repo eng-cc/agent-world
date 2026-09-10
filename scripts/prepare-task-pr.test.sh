@@ -93,6 +93,19 @@ if [[ "${1:-}" == "api" && "${2:-}" == repos/* && "$*" == *"--jq .default_branch
   exit 0
 fi
 
+if [[ "${1:-}" == "api" && "${2:-}" == repos/*/issues/*/comments ]]; then
+  python3 - "${TEST_GH_ISSUE_VIEW_JSON:?}" <<'PY'
+import json,sys
+print(json.dumps([json.load(open(sys.argv[1])).get('comments',[])]))
+PY
+  exit 0
+fi
+
+if [[ "${1:-}" == "api" && "${2:-}" == repos/*/issues/* ]]; then
+  cat "${TEST_GH_PROMOTION_ISSUE_JSON:-${TEST_GH_ISSUE_BODY_JSON:?}}"
+  exit 0
+fi
+
 if [[ "${1:-}" == "pr" && "${2:-}" == "create" ]]; then
   printf 'https://github.com/example/oasis7/pull/999\n'
   exit 0
@@ -1576,6 +1589,36 @@ assert "--allow-ready-pr" not in receipt,lines
 PY
 assert_promoted_truth
 "$REAL_GIT" -C "$ROOT_DIR" update-ref refs/remotes/origin/main "$COMPARISON_OID"
+
+# A stale UID mention is not canonical task identity at promotion.
+for identity_case in missing changed duplicate conflicting malformed; do
+  identity_issue="$TMPDIR/promotion-identity-$identity_case.json"
+  python3 - "$identity_issue" "$TASK_UID" "$identity_case" <<'PY'
+import json,sys
+path,uid,case=sys.argv[1:]
+canonical='task_uid: '+uid
+fields={'missing':'','changed':'task_uid: task_'+'f'*32,
+        'duplicate':canonical+'\n'+canonical,
+        'conflicting':canonical+'\ntask_uid: task_'+'f'*32,
+        'malformed':canonical+'\ntask_uid: malformed'}
+with open(path,'w') as f: json.dump({'number':123,'body':'<!-- oasis7-pm-task -->\n'+fields[case]+'\nHistorical mention '+uid},f)
+PY
+  set_promotion_ready_truth
+  identity_log="$TMPDIR/gh-promotion-identity-$identity_case.log"
+  identity_err="$TMPDIR/promotion-identity-$identity_case.err"
+  if TEST_GH_PROMOTION_ISSUE_JSON="$identity_issue" \
+    PREPARE_TASK_PR_CI_READY_RECEIPT_PATH="$promotion_receipt_helper" \
+    PREPARE_TASK_PR_PROJECT_TASK_PATH="$promotion_project_helper" TEST_PR_STATE_TSV=$'true\tOPEN\t' \
+      run_prepare "$identity_log" "$TMPDIR/git-promotion-identity-$identity_case.log" --promote-draft "$promotion_receipt" >/dev/null 2>"$identity_err"; then
+    echo "promotion accepted noncanonical Issue identity: $identity_case" >&2
+    exit 1
+  fi
+  grep -q 'local task Issue identity mismatch' "$identity_err" || { cat "$identity_err" >&2; exit 1; }
+  if grep -Eq '^record-pr ordinary$|^pr ready ' "$identity_log"; then
+    echo "invalid Issue identity reached promotion mutation: $identity_case" >&2
+    exit 1
+  fi
+done
 
 # A PR retargeted to another base branch at the same base OID must not pass
 # promotion.  The immutable receipt OID remains valid, but live PR base-ref

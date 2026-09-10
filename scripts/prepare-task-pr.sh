@@ -1290,6 +1290,33 @@ if git_rev("rev-parse", "--verify", f"refs/heads/{source_branch}^{{commit}}") !=
 if git_rev("rev-parse", "--verify", f"{comparison_ref}^{{commit}}") != comparison_head:
     fail("comparison ref differs from the frozen comparison head")
 
+try:
+    import base64
+    live_issue = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo_name}/issues/{issue_number}'], text=True))
+    live_body = live_issue.get('body', '')
+    matches = re.findall(r'^- loop_binding_b64: `([^`]+)`$', live_body, re.MULTILINE)
+    if 'loop_binding_b64:' in live_body:
+        if len(matches) != 1: fail('malformed live loop binding')
+        binding = json.loads(base64.b64decode(matches[0] + '=' * (-len(matches[0]) % 4), altchars=b'-_', validate=True))
+        if record.get('loop_binding') != binding: fail('loop cache differs from live Issue')
+        tool = Path(os.environ.get('OASIS7_LOOP_TOOL_ROOT', '')).resolve()
+        commit = binding.get('policy_commit', '')
+        if not re.fullmatch(r'[0-9a-f]{40}', commit): fail('missing immutable effective policy')
+        subprocess.run(['git', '-C', str(source_worktree), 'fetch', '--no-tags', 'origin', 'main:refs/remotes/origin/main'], check=True, capture_output=True)
+        subprocess.run(['git', '-C', str(source_worktree), 'merge-base', '--is-ancestor', commit, 'refs/remotes/origin/main'], check=True, capture_output=True)
+        if subprocess.check_output(['git', '-C', str(tool), 'rev-parse', 'HEAD'], text=True).strip() != commit: fail('trusted tool HEAD mismatch')
+        names = subprocess.check_output(['git', '-C', str(tool), 'ls-tree', '-r', '--name-only', commit, '--', 'scripts/pm'], text=True).splitlines()
+        for name in names:
+            if (tool / name).is_symlink() or (tool / name).read_bytes() != subprocess.check_output(['git', '-C', str(tool), 'show', commit + ':' + name]): fail('trusted helper bytes mismatch')
+        if subprocess.check_output(['git', '-C', str(tool), 'ls-files', '--others', '--', 'scripts/pm', ':(exclude)**/__pycache__/**'], text=True).strip(): fail('untracked trusted helper shadow')
+        subprocess.run([sys.executable, '-I', str(tool / 'scripts/pm/loop-local-gate.py'), '--root', str(source_worktree), '--tool-root', str(tool), '--task-uid', task_uid, '--base', comparison_head, '--head', source_head], check=True, stdout=subprocess.DEVNULL)
+    elif record.get('loop_binding') is not None:
+        fail('live binding disappeared')
+    elif any('oasis7-loop-binding-history' in str(item.get('body', '')) for item in comments):
+        fail('live binding deleted after immutable history')
+except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
+    fail(str(exc))
+
 print(task_uid)
 print(issue_url)
 print(issue_number)
@@ -1331,7 +1358,7 @@ fi
 COMPARISON_COMMIT_REF="${COMPARISON_REF}^{commit}"
 COMPARISON_HEAD="$(git rev-parse "$COMPARISON_COMMIT_REF")"
 
-# Promotion revalidates the review against the immutable CI receipt base OID.
+# Promotion reviews the ancestor scope OID; live admission keeps the CI integration OID.
 # The live receipt validator below remains authoritative for the PR/check
 # identity; this early read only prevents a moving local symbolic ref from
 # shadowing the frozen review range during local role-review selection.
@@ -1347,7 +1374,7 @@ with open(sys.argv[1], encoding="utf-8") as handle:
 PY
 )" || die "promote_draft could not read ci_ready_receipt base identity"
   [[ "$PROMOTE_DRAFT_RECEIPT_BASE_OID" =~ ^[0-9a-f]{40,64}$ ]] || die "promote_draft ci_ready_receipt has invalid base identity"
-  REVIEW_COMPARISON_OID="$PROMOTE_DRAFT_RECEIPT_BASE_OID"
+  REVIEW_COMPARISON_OID="$(python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print(r.get("scope_base_oid",r["base_oid"]))' "$PROMOTE_DRAFT_RECEIPT")"
 fi
 BASE_WORKTREE=""
 if [[ -n "$LOCAL_BASE_REF" ]]; then
@@ -1589,6 +1616,42 @@ PY
     || die "promote_draft ci_ready_receipt lacks a canonical review evidence digest"
   [[ "$RECEIPT_REVIEW_EVIDENCE_DIGEST" == "$LOCAL_ROLE_REVIEW_EVIDENCE_DIGEST" ]] \
     || die "promote_draft ci_ready_receipt authority does not match reviewed evidence digest"
+  python3 -I - "$SOURCE_WORKTREE" "$RT" "$PROMOTE_DRAFT_RECEIPT_BASE_OID" "$SOURCE_HEAD" "$ROOT_DIR" <<'PY' \
+    || die "promote_draft fresh local loop/task admission failed"
+import base64,json,os,re,subprocess,sys
+from pathlib import Path
+root,uid,base,head,default_tool=sys.argv[1:]
+mapping=json.loads((Path(root)/'.pm/github-project-sync/tasks.json').read_text())
+task=mapping['tasks'][uid]
+repo=task.get('repository') or mapping.get('project',{}).get('repo')
+number=task['issue_number']
+issue=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/issues/{number}'],text=True))
+body=issue.get('body','').replace('\r\n','\n')
+if re.findall(r'^task_uid:[^\n]*$',body,re.M) != ['task_uid: '+uid]:
+    raise SystemExit('local task Issue identity mismatch')
+if 'loop_binding_b64:' in body:
+    matches=re.findall(r'^- loop_binding_b64: `([^`]+)`$',body,re.M)
+    if len(matches)!=1: raise SystemExit('malformed loop binding')
+    binding=json.loads(base64.b64decode(matches[0]+'='*(-len(matches[0])%4),altchars=b'-_',validate=True))
+    commit=binding.get('policy_commit','')
+    if not re.fullmatch(r'[0-9a-f]{40}',commit): raise SystemExit('missing effective policy')
+    tool=Path(os.environ.get('OASIS7_LOOP_TOOL_ROOT',default_tool)).resolve()
+    subprocess.run(['git','-C',root,'fetch','--no-tags','origin','main:refs/remotes/origin/main'],check=True,capture_output=True)
+    subprocess.run(['git','-C',root,'merge-base','--is-ancestor',commit,'refs/remotes/origin/main'],check=True,capture_output=True)
+    if subprocess.check_output(['git','-C',str(tool),'rev-parse','HEAD'],text=True).strip()!=commit: raise SystemExit('effective local helper HEAD mismatch')
+    common=lambda path: subprocess.check_output(['git','-C',str(path),'rev-parse','--path-format=absolute','--git-common-dir'],text=True).strip()
+    if common(root)!=common(tool): raise SystemExit('effective local helper repository mismatch')
+    helper=tool/'scripts/pm/loop-local-gate.py'
+    expected=subprocess.check_output(['git','-C',root,'show',commit+':scripts/pm/loop-local-gate.py'])
+    if helper.is_symlink() or helper.read_bytes()!=expected: raise SystemExit('local admission helper is not effective')
+    subprocess.run([sys.executable,'-I',str(helper),'--root',root,'--task-uid',uid,'--base',base,'--head',head,'--tool-root',str(tool),'--json'],check=True)
+else:
+    if task.get('loop_binding') is not None: raise SystemExit('live loop binding disappeared')
+    pages=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/issues/{number}/comments','--paginate','--slurp'],text=True))
+    if not isinstance(pages,list): raise SystemExit('loop lineage readback unavailable')
+    comments=[item for page in pages for item in (page if isinstance(page,list) else [page])]
+    if any('oasis7-loop-binding-history' in str(item.get('body','')) for item in comments): raise SystemExit('loop binding deleted after history')
+PY
   case "$PR_IS_DRAFT" in
     true) gh pr ready "$PR_TO_PROMOTE" -R "$RR" >/dev/null || die "promote_draft failed" ;;
     false) ;;
