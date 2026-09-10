@@ -583,6 +583,24 @@ impl RuntimeLlmSidecar {
             let Some(marker) = committed_runtime_record_for_request(world, &request)? else {
                 continue;
             };
+            let recovery_context = self
+                .provider_active_turns
+                .get(agent_id.as_str())
+                .or_else(|| self.provider_contexts.get(agent_id.as_str()))
+                .cloned();
+            // A resumed Runtime continuation may still own an in-flight wake
+            // when the sidecar checkpoint failed after the action receipt was
+            // committed. Keep that exact wake visible as a terminal recovery
+            // handoff; otherwise restore would clear the provider identity
+            // and accidentally admit the continuation as a fresh turn.
+            let committed_wake = recovery_context.as_ref().and_then(|context| {
+                self.pending_runtime_wakes
+                    .values()
+                    .chain(runtime_wakes.iter())
+                    .find(|wake| provider_context_matches_wake(context, wake))
+                    .cloned()
+            });
+            let has_committed_wake = committed_wake.is_some();
             self.provider_terminal_states.insert(
                 agent_id.clone(),
                 ProviderTerminalState {
@@ -597,6 +615,18 @@ impl RuntimeLlmSidecar {
                         .then_some(marker.feedback_id.clone()),
                 },
             );
+            if let (Some(context), Some(wake)) = (recovery_context, committed_wake) {
+                self.pending_runtime_wakes
+                    .insert(wake.wake_id.clone(), wake);
+                self.provider_wake_recovery_pending.insert(
+                    agent_id.clone(),
+                    ProviderWakeRecoveryPending {
+                        active: context,
+                        status: crate::runtime::ContinuationStatusV1::Completed,
+                        reason: "provider_action_committed".to_string(),
+                    },
+                );
+            }
             self.provider_completed_decisions.retain(|decision| {
                 !decision_matches_commit_record(decision, &marker)
                     && !(decision.cognition.is_none() && decision.agent_id == marker.agent_id)
@@ -609,8 +639,10 @@ impl RuntimeLlmSidecar {
             self.provider_contexts.remove(agent_id.as_str());
             self.provider_retry_contexts.remove(agent_id.as_str());
             self.provider_recovery_pending.remove(agent_id.as_str());
-            self.provider_wake_recovery_pending
-                .remove(agent_id.as_str());
+            if !has_committed_wake {
+                self.provider_wake_recovery_pending
+                    .remove(agent_id.as_str());
+            }
             self.provider_wait_until.remove(agent_id.as_str());
             self.pending_actions
                 .retain(|_, pending| pending.agent_id != agent_id);

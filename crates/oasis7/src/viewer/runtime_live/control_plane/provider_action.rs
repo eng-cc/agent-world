@@ -47,6 +47,15 @@ impl ViewerRuntimeLiveServer {
         {
             return Err(self.finish_provider_transport_exhaustion(agent_id, None));
         }
+        if let Some((_, agent_id, _)) = self.llm_sidecar.pending_provider_action_for_recovery() {
+            if let Err(error) = self.retry_committed_provider_action() {
+                return Err(wake_handoff_error_trace(
+                    agent_id.as_str(),
+                    self.world.state().time,
+                    format!("Runtime receipt finalization recovery remains pending: {error}"),
+                ));
+            }
+        }
         let decision = self.llm_sidecar.next_llm_decision(
             &mut self.world,
             &self.snapshot_config,
@@ -165,6 +174,13 @@ impl ViewerRuntimeLiveServer {
                             Ok(()) => {}
                             Err(error) => {
                                 if error.is_wake_handoff() {
+                                    return Err(wake_handoff_error_trace(
+                                        cognition.request.request_context.agent_subject.as_str(),
+                                        self.world.state().time,
+                                        error.reason(),
+                                    ));
+                                }
+                                if error.is_post_commit() {
                                     return Err(wake_handoff_error_trace(
                                         cognition.request.request_context.agent_subject.as_str(),
                                         self.world.state().time,
@@ -491,11 +507,6 @@ impl ViewerRuntimeLiveServer {
             .to_string(),
         );
 
-        // Runtime owns the cognition lifecycle. Close the persisted
-        // RequestDispatched prefix before releasing any sidecar identity; a
-        // restart fence without this transition leaves the Agent permanently
-        // in flight. The exact request context is retained in the sidecar so
-        // this call is idempotent across repeated control passes.
         if let Err(error) = self.llm_sidecar.fail_provider_cognition_turn(
             &mut self.world,
             trace.agent_id.as_str(),
@@ -624,10 +635,6 @@ impl ViewerRuntimeLiveServer {
     ) -> Result<crate::runtime::RuntimeFeedbackOutboxRecordV1, String> {
         let status = feedback.status.clone();
         let request = RuntimeFeedbackRequestV1 {
-            // Runtime receipts already carry a Runtime-issued feedback id.
-            // All other dispositions receive their id and sequence from the
-            // Runtime allocator, never from the adapter-local compatibility
-            // counter.
             feedback_id: feedback
                 .runtime_receipt_id
                 .as_ref()
@@ -726,6 +733,126 @@ impl ViewerRuntimeLiveServer {
         }
     }
 
+    /// Retry sidecar finalization from the committed Runtime receipt.
+    fn retry_committed_provider_action(&mut self) -> Result<(), String> {
+        let Some((action_id, _agent_id, cognition)) =
+            self.llm_sidecar.pending_provider_action_for_recovery()
+        else {
+            return Ok(());
+        };
+        let request = &cognition.request.request_context;
+        let marker = self
+            .world
+            .cognition()
+            .get("commit_records")
+            .and_then(serde_json::Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|value| {
+                serde_json::from_value::<crate::runtime::WorldCommitRecordV1>(value.clone()).ok()
+            })
+            .find(|marker| {
+                marker.status == "committed"
+                    && marker.agent_id == request.agent_subject
+                    && marker.agent_session_id == request.agent_session_id
+                    && marker.agent_turn_id == request.agent_turn_id
+                    && marker.decision_request_id == request.decision_request_id
+                    && marker.request_digest == request.request_digest.to_string()
+            });
+        let Some(marker) = marker else {
+            return Ok(());
+        };
+        let lineage = self
+            .world
+            .read_runtime_receipt_lineage(marker.receipt_id.as_str())
+            .map_err(|error| {
+                format!("Runtime cognition receipt recovery readback failed: {error:?}")
+            })?;
+        self.world
+            .verify_runtime_receipt_lineage(&lineage)
+            .map_err(|error| {
+                format!("Runtime cognition receipt recovery verification failed: {error:?}")
+            })?;
+
+        let existing_feedback = self
+            .world
+            .runtime_feedback_outbox()
+            .map_err(|error| format!("Runtime feedback recovery outbox read failed: {error:?}"))?
+            .into_iter()
+            .find(|record| record.feedback_id == lineage.feedback_id);
+        let feedback = if let Some(record) = existing_feedback {
+            let payload = record
+                .transport_payload()
+                .map_err(|error| format!("Runtime feedback recovery payload invalid: {error}"))?;
+            let feedback = serde_json::from_value::<crate::simulator::FeedbackEnvelopeV1>(payload)
+                .map_err(|error| {
+                    format!("Runtime feedback recovery payload decode failed: {error}")
+                })?;
+            if feedback.status != "committed"
+                || feedback.runtime_receipt_id.as_deref() != Some(lineage.receipt_id.as_str())
+                || feedback.agent_subject != lineage.agent_id
+                || feedback.agent_session_id != lineage.agent_session_id
+                || feedback.agent_turn_id != lineage.agent_turn_id
+                || feedback.decision_request_id != lineage.decision_request_id
+                || feedback.request_digest.to_string() != lineage.request_digest
+            {
+                return Err("Runtime feedback recovery identity mismatch".to_string());
+            }
+            feedback
+        } else {
+            let feedback = self.llm_sidecar.provider_feedback(
+                &cognition,
+                Some(action_id),
+                "committed",
+                Some(lineage.receipt_id.clone()),
+                Some(lineage.feedback_id.clone()),
+                None,
+            );
+            let projection = RuntimeFeedbackProjectionV1 {
+                envelope_digest: Some(lineage.envelope_digest.clone()),
+                emitted_events: Vec::new(),
+                committed_event_summary: Some(format!(
+                    "runtime_receipt_id={} action_id={}",
+                    lineage.receipt_id, lineage.action_id
+                )),
+                world_delta_summary: None,
+            };
+            self.allocate_runtime_feedback(feedback, projection)
+                .map_err(|error| format!("Runtime feedback recovery allocation failed: {error}"))?
+                .transport_payload()
+                .map_err(|error| format!("Runtime feedback recovery payload invalid: {error}"))
+                .and_then(|payload| {
+                    serde_json::from_value(payload).map_err(|error| {
+                        format!("Runtime feedback recovery payload decode failed: {error}")
+                    })
+                })?
+        };
+        self.llm_sidecar
+            .consume_provider_memory_after_receipt(
+                request.agent_subject.as_str(),
+                feedback.clone(),
+                &lineage,
+                cognition.memory_write_intents.as_slice(),
+            )
+            .map_err(|error| {
+                format!("Runtime receipt recovery memory projection failed: {error}")
+            })?;
+        self.llm_sidecar
+            .finalize_provider_action_with_feedback_checked(action_id, feedback)
+            .map_err(|error| format!("Runtime receipt recovery finalization failed: {error}"))?;
+        self.drain_provider_feedback_outbox();
+        if let Err(error) = self.handoff_runtime_wake_for_agent(
+            request.agent_subject.as_str(),
+            crate::runtime::ContinuationStatusV1::Completed,
+            "provider_action_committed",
+        ) {
+            return Err(format!(
+                "Runtime receipt recovery wake handoff failed: {error}"
+            ));
+        }
+        Ok(())
+    }
+
     fn retry_runtime_feedback_outbox(&mut self, feedback_id: &str, reason: impl Into<String>) {
         if let Err(error) = self
             .world
@@ -772,19 +899,19 @@ impl ViewerRuntimeLiveServer {
             .world
             .read_runtime_receipt_lineage(returned_lineage.receipt_id.as_str())
             .map_err(|error| {
-                ProviderRuntimeActionCommitError::Message(format!(
+                ProviderRuntimeActionCommitError::PostCommit(format!(
                     "Runtime cognition receipt readback failed: {error:?}"
                 ))
             })?;
         self.world
             .verify_runtime_receipt_lineage(&lineage)
             .map_err(|error| {
-                ProviderRuntimeActionCommitError::Message(format!(
+                ProviderRuntimeActionCommitError::PostCommit(format!(
                     "Runtime cognition receipt verification failed: {error:?}"
                 ))
             })?;
         if lineage != returned_lineage || lineage.receipt_id != committed.receipt_id {
-            return Err(ProviderRuntimeActionCommitError::Message(
+            return Err(ProviderRuntimeActionCommitError::PostCommit(
                 "Runtime cognition receipt readback identity mismatch".to_string(),
             ));
         }
@@ -792,13 +919,13 @@ impl ViewerRuntimeLiveServer {
             .action_id
             .strip_prefix("action:")
             .ok_or_else(|| {
-                ProviderRuntimeActionCommitError::Message(
+                ProviderRuntimeActionCommitError::PostCommit(
                     "Runtime cognition commit returned an invalid action id".to_string(),
                 )
             })?
             .parse::<u64>()
             .map_err(|error| {
-                ProviderRuntimeActionCommitError::Message(format!(
+                ProviderRuntimeActionCommitError::PostCommit(format!(
                     "Runtime cognition action id is not numeric: {error}"
                 ))
             })?;
@@ -834,12 +961,13 @@ impl ViewerRuntimeLiveServer {
                     error,
                     "Runtime receipt committed but feedback outbox allocation failed"
                 );
-                error
-            })
-            .ok();
+                ProviderRuntimeActionCommitError::PostCommit(format!(
+                    "Runtime receipt committed but feedback outbox allocation failed: {error}"
+                ))
+            })?;
         let feedback = queued_feedback
-            .as_ref()
-            .and_then(|record| record.transport_payload().ok())
+            .transport_payload()
+            .ok()
             .and_then(|payload| serde_json::from_value(payload).ok())
             .unwrap_or(feedback);
         self.llm_sidecar
@@ -849,20 +977,31 @@ impl ViewerRuntimeLiveServer {
                 &lineage,
                 cognition.memory_write_intents.as_slice(),
             )
-            .map_err(ProviderRuntimeActionCommitError::Message)?;
-        let finalized = self
-            .llm_sidecar
-            .finalize_provider_action_with_feedback(action_id, feedback)
-            .ok_or_else(|| {
-                "provider cognition single-flight did not close after Runtime receipt".to_string()
-            });
-        finalized.map_err(ProviderRuntimeActionCommitError::Message)?;
-        // Runtime has already committed and issued the receipt. Queueing and
-        // delivery are separate so a provider transport failure cannot turn
-        // that authoritative commit into a viewer-side ActionRejected event.
-        if queued_feedback.is_some() {
-            self.drain_provider_feedback_outbox();
+            .map_err(|error| {
+                ProviderRuntimeActionCommitError::PostCommit(format!(
+                    "Runtime receipt committed but provider memory projection failed: {error}"
+                ))
+            })?;
+
+        #[cfg(test)]
+        if std::env::var("OASIS7_TEST_PROVIDER_ACTION_FAULT").as_deref() == Ok("persistence") {
+            let fault_result = self
+                .llm_sidecar
+                .install_test_provider_lineage_checkpoint_blocker();
+            fault_result.map_err(|error| {
+                ProviderRuntimeActionCommitError::PostCommit(format!(
+                    "provider action finalization checkpoint fault setup failed: {error}"
+                ))
+            })?;
         }
+        self.llm_sidecar
+            .finalize_provider_action_with_feedback_checked(action_id, feedback)
+            .map_err(|error| {
+                ProviderRuntimeActionCommitError::PostCommit(format!(
+                    "provider cognition receipt finalization remains pending: {error}"
+                ))
+            })?;
+        self.drain_provider_feedback_outbox();
         if let Err(error) = self.handoff_runtime_wake_for_agent(
             cognition.request.request_context.agent_subject.as_str(),
             crate::runtime::ContinuationStatusV1::Completed,
@@ -1011,6 +1150,7 @@ fn provider_cognition_commit_inputs(
 enum ProviderRuntimeActionCommitError {
     StaleBase,
     WakeHandoff(String),
+    PostCommit(String),
     Message(String),
 }
 
@@ -1023,10 +1163,15 @@ impl ProviderRuntimeActionCommitError {
         matches!(self, Self::WakeHandoff(_))
     }
 
+    fn is_post_commit(&self) -> bool {
+        matches!(self, Self::PostCommit(_))
+    }
+
     fn reason(&self) -> String {
         match self {
             Self::StaleBase => CognitionCommitRejectReasonV1::StaleBase.code().to_string(),
             Self::WakeHandoff(reason) => reason.clone(),
+            Self::PostCommit(reason) => reason.clone(),
             Self::Message(reason) => reason.clone(),
         }
     }
