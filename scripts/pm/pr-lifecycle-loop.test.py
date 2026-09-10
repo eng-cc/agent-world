@@ -17,6 +17,32 @@ spec.loader.exec_module(gate)
 
 
 class ProductionLoopTests(unittest.TestCase):
+    def test_final_live_pr_admission_rejects_same_oid_drift(self):
+        uid = 'task_' + '1' * 32
+        data = {'number': 12, 'repository': 'owner/repo', 'state': 'OPEN', 'isDraft': False,
+                'body': 'Task: ' + uid + '\nRefs #1', 'baseRefName': 'main', 'headRefName': 'codex/task',
+                'baseRefOid': 'a' * 40, 'headRefOid': 'b' * 40,
+                'mergeable': 'MERGEABLE', 'mergeStateStatus': 'CLEAN', 'reviewDecision': 'APPROVED',
+                'merge_hold': {'kind': 'normal_pr_ci_watch', 'active': False},
+                'policy_discovery': {'status': 'resolved', 'required_status_checks': []}}
+        cases = [('unchanged', {}, True), ('closed', {'state': 'CLOSED'}, False),
+                 ('merged', {'state': 'MERGED'}, False), ('draft', {'isDraft': True}, False),
+                 ('task', {'body': 'Task: task_' + '2' * 32 + '\nRefs #1'}, False),
+                 ('refs', {'body': 'Task: ' + uid + '\nRefs #2'}, False),
+                 ('target', {'baseRefName': 'release'}, False),
+                 ('source', {'headRefName': 'codex/replaced'}, False)]
+        for label, changes, ready in cases:
+            fresh = {**data, **changes}
+            def read(command, **kwargs):
+                self.assertEqual(command[:3], ['gh', 'pr', 'view'])
+                return json.dumps({key: fresh[key] for key in command[command.index('--json') + 1].split(',')})
+            with self.subTest(label=label), patch.object(gate, 'local_loop_admission', return_value={'status': 'legacy'}), \
+                 patch.object(gate, 'live_integration_admission', return_value=None), \
+                 patch.object(gate.subprocess, 'check_output', side_effect=read):
+                result = gate.production_decision(data, False, Path('/canonical'), uid, None)
+                self.assertEqual(result['ready_for_merge'], ready, result)
+                self.assertEqual('readiness_receipt' in result, ready, result)
+
     def test_advanced_target_with_old_green_run_cannot_mint_receipt(self):
         with patch.object(gate,'live_integration_admission',side_effect=ValueError('stale integration base'),create=True):
             result, _ = self.run_gate()
@@ -32,6 +58,8 @@ class ProductionLoopTests(unittest.TestCase):
 
     def run_gate(self, admission=None, fresh=None, ready=True):
         data = {'number': 12, 'repository': 'owner/repo', 'baseRefOid': 'a' * 40, 'headRefOid': 'b' * 40,
+                'state': 'OPEN', 'isDraft': False, 'body': 'Task: task_uid\nRefs #1',
+                'baseRefName': 'main', 'headRefName': 'codex/task',
                 'policy_discovery': {'status':'resolved','required_status_checks':[]}}
         def decide(data, admin, *, evidence_mode):
             result = {'ready_for_merge': ready, 'status': 'ready' if ready else 'held', 'blockers': [] if ready else ['hold']}

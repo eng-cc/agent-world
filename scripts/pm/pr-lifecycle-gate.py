@@ -283,7 +283,7 @@ def discover_required_policy(repo: str, branch: str) -> dict[str, Any]:
 
 
 def load_live(selector: str) -> dict[str, Any]:
-    fields = "number,url,state,mergeable,mergeStateStatus,reviewDecision,headRefName,headRefOid,baseRefName,baseRefOid"
+    fields = "number,url,state,isDraft,body,mergeable,mergeStateStatus,reviewDecision,headRefName,headRefOid,baseRefName,baseRefOid"
     raw = subprocess.check_output(["gh", "pr", "view", selector, "--json", fields], text=True)
     payload = json.loads(raw)
     repo = json.loads(subprocess.check_output(["gh", "repo", "view", "--json", "nameWithOwner"], text=True))["nameWithOwner"]
@@ -419,7 +419,7 @@ def decision(data: dict[str, Any], admin_authorized: bool, *, evidence_mode: str
 def read_pr_identity(repository, number):
     return json.loads(subprocess.check_output([
         'gh', 'pr', 'view', str(number), '--repo', repository,
-        '--json', 'number,baseRefOid,headRefOid'], text=True))
+        '--json', 'number,state,isDraft,body,baseRefName,headRefName,baseRefOid,headRefOid'], text=True))
 
 
 def local_loop_admission(root, uid, base, head, tool_root):
@@ -530,8 +530,12 @@ def production_decision(data, admin_authorized, root, uid, tool_root, integratio
         admission = local_loop_admission(root, uid, base, head, tool_root)
         integration = live_integration_admission(data, root, uid, tool_root, admission, integration_run_id) if integration_run_id is not None else live_integration_admission(data, root, uid, tool_root, admission)
         fresh = read_pr_identity(data['repository'], data['number'])
-        if any(fresh.get(key) != data.get(key) for key in ('number', 'baseRefOid', 'headRefOid')):
-            raise ValueError('PR base/head changed during live loop admission; rerun gate')
+        # Admission may involve slow remote reads. Even unchanged commit OIDs
+        # cannot preserve authority after a draft, body or branch transition.
+        fields = ('number', 'state', 'isDraft', 'body', 'baseRefName', 'headRefName', 'baseRefOid', 'headRefOid')
+        if (not isinstance(fresh, dict) or any(key not in fresh or key not in data or fresh[key] != data[key] for key in fields)
+                or fresh['state'] != 'OPEN' or fresh['isDraft'] is not False):
+            raise ValueError('PR admission identity or state changed during live loop admission; rerun gate')
     except (ValueError, KeyError, OSError, subprocess.SubprocessError) as exc:
         result.update(ready_for_merge=False, status='blocked', use_admin_merge=False)
         result['blockers'].append('live loop admission: ' + str(exc))
