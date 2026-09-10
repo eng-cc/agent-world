@@ -1001,6 +1001,73 @@ fn provider_lineage_hydration_fences_undecodable_checkpoint() {
 }
 
 #[test]
+fn malformed_runtime_wake_projection_fences_provider_dispatch_and_persists_recovery() {
+    let path = std::env::temp_dir().join(format!(
+        "oasis7-viewer-provider-lineage-runtime-wake-fence-{}-{}.json",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+    let valid_world = RuntimeWorld::default();
+    let mut snapshot = valid_world.snapshot();
+    snapshot.cognition["scheduler_state"] = serde_json::json!({
+        "schema_version": "scheduler.v1",
+        "in_flight": "malformed"
+    });
+    let mut malformed_world = RuntimeWorld::from_snapshot(snapshot, valid_world.journal().clone())
+        .expect("malformed scheduler projection remains loadable for adapter fault injection");
+
+    let mut sidecar = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    sidecar.configure_provider_lineage_store(path.clone());
+    sidecar.provider_agent_ids.insert("agent-0".to_string());
+    sidecar.hydrate_provider_lineage(&malformed_world);
+
+    let recovery_reason = sidecar
+        .provider_lineage_recovery_pending
+        .as_deref()
+        .expect("unreadable Runtime wake projection must retain a recovery fence")
+        .to_string();
+    assert!(recovery_reason.contains("Runtime cognition wake read failed"));
+    assert!(
+        !sidecar.provider_lineage_hydrated,
+        "wake projection failure must not be marked as successfully hydrated"
+    );
+    let checkpoint: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(&path).expect("read persisted wake projection recovery fence"),
+    )
+    .expect("decode persisted wake projection recovery fence");
+    assert_eq!(
+        checkpoint["provider_lineage_recovery_pending"],
+        serde_json::json!(recovery_reason)
+    );
+
+    let mut kernel = WorldKernel::new();
+    let error = sidecar
+        .prepare_provider_request_contexts(&mut malformed_world, &mut kernel, "fault-world")
+        .expect_err("provider admission must stop behind the Runtime recovery fence");
+    assert!(error.contains("provider lineage recovery fenced"));
+
+    let mut restarted = RuntimeLlmSidecar::new(ViewerLiveDecisionMode::Llm);
+    restarted.configure_provider_lineage_store(path.clone());
+    restarted.hydrate_provider_lineage(&malformed_world);
+    assert!(
+        restarted
+            .provider_lineage_recovery_pending
+            .as_deref()
+            .is_some_and(|reason| reason.contains("Runtime cognition wake read failed")),
+        "restart must retain an actionable recovery reason"
+    );
+    assert!(
+        !restarted.provider_lineage_hydrated,
+        "restart must not claim hydration while the Runtime projection is unreadable"
+    );
+
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
 fn provider_lineage_restore_terminalizes_exhausted_orphan_without_retry_loop() {
     let path = std::env::temp_dir().join(format!(
         "oasis7-viewer-provider-lineage-exhausted-{}-{}.json",

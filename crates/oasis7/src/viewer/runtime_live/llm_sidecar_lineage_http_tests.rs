@@ -55,6 +55,17 @@ fn provider_dispatch_http_restart_fence_issues_one_request() {
         stream.flush().expect("flush provider response");
     }
 
+    fn write_json_response(stream: &mut TcpStream, body: &str) {
+        write!(
+            stream,
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            body.len(),
+            body
+        )
+        .expect("write provider JSON response");
+        stream.flush().expect("flush provider JSON response");
+    }
+
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind provider HTTP fixture");
     listener
         .set_nonblocking(true)
@@ -74,28 +85,47 @@ fn provider_dispatch_http_restart_fence_issues_one_request() {
             match listener.accept() {
                 Ok((mut stream, _)) => {
                     let (path, _body) = read_http_request(&stream);
-                    assert_eq!(path, "/v1/responses");
-                    server_count.fetch_add(1, Ordering::AcqRel);
-                    let event = serde_json::json!({
-                        "type": "response.completed",
-                        "sequence_number": 1,
-                        "response": {
-                            "id": "resp_dispatch_marker",
-                            "object": "response",
-                            "created_at": 1,
-                            "completed_at": 2,
-                            "model": "gpt-dispatch-marker",
-                            "output": [{
-                                "type": "function_call",
-                                "call_id": "call_decision",
-                                "name": "agent_submit_decision",
-                                "arguments": "{\"decision\":\"wait\"}"
-                            }],
-                            "status": "completed",
-                            "parallel_tool_calls": false
+                    match path.as_str() {
+                        "/v1/responses" => {
+                            server_count.fetch_add(1, Ordering::AcqRel);
+                            let event = serde_json::json!({
+                                "type": "response.completed",
+                                "sequence_number": 1,
+                                "response": {
+                                    "id": "resp_dispatch_marker",
+                                    "object": "response",
+                                    "created_at": 1,
+                                    "completed_at": 2,
+                                    "model": "gpt-dispatch-marker",
+                                    "output": [{
+                                        "type": "function_call",
+                                        "call_id": "call_decision",
+                                        "name": "agent_submit_decision",
+                                        "arguments": "{\"decision\":\"wait\"}"
+                                    }],
+                                    "status": "completed",
+                                    "parallel_tool_calls": false
+                                }
+                            });
+                            write_sse_response(&mut stream, event.to_string().as_str());
                         }
-                    });
-                    write_sse_response(&mut stream, event.to_string().as_str());
+                        // Other runtime-live tests can legitimately flush a
+                        // feedback outbox while this fixture owns the shared
+                        // provider environment. Serve that route so an
+                        // unrelated request cannot panic this test's server
+                        // thread and poison its environment lock.
+                        "/v1/world-simulator/feedback-context" => {
+                            write_json_response(&mut stream, r#"{"ok":true}"#);
+                        }
+                        _ => {
+                            write!(
+                                stream,
+                                "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                            )
+                            .expect("write provider route response");
+                            stream.flush().expect("flush provider route response");
+                        }
+                    }
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                     thread::sleep(Duration::from_millis(1));

@@ -28,7 +28,16 @@ impl RuntimeLlmSidecar {
             return;
         }
         if let Err(error) = self.sync_runtime_wakes(world) {
+            self.provider_lineage_recovery_pending = Some(error.clone());
+            // Runtime wake state is authoritative. Preserve the recovery
+            // fence when a sidecar checkpoint is configured so a restart
+            // cannot reinterpret an unreadable projection as no work.
+            self.persist_provider_lineage_best_effort();
             tracing::warn!(error, "Runtime cognition wake projection unavailable");
+            // Keep hydration incomplete. The caller observes the recovery
+            // fence below, and a fresh sidecar can retry once Runtime has
+            // repaired the authoritative projection.
+            return;
         }
         self.provider_lineage_hydrated = true;
         let projection = world.cognition();

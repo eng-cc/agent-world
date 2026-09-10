@@ -209,6 +209,11 @@ struct PersistedProviderLineageV1 {
     pending_provider_world_events: BTreeMap<String, RuntimePendingProviderWorldEvent>,
     #[serde(default)]
     provider_world_event_quarantine: BTreeMap<String, String>,
+    /// A failed Runtime wake projection is a durable recovery fence.  Keep
+    /// the reason in the sidecar checkpoint so a restart cannot turn an
+    /// unreadable authoritative projection into a fresh provider dispatch.
+    #[serde(default)]
+    provider_lineage_recovery_pending: Option<String>,
     runtime_binding: Option<RuntimeBindingV1>,
     #[serde(default)]
     pending_runtime_wakes: BTreeMap<String, crate::runtime::SchedulerWakeV1>,
@@ -537,12 +542,15 @@ impl RuntimeLlmSidecar {
         self.pending_actions = checkpoint.pending_actions;
         self.pending_provider_world_events = checkpoint.pending_provider_world_events;
         self.provider_world_event_quarantine = checkpoint.provider_world_event_quarantine;
+        self.provider_lineage_recovery_pending = checkpoint.provider_lineage_recovery_pending;
         let mut pending_runtime_wakes = checkpoint
             .pending_runtime_wakes
             .into_values()
             .map(|wake| (wake.wake_id.clone(), wake))
             .collect();
-        let runtime_wakes = world.cognition_in_flight_wakes().unwrap_or_default();
+        let runtime_wakes = world.cognition_in_flight_wakes().map_err(|error| {
+            format!("Runtime cognition wake read failed during provider lineage restore: {error:?}")
+        })?;
         let pending_runtime_wakes_migrated = hydrate_pending_runtime_wake_identities(
             &mut pending_runtime_wakes,
             &runtime_wakes,
@@ -551,7 +559,6 @@ impl RuntimeLlmSidecar {
         self.pending_runtime_wakes = pending_runtime_wakes;
         self.provider_lineage_binding = current_binding.or(checkpoint.runtime_binding);
         self.provider_lineage_restored = true;
-        self.provider_lineage_recovery_pending = None;
 
         // Runtime's committed marker is authoritative over the sidecar's
         // checkpoint. A process can stop after Runtime commits the response
@@ -636,18 +643,12 @@ impl RuntimeLlmSidecar {
             )
             .chain(self.provider_wait_until.keys().cloned())
             .chain(self.provider_wake_recovery_pending.keys().cloned())
-            .chain(
-                world
-                    .cognition_in_flight_wakes()
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter_map(|wake| {
-                        self.provider_contexts
-                            .get(wake.agent_id.as_str())
-                            .filter(|context| provider_context_matches_wake(context, &wake))
-                            .map(|_| wake.agent_id)
-                    }),
-            )
+            .chain(runtime_wakes.iter().filter_map(|wake| {
+                self.provider_contexts
+                    .get(wake.agent_id.as_str())
+                    .filter(|context| provider_context_matches_wake(context, wake))
+                    .map(|_| wake.agent_id.clone())
+            }))
             .collect::<BTreeSet<_>>();
         let orphaned_active_markers = self
             .provider_active_turns
@@ -815,6 +816,7 @@ impl RuntimeLlmSidecar {
             pending_actions: self.pending_actions.clone(),
             pending_provider_world_events: self.pending_provider_world_events.clone(),
             provider_world_event_quarantine: self.provider_world_event_quarantine.clone(),
+            provider_lineage_recovery_pending: self.provider_lineage_recovery_pending.clone(),
             runtime_binding: self.provider_lineage_binding.clone(),
             pending_runtime_wakes: self.pending_runtime_wakes.clone(),
         };
